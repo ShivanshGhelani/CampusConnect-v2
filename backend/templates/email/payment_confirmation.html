@@ -1,0 +1,79 @@
+{% extends "base_email.html" %}
+
+{% block title %}Payment Confirmed - {{ event_title }}{% endblock %}
+
+{% block header_title %}Payment Confirmed!{% endblock %}
+{% block header_subtitle %}Your payment for {{ event_title }} has been processed{% endblock %}
+
+{% block student_name %}{{ student_name }}{% endblock %}
+
+{% block main_content %}
+<div class="success-badge">
+    💳 Payment Successfully Processed
+</div>
+
+<h2>Payment Confirmation</h2>
+
+<p>Thank you! Your payment has been successfully processed and your registration is now complete.</p>
+
+<div class="event-details">
+    <h3>💰 Payment Details</h3>
+    <div class="detail-item">
+        <span class="detail-label">Event:</span>
+        <span class="detail-value">{{ event_title }}</span>
+    </div>
+    {% if event_date %}
+    <div class="detail-item">
+        <span class="detail-label">Event Date:</span>
+        <span class="detail-value">{{ event_date }}</span>
+    </div>
+    {% endif %}
+    <div class="detail-item">
+        <span class="detail-label">Amount Paid:</span>
+        <span class="detail-value">${{ "%.2f"|format(amount) }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Payment ID:</span>
+        <span class="detail-value">{{ payment_id }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value" style="color: #28a745; font-weight: bold;">✅ Confirmed</span>
+    </div>
+</div>
+
+<h3>What Happens Next?</h3>
+<ul style="margin-left: 20px; margin-bottom: 20px;">
+    <li style="margin-bottom: 8px;">📧 You'll receive event reminders and updates</li>
+    <li style="margin-bottom: 8px;">🎟️ Your registration is fully confirmed - no further action needed</li>
+    <li style="margin-bottom: 8px;">📱 Please arrive 15 minutes early for check-in</li>
+    <li style="margin-bottom: 8px;">📄 Bring this confirmation email or note your Payment ID</li>
+</ul>
+
+<div class="info-badge">
+    <strong>Receipt:</strong> This email serves as your payment receipt. Please keep it for your records.
+</div>
+
+<h3>Refund Policy</h3>
+<p>If you need to cancel your registration, please contact us at least 48 hours before the event. Refunds will be processed according to our cancellation policy.</p>
+
+<p>Thank you for your payment, and we're excited to see you at {{ event_title }}!</p>
+{% endblock %}
+
+{% block footer %}
+<p>Best regards,<br>
+<strong>University Community Group Finance Team</strong></p>
+
+<div class="divider"></div>
+
+<p>💳 Payment processed securely through our payment gateway</p>
+<p>📞 Payment inquiries: <a href="mailto:payments@ucg.edu">payments@ucg.edu</a></p>
+<p>🌐 Visit our website for event details and updates</p>
+
+<div class="social-links">
+    <a href="#">Website</a> |
+    <a href="#">Facebook</a> |
+    <a href="#">Instagram</a> |
+    <a href="#">LinkedIn</a>
+</div>
+{% endblock %}

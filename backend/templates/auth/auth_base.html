@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Prevent browser caching for authentication pages -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>{% block title %}CampusConnect{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    
+    <script src="https://cdn.tailwindcss.com"></script>    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#14b8a6',
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        warning: '#f59e0b',
+                        info: '#a855f7',
+                        'seafoam': {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            200: '#99f6e4',
+                            300: '#5eead4',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a'
+                        },
+                        'sky': {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Flash message styles */
+        .alert-success {
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+        .alert-error {
+            background-color: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+        .alert-warning {
+            background-color: #fffbeb;
+            border-color: #fed7aa;
+            color: #d97706;
+        }        .alert-info {
+            background-color: #f0f9ff;
+            border-color: #bae6fd;
+            color: #0369a1;
+        }
+        
+        /* Universal Back Button Styles */
+        #universal-back-button-container {
+            z-index: 30;
+        }
+        
+        #universal-back-button {
+            transition: all 0.2s ease;
+        }
+        
+        #universal-back-button:hover {
+            transform: translateY(-1px);
+        }
+    </style>
+    
+    <!-- Universal Back Button System -->
+    <script src="/static/js/universal-back-button.js"></script>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-emerald-100 min-h-screen">
+    <!-- Top Banner -->
+    <div class="bg-gradient-to-r from-seafoam-800 to-sky-900 text-white py-2">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm">
+            <i class="fas fa-bullhorn mr-2"></i>
+            Stay updated with the latest campus events and activities!
+            <a href="/client/events?filter=upcoming" class="underline hover:text-seafoam-200 ml-2">Check upcoming events</a>
+        </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% block flash_messages %}
+    {% endblock %}
+
+    <!-- Main content -->
+    <main class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

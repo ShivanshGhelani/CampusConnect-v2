@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}Campus Events - CampusConnect{% endblock %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="min-h-screen bg-gradient-to-br from-seafoam-50 to-sky-100">
+    <!-- Simple Header -->
+    <div class="bg-gradient-to-r from-seafoam-50 to-sky-50 border-b border-seafoam-200">
+        <div class="max-w-6xl mx-auto px-4 py-8">
+            <h1 class="text-3xl font-bold text-cool-gray-900 mb-2">
+                {% if filter == 'upcoming' %}
+                    Upcoming Events
+                {% elif filter == 'ongoing' %}
+                    Live Events
+                {% else %}
+                    Campus Events
+                {% endif %}
+            </h1>
+            <p class="text-cool-gray-600">
+                {% if filter == 'upcoming' %}
+                    Events you can register for
+                {% elif filter == 'ongoing' %}
+                    Events happening right now
+                {% else %}
+                    Find events that interest you
+                {% endif %}
+            </p>
+        </div>
+    </div><!-- Enhanced Search Section -->    <div class="max-w-6xl mx-auto px-4 py-6">
+        <div class="bg-gradient-to-br from-seafoam-50 to-sky-50 rounded-xl shadow-lg border border-seafoam-200 p-6 mb-8">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Search Bar -->
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-cool-gray-700 mb-2">Search Events</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-seafoam-400"></i>
+                        </div>
+                        <input type="text" 
+                            id="searchInput"
+                            placeholder="Search by event name, department, or keywords..." 
+                            class="w-full pl-10 pr-4 py-3 border border-seafoam-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-seafoam-500 focus:border-transparent transition-all bg-white">
+                    </div>
+                </div>
+                  <!-- Category Filters -->
+                <div class="lg:w-auto">
+                    <label class="block text-sm font-medium text-cool-gray-700 mb-2">Filter by Category</label>                    <div class="flex flex-wrap gap-2">
+                        <button class="category-filter px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-seafoam-500 to-sky-600 text-white font-medium transition-all hover:from-seafoam-600 hover:to-sky-700 shadow-md active" data-category="all">
+                            All Categories ({{ events|length }})
+                        </button>                        {% if event_type_counts %}
+                            {% for event_type, count in event_type_counts.items() %}
+                                <button class="category-filter px-4 py-2 text-sm rounded-lg bg-white text-seafoam-600 hover:bg-seafoam-50 hover:text-seafoam-700 font-medium transition-all border border-seafoam-300 hover:border-seafoam-400" data-category="{{ event_type }}">
+                                    {{ event_type.title() }} ({{ count }})
+                                </button>
+                            {% endfor %}
+                        {% else %}
+                            <span class="px-4 py-2 text-sm text-cool-gray-500 italic">
+                                No event categories available - check back later
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            {% if events %}
+            <div class="mt-6 pt-6 border-t border-seafoam-200">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-cool-gray-600">Showing <span class="font-semibold text-cool-gray-900">{{ events|length }}</span> events</span>
+                    <div class="flex items-center space-x-6">
+                        {% if events|selectattr("status", "equalto", "ongoing")|list|length > 0 %}
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-mint-500 rounded-full animate-pulse"></div>
+                            <span class="text-mint-600 font-medium">{{ events|selectattr("status", "equalto", "ongoing")|list|length }} Live</span>
+                        </div>
+                        {% endif %}
+                        {% if events|selectattr("status", "equalto", "upcoming")|list|length > 0 %}
+                        <div class="flex items-center space-x-1">
+                            <div class="w-2 h-2 bg-sky-500 rounded-full"></div>
+                            <span class="text-sky-600 font-medium">{{ events|selectattr("status", "equalto", "upcoming")|list|length }} Upcoming</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div><!-- Events Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="eventsGrid">
+            {% for event in events %}
+            <div class="event-card bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 flex flex-col h-full" 
+                 data-category="{{ event.event_type.lower() if event.event_type else 'other' }}" 
+                 data-name="{{ event.event_name.lower() }}" 
+                 data-department="{{ event.organizing_department.lower() }}">
+                
+                <!-- Status Header -->
+                <div class="px-4 py-3 {% if event.status == 'ongoing' %}bg-green-50{% elif event.status == 'upcoming' %}bg-blue-50{% else %}bg-gray-50{% endif %}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            {% if event.status == 'ongoing' %}
+                                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                <span class="text-green-700 font-bold text-sm uppercase tracking-wide">LIVE NOW</span>
+                            {% elif event.status == 'upcoming' %}
+                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                <span class="text-blue-700 font-bold text-sm uppercase tracking-wide">UPCOMING</span>
+                            {% else %}
+                                <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+                                <span class="text-gray-600 font-bold text-sm uppercase tracking-wide">EVENT</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-xs text-gray-500 font-medium bg-white px-2 py-1 rounded-full">
+                            {{ event.event_type or 'General' }}
+                        </span>
+                    </div>
+                </div>
+                  <!-- Event Content -->
+                <div class="p-5 flex-grow flex flex-col">
+                    <h3 class="font-bold text-xl text-gray-900 mb-2 leading-tight line-clamp-2">{{ event.event_name }}</h3>
+                      <div class="mb-4 flex-grow">
+                        {% if event.short_description or event.description %}
+                        <p class="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                            {{ event.short_description or (event.description | truncate(100)) }}
+                        </p>
+                        {% else %}
+                        <p class="text-gray-400 text-sm italic">No description available</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Event Details with consistent height -->
+                    <div class="space-y-2 mb-5">
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-calendar text-gray-600 text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">                                <div class="font-medium text-gray-900 text-xs truncate">{{ format_datetime(event.start_datetime, 'date_only') }}</div>
+                                <div class="text-gray-500 text-xs">{{ format_datetime(event.start_datetime, 'weekday') }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-clock text-gray-600 text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-gray-900 text-xs">{{ format_datetime(event.start_datetime, 'time_only') }}</div>                                <div class="text-xs font-medium">                                    {% if event.status == 'ongoing' %}
+                                        {% if event.sub_status == 'certificate_available' %}
+                                            <span class="text-purple-600">Certificates Available</span>
+                                        {% elif event.sub_status == 'event_started' %}
+                                            <span class="text-orange-600">Attendance Ongoing</span>
+                                        {% else %}
+                                            <span class="text-green-600">In Progress</span>
+                                        {% endif %}
+                                    {% elif event.status == 'upcoming' %}
+                                        {% if event.sub_status == 'registration_not_started' %}
+                                            <span class="text-orange-600">Registration Not Started</span>
+                                        {% elif event.sub_status == 'registration_open' %}
+                                            <span class="text-blue-600">Registration Open</span>
+                                        {% else %}
+                                            <span class="text-red-600">Registration Closed</span>
+                                        {% endif %}
+                                    {% elif event.status == 'completed' %}
+                                        <span class="text-gray-600">Completed</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-map-marker-alt text-gray-600 text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-gray-900 text-xs truncate">{{ format_venue(event.venue) if event.venue else 'Venue TBA' }}</div>
+                                <div class="text-gray-500 text-xs truncate">{{ event.organizing_department or 'Campus Event' }}</div>
+                            </div>
+                        </div>
+                    </div>                    <!-- Action Button with consistent positioning -->
+                    <div class="mt-auto">
+                        {% if event.status == 'ongoing' %}
+                            {% if event.sub_status == 'certificate_available' %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-certificate mr-2"></i>Collect Certificate
+                                </a>
+                            {% elif event.sub_status == 'event_started' %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-orange-600 hover:bg-orange-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-user-check mr-2"></i>Mark Attendance
+                                </a>
+                            {% else %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-play mr-2"></i>Join Live Event
+                                </a>
+                            {% endif %}                        {% elif event.status == 'upcoming' %}
+                            {% if event.sub_status == 'registration_not_started' %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-eye mr-2"></i>View Details
+                                </a>
+                            {% elif event.sub_status == 'registration_open' %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-user-plus mr-2"></i>Register Now
+                                </a>
+                            {% else %}
+                                <a href="/client/events/{{ event.event_id }}" 
+                                   class="block w-full bg-red-600 hover:bg-red-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                    <i class="fas fa-times-circle mr-2"></i>Registration Closed
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="/client/events/{{ event.event_id }}" 
+                               class="block w-full bg-gray-600 hover:bg-gray-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm">
+                                <i class="fas fa-eye mr-2"></i>View Details
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>        <!-- No Events State -->
+        {% if not events %}
+        <div class="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
+            <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-calendar-times text-2xl text-gray-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-700 mb-3">No Events Found</h3>
+            <p class="text-gray-500 mb-6 max-w-md mx-auto">
+                {% if filter == 'upcoming' %}
+                    No upcoming events are scheduled at the moment. Check back soon for new events!
+                {% elif filter == 'ongoing' %}
+                    No events are currently live. Browse upcoming events to see what's coming next.
+                {% else %}
+                    No events match your current search. Try adjusting your filters or search terms.
+                {% endif %}
+            </p>
+            <div class="space-x-3">
+                <a href="/client/events?filter=all" 
+                   class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                    <i class="fas fa-calendar mr-2"></i>Browse All Events
+                </a>
+                {% if filter != 'upcoming' %}
+                <a href="/client/events?filter=upcoming" 
+                   class="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold">
+                    <i class="fas fa-clock mr-2"></i>View Upcoming
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}    </div>
+</div>
+
+<!-- Enhanced JavaScript -->
+{% block scripts %}
+<style>
+.event-card.filtering {
+    opacity: 0.5;
+    transition: opacity 0.15s ease-out;
+}
+
+.event-card {
+    transition: opacity 0.15s ease-out;
+}
+
+.event-card.filtered-out {
+    display: none !important;
+}
+
+/* Category Filter Button Styles */
+.category-filter {
+    transition: all 0.3s ease;
+    background: white !important;
+    color: #374151 !important; /* gray-700 */
+    border: 1px solid #d1d5db !important; /* gray-300 */
+}
+
+.category-filter:hover {
+    background: #f3f4f6 !important; /* gray-100 */
+    color: #0f766e !important; /* seafoam-700 */
+    border-color: #14b8a6 !important; /* seafoam-500 */
+}
+
+.category-filter.active {
+    background: linear-gradient(to right, #14b8a6, #0284c7) !important; /* seafoam-500 to sky-600 */
+    color: white !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.category-filter.active:hover {
+    background: linear-gradient(to right, #0f766e, #0369a1) !important; /* seafoam-600 to sky-700 */
+    color: white !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilters = document.querySelectorAll('.category-filter');
+    const eventCards = document.querySelectorAll('.event-card');
+    
+    let currentCategory = 'all';
+    let currentSearch = '';
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        currentSearch = this.value.toLowerCase();
+        filterEvents();
+    });    // Category filter functionality
+    categoryFilters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            // Remove active class from all filters
+            categoryFilters.forEach(f => f.classList.remove('active'));
+            
+            // Add active class to clicked filter
+            this.classList.add('active');
+            
+            currentCategory = this.dataset.category;
+            filterEvents();
+        });
+    });
+    
+    function filterEvents() {
+        let visibleCount = 0;
+        
+        // Add filtering class to show transition
+        eventCards.forEach(card => card.classList.add('filtering'));
+        
+        // Small delay to show the transition effect
+        setTimeout(() => {
+            eventCards.forEach(card => {
+                const cardCategory = card.dataset.category;
+                const cardName = card.dataset.name;
+                const cardDepartment = card.dataset.department;
+                
+                const matchesCategory = currentCategory === 'all' || cardCategory === currentCategory;
+                const matchesSearch = currentSearch === '' || 
+                                    cardName.includes(currentSearch) || 
+                                    cardDepartment.includes(currentSearch);
+                
+                card.classList.remove('filtering');
+                
+                if (matchesCategory && matchesSearch) {
+                    card.classList.remove('filtered-out');
+                    visibleCount++;
+                } else {
+                    card.classList.add('filtered-out');
+                }
+            });
+            
+            // Handle no results after the filtering animation
+            handleNoResults(visibleCount);
+        }, 150);
+    }    function handleNoResults(visibleCount) {
+        const eventsGrid = document.getElementById('eventsGrid');
+        const existingMessage = document.querySelector('.no-results-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        if (visibleCount === 0 && eventCards.length > 0) {
+            const noResultsMessage = document.createElement('div');
+            noResultsMessage.className = 'no-results-message col-span-full text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl';
+            noResultsMessage.innerHTML = `
+                <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-search text-xl text-gray-400"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-700 mb-2">No Events Match Your Search</h3>
+                <p class="text-gray-500 text-sm mb-4">Try different search terms or category filters</p>
+                <button onclick="clearAllFilters()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                    <i class="fas fa-refresh mr-1"></i>Clear Filters
+                </button>
+            `;
+            eventsGrid.appendChild(noResultsMessage);
+        }
+    }    // Global function for clearing filters
+    window.clearAllFilters = function() {
+        document.getElementById('searchInput').value = '';
+        currentSearch = '';
+        currentCategory = 'all';
+          // Reset category buttons
+        categoryFilters.forEach(f => f.classList.remove('active'));
+        document.querySelector('.category-filter[data-category="all"]').classList.add('active');
+        
+        // Reset all cards
+        eventCards.forEach(card => {
+            card.classList.remove('filtered-out', 'filtering');
+        });
+        
+        // Remove no results message
+        const existingMessage = document.querySelector('.no-results-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+    };
+      // Add hover effects to cards
+    eventCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('filtered-out') && !this.classList.contains('filtering')) {
+                this.style.transform = 'translateY(-4px)';
+            }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}
+
+
+{% endblock %}

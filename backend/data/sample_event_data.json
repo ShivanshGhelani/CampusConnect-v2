@@ -1,0 +1,63 @@
+{
+    "login_credentials": {
+        "username": "NIL299",
+        "password": "nilam@299t"
+    },    "event_data": {
+        "event_id": "CULTURAL_FEST_2025",
+        "event_name": "Spectrum - Annual Cultural Festival 2025",
+        "event_type": "competition",
+        "short_description": "A vibrant 3-day cultural extravaganza featuring music, dance, drama, art exhibitions, and literary competitions celebrating diversity and creativity.",
+        "detailed_description": "Welcome to Spectrum 2025, our most anticipated cultural festival that transforms the campus into a vibrant celebration of arts, culture, and creativity! This spectacular 3-day event showcases the incredible talent of our student community through diverse performances, competitions, workshops, and exhibitions. Experience electrifying music concerts featuring both classical and contemporary genres, mesmerizing dance performances spanning folk, classical, western, and fusion styles, thought-provoking theater productions, poetry slams, and storytelling sessions. The festival features over 25 different competitions including solo and group singing, instrumental music, various dance forms, drama and street plays, creative writing, photography, painting, mehendi, fashion shows, and talent showcases. Professional artists and renowned performers will conduct masterclasses and workshops, sharing their expertise and inspiring our students. The event includes interactive art installations, cultural food stalls representing different regions, handicraft exhibitions, and a grand finale concert with celebrity performances. Special attractions include cultural exhibitions showcasing diverse traditions, live art demonstrations, collaborative music sessions, and networking opportunities with industry professionals from entertainment and media. This free festival promotes cultural exchange, celebrates diversity, and provides a platform for students to showcase their artistic talents while building lasting memories and friendships.",
+        "organizing_department": "Department of Cultural Activities",
+        "organizers": [
+            "Dr. Meera Sharma - Cultural Activities Head",
+            "Prof. Rakesh Gupta - Festival Director",
+            "Ms. Kavya Reddy - Performance Coordinator",
+            "Mr. Arjun Nair - Event Management Lead",
+            "Ms. Priya Singh - Student Cultural Secretary"
+        ],
+        "contacts": [
+            {
+                "name": "Prof. Rakesh Gupta",
+                "contact": "rakesh.gupta@university.edu"
+            },
+            {
+                "name": "Cultural Fest Helpline",
+                "contact": "+91-99887-76543"
+            },
+            {
+                "name": "Registration Support",
+                "contact": "spectrum2025@university.edu"
+            }
+        ],
+        "start_date": "2025-10-12",
+        "start_time": "09:00",
+        "end_date": "2025-10-14",
+        "end_time": "22:00",
+        "registration_start_date": "2025-08-01",
+        "registration_start_time": "10:00",
+        "registration_end_date": "2025-10-08",
+        "registration_end_time": "23:59",
+        "certificate_end_date": "2025-11-30",
+        "certificate_end_time": "23:59",
+        "mode": "offline",
+        "venue": "University Main Auditorium, Open Air Theatre, and Cultural Complex",
+        "target_outcomes": "By participating in Spectrum 2025, participants will be able to:\n• Showcase their artistic talents and creative abilities on a prestigious platform\n• Develop confidence in public performance and stage presence\n• Learn from professional artists through workshops and masterclasses\n• Experience diverse cultural traditions and art forms from different regions\n• Build lasting friendships and connections with fellow artists and performers\n• Gain valuable experience in event participation and cultural programming\n• Enhance their creative skills through competitions and collaborative activities\n• Develop teamwork and coordination skills through group performances\n• Experience the joy of cultural celebration and community building\n• Create memorable college experiences and artistic achievements\n• Network with industry professionals from entertainment and media sectors\n• Gain exposure to career opportunities in creative and cultural industries\n• Develop appreciation for arts, culture, and creative expression",
+        "prerequisites": "Open to all university students regardless of experience level. No prior performance experience required for most events, though some competitions may have skill-level categories. Participants should have enthusiasm for arts, culture, and creative expression. For specific competitions like instrumental music or advanced dance forms, basic knowledge of the art form is recommended. Team events require coordination with team members and regular practice sessions.",
+        "what_to_bring": "Comfortable performance attire and formal wear for different events, personal musical instruments if participating in music competitions, dance shoes and costumes for dance events, art supplies for creative competitions (paints, brushes, canvases), personal water bottles and energy snacks, phone chargers and power banks, student ID card for registration verification, any props or materials needed for specific performances, comfortable seating cushions for outdoor events, and enthusiasm for cultural celebration!",
+        "registration_type": "free",
+        "registration_mode": "individual",
+        "registration_fee": 0.0,
+        "team_size_min": 1,
+        "team_size_max": 1,
+        "fee_description": "Spectrum 2025 is completely FREE for all university students! Registration includes access to all three days of festivities, participation in multiple competitions and events, entry to all workshops and masterclasses conducted by professional artists, complimentary refreshments and cultural snacks throughout the festival, access to all performances and concerts including the celebrity finale show, festival merchandise including t-shirts and cultural souvenirs, certificates for all participants and special recognition for winners, networking opportunities with industry professionals and fellow artists, and memories to last a lifetime. Winners receive additional prizes including cash rewards, performance opportunities at external events, mentorship from professional artists, and special recognition in university publications.",
+        "max_participants": 500,
+        "min_participants": 50,
+        "certificate_template_path": "s:\\Projects\\ClgCerti\\CampusConnect\\backend\\data\\individual.html",
+        "asset_files": [
+            "s:\\Projects\\ClgCerti\\CampusConnect\\backend\\data\\cultural_fest_guidelines.pdf",
+            "s:\\Projects\\ClgCerti\\CampusConnect\\backend\\data\\performance_schedule.pdf"
+        ],
+        "registrations": []
+    }
+}

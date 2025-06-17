@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block title %}Attendance Already Marked - {{ event.event_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+    <div class="max-w-2xl mx-auto">
+        <!-- Header Card -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm mb-6">
+            <div class="border-b border-gray-100 px-6 py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-orange-100 p-2 rounded-full">
+                        <i class="fas fa-exclamation-triangle text-orange-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">Attendance Already Recorded</h1>
+                        <p class="text-sm text-gray-600">Your attendance has been previously confirmed</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4">
+                <div class="bg-orange-50 border border-orange-200 rounded-md p-4">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-orange-600 mt-0.5"></i>
+                        <div class="text-sm text-orange-800">
+                            <strong>Note:</strong> You have already marked your attendance for this event. 
+                            Duplicate attendance records are not permitted to maintain accurate event records.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Details Card -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm mb-6">
+            <div class="border-b border-gray-100 px-6 py-4">
+                <h2 class="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                    <i class="fas fa-calendar-check text-blue-600"></i>
+                    <span>Event Information</span>
+                </h2>
+            </div>
+            
+            <div class="px-6 py-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Event Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-medium">{{ event.event_name }}</dd>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Student Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-medium">{{ registration.full_name }}</dd>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Registration ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">{{ registration.registrar_id }}</dd>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Date & Time</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {% if event.start_datetime %}
+                                    {{ format_datetime(event.start_datetime, 'full') }}
+                                {% else %}
+                                    <span class="text-gray-500">To be determined</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                          <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Location</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{ format_venue(event.venue) }}
+                            </dd>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <dt class="text-sm font-medium text-gray-600">Attendance ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                {{ attendance.attendance_id if attendance else 'N/A' }}
+                            </dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm mb-6">
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-green-100 p-2 rounded-full">
+                            <i class="fas fa-check-circle text-green-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-900">Attendance Status</h3>
+                            <p class="text-sm text-green-600 font-medium">Confirmed and Recorded</p>
+                        </div>
+                    </div>
+                    <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        PRESENT
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-3">
+            <a href="/client/events" 
+               class="flex-1 bg-blue-600 text-white text-center py-3 px-4 rounded-md font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                <i class="fas fa-arrow-left"></i>
+                <span>Return to Events</span>
+            </a>
+            
+            <a href="/client/dashboard" 
+               class="flex-1 bg-gray-600 text-white text-center py-3 px-4 rounded-md font-medium hover:bg-gray-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="mt-8 text-center">
+            <p class="text-xs text-gray-500">
+                If you believe this is an error, please contact the event administrator.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

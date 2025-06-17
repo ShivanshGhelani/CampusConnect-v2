@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Cool Light Color Palette */
+    :root {
+        --seafoam-50: #f0fdfa;
+        --seafoam-100: #ccfbf1;
+        --seafoam-200: #99f6e4;
+        --seafoam-300: #5eead4;
+        --seafoam-400: #2dd4bf;
+        --seafoam-500: #14b8a6;
+        --seafoam-600: #0d9488;
+        
+        --lavender-50: #faf5ff;
+        --lavender-100: #f3e8ff;
+        --lavender-200: #e9d5ff;
+        --lavender-300: #d8b4fe;
+        --lavender-400: #c084fc;
+        --lavender-500: #a855f7;
+        --lavender-600: #9333ea;
+        
+        --sky-50: #f0f9ff;
+        --sky-100: #e0f2fe;
+        --sky-200: #bae6fd;
+        --sky-300: #7dd3fc;
+        --sky-400: #38bdf8;
+        --sky-500: #0ea5e9;
+        --sky-600: #0284c7;
+        
+        --mint-50: #f0fdf4;
+        --mint-100: #dcfce7;
+        --mint-200: #bbf7d0;
+        --mint-300: #86efac;
+        --mint-400: #4ade80;
+        --mint-500: #22c55e;
+        --mint-600: #16a34a;
+        
+        --cool-gray-50: #f8fafc;
+        --cool-gray-100: #f1f5f9;
+        --cool-gray-200: #e2e8f0;
+        --cool-gray-300: #cbd5e1;
+        --cool-gray-400: #94a3b8;
+        --cool-gray-500: #64748b;
+        --cool-gray-600: #475569;
+        --cool-gray-700: #334155;
+        --cool-gray-800: #1e293b;
+        --cool-gray-900: #0f172a;
+    }
+
+    /* Custom animations and effects for professional design */
+    @keyframes gentle-float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @keyframes fade-in-up {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-gentle-float {
+        animation: gentle-float 6s ease-in-out infinite;
+    }
+
+    .animate-fade-in-up {
+        animation: fade-in-up 0.8s ease-out;
+    }
+
+    /* Enhanced gradient text effect with cool colors */
+    .gradient-text {
+        background: linear-gradient(135deg, var(--sky-500) 0%, var(--lavender-500) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Modern glass morphism effect with cool tones */
+    .glass-effect {
+        backdrop-filter: blur(10px);
+        background: rgba(240, 253, 250, 0.3);
+        border: 1px solid rgba(45, 212, 191, 0.2);
+    }
+
+    /* Enhanced shadow utility with cool undertones */
+    .shadow-luxury {
+        box-shadow: 0 25px 50px -12px rgba(20, 184, 166, 0.15);
+    }
+
+    /* Line clamp utilities */
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Smooth scroll behavior */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Enhanced focus states with cool colors */
+    .focus-ring {
+        transition: all 0.2s ease-in-out;
+    }
+
+    .focus-ring:focus {
+        outline: 2px solid var(--seafoam-400);
+        outline-offset: 2px;
+    }
+
+    /* Professional button hover effects with cool shimmer */
+    .btn-professional {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .btn-professional::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-professional:hover::before {
+        left: 100%;
+    }
+
+    /* Cool gradient backgrounds */
+    .bg-cool-gradient {
+        background: linear-gradient(135deg, var(--seafoam-50) 0%, var(--sky-50) 50%, var(--lavender-50) 100%);
+    }
+
+    .bg-cool-gradient-dark {
+        background: linear-gradient(135deg, var(--seafoam-100) 0%, var(--sky-100) 50%, var(--lavender-100) 100%);
+    }
+</style>
+{% endblock %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="relative bg-cool-gradient overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-seafoam-50 via-sky-50 to-lavender-50 opacity-80"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-24 sm:pb-32">
+        <div class="text-center">
+            <!-- Main Heading -->
+            <h1 class="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-cool-gray-800 mb-8">
+                Campus<span class="bg-gradient-to-r from-seafoam-500 to-lavender-500 bg-clip-text text-transparent">Connect</span>
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="max-w-3xl mx-auto text-xl sm:text-2xl text-cool-gray-600 mb-12 leading-relaxed">
+                Your comprehensive platform for campus events, professional development, and academic excellence
+            </p>
+            
+            <!-- CTA Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+                <a href="/client/events?filter=upcoming" 
+                   class="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-seafoam-500 to-sky-500 text-white text-lg font-semibold rounded-xl hover:from-seafoam-600 hover:to-sky-600 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl btn-professional">
+                    <i class="fas fa-calendar-alt mr-3"></i>
+                    Explore Events
+                    <i class="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                {% if not is_student_logged_in %}
+                <a href="/client/register" 
+                   class="group inline-flex items-center px-8 py-4 bg-seafoam-50 text-seafoam-700 text-lg font-semibold border-2 border-seafoam-300 rounded-xl hover:bg-seafoam-100 transition-all duration-200 hover:scale-105">
+                    <i class="fas fa-user-plus mr-3"></i>
+                    Join Community
+                </a>
+                {% endif %}
+            </div>              <!-- University Features -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-seafoam-100 to-seafoam-200 rounded-xl flex items-center justify-center mx-auto mb-3 border border-seafoam-200">
+                        <i class="fas fa-calendar-check text-seafoam-600 text-xl"></i>
+                    </div>
+                    <div class="text-sm text-cool-gray-700 font-semibold">Event Management</div>
+                    <div class="text-xs text-cool-gray-500 mt-1">Seamless Registration</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-mint-100 to-mint-200 rounded-xl flex items-center justify-center mx-auto mb-3 border border-mint-200">
+                        <i class="fas fa-certificate text-mint-600 text-xl"></i>
+                    </div>
+                    <div class="text-sm text-cool-gray-700 font-semibold">Digital Certificates</div>
+                    <div class="text-xs text-cool-gray-500 mt-1">Verified Achievements</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-lavender-100 to-lavender-200 rounded-xl flex items-center justify-center mx-auto mb-3 border border-lavender-200">
+                        <i class="fas fa-users text-lavender-600 text-xl"></i>
+                    </div>
+                    <div class="text-sm text-cool-gray-700 font-semibold">Campus Community</div>
+                    <div class="text-xs text-cool-gray-500 mt-1">Student Network</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-sky-100 to-sky-200 rounded-xl flex items-center justify-center mx-auto mb-3 border border-sky-200">
+                        <i class="fas fa-graduation-cap text-sky-600 text-xl"></i>
+                    </div>
+                    <div class="text-sm text-cool-gray-700 font-semibold">Academic Growth</div>
+                    <div class="text-xs text-cool-gray-500 mt-1">Skill Development</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-24 bg-cool-gradient-dark">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-20">
+            <h2 class="text-4xl font-bold text-cool-gray-800 mb-6">Everything You Need</h2>
+            <p class="text-xl text-cool-gray-600 max-w-3xl mx-auto">
+                Streamlined tools and features designed to enhance your campus experience and academic journey
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Event Management -->
+            <div class="group relative bg-seafoam-50 rounded-2xl p-8 shadow-sm border border-seafoam-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div class="absolute inset-0 bg-gradient-to-br from-seafoam-100 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative">
+                    <div class="w-16 h-16 bg-gradient-to-br from-seafoam-400 to-seafoam-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-calendar-check text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-cool-gray-800 mb-4">Event Management</h3>
+                    <p class="text-cool-gray-600 leading-relaxed">
+                        Discover exciting events, seamlessly register with one click, and manage your entire event calendar from a single dashboard.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Digital Certificates -->
+            <div class="group relative bg-mint-50 rounded-2xl p-8 shadow-sm border border-mint-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div class="absolute inset-0 bg-gradient-to-br from-mint-100 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative">
+                    <div class="w-16 h-16 bg-gradient-to-br from-mint-400 to-mint-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-certificate text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-cool-gray-800 mb-4">Digital Certificates</h3>
+                    <p class="text-cool-gray-600 leading-relaxed">
+                        Earn verified digital certificates for your achievements and showcase your professional development journey to employers.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Real-time Updates -->
+            <div class="group relative bg-lavender-50 rounded-2xl p-8 shadow-sm border border-lavender-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div class="absolute inset-0 bg-gradient-to-br from-lavender-100 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative">
+                    <div class="w-16 h-16 bg-gradient-to-br from-lavender-400 to-lavender-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-bell text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-cool-gray-800 mb-4">Smart Notifications</h3>
+                    <p class="text-cool-gray-600 leading-relaxed">
+                        Never miss important updates with intelligent notifications that keep you informed about deadlines, new events, and opportunities.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Upcoming Events Section -->
+<section class="py-24 bg-seafoam-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-16">
+            <div class="mb-8 lg:mb-0">
+                <h2 class="text-4xl font-bold text-cool-gray-800 mb-4">Upcoming Events</h2>
+                <p class="text-xl text-cool-gray-600">Discover opportunities to learn, grow, and connect</p>
+            </div>
+            <a href="/client/events?filter=upcoming" 
+               class="group inline-flex items-center px-6 py-3 bg-gradient-to-r from-cool-gray-700 to-cool-gray-800 text-white font-semibold rounded-lg hover:from-cool-gray-800 hover:to-cool-gray-900 transition-all duration-200">
+                View All Events
+                <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for event in upcoming_events[:3] %}
+            <article class="group bg-gradient-to-br from-sky-50 to-seafoam-50 rounded-2xl border border-sky-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
+                <!-- Event Header -->
+                <div class="p-6 pb-4">
+                    <div class="flex items-start justify-between mb-4">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-seafoam-100 text-seafoam-800">
+                            {{ event.event_type or 'General' }}
+                        </span>
+                        {% if current_datetime >= event.registration_start_date and current_datetime < event.registration_end_date %}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-mint-100 text-mint-800">
+                                <div class="w-2 h-2 bg-mint-500 rounded-full mr-2"></div>
+                                Open
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-cool-gray-800 mb-3 group-hover:text-seafoam-600 transition-colors">
+                        {{ event.event_name }}
+                    </h3>
+                    <p class="text-cool-gray-600 line-clamp-2 leading-relaxed">
+                        {{ event.short_description or (event.description | truncate(120)) }}
+                    </p>
+                </div>                  <!-- Event Details -->
+                <div class="px-6 pb-6">                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-calendar text-gray-600 text-xs"></i>
+                            </div>                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-gray-900 text-xs">{{ format_datetime(event.start_datetime, 'date_only') }}</div>
+                                <div class="text-gray-500 text-xs">{{ format_datetime(event.start_datetime, 'weekday') }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-clock text-gray-600 text-xs"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-gray-900 text-xs">{{ format_datetime(event.start_datetime, 'time_only') }}</div>
+                                <div class="text-xs font-medium">
+                                    {% if event.status == 'ongoing' %}
+                                        {% if event.sub_status == 'certificate_available' %}
+                                            <span class="text-purple-600">Certificates Available</span>
+                                        {% elif event.sub_status == 'event_started' %}
+                                            <span class="text-orange-600">Attendance Ongoing</span>
+                                        {% else %}
+                                            <span class="text-green-600">In Progress</span>
+                                        {% endif %}
+                                    {% elif event.status == 'upcoming' %}
+                                        {% if event.sub_status == 'registration_not_started' %}
+                                            <span class="text-orange-600">Registration Not Started</span>
+                                        {% elif event.sub_status == 'registration_open' %}
+                                            <span class="text-blue-600">Registration Open</span>
+                                        {% else %}
+                                            <span class="text-red-600">Registration Closed</span>
+                                        {% endif %}
+                                    {% elif event.status == 'completed' %}
+                                        <span class="text-gray-600">Completed</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center text-sm">
+                            <div class="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                                <i class="fas fa-map-marker-alt text-gray-600 text-xs"></i>
+                            </div>                            <div class="min-w-0 flex-1">
+                                <div class="font-medium text-gray-900 text-xs">{{ format_venue(event.venue) if event.venue else 'Venue TBA' }}</div>
+                                <div class="text-gray-500 text-xs truncate">{{ event.organizing_department or 'Campus Event' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="/client/events/{{ event.event_id }}" 
+                       class="block w-full text-center py-3 bg-gradient-to-r from-seafoam-600 to-sky-600 text-white font-semibold rounded-lg hover:from-seafoam-700 hover:to-sky-700 transition-all duration-200 group-hover:scale-105">
+                        Learn More
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+
+            {% if not upcoming_events %}
+            <div class="col-span-full">
+                <div class="text-center py-16 bg-gradient-to-br from-sky-50 to-lavender-50 rounded-2xl border border-sky-200">
+                    <div class="w-20 h-20 bg-gradient-to-br from-seafoam-100 to-sky-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-calendar-times text-3xl text-seafoam-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-cool-gray-800 mb-3">No Upcoming Events</h3>
+                    <p class="text-cool-gray-600 text-lg">Check back soon for exciting new opportunities!</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action Section -->
+<section class="py-24 bg-gradient-to-br from-seafoam-800 via-sky-900 to-lavender-900 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM36 0V4h-2V0h-4v2h4v4h2V2h4V0h-4zM0 34v-4H2v4h4v2H2v4H0v-4H2v-2H0zM0 2V0h2v4h4v2H2v4H0V2h2V0H0z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+            <h2 class="text-4xl sm:text-5xl font-bold text-white mb-6">
+                Ready to Get Started?
+            </h2>
+            <p class="text-xl text-gray-300 mb-10 max-w-3xl mx-auto">
+                Join thousands of students who are already making the most of their campus experience with CampusConnect
+            </p>
+              {% if not is_student_logged_in %}
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <a href="/client/register" 
+                   class="group inline-flex items-center px-8 py-4 bg-seafoam-50 text-seafoam-800 text-lg font-semibold rounded-xl hover:bg-seafoam-100 transition-all duration-200 hover:scale-105 shadow-lg">
+                    <i class="fas fa-rocket mr-3"></i>
+                    Create Account
+                    <i class="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                <a href="/client/login" 
+                   class="group inline-flex items-center px-8 py-4 border-2 border-seafoam-300 text-seafoam-100 text-lg font-semibold rounded-xl hover:bg-seafoam-50 hover:text-seafoam-800 transition-all duration-200">
+                    <i class="fas fa-sign-in-alt mr-3"></i>
+                    Sign In
+                </a>
+            </div>
+            {% else %}
+            <a href="/client/dashboard" 
+               class="group inline-flex items-center px-8 py-4 bg-seafoam-50 text-seafoam-800 text-lg font-semibold rounded-xl hover:bg-seafoam-100 transition-all duration-200 hover:scale-105 shadow-lg">
+                <i class="fas fa-tachometer-alt mr-3"></i>
+                Go to Dashboard
+                <i class="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gradient-to-r from-seafoam-50 to-sky-50 border-t border-seafoam-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <!-- Company Info -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center mb-6">
+                    <h3 class="text-2xl font-bold text-cool-gray-800">
+                        Campus<span class="text-seafoam-600">Connect</span>
+                    </h3>
+                </div>
+                <p class="text-cool-gray-600 mb-6 leading-relaxed max-w-md">
+                    Empowering students through seamless event management, meaningful campus experiences, and professional development opportunities.
+                </p>
+                <div class="flex space-x-4">
+                    <a href="#" class="w-10 h-10 bg-seafoam-100 rounded-full flex items-center justify-center hover:bg-seafoam-200 hover:text-seafoam-700 transition-colors">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center hover:bg-sky-200 hover:text-sky-700 transition-colors">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-lavender-100 rounded-full flex items-center justify-center hover:bg-lavender-200 hover:text-lavender-700 transition-colors">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="w-10 h-10 bg-mint-100 rounded-full flex items-center justify-center hover:bg-mint-200 hover:text-mint-700 transition-colors">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Quick Links -->
+            <div>
+                <h4 class="text-lg font-semibold text-cool-gray-800 mb-6">Quick Links</h4>
+                <ul class="space-y-3">
+                    <li><a href="/client/events" class="text-cool-gray-600 hover:text-seafoam-600 transition-colors">All Events</a></li>
+                    <li><a href="/client/events?filter=upcoming" class="text-cool-gray-600 hover:text-seafoam-600 transition-colors">Upcoming Events</a></li>
+                    {% if is_student_logged_in %}
+                    <li><a href="/client/dashboard" class="text-cool-gray-600 hover:text-seafoam-600 transition-colors">Dashboard</a></li>
+                    {% else %}
+                    <li><a href="/client/register" class="text-cool-gray-600 hover:text-seafoam-600 transition-colors">Register</a></li>
+                    <li><a href="/client/login" class="text-cool-gray-600 hover:text-seafoam-600 transition-colors">Login</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <!-- Contact Info -->
+            <div>
+                <h4 class="text-lg font-semibold text-cool-gray-800 mb-6">Contact Us</h4>
+                <ul class="space-y-3">
+                    <li class="flex items-center text-cool-gray-600">
+                        <i class="fas fa-envelope w-5 mr-3 text-seafoam-500"></i>
+                        <span>support@campusconnect.edu</span>
+                    </li>
+                    <li class="flex items-center text-cool-gray-600">
+                        <i class="fas fa-phone w-5 mr-3 text-sky-500"></i>
+                        <span>+1 (555) 123-4567</span>
+                    </li>
+                    <li class="flex items-center text-cool-gray-600">
+                        <i class="fas fa-map-marker-alt w-5 mr-3 text-lavender-500"></i>
+                        <span>University Campus, Building A</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+          <!-- Bottom Bar -->
+        <div class="pt-8 border-t border-seafoam-200">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-cool-gray-600 text-sm">
+                    &copy; {{ current_datetime.year }} CampusConnect. All rights reserved.
+                </p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="#" class="text-sm text-cool-gray-600 hover:text-seafoam-600 transition-colors">Privacy Policy</a>
+                    <a href="#" class="text-sm text-cool-gray-600 hover:text-seafoam-600 transition-colors">Terms of Service</a>
+                    <a href="#" class="text-sm text-cool-gray-600 hover:text-seafoam-600 transition-colors">Help Center</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+{% endblock %}
+

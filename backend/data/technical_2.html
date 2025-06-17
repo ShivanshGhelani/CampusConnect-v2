@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innovation Challenge Participation Certificate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Certificate Styling -->
+    <style>
+        /* Print Settings */
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+        @media print {
+            body {
+                width: 297mm;
+                height: 210mm;
+            }
+        }
+
+        /* Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=Outfit:wght@400;600&display=swap');
+
+        .logo-image {
+            mix-blend-mode: multiply;
+            filter: contrast(1.1);
+        }
+          .signature-image {
+            mix-blend-mode: darken;
+            filter: brightness(0.9) contrast(1.2);
+            max-height: 35px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .innovation-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tech-dots {
+            background-image: radial-gradient(circle, #4f46e5 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .ai-border {
+            position: relative;
+            border: 2px solid #e2e8f0;
+            background: 
+                linear-gradient(90deg, #4f46e5 50%, transparent 50%),
+                linear-gradient(90deg, #4f46e5 50%, transparent 50%),
+                linear-gradient(0deg, #4f46e5 50%, transparent 50%),
+                linear-gradient(0deg, #4f46e5 50%, transparent 50%);
+            background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+            background-size: 15px 2px, 15px 2px, 2px 15px, 2px 15px;
+            background-position: 0 0, 100% 100%, 0 100%, 100% 0;
+            animation: border-dance 4s infinite linear;
+        }
+
+        .hexagon-bg {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L55 20V40L30 55L5 40V20L30 5Z' fill='none' stroke='%234338ca' stroke-width='0.5' opacity='0.1'/%3E%3C/svg%3E");
+            background-size: 60px 60px;
+        }
+    </style>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Outfit', 'sans-serif'],
+                        body: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-white min-h-screen flex items-center justify-center p-8">    <div class="w-[297mm] h-[210mm] bg-white p-4 relative shadow-2xl">
+        <!-- Innovation Pattern Background -->
+        <div class="absolute inset-0 tech-dots opacity-5"></div>
+        
+        <!-- Modern Border Container -->
+        <div class="absolute inset-3 border-2 border-purple-200 rounded-lg bg-gradient-to-br from-blue-50/30 to-purple-50/30"></div>
+
+        <!-- Content Container -->
+        <div class="relative z-10 p-5 h-full flex flex-col">
+            <!-- Top Logos Section -->
+            <div class="flex justify-between mb-4">
+                <div class="flex gap-4">
+                    <img src="assets/logo1.png" alt="Logo 1" class="w-16 h-16 object-contain opacity-90 logo-image">
+                    <img src="assets/logo2.png" alt="Logo 2" class="w-16 h-16 object-contain opacity-90 logo-image">
+                </div>
+                <div class="flex gap-4">
+                    <img src="assets/logo3.png" alt="Logo 3" class="w-16 h-16 object-contain opacity-90 logo-image">
+                    <img src="assets/logo2.png" alt="Logo 4" class="w-16 h-16 object-contain opacity-90 logo-image">
+                </div>
+            </div>
+
+            <!-- Certificate Content -->
+            <div class="text-center flex-1 flex flex-col justify-center">
+                <!-- Header -->
+                <div class="mb-3">
+                    <h1 class="text-4xl font-display font-bold innovation-gradient relative inline-block">
+                        Certificate of Participation
+                    </h1>
+                    <div class="w-32 h-1 bg-gradient-to-r from-purple-400 to-blue-500 mx-auto mt-2 rounded-full"></div>
+                </div>
+
+                <p class="text-lg text-gray-600 mb-4 font-body">This is to certify that</p>
+
+                <!-- Name Placeholder -->
+                <h2 class="text-2xl font-bold text-purple-900 mb-2 relative inline-block px-8 py-2 font-display">
+                    {{participant_name}}
+                    <div class="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+                </h2>
+
+                <!-- Team Name Section -->
+                <div class="mb-3">
+                    <p class="text-base text-gray-600 font-body">representing team</p>
+                    <h3 class="text-xl font-bold text-purple-800 font-display relative inline-block px-6 py-1">
+                        "{{team_name}}"
+                        <div class="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-60"></div>
+                    </h3>
+                </div>
+
+                <p class="text-lg text-gray-600 mb-3 font-body">
+                    from the Department of <span class="font-semibold text-purple-900">{{department_name}}</span>
+                    <br>has successfully participated in
+                </p>
+
+                <!-- Event Title Section -->
+                <div class="relative my-3 py-3">
+                    <div class="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-4 relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-purple-500/10 to-blue-500/10"></div>
+                        <h3 class="text-3xl font-bold text-purple-900 font-display tracking-wide relative z-10">
+                            INNOVATION CHALLENGE 2023
+                        </h3>
+                        <p class="text-lg font-display text-purple-700 relative z-10">AI for Social Good</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <p class="text-lg text-gray-600 font-body">
+                        organized by <span class="font-semibold text-purple-900">IDPIEE Club</span>
+                        on <span class="font-semibold text-purple-900">June 5-6, 2023</span>
+                    </p>
+                </div>
+
+                <p class="text-base text-gray-500 mb-4 font-body italic">
+                    demonstrating creativity, innovation, and collaborative problem-solving in artificial intelligence
+                </p>
+            </div>
+
+            <!-- Compact Signature Section -->
+            <div class="mt-auto pt-4">
+                <div class="flex justify-between items-end px-4">
+                    <!-- Signature Boxes -->
+                    <div class="text-center">
+                        <img src="assets/signature1.png" alt="Coordinator Signature" class="mx-auto mb-1 signature-image">
+                        <div class="w-32">
+                            <div class="border-t border-gray-300 mb-1"></div>
+                            <p class="font-semibold text-gray-700 font-display text-xs leading-tight">Prof. Nilam Thakkar</p>
+                            <p class="text-[0.65rem] text-gray-600 font-body leading-tight">Event Coordinator</p>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <img src="assets/signature1.png" alt="HOD Signature" class="mx-auto mb-1 signature-image">
+                        <div class="w-32">
+                            <div class="border-t border-gray-300 mb-1"></div>
+                            <p class="font-semibold text-gray-700 font-display text-xs leading-tight">Dr. Mehul Barot</p>
+                            <p class="text-[0.65rem] text-gray-600 font-body leading-tight">H.O.D - I.T</p>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <img src="assets/signature2.png" alt="Principal Signature" class="mx-auto mb-1 signature-image">
+                        <div class="w-32">
+                            <div class="border-t border-gray-300 mb-1"></div>
+                            <p class="font-semibold text-gray-700 font-display text-xs leading-tight">Dr. Gargi Rajpara</p>
+                            <p class="text-[0.65rem] text-gray-600 font-body leading-tight">Principal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Innovation-themed corner elements -->
+        <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <!-- Circuit patterns -->
+            <svg class="absolute top-6 left-6 w-16 h-16 text-purple-900/10" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="20" fill="none" stroke="currentColor" stroke-width="2"/>
+                <circle cx="20" cy="20" r="8" fill="none" stroke="currentColor" stroke-width="1"/>
+                <circle cx="80" cy="80" r="8" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M20,20 L50,50 L80,80" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <svg class="absolute top-6 right-6 w-16 h-16 text-purple-900/10" viewBox="0 0 100 100">
+                <rect x="20" y="20" width="60" height="60" fill="none" stroke="currentColor" stroke-width="2"/>
+                <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="1"/>
+                <path d="M35,50 L65,50 M50,35 L50,65" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <svg class="absolute bottom-6 left-6 w-16 h-16 text-purple-900/10" viewBox="0 0 100 100">
+                <path d="M20,50 L50,20 L80,50 L50,80 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <circle cx="50" cy="50" r="8" fill="currentColor"/>
+            </svg>
+            <svg class="absolute bottom-6 right-6 w-16 h-16 text-purple-900/10" viewBox="0 0 100 100">
+                <path d="M30,30 L70,30 L70,70 L30,70 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <circle cx="50" cy="50" r="10" fill="none" stroke="currentColor" stroke-width="1"/>
+            </svg>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,744 @@
+{% extends "base.html" %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block title %}Event Registration - {{ event.event_name }}{% endblock %}
+
+{% block head %}
+<script src="/static/js/registration.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-green-100 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-2xl w-full mx-auto space-y-8">
+        <div class="text-center">
+            <div
+                class="mx-auto h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-green-500 shadow-lg mb-8">
+                <i class="fas fa-clipboard-list text-white text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                Register for {{ event.event_name }}
+            </h1>
+            <p class="text-lg text-gray-600 mb-4">
+                Please fill out the form below to participate in this event.
+            </p>
+            {% if student %}
+            <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                <i class="fas fa-user mr-2"></i>Logged in as: <strong>{{ student.full_name }}</strong> ({{
+                student.enrollment_no }})
+            </div>
+            {% endif %}
+            {% if error %}
+            <div class="mb-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
+                <i class="fas fa-exclamation-triangle mr-2"></i>{{ error }}
+            </div>
+            {% endif %}
+            {% if success %}
+                {% if not success_shown %}
+                    <div class="mb-4 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded">
+                        <i class="fas fa-check-circle mr-2"></i>{{ success }}
+                    </div>
+                    {% set success_shown = true %}
+                {% endif %}
+            {% endif %}        </div>        <form id="registrationForm" class="space-y-8" action="" method="POST" autocomplete="off" {% if registration_blocked %}style="pointer-events: none; opacity: 0.6;"{% endif %}>
+            <!-- Registration Mode Display -->
+            <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>Registration Mode:</strong> 
+                {% if is_team_registration %}
+                    Team Registration ({{ team_size_min }}-{{ team_size_max }} members including leader)
+                {% else %}
+                    Individual Registration
+                {% endif %}
+            </div>
+
+            <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8 space-y-6">
+                {% if is_team_registration %}
+                    <!-- Team Registration Form -->
+                    <!-- Team Leader Information -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-blue-600"></i>
+                            Team Leader Information
+                        </h2>
+                        <!-- ...existing personal information fields... -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="full_name" class="block text-sm font-semibold text-gray-800 mb-2">Full Name *</label>
+                                <input type="text" name="full_name" id="full_name"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                    value="{{ student.full_name if student else (form_data.full_name if form_data else '') }}">
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+
+                            <div>
+                                <label for="enrollment_no" class="block text-sm font-semibold text-gray-800 mb-2">Enrollment No. *</label>
+                                <input type="text" name="enrollment_no" id="enrollment_no"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                                    required placeholder="e.g., 21BECE40015"
+                                    value="{{ student.enrollment_no if student else (form_data.enrollment_no if form_data else '') }}"
+                                    pattern="^\d{2}[A-Z]{2,4}\d{5}$" readonly>
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-sm font-semibold text-gray-800 mb-2">Email ID *</label>
+                                <input type="email" name="email" id="email"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required placeholder="Institute email"
+                                    value="{{ student.email if student else (form_data.email if form_data else '') }}">
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+
+                            <div>
+                                <label for="mobile_no" class="block text-sm font-semibold text-gray-800 mb-2">Mobile No. *</label>
+                                <input type="tel" name="mobile_no" id="mobile_no"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required pattern="[0-9]{10}" placeholder="10 digit mobile number"
+                                    value="{{ student.mobile_no if student else (form_data.mobile_no if form_data else '') }}">
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Information -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-users mr-2 text-blue-600"></i>
+                            Team Information
+                        </h2>
+                        <div class="grid grid-cols-1 gap-6">
+                            <div>
+                                <label for="team_name" class="block text-sm font-semibold text-gray-800 mb-2">Team Name *</label>
+                                <input type="text" name="team_name" id="team_name"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required placeholder="Enter your team name"
+                                    value="{{ form_data.team_name if form_data else '' }}">
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Participants -->
+                    <div id="team-participants-section">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-user-friends mr-2 text-blue-600"></i>
+                            Team Participants
+                            <span class="text-sm font-normal text-gray-600 ml-2">({{ team_size_min - 1 }} to {{ team_size_max - 1 }} participants)</span>
+                        </h2>
+                        
+                        <div id="participants-container">
+                            <!-- Dynamic participant fields will be generated here -->
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 mt-4">
+                            <button type="button" id="add-participant" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i>Add Participant
+                            </button>
+                            <button type="button" id="remove-participant" 
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center">
+                                <i class="fas fa-minus mr-2"></i>Remove Participant
+                            </button>
+                        </div>
+                        
+                        <div class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Enter enrollment numbers of your team members. Their details will be validated automatically.
+                        </div>
+                    </div>
+
+                    <!-- Academic Information for Team Leader -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Team Leader Academic Information</h2>
+                        <!-- ...existing academic fields... -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="department" class="block text-sm font-semibold text-gray-800 mb-2">Department *</label>                                <select name="department" id="department"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required>
+                                    <option value="">Select Department</option>
+                                    <option value="Computer Engineering" {% if (student and student.department=='Computer Engineering') or (form_data and form_data.department=='Computer Engineering') %}selected{% endif %}>Computer Engineering</option>
+                                    <option value="Information Technology" {% if (student and student.department=='Information Technology') or (form_data and form_data.department=='Information Technology') %}selected{% endif %}>Information Technology</option>
+                                    <option value="Electronics & Communication" {% if (student and student.department=='Electronics & Communication') or (form_data and form_data.department=='Electronics & Communication') %}selected{% endif %}>Electronics & Communication</option>
+                                    <option value="Mechanical Engineering" {% if (student and student.department=='Mechanical Engineering') or (form_data and form_data.department=='Mechanical Engineering') %}selected{% endif %}>Mechanical Engineering</option>
+                                    <option value="Civil Engineering" {% if (student and student.department=='Civil Engineering') or (form_data and form_data.department=='Civil Engineering') %}selected{% endif %}>Civil Engineering</option>
+                                    <option value="Electrical Engineering" {% if (student and student.department=='Electrical Engineering') or (form_data and form_data.department=='Electrical Engineering') %}selected{% endif %}>Electrical Engineering</option>
+                                    <option value="Master of Computer Applications" {% if (student and student.department=='Master of Computer Applications') or (form_data and form_data.department=='Master of Computer Applications') %}selected{% endif %}>Master of Computer Applications</option>
+                                    <option value="MBA" {% if (student and student.department=='MBA') or (form_data and form_data.department=='MBA') %}selected{% endif %}>MBA</option>
+                                </select>
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+
+                            <div>
+                                <label for="semester" class="block text-sm font-semibold text-gray-800 mb-2">Semester *</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <select name="semester" id="semester"
+                                        class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        required>
+                                        <option value="">Select</option>
+                                        {% for i in range(1, 9) %}
+                                        <option value="{{ i }}" {% if (student and student.semester|int==i) or (form_data and form_data.semester|int==i) %}selected{% endif %}>{{ i }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="flex items-center">
+                                        <span class="text-sm text-gray-800 font-medium">Year: <span id="year" class="text-lg font-semibold text-blue-600 ml-1">-</span></span>
+                                    </div>
+                                </div>
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Information for Team Leader -->
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="gender" class="block text-sm font-semibold text-gray-800 mb-2">Gender *</label>
+                                <select name="gender" id="gender"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required>
+                                    <option value="">Select Gender</option>
+                                    <option value="Male" {% if (student and (student.gender=='Male' or student.gender=='male')) or (form_data and form_data.gender=='Male') %}selected{% endif %}>Male</option>
+                                    <option value="Female" {% if (student and (student.gender=='Female' or student.gender=='female')) or (form_data and form_data.gender=='Female') %}selected{% endif %}>Female</option>
+                                    <option value="Other" {% if (student and (student.gender=='Other' or student.gender=='other')) or (form_data and form_data.gender=='Other') %}selected{% endif %}>Other</option>
+                                    <option value="Prefer not to say" {% if (student and student.gender=='Prefer not to say') or (form_data and form_data.gender=='Prefer not to say') %}selected{% endif %}>Prefer not to say</option>
+                                </select>
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>
+
+                            <div>
+                                <label for="date_of_birth" class="block text-sm font-semibold text-gray-800 mb-2">Date of Birth *</label>
+                                <input type="date" name="date_of_birth" id="date_of_birth"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required max="{{ datetime.now().date().isoformat() }}"
+                                    value="{% if student and student.date_of_birth %}{% if student.date_of_birth.strftime %}{{ student.date_of_birth.strftime('%Y-%m-%d') }}{% else %}{{ format_datetime(student.date_of_birth, 'input_date') }}{% endif %}{% elif form_data and form_data.date_of_birth %}{{ form_data.date_of_birth }}{% endif %}">
+                                <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                            </div>                        </div>
+                    </div>
+
+                {% else %}
+                    <!-- Individual Registration Form -->
+                    <!-- Personal Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="full_name" class="block text-sm font-semibold text-gray-800 mb-2">Full Name
+                                *</label> <input type="text" name="full_name" id="full_name"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required
+                                value="{{ student.full_name if student else (form_data.full_name if form_data else '') }}">
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+
+                        <div>
+                            <label for="enrollment_no" class="block text-sm font-semibold text-gray-800 mb-2">Enrollment
+                                No. *</label> <input type="text" name="enrollment_no" id="enrollment_no"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                                required placeholder="e.g., 21BECE40015"
+                                value="{{ student.enrollment_no if student else (form_data.enrollment_no if form_data else '') }}"
+                                pattern="^\d{2}[A-Z]{2,4}\d{5}$" readonly>
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-gray-800 mb-2">Email ID *</label>
+                            <input type="email" name="email" id="email"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required placeholder="Institute email"
+                                value="{{ student.email if student else (form_data.email if form_data else '') }}">
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+
+                        <div>
+                            <label for="mobile_no" class="block text-sm font-semibold text-gray-800 mb-2">Mobile No.
+                                *</label> <input type="tel" name="mobile_no" id="mobile_no"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required pattern="[0-9]{10}" placeholder="10 digit mobile number"
+                                value="{{ student.mobile_no if student else (form_data.mobile_no if form_data else '') }}">
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Academic Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="department" class="block text-sm font-semibold text-gray-800 mb-2">Department
+                                *</label>
+                            <select name="department" id="department"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                                <option value="">Select Department</option>                                <option value="Computer Engineering" {% if (student and student.department=='Computer Engineering') or (form_data and form_data.department=='Computer Engineering') %}selected{% endif %}>Computer Engineering</option>
+                                <option value="Information Technology" {% if (student and student.department=='Information Technology') or (form_data and form_data.department=='Information Technology') %}selected{% endif %}>Information Technology</option>
+                                <option value="Electronics & Communication" {% if (student and student.department=='Electronics & Communication') or (form_data and form_data.department=='Electronics & Communication') %}selected{% endif %}>Electronics & Communication</option>
+                                <option value="Mechanical Engineering" {% if (student and student.department=='Mechanical Engineering') or (form_data and form_data.department=='Mechanical Engineering') %}selected{% endif %}>Mechanical Engineering</option>
+                                <option value="Civil Engineering" {% if (student and student.department=='Civil Engineering') or (form_data and form_data.department=='Civil Engineering') %}selected{% endif %}>Civil Engineering</option>
+                                <option value="Electrical Engineering" {% if (student and student.department=='Electrical Engineering') or (form_data and form_data.department=='Electrical Engineering') %}selected{% endif %}>Electrical Engineering</option>
+                                <option value="Chemical Engineering" {% if (student and student.department=='Chemical Engineering') or (form_data and form_data.department=='Chemical Engineering') %}selected{% endif %}>Chemical Engineering</option>
+                                <option value="Master of Computer Applications" {% if (student and student.department=='Master of Computer Applications') or (form_data and form_data.department=='Master of Computer Applications') %}selected{% endif %}>Master of Computer Applications</option>
+                                <option value="MBA" {% if (student and student.department=='MBA') or (form_data and form_data.department=='MBA') %}selected{% endif %}>MBA</option>
+                            </select>
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+
+                        <div>
+                            <label for="semester" class="block text-sm font-semibold text-gray-800 mb-2">Semester
+                                *</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <select name="semester" id="semester"
+                                    class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required>
+                                    <option value="">Select</option> {% for i in range(1, 9) %}
+                                    <option value="{{ i }}" {% if (student and student.semester|int==i) or (form_data and form_data.semester|int==i) %}selected{% endif %}>{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="flex items-center">
+                                    <span class="text-sm text-gray-800 font-medium">Year: <span id="year"
+                                            class="text-lg font-semibold text-blue-600 ml-1">-</span></span>
+                                </div>
+                            </div>
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">                        <div>
+                            <label for="gender" class="block text-sm font-semibold text-gray-800 mb-2">Gender *</label>
+                            <select name="gender" id="gender"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required>
+                                <option value="">Select Gender</option>
+                                <option value="Male" {% if (student and (student.gender=='Male' or student.gender=='male')) or (form_data and form_data.gender=='Male') %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if (student and (student.gender=='Female' or student.gender=='female')) or (form_data and form_data.gender=='Female') %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if (student and (student.gender=='Other' or student.gender=='other')) or (form_data and form_data.gender=='Other') %}selected{% endif %}>Other</option>
+                                <option value="Prefer not to say" {% if (student and student.gender=='Prefer not to say') or (form_data and form_data.gender=='Prefer not to say') %}selected{% endif %}>Prefer not to say</option>
+                            </select>
+                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div><div>
+                            <label for="date_of_birth" class="block text-sm font-semibold text-gray-800 mb-2">Date of
+                                Birth *</label> <input type="date" name="date_of_birth" id="date_of_birth"
+                                class="block w-full px-4 py-2 mt-1 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required max="{{ datetime.now().date().isoformat() }}"
+                                value="{% if student and student.date_of_birth %}{% if student.date_of_birth.strftime %}{{ student.date_of_birth.strftime('%Y-%m-%d') }}{% else %}{{ format_datetime(student.date_of_birth, 'input_date') }}{% endif %}{% elif form_data and form_data.date_of_birth %}{{ form_data.date_of_birth }}{% endif %}">                            <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>            <!-- Submit Button -->
+            <div class="flex justify-center">
+                {% if registration_blocked %}
+                <button type="button" disabled
+                    class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-gray-400 bg-gray-200 cursor-not-allowed shadow-lg">
+                    <i class="fas fa-ban mr-2"></i>
+                    Registration Blocked
+                </button>
+                {% else %}
+                <button type="submit" id="submit-btn"
+                    class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    {% if is_team_registration %}
+                        Submit Team Registration
+                    {% else %}
+                        Submit Registration
+                    {% endif %}
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Team Registration JavaScript -->
+{% if is_team_registration %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get team size constraints from template variables
+    const teamSizeMin = parseInt("{{ team_size_min|default(2) }}", 10);
+    const teamSizeMax = parseInt("{{ team_size_max|default(5) }}", 10);
+    const participantsContainer = document.getElementById('participants-container');
+    const addParticipantBtn = document.getElementById('add-participant');
+    const removeParticipantBtn = document.getElementById('remove-participant');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    let participantCount = 0;
+    const minParticipants = teamSizeMin - 1; // Excluding leader
+    const maxParticipants = teamSizeMax - 1; // Excluding leader
+
+    // Add initial minimum participants
+    for (let i = 0; i < minParticipants; i++) {
+        addParticipant();
+    }
+
+    function addParticipant() {
+        if (participantCount >= maxParticipants) {
+            showAlert('Maximum team size reached!', 'error');
+            return;
+        }
+        
+        participantCount++;
+        const participantDiv = document.createElement('div');
+        participantDiv.className = 'participant-field border rounded-lg p-4 bg-gray-50';
+        participantDiv.setAttribute('data-participant', participantCount);
+        
+        participantDiv.innerHTML = `
+            <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                <i class="fas fa-user mr-2 text-blue-600"></i>
+                Participant ${participantCount}
+                <span class="ml-2 text-sm font-normal text-gray-600" id="participant-status-${participantCount}"></span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label for="participant_${participantCount}_enrollment" class="block text-sm font-semibold text-gray-700 mb-2">Enrollment No. *</label>
+                    <input type="text" name="participant_${participantCount}_enrollment" id="participant_${participantCount}_enrollment"
+                        class="participant-enrollment block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required placeholder="e.g., 21BECE40015" pattern="^\\d{2}[A-Z]{2,4}\\d{5}$"
+                        data-participant-id="${participantCount}">
+                    <div class="error-message text-red-500 text-sm mt-1 hidden"></div>
+                </div>
+                <div>
+                    <label for="participant_${participantCount}_name" class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <input type="text" name="participant_${participantCount}_name" id="participant_${participantCount}_name"
+                        class="participant-name block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                        readonly placeholder="Will be auto-filled">
+                </div>
+                <div>
+                    <label for="participant_${participantCount}_email" class="block text-sm font-semibold text-gray-700 mb-2">Email ID</label>
+                    <input type="email" name="participant_${participantCount}_email" id="participant_${participantCount}_email"
+                        class="participant-email block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                        readonly placeholder="Will be auto-filled">
+                </div>
+                <div>
+                    <label for="participant_${participantCount}_mobile" class="block text-sm font-semibold text-gray-700 mb-2">Mobile No.</label>
+                    <input type="tel" name="participant_${participantCount}_mobile" id="participant_${participantCount}_mobile"
+                        class="participant-mobile block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                        readonly placeholder="Will be auto-filled">
+                </div>
+                <div>
+                    <label for="participant_${participantCount}_department" class="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                    <input type="text" name="participant_${participantCount}_department" id="participant_${participantCount}_department"
+                        class="participant-department block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                        readonly placeholder="Will be auto-filled">
+                </div>                
+                <div>
+                    <label for="participant_${participantCount}_semester" class="block text-sm font-semibold text-gray-700 mb-2">Semester & Year</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" name="participant_${participantCount}_semester" id="participant_${participantCount}_semester"
+                            class="participant-semester block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                            readonly placeholder="Semester">
+                        <input type="text" name="participant_${participantCount}_year" id="participant_${participantCount}_year"
+                            class="participant-year block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm bg-gray-100"
+                            readonly placeholder="Year">
+                    </div>
+                </div>
+            </div>
+        `;
+          participantsContainer.appendChild(participantDiv);
+        // Add enrollment validation and prevent form submission on Enter
+        const enrollmentInput = participantDiv.querySelector('.participant-enrollment');
+          // Format enrollment input - convert to uppercase and remove invalid characters
+        enrollmentInput.addEventListener('input', function() {
+            let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            this.value = value;
+            console.log('Input formatted:', value);
+        });
+        
+        enrollmentInput.addEventListener('blur', function() {
+            console.log('Blur event triggered for:', this.value);
+            validateParticipantEnrollment(this);
+        });
+        
+        // Prevent form submission when pressing Enter on enrollment field
+        enrollmentInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                console.log('Enter key pressed on enrollment field');
+                e.preventDefault();
+                this.blur(); // Trigger validation
+            }
+        });
+        
+        updateButtons();
+    }
+
+    function removeParticipant() {
+        if (participantCount <= minParticipants) {
+            showAlert(`Minimum ${minParticipants} participants required!`, 'error');
+            return;
+        }
+        
+        const lastParticipant = participantsContainer.querySelector(`[data-participant="${participantCount}"]`);
+        if (lastParticipant) {
+            lastParticipant.remove();
+            participantCount--;
+            updateButtons();
+        }
+    }
+
+    function updateButtons() {
+        addParticipantBtn.disabled = participantCount >= maxParticipants;
+        removeParticipantBtn.disabled = participantCount <= minParticipants;
+        
+        if (participantCount >= maxParticipants) {
+            addParticipantBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            addParticipantBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        
+        if (participantCount <= minParticipants) {
+            removeParticipantBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            removeParticipantBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+        async function validateParticipantEnrollment(input) {
+        const participantId = input.getAttribute('data-participant-id');
+        const enrollmentNo = input.value.trim();
+        
+        // Debug logging
+        console.log('Validating participant:', participantId, 'Enrollment:', enrollmentNo);
+        
+        const statusElement = document.getElementById(`participant-status-${participantId}`);
+        const nameInput = document.getElementById(`participant_${participantId}_name`);
+        const emailInput = document.getElementById(`participant_${participantId}_email`);
+        const mobileInput = document.getElementById(`participant_${participantId}_mobile`);
+        const departmentInput = document.getElementById(`participant_${participantId}_department`);
+        const semesterInput = document.getElementById(`participant_${participantId}_semester`);
+        const yearInput = document.getElementById(`participant_${participantId}_year`);
+        const errorDiv = input.nextElementSibling;        // Clear previous data
+        if (nameInput) nameInput.value = '';
+        if (emailInput) emailInput.value = '';
+        if (mobileInput) mobileInput.value = '';
+        if (departmentInput) departmentInput.value = '';
+        if (semesterInput) semesterInput.value = '';
+        if (yearInput) yearInput.value = '';
+        if (statusElement) statusElement.textContent = '';
+        if (errorDiv) errorDiv.classList.add('hidden');
+        
+        if (!enrollmentNo) {
+            return;
+        }
+        
+        // Validate enrollment format
+        const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
+        if (!enrollmentPattern.test(enrollmentNo.toUpperCase())) {
+            showFieldError(input, 'Invalid enrollment number format');
+            if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Invalid format)</span>';
+            return;
+        }
+          // Check for duplicate enrollment within team
+        const leaderEnrollment = document.getElementById('enrollment_no').value.trim().toUpperCase();
+        const allEnrollments = Array.from(document.querySelectorAll('.participant-enrollment'))
+            .filter(inp => inp !== input && inp.value.trim()) // Exclude current input and empty values
+            .map(inp => inp.value.trim().toUpperCase());
+          if (enrollmentNo.toUpperCase() === leaderEnrollment) {
+            showFieldError(input, 'Team leader cannot be added as participant');
+            if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Duplicate: Leader)</span>';
+            return;
+        }
+        
+        if (allEnrollments.includes(enrollmentNo.toUpperCase())) {
+            showFieldError(input, 'Duplicate enrollment number in team');
+            if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Duplicate)</span>';
+            return;
+        }
+        
+        // Show loading state
+        if (statusElement) statusElement.innerHTML = '<span class="text-blue-600">(Validating...)</span>';
+          try {
+            const response = await fetch(`/client/api/validate-participant?enrollment=${encodeURIComponent(enrollmentNo)}`);
+            const data = await response.json();
+            
+            console.log('Validation response:', data);
+              if (data.success) {                // Always fill in the data regardless of department
+                if (nameInput) nameInput.value = data.student.full_name || '';
+                if (emailInput) emailInput.value = data.student.email || '';
+                if (mobileInput) mobileInput.value = data.student.mobile_no || '';
+                if (departmentInput) departmentInput.value = data.student.department || '';
+                if (semesterInput) semesterInput.value = data.student.semester || '';
+                
+                // Calculate and set year from semester
+                if (yearInput && data.student.semester) {
+                    const semester = parseInt(data.student.semester);
+                    const year = (semester >= 1 && semester <= 8) ? Math.floor((semester - 1) / 2) + 1 : '';
+                    yearInput.value = year;
+                }
+                
+                if (statusElement) statusElement.innerHTML = '<span class="text-green-600">(✓ Valid)</span>';
+                
+                // Log successful data filling for debugging
+                console.log('Auto-filled participant data:', {
+                    name: data.student.full_name,
+                    email: data.student.email,
+                    mobile: data.student.mobile_no,
+                    department: data.student.department,
+                    semester: data.student.semester,
+                    calculated_year: yearInput ? yearInput.value : 'N/A'
+                });
+                  // Check for registration conflicts
+                if (data.has_conflict && data.conflicts) {
+                    if (statusElement) statusElement.innerHTML = '<span class="text-orange-600">(⚠ Already registered)</span>';
+                    
+                    // Build detailed conflict message
+                    let conflictMessage = 'This student is already registered for:\n';
+                    
+                    // Add individual registrations
+                    if (data.conflicts.individual_registrations && data.conflicts.individual_registrations.length > 0) {
+                        conflictMessage += '\nIndividual registrations:\n';
+                        data.conflicts.individual_registrations.forEach(reg => {
+                            conflictMessage += `  • ${reg.event_name} (ID: ${reg.registrar_id})\n`;
+                        });
+                    }
+                    
+                    // Add team registrations
+                    if (data.conflicts.team_registrations && data.conflicts.team_registrations.length > 0) {
+                        conflictMessage += '\nTeam registrations:\n';
+                        data.conflicts.team_registrations.forEach(reg => {
+                            if (reg.role === 'team_leader') {
+                                conflictMessage += `  • ${reg.event_name} - Team Leader of '${reg.team_name}' (ID: ${reg.registrar_id})\n`;
+                            } else {
+                                conflictMessage += `  • ${reg.event_name} - Team Participant in '${reg.team_name}' (Leader: ${reg.team_leader})\n`;
+                            }
+                        });
+                    }
+                    
+                    showFieldError(input, conflictMessage.trim());
+                }
+            } else {
+                if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Not found)</span>';
+                showFieldError(input, data.message || 'Student not found in system');
+            }        } catch (error) {
+            console.error('Validation error:', error);
+            if (statusElement) statusElement.innerHTML = '<span class="text-red-600">(Error)</span>';
+            showFieldError(input, 'Unable to validate enrollment number');
+        }
+    }
+
+    function showFieldError(input, message) {
+        const errorDiv = input.nextElementSibling;
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+            'bg-green-100 border-green-400 text-green-700'
+        }`;
+        alertDiv.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} mr-2"></i>
+                ${message}
+            </div>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+
+    // Form submission validation
+    document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        // Check for team registration specific validations
+        const isTeamRegistration = true;
+        if (isTeamRegistration) {
+            const teamNameInput = document.getElementById('team_name');
+            if (!teamNameInput.value.trim()) {
+                e.preventDefault();
+                showAlert('Please enter a team name', 'error');
+                teamNameInput.focus();
+                return false;
+            }
+            
+            // Check participant count
+            const participantInputs = Array.from(document.querySelectorAll('.participant-enrollment'));
+            const validParticipants = participantInputs.filter(input => input.value.trim());
+            const totalTeamSize = validParticipants.length + 1; // +1 for leader
+            const minTeamSize = teamSizeMin;
+            const maxTeamSize = teamSizeMax;
+            
+            if (totalTeamSize < minTeamSize) {
+                e.preventDefault();
+                showAlert(`Team must have at least ${minTeamSize} members including leader`, 'error');
+                return false;
+            }
+            
+            if (totalTeamSize > maxTeamSize) {
+                e.preventDefault();
+                showAlert(`Team cannot exceed ${maxTeamSize} members including leader`, 'error');
+                return false;
+            }
+            
+            // Check for invalid participants (enrollment filled but no name)
+            const invalidParticipants = participantInputs.filter(input => {
+                const participantId = input.getAttribute('data-participant-id');
+                const nameInput = document.getElementById(`participant_${participantId}_name`);
+                return input.value.trim() && !nameInput.value.trim();
+            });
+            
+            if (invalidParticipants.length > 0) {
+                e.preventDefault();
+                showAlert('Please ensure all participants have valid enrollment numbers', 'error');
+                return false;
+            }
+            
+            // Check for duplicate enrollments
+            const allEnrollments = [document.getElementById('enrollment_no').value.trim().toUpperCase()]
+                .concat(validParticipants.map(input => input.value.trim().toUpperCase()));
+            
+            const duplicates = allEnrollments.filter((item, index) => allEnrollments.indexOf(item) !== index);
+            if (duplicates.length > 0) {
+                e.preventDefault();
+                showAlert('Duplicate enrollment numbers found in team', 'error');
+                return false;
+            }
+        }
+        
+        // General form validation
+        const requiredFields = document.querySelectorAll('input[required], select[required]');
+        for (let field of requiredFields) {
+            if (!field.value.trim()) {
+                e.preventDefault();
+                showAlert('Could you help us complete all required details?', 'error');
+                field.focus();
+                return false;
+            }
+        }
+    });
+
+    // Prevent form submission on Enter key for all input fields except submit button
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'submit') {
+            e.preventDefault();
+            // Move to next input field
+            const inputs = Array.from(document.querySelectorAll('input, select, textarea'));
+            const currentIndex = inputs.indexOf(e.target);
+            if (currentIndex > -1 && currentIndex < inputs.length - 1) {
+                inputs[currentIndex + 1].focus();
+            }
+        }
+    });
+
+    // Event listeners
+    addParticipantBtn.addEventListener('click', addParticipant);
+    removeParticipantBtn.addEventListener('click', removeParticipant);
+
+    // Initial button state
+    updateButtons();
+});
+</script>
+{% endif %}
+
+{% endblock %}

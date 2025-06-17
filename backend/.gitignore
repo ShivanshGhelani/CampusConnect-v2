@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+admin/
+campusconnect/
+node_modueles/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# VSCode
+.vscode/
+
+# Certificates and sensitive data
+certificates/
+*.pem
+*.key
+*.crt
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Local development
+.DS_Store
+Thumbs.db
+
+# Scripts folder (local development only)
+scripts/
+
+# Temporary files and testing artifacts
+temp/
+*.tmp

@@ -1,0 +1,57 @@
+{% extends "base_email.html" %}
+
+{% block title %}Welcome to CampusConnect - University Community Group{% endblock %}
+
+{% block header_title %}Welcome to CampusConnect!{% endblock %}
+{% block header_subtitle %}Your gateway to campus events and activities{% endblock %}
+
+{% block main_content %}
+<div class="content-section">
+    <h2>Hello {{ student_name }}!</h2>
+    <p>
+        Welcome to CampusConnect - University Community Group! We're excited to have you join our vibrant campus community.
+    </p>
+    
+    <div class="welcome-details">
+        <h3>Your Account Details:</h3>
+        <ul class="details-list">
+            <li><strong>Enrollment Number:</strong> {{ enrollment_no }}</li>
+            <li><strong>Email:</strong> {{ email }}</li>
+            <li><strong>Department:</strong> {{ department }}</li>
+            <li><strong>Semester:</strong> {{ semester }}</li>
+            <li><strong>Account Created:</strong> {{ created_at }}</li>
+        </ul>
+    </div>
+    
+    <div class="welcome-features">
+        <h3>What You Can Do:</h3>
+        <ul class="features-list">
+            <li>🎯 <strong>Discover Events:</strong> Browse upcoming technical workshops, cultural events, and competitions</li>
+            <li>📝 <strong>Easy Registration:</strong> Register for events with just a few clicks</li>
+            <li>👥 <strong>Team Events:</strong> Form teams and participate in group competitions</li>
+            <li>📊 <strong>Track Progress:</strong> Monitor your attendance and participation</li>
+            <li>🏆 <strong>Digital Certificates:</strong> Earn and download certificates for completed events</li>
+            <li>💬 <strong>Provide Feedback:</strong> Help us improve events with your valuable feedback</li>
+        </ul>
+    </div>
+      <div class="cta-section">
+        <a href="{{ platform_url }}" class="cta-button" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; padding: 15px 30px; text-decoration: none !important; border-radius: 6px; font-weight: bold; margin: 20px 0; text-align: center; font-size: 16px;">
+            Explore Events Now
+        </a>
+    </div>
+    
+    <div class="tips-section">
+        <h3>Getting Started Tips:</h3>
+        <ul class="tips-list">
+            <li>Complete your profile to get personalized event recommendations</li>
+            <li>Check your email regularly for event updates and reminders</li>
+            <li>Join events early as spots fill up quickly</li>
+            <li>Don't forget to mark attendance during events to earn certificates</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer_message %}
+Welcome aboard! We can't wait to see you at our upcoming events.
+{% endblock %}

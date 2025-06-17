@@ -1,0 +1,100 @@
+{% extends "base_email.html" %}
+
+{% block title %}Reminder: {{ event_title }} - {{ reminder_type|title }}{% endblock %}
+
+{% block header_title %}Event Reminder{% endblock %}
+{% block header_subtitle %}Don't forget about {{ event_title }}!{% endblock %}
+
+{% block student_name %}{{ student_name }}{% endblock %}
+
+{% block main_content %}
+<div class="info-badge">
+    ⏰ {{ reminder_type|title }} Event Reminder
+</div>
+
+<h2>Don't Miss {{ event_title }}!</h2>
+
+{% if reminder_type == "upcoming" %}
+<p>This is a friendly reminder that {{ event_title }} is coming up soon. We're excited to see you there!</p>
+{% elif reminder_type == "tomorrow" %}
+<p>Just a heads up - {{ event_title }} is <strong>tomorrow</strong>! We hope you're as excited as we are.</p>
+{% elif reminder_type == "today" %}
+<p><strong>Today is the day!</strong> {{ event_title }} is happening today. Don't forget to join us!</p>
+{% else %}
+<p>This is a reminder about {{ event_title }}. We look forward to your participation!</p>
+{% endif %}
+
+<div class="event-details">
+    <h3>📅 Event Information</h3>
+    <div class="detail-item">
+        <span class="detail-label">Event:</span>
+        <span class="detail-value">{{ event_title }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Date & Time:</span>
+        <span class="detail-value">{{ event_date }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Venue:</span>
+        <span class="detail-value">{{ event_venue }}</span>
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Your Status:</span>
+        <span class="detail-value" style="color: #28a745; font-weight: bold;">✅ Registered</span>
+    </div>
+</div>
+
+<h3>Important Reminders</h3>
+<ul style="margin-left: 20px; margin-bottom: 20px;">
+    {% if reminder_type == "today" %}
+    <li style="margin-bottom: 8px;">🕐 Arrive 15 minutes early for check-in</li>
+    <li style="margin-bottom: 8px;">🆔 Bring your student ID for verification</li>
+    <li style="margin-bottom: 8px;">📱 Turn your phone to silent mode during the event</li>
+    <li style="margin-bottom: 8px;">📝 Come prepared to take notes and participate</li>
+    {% else %}
+    <li style="margin-bottom: 8px;">📅 Mark your calendar and set a reminder</li>
+    <li style="margin-bottom: 8px;">🚗 Plan your transportation and parking</li>
+    <li style="margin-bottom: 8px;">🆔 Remember to bring your student ID</li>
+    <li style="margin-bottom: 8px;">👥 Invite friends who might be interested</li>
+    {% endif %}
+</ul>
+
+{% if reminder_type == "today" %}
+<div class="success-badge">
+    🎉 See you today at {{ event_venue }}!
+</div>
+{% elif reminder_type == "tomorrow" %}
+<div class="info-badge">
+    <strong>Tomorrow's Schedule:</strong> Please plan to arrive 15 minutes early for a smooth check-in experience.
+</div>
+{% endif %}
+
+<h3>What to Expect</h3>
+<p>Get ready for an engaging and informative session. You'll have opportunities to:</p>
+<ul style="margin-left: 20px; margin-bottom: 20px;">
+    <li style="margin-bottom: 8px;">🎓 Learn from expert speakers and facilitators</li>
+    <li style="margin-bottom: 8px;">🤝 Network with fellow students and professionals</li>
+    <li style="margin-bottom: 8px;">💡 Gain valuable insights and practical knowledge</li>
+    <li style="margin-bottom: 8px;">🏆 Earn participation certificates and recognition</li>
+</ul>
+
+<p>We can't wait to see you at {{ event_title }}!</p>
+{% endblock %}
+
+{% block footer %}
+<p>Best regards,<br>
+<strong>University Community Group Team</strong></p>
+
+<div class="divider"></div>
+
+<p>📍 Need directions? <a href="#">View location map</a></p>
+<p>📞 Questions? Contact us at <a href="mailto:events@ucg.edu">events@ucg.edu</a></p>
+<p>❌ Can't make it? <a href="#">Update your registration</a></p>
+
+<div class="social-links">
+    <a href="#">Website</a> |
+    <a href="#">Facebook</a> |
+    <a href="#">Instagram</a> |
+    <a href="#">LinkedIn</a>
+</div>
+{% endblock %}

@@ -1,0 +1,230 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Google Font - Pacifico */
+.font-pacifico {
+  font-family: 'Pacifico', cursive !important;
+  font-weight: 400;
+}
+
+.font-pacifico-brand {
+  font-family: 'Pacifico', cursive !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-stretch: expanded;
+}
+
+.font-custom-bold {
+  font-family: 'CustomFont', 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: bold;
+}
+
+.font-custom-italic {
+  font-family: 'CustomFont', 'Inter', system-ui, -apple-system, sans-serif;
+  font-style: italic;
+}
+
+/* Custom Brand Typography */
+.brand-typography {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  position: relative;
+}
+
+/* Text shadow effect for better visibility */
+.text-shadow-brand {
+  text-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.5),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 16px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Gradient text animation */
+.gradient-text-animated {
+  background: linear-gradient(
+    45deg,
+    #14b8a6,
+    #06b6d4,
+    #8b5cf6,
+    #ec4899,
+    #14b8a6
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Responsive typography scaling */
+@media (max-width: 768px) {
+  .brand-typography {
+    font-size: clamp(3rem, 15vw, 8rem);
+  }
+}
+
+@media (min-width: 769px) {
+  .brand-typography {
+    font-size: clamp(6rem, 12vw, 12rem);
+  }
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* Enhanced Brand Typography Effects */
+.text-glow-white {
+  text-shadow: 
+    0 0 5px rgba(255, 255, 255, 0.8),
+    0 0 10px rgba(255, 255, 255, 0.6),
+    0 0 15px rgba(255, 255, 255, 0.4),
+    0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.text-glow-rainbow {
+  text-shadow: 
+    0 0 5px rgba(20, 184, 166, 0.8),
+    0 0 10px rgba(139, 92, 246, 0.6),
+    0 0 15px rgba(236, 72, 153, 0.4),
+    0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* 3D Text Effect */
+.text-3d-effect {
+  text-shadow: 
+    1px 1px 0px rgba(0, 0, 0, 0.3),
+    2px 2px 0px rgba(0, 0, 0, 0.25),
+    3px 3px 0px rgba(0, 0, 0, 0.2),
+    4px 4px 0px rgba(0, 0, 0, 0.15),
+    5px 5px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Outline text effect */
+.text-outline {
+  -webkit-text-stroke: 2px transparent;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(45deg, #14b8a6, #8b5cf6, #ec4899);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* Eliminate all spacing for typography section */
+.typography-section-tight {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.typography-section-tight * {
+  margin: 0 !important;
+}
+
+.typography-section-tight .container-custom {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}

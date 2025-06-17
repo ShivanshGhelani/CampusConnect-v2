@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block title %}Payment Confirmation - {{ event.event_name }}{% endblock %}
+
+{% block head %}
+<style>
+    .confirmation-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 20px;
+        padding: 30px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+    
+    .status-badge {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 25px;
+        padding: 8px 20px;
+        display: inline-flex;
+        align-items: center;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+    
+    .check-animation {
+        animation: checkmark 1s ease-in-out;
+    }
+    
+    @keyframes checkmark {
+        0% { transform: scale(0) rotate(45deg); }
+        50% { transform: scale(1.2) rotate(45deg); }
+        100% { transform: scale(1) rotate(45deg); }
+    }
+    
+    .payment-details-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-bottom: 20px;
+    }
+    
+    .timeline-step {
+        display: flex;
+        align-items: center;
+        padding: 15px 0;
+        border-left: 3px solid #e5e7eb;
+        padding-left: 20px;
+        margin-left: 15px;
+        position: relative;
+    }
+    
+    .timeline-step.completed {
+        border-left-color: #10b981;
+    }
+    
+    .timeline-step.current {
+        border-left-color: #f59e0b;
+    }
+    
+    .timeline-step::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 20px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #e5e7eb;
+    }
+    
+    .timeline-step.completed::before {
+        background: #10b981;
+    }
+    
+    .timeline-step.current::before {
+        background: #f59e0b;
+        animation: pulse 2s infinite;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px 20px;
+        margin-bottom: 20px;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #6b7280;
+    }
+    
+    .info-value {
+        color: #111827;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- Success Header -->
+        <div class="confirmation-card mb-8">
+            <div class="status-badge">
+                <i class="fas fa-clock mr-2"></i>
+                Payment Submitted
+            </div>
+            
+            <div class="check-animation text-6xl mb-4">
+                <i class="fas fa-clock"></i>
+            </div>
+            
+            <h1 class="text-3xl font-bold mb-2">Payment Submitted Successfully!</h1>
+            <p class="text-lg opacity-90 mb-4">
+                Your payment is now being verified by our team
+            </p>
+            
+            <div class="bg-white/10 rounded-lg p-4 mt-6">
+                <p class="text-sm font-medium">Transaction ID</p>
+                <p class="text-xl font-bold font-mono">{{ payment_data.transaction_id }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Payment Details -->
+            <div class="payment-details-card">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-receipt text-blue-600 mr-3"></i>
+                    Payment Details
+                </h2>
+                
+                <div class="info-grid">
+                    <span class="info-label">Amount Paid:</span>
+                    <span class="info-value text-green-600 font-bold">₹{{ "%.2f"|format(payment_data.amount) }}</span>
+                    
+                    <span class="info-label">Transaction ID:</span>
+                    <span class="info-value font-mono">{{ payment_data.transaction_id }}</span>
+                    
+                    <span class="info-label">Submitted On:</span>
+                    <span class="info-value">{{ payment_data.submitted_datetime.strftime('%d %B %Y at %I:%M %p') }}</span>
+                    
+                    <span class="info-label">Payment Status:</span>
+                    <span class="info-value">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <i class="fas fa-clock mr-1"></i>
+                            Pending Verification
+                        </span>
+                    </span>
+                </div>
+                
+                <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-info-circle text-yellow-600 text-lg mt-1 mr-3 flex-shrink-0"></i>
+                        <div>
+                            <h4 class="font-semibold text-yellow-900 mb-1">Verification Timeline</h4>
+                            <p class="text-sm text-yellow-800">
+                                Payment verification typically takes 2-24 hours during business hours. 
+                                You will receive an email confirmation once verified.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration Details -->
+            <div class="payment-details-card">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-user-check text-green-600 mr-3"></i>
+                    Registration Details
+                </h2>
+                
+                <div class="info-grid">
+                    <span class="info-label">Event:</span>
+                    <span class="info-value">{{ event.event_name }}</span>
+                    
+                    <span class="info-label">Registration ID:</span>
+                    <span class="info-value font-mono font-bold text-blue-600">{{ registration.registrar_id }}</span>
+                    
+                    <span class="info-label">Student Name:</span>
+                    <span class="info-value">{{ registration.full_name }}</span>
+                    
+                    <span class="info-label">Enrollment No:</span>
+                    <span class="info-value">{{ registration.enrollment_no }}</span>
+                    
+                    {% if is_team_registration and team_info %}
+                    <span class="info-label">Team Name:</span>
+                    <span class="info-value">{{ team_info.team_name }}</span>
+                    
+                    <span class="info-label">Team Size:</span>
+                    <span class="info-value">{{ team_info.participant_count }} members</span>
+                    {% endif %}
+                    
+                    <span class="info-label">Registration Date:</span>
+                    <span class="info-value">{{ registration.registration_datetime.strftime('%d %B %Y at %I:%M %p') if registration.registration_datetime else 'N/A' }}</span>
+                </div>
+                
+                {% if is_team_registration and team_info %}
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 class="font-semibold text-blue-900 mb-2">Team Information</h4>
+                    <p class="text-sm text-blue-800">
+                        <strong>Leader:</strong> {{ team_info.leader_name }} ({{ team_info.leader_enrollment }})<br>
+                        <strong>Total Members:</strong> {{ team_info.participant_count }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Process Timeline -->
+        <div class="payment-details-card mt-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-list-check text-purple-600 mr-3"></i>
+                Process Timeline
+            </h2>
+            
+            <div class="space-y-0">
+                <div class="timeline-step completed">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Registration Submitted</h3>
+                        <p class="text-sm text-gray-600">Your registration form has been successfully submitted</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-step completed">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Payment Submitted</h3>
+                        <p class="text-sm text-gray-600">Payment information submitted for verification</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-step current">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Payment Verification</h3>
+                        <p class="text-sm text-gray-600">Our team is verifying your payment (2-24 hours)</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-step">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Registration Confirmed</h3>
+                        <p class="text-sm text-gray-600">You'll receive email confirmation once payment is verified</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-step">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Event Participation</h3>
+                        <p class="text-sm text-gray-600">Attend the event with your Registration ID</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 mt-8">
+            <a href="/client/events" 
+                class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium text-center">
+                <i class="fas fa-calendar mr-2"></i>
+                Browse More Events
+            </a>
+            <a href="/client/dashboard" 
+                class="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium text-center">
+                <i class="fas fa-tachometer-alt mr-2"></i>
+                Go to Dashboard
+            </a>
+            <button onclick="window.print()" 
+                class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                <i class="fas fa-print mr-2"></i>
+                Print Receipt
+            </button>
+        </div>
+
+        <!-- Support Information -->
+        <div class="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-headset text-blue-600 mr-3"></i>
+                Need Help?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                <div>
+                    <p class="font-medium mb-1">Payment Issues:</p>
+                    <p>Contact: payments@university.edu</p>
+                    <p>Phone: +91-9999000000</p>
+                </div>
+                <div>
+                    <p class="font-medium mb-1">Event Support:</p>
+                    <p>Contact: events@university.edu</p>
+                    <p>Phone: +91-8888000000</p>
+                </div>
+            </div>
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                <p class="text-sm text-blue-800">
+                    <strong>Important:</strong> Keep your Registration ID ({{ registration.registrar_id }}) and Transaction ID ({{ payment_data.transaction_id }}) safe for future reference.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus on important information
+document.addEventListener('DOMContentLoaded', function() {
+    // Add some interactive features
+    const timelineSteps = document.querySelectorAll('.timeline-step');
+    
+    // Add hover effects
+    timelineSteps.forEach(step => {
+        step.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('completed') && !this.classList.contains('current')) {
+                this.style.backgroundColor = '#f9fafb';
+            }
+        });
+        
+        step.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+
+// Function to check payment status (for future implementation)
+function checkPaymentStatus() {
+    // This can be implemented later to check real-time payment status
+    console.log('Checking payment status...');
+}
+</script>
+{% endblock %}

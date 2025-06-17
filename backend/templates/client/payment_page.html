@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block navigation %}
+{% include 'components/client_navigation.html' %}
+{% endblock %}
+
+{% block title %}Payment - {{ event.event_name }}{% endblock %}
+
+{% block head %}
+<style>
+    .qr-code-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 20px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .payment-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+    
+    .amount-display {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2563eb;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .upi-id {
+        background: #f3f4f6;
+        border: 2px dashed #6b7280;
+        border-radius: 8px;
+        padding: 15px;
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #374151;
+    }
+    
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .step-number {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #3b82f6;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+    }
+    
+    .copy-btn {
+        transition: all 0.3s ease;
+    }
+    
+    .copy-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+    }
+    
+    .payment-success-animation {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="mx-auto h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-r from-green-600 to-blue-500 shadow-lg mb-6">
+                <i class="fas fa-credit-card text-white text-3xl"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                Complete Your Payment
+            </h1>
+            <p class="text-lg text-gray-600 mb-4">
+                {{ event.event_name }}
+            </p>
+            {% if is_team_registration %}
+                <div class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    <i class="fas fa-users mr-2"></i>
+                    Team Registration ({{ team_info.participant_count }} members)
+                </div>
+            {% else %}
+                <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    <i class="fas fa-user mr-2"></i>
+                    Individual Registration
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Error/Success Messages -->
+        {% if error %}
+        <div class="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
+            <i class="fas fa-exclamation-triangle mr-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Payment Information -->
+            <div class="payment-card">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-money-bill-wave text-green-600 mr-3"></i>
+                    Payment Details
+                </h2>
+                
+                <!-- Amount to Pay -->
+                <div class="text-center bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6">
+                    <p class="text-lg text-gray-600 mb-2">Total Amount</p>
+                    <div class="amount-display">₹{{ "%.2f"|format(total_amount) }}</div>
+                    {% if is_team_registration %}
+                        <p class="text-sm text-gray-500 mt-2">
+                            ₹{{ "%.2f"|format(event.registration_fee) }} × {{ team_info.participant_count }} members
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Fee Description -->
+                {% if event.fee_description %}
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                        What's Included
+                    </h3>
+                    <p class="text-sm text-gray-700">{{ event.fee_description }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Registration Details -->
+                <div class="border-t pt-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">Registration Details</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Registration ID:</span>
+                            <span class="font-mono font-bold text-blue-600">{{ registrar_id }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Student Name:</span>
+                            <span class="font-medium">{{ student_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Enrollment No:</span>
+                            <span class="font-medium">{{ enrollment_no }}</span>
+                        </div>
+                        {% if is_team_registration %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Team Name:</span>
+                            <span class="font-medium">{{ team_info.team_name }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div class="payment-card">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-qrcode text-purple-600 mr-3"></i>
+                    Payment Methods
+                </h2>
+
+                <!-- UPI Payment Section -->
+                <div class="qr-code-container mb-6">
+                    <h3 class="text-xl font-bold mb-4">Scan QR Code to Pay</h3>
+                    <div class="bg-white rounded-lg p-6 mx-auto inline-block">
+                        <!-- Demo QR Code - Replace with actual QR code generation -->
+                        <div class="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center mx-auto">
+                            <div class="text-center text-gray-500">
+                                <i class="fas fa-qrcode text-6xl mb-2"></i>
+                                <p class="text-sm">QR Code</p>
+                                <p class="text-xs">₹{{ "%.2f"|format(total_amount) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-sm mt-4 opacity-90">Use any UPI app to scan and pay</p>
+                </div>
+
+                <!-- UPI ID Section -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-mobile-alt text-blue-600 mr-2"></i>
+                        Or Pay Using UPI ID
+                    </h3>
+                    <div class="upi-id mb-3" id="upi-id">
+                        university.payments@paytm
+                    </div>
+                    <button onclick="copyUPIId()" class="copy-btn bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        <i class="fas fa-copy mr-2"></i>Copy UPI ID
+                    </button>
+                </div>
+
+                <!-- Payment Instructions -->
+                <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-blue-900 mb-3">Payment Instructions</h3>
+                    <div class="space-y-3 text-sm text-blue-800">
+                        <div class="step-indicator">
+                            <div class="step-number">1</div>
+                            <span>Scan the QR code or use the UPI ID above</span>
+                        </div>
+                        <div class="step-indicator">
+                            <div class="step-number">2</div>
+                            <span>Enter amount: ₹{{ "%.2f"|format(total_amount) }}</span>
+                        </div>
+                        <div class="step-indicator">
+                            <div class="step-number">3</div>
+                            <span>Add note: Registration ID - {{ registrar_id }}</span>
+                        </div>
+                        <div class="step-indicator">
+                            <div class="step-number">4</div>
+                            <span>Complete payment and click "Payment Completed" below</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Confirmation -->
+                <form method="POST" action="/client/events/{{ event.event_id }}/payment/confirm" class="space-y-4">
+                    <input type="hidden" name="registration_id" value="{{ registrar_id }}">
+                    <input type="hidden" name="amount" value="{{ total_amount }}">
+                    
+                    <div>
+                        <label for="transaction_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            Transaction ID / UTR Number *
+                        </label>
+                        <input type="text" name="transaction_id" id="transaction_id" required
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter transaction ID from your payment app">
+                    </div>
+
+                    <div>
+                        <label for="payment_screenshot" class="block text-sm font-medium text-gray-700 mb-2">
+                            Payment Screenshot (Optional)
+                        </label>
+                        <input type="file" name="payment_screenshot" id="payment_screenshot" accept="image/*"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Upload screenshot for faster verification</p>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                        <button type="submit" 
+                            class="flex-1 bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-300 font-medium flex items-center justify-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Payment Completed
+                        </button>
+                        <a href="/client/events/{{ event.event_id }}" 
+                            class="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium text-center">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Important Notes -->
+        <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 px-6 py-4 rounded">
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-triangle text-lg mt-1 mr-3 flex-shrink-0"></i>
+                <div>
+                    <h4 class="font-semibold mb-2">Important Notes</h4>
+                    <ul class="text-sm space-y-1">
+                        <li>• Payment verification may take 2-24 hours</li>
+                        <li>• Keep your transaction ID safe for future reference</li>
+                        <li>• Registration will be confirmed after payment verification</li>
+                        <li>• Contact support if payment is not verified within 24 hours</li>
+                        <li>• Refunds will be processed according to the event refund policy</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyUPIId() {
+    const upiId = document.getElementById('upi-id').textContent.trim();
+    navigator.clipboard.writeText(upiId).then(function() {
+        // Show success message
+        showAlert('UPI ID copied to clipboard!', 'success');
+    }, function(err) {
+        // Fallback for browsers that don't support clipboard API
+        const textArea = document.createElement('textarea');
+        textArea.value = upiId;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showAlert('UPI ID copied to clipboard!', 'success');
+    });
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+        type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+        'bg-green-100 border-green-400 text-green-700'
+    }`;
+    alertDiv.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} mr-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// Auto-focus on transaction ID field
+document.addEventListener('DOMContentLoaded', function() {
+    const transactionField = document.getElementById('transaction_id');
+    if (transactionField) {
+        setTimeout(() => {
+            transactionField.focus();
+        }, 1000);
+    }
+});
+</script>
+{% endblock %}

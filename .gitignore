@@ -1,0 +1,197 @@
+# 🎓 CampusConnect - Git Ignore File
+
+# ===============================================
+# BACKEND (Python/Flask)
+# ===============================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Flask
+instance/
+.webassets-cache
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+campus_connect.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Uploads and user content
+backend/static/uploads/
+backend/static/certificates/generated/
+backend/temp/
+
+# ===============================================
+# FRONTEND (React/Node.js)
+# ===============================================
+
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Production
+frontend/build/
+frontend/dist/
+
+# Misc
+frontend/.DS_Store
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Package managers
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ===============================================
+# DEVELOPMENT TOOLS
+# ===============================================
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ===============================================
+# PROJECT SPECIFIC
+# ===============================================
+
+# Configuration files (keep templates, ignore actual configs)
+backend/config/local_settings.py
+frontend/src/config/local.js
+
+# Asset files (large files)
+backend/static/assets/large_files/
+frontend/public/assets/videos/
+
+# Generated certificates
+backend/data/generated_certificates/
+backend/static/certificates/output/
+
+# Email templates (if containing sensitive info)
+backend/templates/email/sensitive/
+
+# Test data
+backend/data/test_*.json
+frontend/src/data/test_*.json
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Backup files
+*.backup
+*.old
+
+# ===============================================
+# SECURITY
+# ===============================================
+
+# Never commit these!
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+secrets.json
+private_key.json
+
+# Environment files
+.env.*
+!.env.example
+
+# ===============================================
+# DOCUMENTATION
+# ===============================================
+
+# Generated docs
+docs/_build/
+docs/build/
+
+# ===============================================
+# DEPLOYMENT
+# ===============================================
+
+# Docker
+Dockerfile.local
+docker-compose.override.yml
+
+# Deployment scripts
+deploy.sh
+deployment/
+
+# ===============================================
+# END OF GITIGNORE
+# ===============================================

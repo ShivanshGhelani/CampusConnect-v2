@@ -1,0 +1,389 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+function ClientNavigation() {
+  const { user, logout, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+    // Prevent body scrolling when mobile menu is open
+    if (!isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    document.body.style.overflow = '';
+  };
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    closeMobileMenu();
+  }, [location.pathname]);
+
+  // Clean up body overflow on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  const isActivePath = (path, filter = null) => {
+    if (filter) {
+      const urlParams = new URLSearchParams(location.search);
+      return location.pathname === path && urlParams.get('filter') === filter;
+    }
+    return location.pathname === path;
+  };
+
+  const isActivePathNoFilter = (path) => {
+    const urlParams = new URLSearchParams(location.search);
+    return location.pathname === path && (!urlParams.get('filter') || urlParams.get('filter') === 'all');
+  };
+
+  return (
+    <>
+      <nav className="bg-white shadow-lg sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">            {/* Logo */}
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center space-x-3">
+                <img
+                  src="/logo/ksv.png"
+                  alt="KSV Logo"
+                  className="h-10 w-10 object-contain"
+                />
+                <span className="text-3xl font-bold">
+                  <span className="text-slate-800">Campus</span>
+                  <span className="bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent">Connect</span>
+                </span>
+              </Link>
+            </div>
+
+            {/* Mobile Menu Toggle */}
+            <div className="md:hidden">
+              <button
+                onClick={toggleMobileMenu}
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <i className="fas fa-bars text-xl"></i>
+              </button>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-1">
+              {/* Main Navigation Pills */}
+              <div className="flex items-center backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-1">
+                <Link
+                  to="/client/events?filter=all"
+                  className={`group relative ${isActivePathNoFilter('/client/events')
+                      ? 'bg-blue-500 text-white shadow-md'
+                      : 'bg-white text-black hover:text-blue-600'
+                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                >
+                  <i className="fas fa-calendar text-sm group-hover:scale-110 transition-transform"></i>
+                  <span className="text-sm font-semibold">All Events</span>
+                </Link>
+
+                <Link
+                  to="/client/events?filter=upcoming"
+                  className={`group relative ${isActivePath('/client/events', 'upcoming')
+                      ? 'bg-blue-500 text-white shadow-md'
+                      : 'bg-white text-black hover:text-blue-600'
+                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                >
+                  <i className="fas fa-clock text-sm group-hover:scale-110 transition-transform"></i>
+                  <span className="text-sm font-semibold">Upcoming</span>
+                </Link>
+
+                <Link
+                  to="/client/events?filter=ongoing"
+                  className={`group relative ${isActivePath('/client/events', 'ongoing')
+                      ? 'bg-green-500 text-white shadow-md'
+                      : 'bg-white text-green-600'
+                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                >
+                  <div className="flex items-center space-x-2">
+                    {/* Improved blinking dot with better positioning */}
+                    <div className="relative flex items-center justify-center w-3 h-3">
+                      {isActivePath('/client/events', 'ongoing') ? (
+                        <>
+                          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                          <span className="absolute w-2 h-2 bg-white/40 rounded-full animate-ping"></span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                          <span className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold">Live</span>
+                  </div>
+                </Link>
+              </div>
+            </div>
+
+            {/* User Actions Section */}
+            <div className="hidden md:flex items-center space-x-3">
+              {isAuthenticated ? (
+                /* Enhanced User Menu Dropdown (Profile Button with Dashboard Link) */
+                <div className="relative group">
+                  {/* Single Profile Container with Two Sections */}
+                  <div className={`flex items-center ${location.pathname === '/client/dashboard'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
+                      : 'bg-white/90 text-gray-700 hover:text-indigo-600 shadow-sm border border-gray-200/50 hover:shadow-md'
+                    } rounded-xl transition-all duration-300 backdrop-blur-sm`}>
+                    {/* Clickable Profile Section */}
+                    <Link
+                      to="/client/dashboard"
+                      className="group flex items-center space-x-2 pl-3 pr-3 py-2.5 transition-all duration-300"
+                    >
+                      <div className={`w-8 h-8 ${location.pathname === '/client/dashboard'
+                          ? 'bg-white/20'
+                          : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                        } rounded-lg flex items-center justify-center ${location.pathname === '/client/dashboard'
+                          ? 'text-white'
+                          : 'text-white'
+                        } text-sm font-semibold shadow-sm group-hover:scale-105 transition-transform`}>
+                        <i className="fas fa-user"></i>
+                      </div>
+                      <span className={`text-sm font-semibold ${location.pathname === '/client/dashboard'
+                          ? 'text-white'
+                          : 'group-hover:text-indigo-600'
+                        }`}>Profile</span>
+                      {location.pathname === '/client/dashboard' && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-500/20 rounded-xl blur-lg"></div>
+                      )}
+                    </Link>
+
+                    {/* Vertical Divider */}
+                    <div className={`h-6 w-px ${location.pathname === '/client/dashboard'
+                        ? 'bg-white/30'
+                        : 'bg-gray-300'
+                      }`}></div>
+
+                    {/* Dropdown Toggle Section */}
+                    <button className="px-3 py-2.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                      <i className="fas fa-chevron-down text-xs group-hover:rotate-180 transition-transform duration-300"></i>
+                    </button>
+                  </div>
+
+                  {/* Enhanced Dropdown Menu */}
+                  <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-200/50 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 backdrop-blur-xl">
+                    {/* Profile Section */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">Student Portal</p>
+                      <p className="text-xs text-gray-500">{user?.full_name || user?.enrollment_no || 'Guest User'}</p>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-1">
+                      <Link
+                        to="/client/profile"
+                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:text-purple-700 transition-all duration-200"
+                      >
+                        <i className="fas fa-cog text-purple-600"></i>
+                        <span className="font-medium">Edit Profile</span>
+                      </Link>
+
+                      <Link
+                        to="/client/certificates"
+                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 hover:text-emerald-700 transition-all duration-200"
+                      >
+                        <i className="fas fa-certificate text-emerald-600"></i>
+                        <span className="font-medium">Certificates</span>
+                      </Link>
+                    </div>
+
+                    {/* Logout Section */}
+                    <div className="border-t border-gray-100 py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-700 transition-all duration-200 w-full text-left"
+                      >
+                        <i className="fas fa-sign-out-alt"></i>
+                        <span className="font-medium">Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Not Logged In - Modern Authentication Buttons */
+                <div className="flex items-center space-x-3">                  <Link
+                  to="/auth/register"
+                  className="group bg-white/90 hover:bg-white text-gray-700 hover:text-emerald-600 px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 shadow-sm border border-gray-200/50 hover:shadow-md backdrop-blur-sm"
+                >
+                  <i className="fas fa-user-plus text-sm group-hover:scale-110 transition-transform"></i>
+                  <span className="text-sm">Register</span>
+                </Link>
+
+                  <Link
+                    to="/auth/login"
+                    className="group relative bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  >
+                    <i className="fas fa-sign-in-alt text-sm group-hover:scale-110 transition-transform"></i>
+                    <span className="text-sm">Sign In</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-xl blur-lg"></div>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden">
+          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Navigation</h2>
+              <button
+                onClick={closeMobileMenu}
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Mobile Navigation Links */}
+              <Link
+                to="/client/events?filter=all"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePathNoFilter('/client/events')
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-black hover:text-blue-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <i className="fas fa-calendar text-lg"></i>
+                <span className="font-medium">All Events</span>
+              </Link>
+
+              <Link
+                to="/client/events?filter=upcoming"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePath('/client/events', 'upcoming')
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-black hover:text-blue-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <i className="fas fa-clock text-lg"></i>
+                <span className="font-medium">Upcoming</span>
+              </Link>
+
+              <Link
+                to="/client/events?filter=ongoing"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePath('/client/events', 'ongoing')
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white text-green-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <div className="flex items-center space-x-3">
+                  {/* Improved blinking dot for mobile */}
+                  <div className="relative flex items-center justify-center w-4 h-4">
+                    {isActivePath('/client/events', 'ongoing') ? (
+                      <>
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        <span className="absolute w-2 h-2 bg-white/40 rounded-full animate-ping"></span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                      </>
+                    )}
+                  </div>
+                  <i className="fas fa-broadcast-tower text-lg"></i>
+                </div>
+                <span className="font-medium">Live Events</span>
+              </Link>
+
+              {isAuthenticated ? (
+                <>
+                  <hr className="my-4" />
+
+                  {/* Profile as main action */}
+                  <Link
+                    to="/client/dashboard"
+                    className={`flex items-center space-x-3 p-4 rounded-xl ${location.pathname === '/client/dashboard'
+                        ? 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      } transition-all duration-200`}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-sm">
+                      <i className="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <div className="font-semibold">Profile</div>
+                      <div className="text-xs text-gray-500">Your student portal</div>
+                    </div>
+                  </Link>
+
+                  {/* Other profile actions */}
+                  <Link
+                    to="/client/profile"
+                    className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <i className="fas fa-cog text-lg text-purple-600"></i>
+                    <span className="font-medium">Edit Profile</span>
+                  </Link>
+
+                  <Link
+                    to="/client/certificates"
+                    className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <i className="fas fa-certificate text-lg text-emerald-600"></i>
+                    <span className="font-medium">Certificates</span>
+                  </Link>
+
+                  <hr className="my-4" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-3 p-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                  >
+                    <i className="fas fa-sign-out-alt text-lg"></i>
+                    <span className="font-medium">Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <hr className="my-4" />
+                  <Link
+                    to="/auth/register"
+                    className="flex items-center justify-center space-x-2 p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors font-semibold"
+                  >
+                    <i className="fas fa-user-plus"></i>
+                    <span>Register</span>
+                  </Link>
+
+                  <Link
+                    to="/auth/login"
+                    className="flex items-center justify-center space-x-2 p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all font-semibold"
+                  >
+                    <i className="fas fa-sign-in-alt"></i>
+                    <span>Sign In</span>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default ClientNavigation;
