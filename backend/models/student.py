@@ -44,6 +44,11 @@ class Student(BaseModel):
         return pwd_context.hash(password)
     
     @staticmethod
+    def get_password_hash(password: str) -> str:
+        """Hash a password using bcrypt (alias for compatibility)"""
+        return pwd_context.hash(password)
+    
+    @staticmethod
     def verify_password(password: str, password_hash: str) -> bool:
         """Verify a password against its hash"""
         return pwd_context.verify(password, password_hash)

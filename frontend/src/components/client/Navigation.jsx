@@ -57,7 +57,7 @@ function ClientNavigation() {
     <>
       <nav className="bg-white shadow-lg sticky top-8 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-18">
             {/* Logo */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-3">
@@ -91,8 +91,8 @@ function ClientNavigation() {
                 <Link
                   to="/client/events?filter=all"
                   className={`group relative ${isActivePathNoFilter('/client/events')
-                      ? 'bg-blue-500 text-white shadow-md'
-                      : 'bg-white text-black hover:text-blue-600'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white text-black hover:text-blue-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <i className="fas fa-calendar text-sm group-hover:scale-110 transition-transform"></i>
@@ -102,8 +102,8 @@ function ClientNavigation() {
                 <Link
                   to="/client/events?filter=upcoming"
                   className={`group relative ${isActivePath('/client/events', 'upcoming')
-                      ? 'bg-blue-500 text-white shadow-md'
-                      : 'bg-white text-black hover:text-blue-600'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white text-black hover:text-blue-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <i className="fas fa-clock text-sm group-hover:scale-110 transition-transform"></i>
@@ -113,8 +113,8 @@ function ClientNavigation() {
                 <Link
                   to="/client/events?filter=ongoing"
                   className={`group relative ${isActivePath('/client/events', 'ongoing')
-                      ? 'bg-green-500 text-white shadow-md'
-                      : 'bg-white text-green-600'
+                    ? 'bg-green-500 text-white shadow-md'
+                    : 'bg-white text-green-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <div className="flex items-center space-x-2">
@@ -135,88 +135,41 @@ function ClientNavigation() {
                     <span className="text-sm font-semibold">Live</span>
                   </div>
                 </Link>
-              </div>
-              {isAuthenticated ? (
-                /* Enhanced User Menu Dropdown (Profile Button with Dashboard Link) */
-                <div className="relative group">
-                  {/* Single Profile Container with Two Sections */}
-                  <div className={`flex items-center ${location.pathname === '/client/dashboard'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-white/90 text-gray-700 hover:text-indigo-600 shadow-sm border border-gray-200/50 hover:shadow-md'
-                    } rounded-xl transition-all duration-300 backdrop-blur-sm`}>
-                    {/* Clickable Profile Section */}
-                    <Link
-                      to="/client/dashboard"
-                      className="group flex items-center space-x-2 pl-3 pr-3 py-2.5 transition-all duration-300"
-                    >
-                      <div className={`w-8 h-8 ${location.pathname === '/client/dashboard'
-                          ? 'bg-white/20'
-                          : 'bg-gradient-to-br from-blue-500 to-purple-600'
-                        } rounded-lg flex items-center justify-center ${location.pathname === '/client/dashboard'
-                          ? 'text-white'
-                          : 'text-white'
-                        } text-sm font-semibold shadow-sm group-hover:scale-105 transition-transform`}>
-                        <i className="fas fa-user"></i>
-                      </div>
-                      <span className={`text-sm font-semibold ${location.pathname === '/client/dashboard'
-                          ? 'text-white'
-                          : 'group-hover:text-indigo-600'
-                        }`}>Profile</span>
-                      {location.pathname === '/client/dashboard' && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-500/20 rounded-xl blur-lg"></div>
+              </div>              {isAuthenticated ? (
+                /* User Profile Button */
+                <div className="flex items-center space-x-4 ml-6 pl-6 border-l border-gray-300">                  <Link
+                    to="/client/dashboard"
+                    className="flex items-center space-x-2 hover:bg-gray-100 rounded-md px-2 py-1 transition-colors min-w-0"
+                  >
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {user?.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
+                          {user?.full_name ? 
+                            user.full_name.split(' ').map(name => name[0]).join('').substring(0, 2).toUpperCase()
+                            : (user?.enrollment_no ? user.enrollment_no.substring(0, 2).toUpperCase() : 'GU')
+                          }
+                        </div>
                       )}
-                    </Link>
-
-                    {/* Vertical Divider */}
-                    <div className={`h-6 w-px ${location.pathname === '/client/dashboard'
-                        ? 'bg-white/30'
-                        : 'bg-gray-300'
-                      }`}></div>
-
-                    {/* Dropdown Toggle Section */}
-                    <button className="px-3 py-2.5 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                      <i className="fas fa-chevron-down text-xs group-hover:rotate-180 transition-transform duration-300"></i>
-                    </button>
-                  </div>
-
-                  {/* Enhanced Dropdown Menu */}
-                  <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-200/50 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 backdrop-blur-xl">
-                    {/* Profile Section */}
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">Student Portal</p>
-                      <p className="text-xs text-gray-500">{user?.full_name || user?.enrollment_no || 'Guest User'}</p>
                     </div>
-
-                    {/* Menu Items */}
-                    <div className="py-1">
-                      <Link
-                        to="/client/profile"
-                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:text-purple-700 transition-all duration-200"
-                      >
-                        <i className="fas fa-cog text-purple-600"></i>
-                        <span className="font-medium">Edit Profile</span>
-                      </Link>
-
-                      <Link
-                        to="/client/certificates"
-                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-green-50 hover:text-emerald-700 transition-all duration-200"
-                      >
-                        <i className="fas fa-certificate text-emerald-600"></i>
-                        <span className="font-medium">Certificates</span>
-                      </Link>
+                    <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap">
+                      <div className="font-medium">
+                        {user?.full_name || user?.enrollment_no || 'Guest User'}
+                      </div>
+                      <div className="text-xs text-gray-500">Student</div>
                     </div>
-
-                    {/* Logout Section */}
-                    <div className="border-t border-gray-100 py-1">
-                      <button
-                        onClick={handleLogout}
-                        className="group flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-700 transition-all duration-200 w-full text-left"
-                      >
-                        <i className="fas fa-sign-out-alt"></i>
-                        <span className="font-medium">Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
+                  </Link><button
+                    onClick={handleLogout}
+                    className="inline-flex items-center bg-white border-2 border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600 hover:text-red-600 px-3 py-2 rounded-md text-sm font-sans font-medium transition-colors"
+                  >
+                    <i className="fas fa-sign-out-alt mr-1 text-sm"></i>
+                    Logout
+                  </button>
                 </div>
               ) : (
                 /* Not Logged In - Single Inviting Action Button */
@@ -240,8 +193,8 @@ function ClientNavigation() {
           <Link
             to="/client/events?filter=upcoming"
             className={`flex flex-col items-center justify-center ${isActivePath('/client/events', 'upcoming')
-                ? 'text-blue-600'
-                : 'text-gray-500'
+              ? 'text-blue-600'
+              : 'text-gray-500'
               } transition-colors`}
           >
             <i className="fas fa-clock text-lg mb-1"></i>
@@ -252,8 +205,8 @@ function ClientNavigation() {
           <Link
             to="/client/events?filter=ongoing"
             className={`flex flex-col items-center justify-center relative ${isActivePath('/client/events', 'ongoing')
-                ? 'text-green-600'
-                : 'text-gray-500'
+              ? 'text-green-600'
+              : 'text-gray-500'
               } transition-colors`}
           >
             <div className="relative">
@@ -281,8 +234,8 @@ function ClientNavigation() {
             <Link
               to="/client/dashboard"
               className={`flex flex-col items-center justify-center ${location.pathname === '/client/dashboard'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500'
+                ? 'text-indigo-600'
+                : 'text-gray-500'
                 } transition-colors`}
             >
               <i className="fas fa-user text-lg mb-1"></i>
@@ -311,8 +264,8 @@ function ClientNavigation() {
             <Link
               to="/client/events?filter=all"
               className={`flex flex-col items-center justify-center ${isActivePathNoFilter('/client/events')
-                  ? 'text-blue-600'
-                  : 'text-gray-500'
+                ? 'text-blue-600'
+                : 'text-gray-500'
                 } transition-colors`}
             >
               <i className="fas fa-calendar text-lg mb-1"></i>

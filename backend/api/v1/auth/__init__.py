@@ -4,16 +4,39 @@ Handles authentication-related API endpoints
 """
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from routes.auth import get_current_admin, authenticate_admin
+from routes.client.client import authenticate_student
 from dependencies.auth import get_current_student_optional, get_current_student
 from utils.db_operations import DatabaseOperations
 from datetime import datetime
 import logging
+import re
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Pydantic models for request validation
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class StudentLoginRequest(BaseModel):
+    enrollment_no: str
+    password: str
+
+class StudentRegisterRequest(BaseModel):
+    full_name: str
+    enrollment_no: str
+    email: str
+    mobile_no: str
+    gender: str
+    date_of_birth: str
+    department: str
+    semester: int
+    password: str
 
 @router.get("/admin/status")
 async def admin_auth_status(request: Request):
@@ -60,9 +83,9 @@ async def student_auth_status(request: Request):
 async def admin_login_api(request: Request):
     """API endpoint for admin login"""
     try:
-        form_data = await request.form()
-        username = form_data.get("username")
-        password = form_data.get("password")
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
         
         if not all([username, password]):
             return JSONResponse(
@@ -116,6 +139,242 @@ async def admin_login_api(request: Request):
         
     except Exception as e:
         logger.error(f"Error in admin login API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/student/login")
+async def student_login_api(request: Request, login_data: StudentLoginRequest):
+    """API endpoint for student login"""
+    try:
+        enrollment_no = login_data.enrollment_no
+        password = login_data.password
+        
+        if not all([enrollment_no, password]):
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Enrollment number and password are required"}
+            )
+        
+        student = await authenticate_student(enrollment_no, password)
+        if not student:
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "message": "Invalid enrollment number or password"}
+            )
+        
+        # Update last login time
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": enrollment_no},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
+        
+        # Store student in session
+        student_data = student.model_dump()
+        for key, value in student_data.items():
+            if isinstance(value, datetime):
+                student_data[key] = value.isoformat()
+        
+        request.session["student"] = student_data
+        request.session["student_enrollment"] = enrollment_no
+        
+        return {
+            "success": True,
+            "message": "Login successful",
+            "redirect_url": "/client/dashboard",
+            "user": {
+                "enrollment_no": student.enrollment_no,
+                "full_name": student.full_name,
+                "email": student.email,
+                "department": student.department,
+                "user_type": "student"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in student login API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/student/logout")
+async def student_logout_api(request: Request):
+    """API endpoint for student logout"""
+    try:
+        # Clear session data
+        request.session.pop("student", None)
+        request.session.pop("student_enrollment", None)
+        
+        return {"success": True, "message": "Logout successful"}
+        
+    except Exception as e:
+        logger.error(f"Error in student logout API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/admin/logout")
+async def admin_logout_api(request: Request):
+    """API endpoint for admin logout"""
+    try:
+        # Clear session data
+        request.session.clear()
+        
+        return {"success": True, "message": "Logout successful"}
+        
+    except Exception as e:
+        logger.error(f"Error in admin logout API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/student/register")
+async def student_register_api(request: Request, register_data: StudentRegisterRequest):
+    """API endpoint for student registration"""
+    try:
+        import re
+        from bson import ObjectId
+        
+        # Extract data from request
+        enrollment_no = register_data.enrollment_no.strip().upper()
+        full_name = register_data.full_name.strip()
+        email = register_data.email.strip().lower()
+        mobile_no = register_data.mobile_no.strip()
+        password = register_data.password
+        department = register_data.department.strip()
+        semester = register_data.semester
+        gender = register_data.gender.strip()
+        date_of_birth = register_data.date_of_birth.strip()
+        
+        # Validation
+        errors = []
+        
+        if not enrollment_no or not re.match(r'^\d{2}[A-Z]{2,4}\d{5}$', enrollment_no):
+            errors.append("Invalid enrollment number format (e.g., 21BECE40015)")
+            
+        if not full_name or len(full_name) < 2:
+            errors.append("Valid full name is required")
+            
+        if not email or "@" not in email:
+            errors.append("Valid email address is required")
+            
+        if not mobile_no or len(mobile_no) != 10 or not mobile_no.isdigit():
+            errors.append("Valid 10-digit mobile number is required")
+            
+        # Enhanced password validation
+        if not password or len(password) < 6:
+            errors.append("Password must be at least 6 characters long")
+        if not any(c in "!@#$%^&*" for c in password):
+            errors.append("Password must contain at least one special character")
+        if not any(c.isdigit() for c in password):
+            errors.append("Password must contain at least one number")
+        
+        # Gender validation
+        if not gender:
+            errors.append("Gender is required")
+        elif gender not in ["Male", "Female", "Other", "Prefer not to say"]:
+            errors.append("Please select a valid gender option")
+        
+        # Department validation
+        if not department:
+            errors.append("Department is required")
+        
+        # Semester validation
+        if not semester or not isinstance(semester, int) or semester < 1 or semester > 8:
+            errors.append("Valid semester (1-8) is required")
+        
+        # Date of birth validation
+        if not date_of_birth:
+            errors.append("Date of birth is required")
+        else:
+            try:
+                birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
+                today = datetime.now()
+                age = today.year - birth_date.year
+                
+                if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
+                    age -= 1
+                if age < 15:
+                    errors.append("You must be at least 15 years old to register")
+                elif age > 100:
+                    errors.append("Please enter a valid date of birth")
+            except ValueError:
+                errors.append("Please enter a valid date of birth")
+        
+        if errors:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "; ".join(errors)}
+            )
+        
+        # Check if student already exists
+        existing_student = await DatabaseOperations.find_one(
+            "students",
+            {"$or": [
+                {"enrollment_no": enrollment_no},
+                {"email": email},
+                {"mobile_no": mobile_no}
+            ]}
+        )
+        
+        if existing_student:
+            if existing_student.get("enrollment_no") == enrollment_no:
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "message": "Student with this enrollment number already exists"}
+                )
+            elif existing_student.get("email") == email:
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "message": "Student with this email already exists"}
+                )
+            elif existing_student.get("mobile_no") == mobile_no:
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "message": "Student with this mobile number already exists"}
+                )
+        
+        # Create new student
+        new_student = Student(
+            enrollment_no=enrollment_no,
+            full_name=full_name,
+            email=email,
+            mobile_no=mobile_no,
+            password_hash=Student.get_password_hash(password),
+            department=department,
+            semester=semester,
+            gender=gender,
+            date_of_birth=datetime.strptime(date_of_birth, '%Y-%m-%d'),
+            created_at=datetime.utcnow(),
+            is_active=True
+        )
+          # Save to database
+        result = await DatabaseOperations.insert_one("students", new_student.model_dump())
+        
+        if result:  # result is the inserted_id as a string
+            return {
+                "success": True,
+                "message": "Registration successful! You can now login with your credentials.",
+                "user": {
+                    "enrollment_no": enrollment_no,
+                    "full_name": full_name,
+                    "email": email,
+                    "user_type": "student"
+                }
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "Registration failed. Please try again."}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error in student registration API: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": "Internal server error"}

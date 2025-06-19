@@ -133,7 +133,6 @@ export function AuthProvider({ children }) {
       dispatch({ type: authActions.LOGOUT });
     }
   };
-
   const login = async (credentials, userType = 'student') => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     dispatch({ type: authActions.CLEAR_ERROR });
@@ -182,7 +181,6 @@ export function AuthProvider({ children }) {
       return { success: false, error: errorMessage };
     }
   };
-
   const logout = async () => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     
@@ -206,6 +204,39 @@ export function AuthProvider({ children }) {
     dispatch({ type: authActions.LOGOUT });
   };
 
+  const register = async (userData) => {
+    dispatch({ type: authActions.SET_LOADING, payload: true });
+    dispatch({ type: authActions.CLEAR_ERROR });
+    
+    try {
+      const response = await authAPI.studentRegister(userData);
+      
+      if (response.data.success) {
+        // Auto-login after successful registration
+        const loginData = {
+          enrollment_no: userData.enrollment_no,
+          password: userData.password
+        };
+        
+        const loginResult = await login(loginData, 'student');
+        return loginResult;
+      } else {
+        dispatch({
+          type: authActions.SET_ERROR,
+          payload: response.data.message || 'Registration failed',
+        });
+        return { success: false, error: response.data.message };
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      dispatch({
+        type: authActions.SET_ERROR,
+        payload: errorMessage,
+      });
+      return { success: false, error: errorMessage };
+    }
+  };
+
   const clearError = () => {
     dispatch({ type: authActions.CLEAR_ERROR });
   };
@@ -214,6 +245,7 @@ export function AuthProvider({ children }) {
     ...state,
     login,
     logout,
+    register,
     clearError,
     checkAuthStatus,
   };

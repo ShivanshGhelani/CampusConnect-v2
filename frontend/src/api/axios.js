@@ -59,14 +59,14 @@ api.interceptors.response.use(
 // API endpoints
 export const authAPI = {
   // Student authentication
-  studentLogin: (credentials) => api.post('/client/login', credentials),
-  studentRegister: (userData) => api.post('/client/register', userData),
-  studentLogout: () => api.get('/client/logout'),
+  studentLogin: (credentials) => api.post('/api/v1/auth/student/login', credentials),
+  studentRegister: (userData) => api.post('/api/v1/auth/student/register', userData),
+  studentLogout: () => api.post('/api/v1/auth/student/logout'),
   studentStatus: () => api.get('/api/v1/auth/student/status'),
   
   // Admin authentication
-  adminLogin: (credentials) => api.post('/auth/login', credentials),
-  adminLogout: () => api.get('/auth/logout'),
+  adminLogin: (credentials) => api.post('/api/v1/auth/admin/login', credentials),
+  adminLogout: () => api.post('/api/v1/auth/admin/logout'),
   adminStatus: () => api.get('/api/v1/auth/admin/status'),
 };
 
