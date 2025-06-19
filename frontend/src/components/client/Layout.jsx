@@ -1,13 +1,17 @@
 import React from 'react';
 import ClientNavigation from './Navigation';
+import TopBanner from './TopBanner';
 
 function ClientLayout({ children, noPadding = false }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ClientNavigation />
-      <main className={noPadding ? "" : "py-8"}>
-        {children}
-      </main>
+    <div className="min-h-screen">
+      <TopBanner />
+      <div className="pt-8"> {/* Add padding to account for fixed top banner */}
+        <ClientNavigation />
+        <main>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

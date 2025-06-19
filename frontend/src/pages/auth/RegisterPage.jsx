@@ -213,12 +213,7 @@ function RegisterPage() {
 
       <div className="max-w-2xl w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <img 
-              src="/logo/ksv.png" 
-              alt="KSV Logo" 
-              className="h-16 w-16 object-contain"
-            />
+          <div className="flex items-center justify-center mb-6">
             <div className="h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg">
               <i className="fas fa-user-plus text-white text-3xl"></i>
             </div>

@@ -8,4 +8,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    allowedHosts: [
+      'localhost',
+      'jaguar-giving-awfully.ngrok-free.app'
+    ]
+  }
 })

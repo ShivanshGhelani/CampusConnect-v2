@@ -132,7 +132,7 @@ function Homepage() {
     );
   };  return (
     <ClientLayout noPadding={true}>
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-sky-50 to-purple-50 overflow-x-hidden">
+      <div className="overflow-x-hidden">
         {/* Hero Section */}
         <section className="relative overflow-hidden min-h-screen flex items-center">
           {/* Background Image with Fallback */}

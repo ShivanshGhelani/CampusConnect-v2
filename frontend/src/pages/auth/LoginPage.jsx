@@ -102,12 +102,7 @@ function LoginPage() {
 
       <div className="max-w-md w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <img 
-              src="/logo/ksv.png" 
-              alt="KSV Logo" 
-              className="h-16 w-16 object-contain"
-            />
+          <div className="flex items-center justify-center mb-6">
             <div className={`h-20 w-20 flex items-center justify-center rounded-full ${
               activeTab === 'admin' 
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600' 
@@ -331,26 +326,27 @@ function LoginPage() {
 
           {/* Student Registration Link (only visible in student mode) */}
           {activeTab === 'student' && (
-            <div className="mt-6">
-              {/* Divider */}
+            <div className="mt-6">              {/* Registration Call-to-Action */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
+                  <span className="px-3 bg-white text-gray-500">New to Campus Connect?</span>
                 </div>
               </div>
-              
-              {/* Create Account Link */}
+                {/* Create Account Link - Simplified */}
               <div className="text-center">
                 <Link
                   to="/auth/register"
-                  className="inline-flex items-center px-6 py-3 border-2 border-green-200 text-green-700 bg-green-50 rounded-lg text-sm font-semibold hover:bg-green-100 hover:border-green-300 transition-all duration-200"
+                  className="inline-flex items-center justify-center px-6 py-3 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   <i className="fas fa-user-plus mr-2"></i>
-                  Create Student Account
+                  Create Account
                 </Link>
+                <p className="mt-3 text-xs text-gray-500">
+                  Join the campus community and never miss an event!
+                </p>
               </div>
             </div>
           )}

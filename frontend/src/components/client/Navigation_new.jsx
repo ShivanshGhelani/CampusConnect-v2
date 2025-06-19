@@ -55,7 +55,7 @@ function ClientNavigation() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg sticky top-8 z-40">
+      <nav className="bg-white shadow-lg sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -71,21 +71,20 @@ function ClientNavigation() {
                   <span className="bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent">Connect</span>
                 </span>
               </Link>
-            </div>            {/* Mobile Menu Toggle - Hidden since we use bottom nav */}
-            <div className="md:hidden hidden">
+            </div>
+
+            {/* Mobile Menu Toggle */}
+            <div className="md:hidden">
               <button
                 onClick={toggleMobileMenu}
                 className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <i className="fas fa-bars text-xl"></i>
               </button>
-            </div>{/* Desktop Navigation - moved to empty middle section */}
-            <div className="hidden md:flex items-center space-x-1">
-              {/* Empty middle section for better layout */}
             </div>
 
-            {/* User Actions Section with Events Tabs */}
-            <div className="hidden md:flex items-center space-x-3">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-1">
               {/* Main Navigation Pills */}
               <div className="flex items-center backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-1">
                 <Link
@@ -136,6 +135,10 @@ function ClientNavigation() {
                   </div>
                 </Link>
               </div>
+            </div>
+
+            {/* User Actions Section */}
+            <div className="hidden md:flex items-center space-x-3">
               {isAuthenticated ? (
                 /* Enhanced User Menu Dropdown (Profile Button with Dashboard Link) */
                 <div className="relative group">
@@ -233,97 +236,143 @@ function ClientNavigation() {
             </div>
           </div>
         </div>
-      </nav>      {/* Proper Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-        <div className="grid grid-cols-5 h-16">
-          {/* Upcoming Button */}
-          <Link
-            to="/client/events?filter=upcoming"
-            className={`flex flex-col items-center justify-center ${isActivePath('/client/events', 'upcoming')
-                ? 'text-blue-600'
-                : 'text-gray-500'
-              } transition-colors`}
-          >
-            <i className="fas fa-clock text-lg mb-1"></i>
-            <span className="text-xs font-medium">Upcoming</span>
-          </Link>
+      </nav>
 
-          {/* Live Button */}
-          <Link
-            to="/client/events?filter=ongoing"
-            className={`flex flex-col items-center justify-center relative ${isActivePath('/client/events', 'ongoing')
-                ? 'text-green-600'
-                : 'text-gray-500'
-              } transition-colors`}
-          >
-            <div className="relative">
-              <i className="fas fa-broadcast-tower text-lg mb-1"></i>
-              {/* Live indicator dot */}
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden">
+          <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Navigation</h2>
+              <button
+                onClick={closeMobileMenu}
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
             </div>
-            <span className="text-xs font-medium">Live</span>
-          </Link>
 
-          {/* Center Logo - Elevated */}
-          <Link to="/" className="flex flex-col items-center justify-center relative -mt-6">
-            <div className="w-14 h-14 bg-gradient-to-r from-teal-500 to-purple-500 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
-              <img
-                src="/logo/ksv.png"
-                alt="Logo"
-                className="w-8 h-8 object-contain"
-              />
+            <div className="p-6 space-y-4">
+              {/* Mobile Navigation Links */}
+              <Link
+                to="/client/events?filter=all"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePathNoFilter('/client/events')
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-black hover:text-blue-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <i className="fas fa-calendar text-lg"></i>
+                <span className="font-medium">All Events</span>
+              </Link>
+
+              <Link
+                to="/client/events?filter=upcoming"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePath('/client/events', 'upcoming')
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-black hover:text-blue-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <i className="fas fa-clock text-lg"></i>
+                <span className="font-medium">Upcoming</span>
+              </Link>
+
+              <Link
+                to="/client/events?filter=ongoing"
+                className={`flex items-center space-x-3 p-3 rounded-xl ${isActivePath('/client/events', 'ongoing')
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white text-green-600 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <div className="flex items-center space-x-3">
+                  {/* Improved blinking dot for mobile */}
+                  <div className="relative flex items-center justify-center w-4 h-4">
+                    {isActivePath('/client/events', 'ongoing') ? (
+                      <>
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        <span className="absolute w-2 h-2 bg-white/40 rounded-full animate-ping"></span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                      </>
+                    )}
+                  </div>
+                  <i className="fas fa-broadcast-tower text-lg"></i>
+                </div>
+                <span className="font-medium">Live Events</span>
+              </Link>
+
+              {isAuthenticated ? (
+                <>
+                  <hr className="my-4" />
+
+                  {/* Profile as main action */}
+                  <Link
+                    to="/client/dashboard"
+                    className={`flex items-center space-x-3 p-4 rounded-xl ${location.pathname === '/client/dashboard'
+                        ? 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 border border-indigo-200'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      } transition-all duration-200`}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-sm">
+                      <i className="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <div className="font-semibold">Profile</div>
+                      <div className="text-xs text-gray-500">Your student portal</div>
+                    </div>
+                  </Link>
+
+                  {/* Other profile actions */}
+                  <Link
+                    to="/client/profile"
+                    className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <i className="fas fa-cog text-lg text-purple-600"></i>
+                    <span className="font-medium">Edit Profile</span>
+                  </Link>
+
+                  <Link
+                    to="/client/certificates"
+                    className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <i className="fas fa-certificate text-lg text-emerald-600"></i>
+                    <span className="font-medium">Certificates</span>
+                  </Link>
+
+                  <hr className="my-4" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-3 p-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                  >
+                    <i className="fas fa-sign-out-alt text-lg"></i>
+                    <span className="font-medium">Sign Out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <hr className="my-4" />
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex items-center justify-center px-6 py-3 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md w-full"
+                  >
+                    <i className="fas fa-sign-in-alt mr-2"></i>
+                    Join Campus Connect
+                  </Link>
+                  
+                  <div className="text-center mt-2">
+                    <p className="text-xs text-gray-500">
+                      New here? You can register from the sign-in page
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
-            <span className="text-xs font-bold text-slate-800 mt-1">Campus</span>
-          </Link>
-
-          {/* Profile/Join Button */}
-          {isAuthenticated ? (
-            <Link
-              to="/client/dashboard"
-              className={`flex flex-col items-center justify-center ${location.pathname === '/client/dashboard'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500'
-                } transition-colors`}
-            >
-              <i className="fas fa-user text-lg mb-1"></i>
-              <span className="text-xs font-medium">Profile</span>
-            </Link>
-          ) : (
-            <Link
-              to="/auth/login"
-              className="flex flex-col items-center justify-center text-green-600"
-            >
-              <i className="fas fa-sign-in-alt text-lg mb-1"></i>
-              <span className="text-xs font-medium">Join</span>
-            </Link>
-          )}
-
-          {/* Settings/Logout */}
-          {isAuthenticated ? (
-            <button
-              onClick={handleLogout}
-              className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
-            >
-              <i className="fas fa-sign-out-alt text-lg mb-1"></i>
-              <span className="text-xs font-medium">Logout</span>
-            </button>
-          ) : (
-            <Link
-              to="/client/events?filter=all"
-              className={`flex flex-col items-center justify-center ${isActivePathNoFilter('/client/events')
-                  ? 'text-blue-600'
-                  : 'text-gray-500'
-                } transition-colors`}
-            >
-              <i className="fas fa-calendar text-lg mb-1"></i>
-              <span className="text-xs font-medium">Events</span>
-            </Link>
-          )}
+          </div>
         </div>
-      </div>
-
-      {/* Add bottom padding to prevent content being hidden behind bottom nav */}
-      <div className="md:hidden h-16"></div>
+      )}
     </>
   );
 }

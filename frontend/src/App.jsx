@@ -6,7 +6,7 @@ import './styles/global.css';
 function App() {
   return (
     <AuthProvider>
-      <div className="App">
+      <div className="App h-full">
         <AppRoutes />
       </div>
     </AuthProvider>
