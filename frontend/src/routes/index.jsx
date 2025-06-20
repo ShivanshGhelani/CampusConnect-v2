@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 import Homepage from '../pages/client/Homepage';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
-import ClientDashboard from '../pages/client/Dashboard';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackPage from '../pages/client/FeedbackPage';
@@ -50,12 +49,11 @@ function AppRoutes() {
         {/* Client/Student Routes */}
         <Route path="/client/events" element={<EventListPage />} />
         
-        {/* Protected Client Routes */}
-        <Route
+        {/* Protected Client Routes */}        <Route
           path="/client/dashboard"
           element={
             <ProtectedRoute userType="student">
-              <ClientDashboard />
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
