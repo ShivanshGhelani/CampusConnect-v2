@@ -3,15 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
-function RegisterPage() {  const [formData, setFormData] = useState({
+function RegisterPage() {
+  const [formData, setFormData] = useState({
     full_name: '',
     enrollment_no: '',
     email: '',
     mobile_no: '',
     gender: '',
     date_of_birth: '',
-    department: '',
-    semester: '',
     password: '',
     confirm_password: '',
   });
@@ -79,6 +78,7 @@ function RegisterPage() {  const [formData, setFormData] = useState({
       validatePasswordMatch(password, confirmPassword);
     }
   };
+
   const validateField = (name, value) => {
     let error = '';
 
@@ -114,16 +114,6 @@ function RegisterPage() {  const [formData, setFormData] = useState({
           } else if (age > 100) {
             error = 'Please enter a valid date of birth';
           }
-        }
-        break;
-      case 'department':
-        if (!value) {
-          error = 'Please select your department';
-        }
-        break;
-      case 'semester':
-        if (!value) {
-          error = 'Please select your current semester';
         }
         break;
     }
@@ -167,19 +157,14 @@ function RegisterPage() {  const [formData, setFormData] = useState({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-      // Final validation
+    
+    // Final validation
     const errors = [];
     
-    // Required fields (excluding confirm_password which is just for UI)
-    const requiredFields = [
-      'full_name', 'enrollment_no', 'email', 'mobile_no', 
-      'gender', 'date_of_birth', 'department', 'semester', 'password'
-    ];
-    
-    requiredFields.forEach(key => {
-      if (!formData[key]) {
-        const fieldName = key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-        errors.push(`${fieldName} is required`);
+    // Required fields
+    Object.keys(formData).forEach(key => {
+      if (!formData[key] && key !== 'confirm_password') {
+        errors.push(`${key.replace('_', ' ')} is required`);
       }
     });
 
@@ -197,18 +182,14 @@ function RegisterPage() {  const [formData, setFormData] = useState({
     
     if (errors.length > 0 || hasValidationErrors) {
       return;
-    }    setIsLoading(true);
+    }
 
-    // Remove confirm_password from submission data and format for API
+    setIsLoading(true);
+
+    // Remove confirm_password from submission data
     const { confirm_password, ...submitData } = formData;
     
-    // Convert semester to integer
-    const registrationData = {
-      ...submitData,
-      semester: parseInt(submitData.semester, 10)
-    };
-    
-    const result = await register(registrationData);
+    const result = await register(submitData);
     
     if (result.success) {
       navigate('/client/dashboard', { replace: true });
@@ -232,7 +213,12 @@ function RegisterPage() {  const [formData, setFormData] = useState({
 
       <div className="max-w-2xl w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center justify-center space-x-3 mb-6">
+            <img 
+              src="/logo/ksv.png" 
+              alt="KSV Logo" 
+              className="h-16 w-16 object-contain"
+            />
             <div className="h-20 w-20 flex items-center justify-center rounded-full bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg">
               <i className="fas fa-user-plus text-white text-3xl"></i>
             </div>
@@ -262,152 +248,154 @@ function RegisterPage() {  const [formData, setFormData] = useState({
               <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
                 <i className="fas fa-user mr-2 text-green-600"></i>
                 Personal Information
-              </h3>              {/* Full Name and Enrollment Number Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    id="full_name"
-                    name="full_name"
-                    type="text"
-                    required
-                    placeholder="Enter your full name"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    value={formData.full_name}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                </div>
+              </h3>
 
-                <div>
-                  <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Enrollment Number *
-                  </label>
-                  <input
-                    id="enrollment_no"
-                    name="enrollment_no"
-                    type="text"
-                    required
-                    placeholder="e.g., 21BECE40015"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                      validationErrors.enrollment_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                    }`}
-                    value={formData.enrollment_no}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  {validationErrors.enrollment_no && (
-                    <p className="mt-1 text-sm text-red-600">
-                      <i className="fas fa-times mr-1"></i>
-                      {validationErrors.enrollment_no}
-                    </p>
-                  )}
-                  {formData.enrollment_no && !validationErrors.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no) && (
-                    <p className="mt-1 text-sm text-green-600">
-                      <i className="fas fa-check mr-1"></i>
-                      Valid format
-                    </p>
-                  )}
-                </div>
-              </div>              {/* Email and Mobile Number Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Email Address *
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="Enter your email address"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                      validationErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                    }`}
-                    value={formData.email}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  {validationErrors.email && (
-                    <p className="mt-1 text-sm text-red-600">
-                      <i className="fas fa-times mr-1"></i>
-                      {validationErrors.email}
-                    </p>
-                  )}
-                </div>
+              {/* Full Name */}
+              <div>
+                <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  id="full_name"
+                  name="full_name"
+                  type="text"
+                  required
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+              </div>
 
-                <div>
-                  <label htmlFor="mobile_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Mobile Number *
-                  </label>
-                  <input
-                    id="mobile_no"
-                    name="mobile_no"
-                    type="tel"
-                    required
-                    placeholder="10-digit mobile number"
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                      validationErrors.mobile_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                    }`}
-                    value={formData.mobile_no}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  {validationErrors.mobile_no && (
-                    <p className="mt-1 text-sm text-red-600">
-                      <i className="fas fa-times mr-1"></i>
-                      {validationErrors.mobile_no}
-                    </p>
-                  )}
-                </div>
-              </div>              {/* Gender and Date of Birth Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Gender *
-                  </label>
-                  <select
-                    id="gender"
-                    name="gender"
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    value={formData.gender}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  >
-                    <option value="">Select your gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
-                  </select>
-                </div>
+              {/* Enrollment Number */}
+              <div>
+                <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Enrollment Number *
+                </label>
+                <input
+                  id="enrollment_no"
+                  name="enrollment_no"
+                  type="text"
+                  required
+                  placeholder="e.g., 21BECE40015"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    validationErrors.enrollment_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                  }`}
+                  value={formData.enrollment_no}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                {validationErrors.enrollment_no && (
+                  <p className="mt-1 text-sm text-red-600">
+                    <i className="fas fa-times mr-1"></i>
+                    {validationErrors.enrollment_no}
+                  </p>
+                )}
+                {formData.enrollment_no && !validationErrors.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no) && (
+                  <p className="mt-1 text-sm text-green-600">
+                    <i className="fas fa-check mr-1"></i>
+                    Valid format
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <label htmlFor="date_of_birth" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Date of Birth *
-                  </label>
-                  <input
-                    id="date_of_birth"
-                    name="date_of_birth"
-                    type="date"
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                      validationErrors.date_of_birth ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                    }`}
-                    value={formData.date_of_birth}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  />
-                  {validationErrors.date_of_birth && (
-                    <p className="mt-1 text-sm text-red-600">
-                      <i className="fas fa-times mr-1"></i>
-                      {validationErrors.date_of_birth}
-                    </p>
-                  )}
-                </div>
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Email Address *
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="Enter your email address"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    validationErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                  }`}
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                {validationErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">
+                    <i className="fas fa-times mr-1"></i>
+                    {validationErrors.email}
+                  </p>
+                )}
+              </div>
+
+              {/* Mobile Number */}
+              <div>
+                <label htmlFor="mobile_no" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Mobile Number *
+                </label>
+                <input
+                  id="mobile_no"
+                  name="mobile_no"
+                  type="tel"
+                  required
+                  placeholder="10-digit mobile number"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    validationErrors.mobile_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                  }`}
+                  value={formData.mobile_no}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                {validationErrors.mobile_no && (
+                  <p className="mt-1 text-sm text-red-600">
+                    <i className="fas fa-times mr-1"></i>
+                    {validationErrors.mobile_no}
+                  </p>
+                )}
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Gender *
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  required
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                >
+                  <option value="">Select your gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Date of Birth */}
+              <div>
+                <label htmlFor="date_of_birth" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Date of Birth *
+                </label>
+                <input
+                  id="date_of_birth"
+                  name="date_of_birth"
+                  type="date"
+                  required
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                    validationErrors.date_of_birth ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                  }`}
+                  value={formData.date_of_birth}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                {validationErrors.date_of_birth && (
+                  <p className="mt-1 text-sm text-red-600">
+                    <i className="fas fa-times mr-1"></i>
+                    {validationErrors.date_of_birth}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -416,168 +404,96 @@ function RegisterPage() {  const [formData, setFormData] = useState({
               <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
                 <i className="fas fa-shield-alt mr-2 text-green-600"></i>
                 Security Information
-              </h3>              {/* Password and Confirm Password Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword.password ? "text" : "password"}
-                      required
-                      placeholder="Create a strong password"
-                      className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      value={formData.password}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePassword('password')}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <i className={`fas ${showPassword.password ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>                  {/* Password Requirements - Only show after user starts typing */}
-                  {formData.password && (
-                    <div className="mt-2 space-y-1">
-                      {!passwordStrength.length && (
-                        <div className="text-sm flex items-center text-red-400">
-                          <i className="fas fa-times mr-2"></i>
-                          At least 6 characters
-                        </div>
-                      )}
-                      {!passwordStrength.specialChar && (
-                        <div className="text-sm flex items-center text-red-400">
-                          <i className="fas fa-times mr-2"></i>
-                          At least one special character (!@#$%^&*)
-                        </div>
-                      )}
-                      {!passwordStrength.number && (
-                        <div className="text-sm flex items-center text-red-400">
-                          <i className="fas fa-times mr-2"></i>
-                          At least one number
-                        </div>
-                      )}
-                      {passwordStrength.length && passwordStrength.specialChar && passwordStrength.number && (
-                        <div className="text-sm flex items-center text-green-600">
-                          <i className="fas fa-check mr-2"></i>
-                          Password meets all requirements
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              </h3>
 
-                <div>
-                  <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Confirm Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="confirm_password"
-                      name="confirm_password"
-                      type={showPassword.confirm_password ? "text" : "password"}
-                      required
-                      placeholder="Re-enter your password"
-                      className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                        validationErrors.confirm_password ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                      }`}
-                      value={formData.confirm_password}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => togglePassword('confirm_password')}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <i className={`fas ${showPassword.confirm_password ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Password *
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword.password ? "text" : "password"}
+                    required
+                    placeholder="Create a strong password"
+                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePassword('password')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  >
+                    <i className={`fas ${showPassword.password ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
+                
+                {/* Password Requirements */}
+                <div className="mt-2 space-y-1">
+                  <div className={`text-sm flex items-center ${passwordStrength.length ? 'text-green-600' : 'text-red-400'}`}>
+                    <i className={`fas ${passwordStrength.length ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                    At least 6 characters
                   </div>
-                    {formData.confirm_password && (
-                    <div className="mt-2">
-                      {formData.password !== formData.confirm_password ? (
-                        <p className="text-sm text-red-600">
-                          <i className="fas fa-times mr-2"></i>
-                          Passwords do not match
-                        </p>
-                      ) : (
-                        <p className="text-sm text-green-600">
-                          <i className="fas fa-check mr-2"></i>
-                          Passwords match!
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <div className={`text-sm flex items-center ${passwordStrength.specialChar ? 'text-green-600' : 'text-red-400'}`}>
+                    <i className={`fas ${passwordStrength.specialChar ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                    At least one special character (!@#$%^&*)
+                  </div>
+                  <div className={`text-sm flex items-center ${passwordStrength.number ? 'text-green-600' : 'text-red-400'}`}>
+                    <i className={`fas ${passwordStrength.number ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                    At least one number
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Academic Information */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                <i className="fas fa-graduation-cap mr-2 text-green-600"></i>
-                Academic Information
-              </h3>              {/* Department and Current Semester Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Department *
-                  </label>
-                  <select
-                    id="department"
-                    name="department"
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800 mb-2">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirm_password"
+                    name="confirm_password"
+                    type={showPassword.confirm_password ? "text" : "password"}
                     required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    value={formData.department}
+                    placeholder="Re-enter your password"
+                    className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      validationErrors.confirm_password ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                    }`}
+                    value={formData.confirm_password}
                     onChange={handleChange}
                     disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePassword('confirm_password')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                   >
-                    <option value="">Select your department</option>
-                    <option value="Computer Science and Engineering">Computer Science and Engineering</option>
-                    <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-                    <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
-                    <option value="Mechanical Engineering">Mechanical Engineering</option>
-                    <option value="Civil Engineering">Civil Engineering</option>
-                    <option value="Chemical Engineering">Chemical Engineering</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Biotechnology">Biotechnology</option>
-                    <option value="Aeronautical Engineering">Aeronautical Engineering</option>
-                    <option value="Automobile Engineering">Automobile Engineering</option>
-                    <option value="Master of Business Administration">Master of Business Administration</option>
-                    <option value="Master of Computer Applications">Master of Computer Applications</option>
-                    <option value="Other">Other</option>
-                  </select>
+                    <i className={`fas ${showPassword.confirm_password ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
                 </div>
-
-                <div>
-                  <label htmlFor="semester" className="block text-sm font-semibold text-gray-800 mb-2">
-                    Current Semester *
-                  </label>
-                  <select
-                    id="semester"
-                    name="semester"
-                    required
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    value={formData.semester}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                  >
-                    <option value="">Select your current semester</option>
-                    <option value="1">1st Semester</option>
-                    <option value="2">2nd Semester</option>
-                    <option value="3">3rd Semester</option>
-                    <option value="4">4th Semester</option>
-                    <option value="5">5th Semester</option>
-                    <option value="6">6th Semester</option>
-                    <option value="7">7th Semester</option>
-                    <option value="8">8th Semester</option>
-                  </select>
-                </div>
+                
+                {formData.confirm_password && (
+                  <div className="mt-2">
+                    {validationErrors.confirm_password ? (
+                      <p className="text-sm text-red-600">
+                        <i className="fas fa-times mr-2"></i>
+                        {validationErrors.confirm_password}
+                      </p>
+                    ) : formData.password === formData.confirm_password && formData.confirm_password ? (
+                      <p className="text-sm text-green-600">
+                        <i className="fas fa-check mr-2"></i>
+                        Passwords match!
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500">Re-enter your password to confirm</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

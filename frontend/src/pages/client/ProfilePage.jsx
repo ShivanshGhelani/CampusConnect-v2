@@ -7,7 +7,8 @@ import api from '../../api/axios';
 function ProfilePage() {
   const { user } = useAuth();
   const [eventHistory, setEventHistory] = useState([]);
-  const [profileData, setProfileData] = useState(null); const [dashboardStats, setDashboardStats] = useState({
+  const [profileData, setProfileData] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState({
     total_registrations: 0,
     attendance_marked: 0,
     feedback_submitted: 0,
@@ -18,6 +19,7 @@ function ProfilePage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentEventId, setCurrentEventId] = useState(null);
   const [currentEventName, setCurrentEventName] = useState('');
+
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -59,7 +61,7 @@ function ProfilePage() {
     event_id: item.event_id,
     event: {
       event_name: item.event_name,
-      organizing_department: item.category || 'N/A', // Use category as organizing department fallback
+      organizing_department: item.category || 'N/A',
       start_datetime: item.event_date,
       venue: item.venue,
       status: item.status,
@@ -68,7 +70,8 @@ function ProfilePage() {
     registration: item.registration_data,
     participation_status: item.participation_status
   }));
-  // Function to get user initials matching the backend template exactly
+
+  // Function to get user initials
   const getInitials = (userData) => {
     const currentUser = userData || profileData || user;
     if (currentUser?.full_name) {
@@ -86,7 +89,6 @@ function ProfilePage() {
   // Function to get academic year from semester
   const getAcademicYear = (semester) => {
     const currentUser = profileData || user;
-    // Check multiple possible field names
     const semesterValue = semester || currentUser?.semester || currentUser?.current_semester || currentUser?.sem || currentUser?.semester_number;
     if (!semesterValue || semesterValue === 'N/A' || semesterValue === null || semesterValue === undefined) return 'N/A';
     const semInt = parseInt(semesterValue);
@@ -97,12 +99,21 @@ function ProfilePage() {
   // Function to format semester display
   const formatSemester = (semester) => {
     const currentUser = profileData || user;
-    // Check multiple possible field names
     const semesterValue = semester || currentUser?.semester || currentUser?.current_semester || currentUser?.sem || currentUser?.semester_number;
     if (!semesterValue || semesterValue === 'N/A' || semesterValue === null || semesterValue === undefined) return 'N/A';
     const semInt = parseInt(semesterValue);
     if (isNaN(semInt) || semInt < 1 || semInt > 8) return 'N/A';
     return semInt.toString();
+  };
+
+  // Function to get ordinal suffix (1st, 2nd, 3rd, 4th)
+  const getSuffix = (num) => {
+    if (num === 'N/A') return '';
+    const number = parseInt(num);
+    if (isNaN(number)) return '';
+    const suffixes = ['th', 'st', 'nd', 'rd'];
+    const value = number % 100;
+    return suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0];
   };
 
   // Function to format member since date
@@ -121,376 +132,386 @@ function ProfilePage() {
     setCurrentEventName(eventName);
     setShowCancelModal(true);
   };
+
   const closeCancelModal = () => {
     setShowCancelModal(false);
     setCurrentEventId(null);
     setCurrentEventName('');
   };
-
-  return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-seafoam-50 to-sky-100">
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex items-center space-x-3 text-seafoam-600">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-seafoam-600"></div>
-              <span className="text-lg font-medium">Loading your profile...</span>
+  // Status badge component
+  const StatusBadge = ({ status }) => {
+    const statusConfig = {
+      upcoming: { 
+        bg: 'bg-gradient-to-r from-blue-500 to-blue-600', 
+        text: 'text-white', 
+        label: 'Upcoming',
+        icon: '⏳'
+      },
+      ongoing: { 
+        bg: 'bg-gradient-to-r from-emerald-500 to-emerald-600', 
+        text: 'text-white', 
+        label: 'Live',
+        icon: '🔴'
+      },
+      completed: { 
+        bg: 'bg-gradient-to-r from-slate-500 to-slate-600', 
+        text: 'text-white', 
+        label: 'Completed',
+        icon: '✅'
+      }
+    };
+    
+    const config = statusConfig[status] || statusConfig.upcoming;
+    
+    return (
+      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${config.bg} ${config.text}`}>
+        <span>{config.icon}</span>
+        {config.label}
+      </span>
+    );
+  };  // Event card component
+  const EventCard = ({ reg, showActions = true }) => (
+    <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-4 mb-4">
+            {/* Event Icon */}
+            <div className="w-12 h-12 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-900 text-lg mb-2 truncate group-hover:text-seafoam-700 transition-colors duration-200">
+                {reg.event.event_name}
+              </h3>
+              <p className="text-slate-600 text-sm mb-3 font-medium">
+                {reg.event.organizing_department}
+              </p>
             </div>
           </div>
-        )}
-
-        {/* Main Content - Only show when not loading */}
-        {!loading && (
-          <>            {/* Header */}
-            <div className="bg-blue">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-6">
-                    {/* Profile with User Initials */}                    
-                    <div className="relative">                      
-                      <div className="w-27 h-27 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-4xl font-bold text-white">
-                        {getInitials()}
-                      </span>
-                    </div>
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                        <i className="fas fa-check text-white text-xs"></i>
-                      </div>
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-cool-gray-900">
-                        {(profileData?.full_name || user?.full_name || user?.enrollment_no || 'Guest User')}
-                      </h1>
-                      <p className="text-cool-gray-600 text-lg mt-1">
-                        {(profileData?.department || user?.department || "Department not specified")}
-                      </p>                      
-                      <div className="flex items-center space-x-4 mt-2">
-                        <div className="flex items-center">
-                          <span className="text-sm text-cool-gray-500 font-medium">Semester:</span>
-                          <span className="text-cool-gray-700 font-semibold ml-1">{formatSemester()}</span>
-                        </div>
-                        <div className="w-px h-4 bg-cool-gray-300"></div>
-                        <div className="flex items-center">
-                          <span className="text-sm text-cool-gray-500 font-medium">Year:</span>
-                          <span className="text-cool-gray-700 font-semibold ml-1">{getAcademicYear()}</span>
-                        </div>
-                        <div className="w-px h-4 bg-cool-gray-300"></div>
-                        <div className="flex items-center">
-                          <span className="text-sm text-cool-gray-500 font-medium">Member since:</span>
-                          <span className="text-cool-gray-700 font-semibold ml-1">
-                            {formatMemberSince(profileData?.profile_created_at || user?.created_at)}
-                          </span>
-                        </div>
-                      </div>                    </div>                  </div>
-                  
-                  {/* Edit Profile Button */}
-                  <div className="flex items-center">
-                    <Link
-                      to="/client/profile/edit"
-                      className="inline-flex items-center px-4 py-2 bg-seafoam-500 text-white rounded-lg hover:bg-seafoam-600 transition-colors font-medium text-sm shadow-md hover:shadow-lg"
-                    >
-                      <i className="fas fa-edit mr-2"></i>
-                      Edit Profile
-                    </Link>
-                  </div>
-                </div>
-              </div>            </div>            {/* Event Participation Stats - Horizontal Row */}
-            <div className="shadow-sm">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-cool-gray-900">Event Participation</h3><div className="flex items-center space-x-12">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-seafoam-600">{dashboardStats.total_registrations || 0}</div>
-                      <div className="text-sm text-cool-gray-600 font-medium">Total Events</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-green-600">{registrations.filter(reg => reg.event?.status === 'completed').length}</div>
-                      <div className="text-sm text-cool-gray-600 font-medium">Completed</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-orange-600">{registrations.filter(reg => reg.event?.status === 'upcoming').length}</div>
-                      <div className="text-sm text-cool-gray-600 font-medium">Upcoming</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xl font-bold text-purple-600">{registrations.filter(reg => reg.event?.status === 'ongoing').length}</div>
-                      <div className="text-sm text-cool-gray-600 font-medium">Live</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          
+          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+            <div className="flex items-center gap-2 bg-slate-50 rounded-full px-3 py-1.5">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="font-medium">
+                {reg.event.start_datetime ? new Date(reg.event.start_datetime).toLocaleDateString() : 'TBD'}
+              </span>
             </div>
-
-            {/* Main Content */}
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">              {/* Content Grid */}
-              <div className="grid grid-cols-1 gap-8">
-                {/* Events List - Full Width */}
-                <div className="w-full">
-                  <div className="bg-[#f9f9f9] rounded-lg shadow-lg border border-seafoam-300 p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-cool-gray-900">My Events</h3>
-                      {registrations.length > 3 ? (
-                        <button
-                          onClick={openEventsModal}
-                          className="text-seafoam-600 hover:text-seafoam-700 text-sm font-medium transition-colors"
-                        >
-                          View All ({registrations.length}) →
-                        </button>
-                      ) : (
-                        <Link
-                          to="/client/events"
-                          className="text-seafoam-600 hover:text-seafoam-700 text-sm font-medium transition-colors"
-                        >
-                          Browse Events →
-                        </Link>
-                      )}
-                    </div>
-
-                    {registrations.length > 0 ? (
-                      <div className="space-y-4">                          {registrations.slice(0, 3).map((reg, index) => (
-                        <div
-                          key={index}
-                          className="border border-seafoam-200 rounded-lg p-4 bg-gradient-to-r from-seafoam-25 to-sky-25 hover:from-seafoam-50 hover:to-sky-50 hover:shadow-md transition-all duration-300"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-cool-gray-900">{reg.event.event_name}</h4>
-                              <p className="text-sm text-cool-gray-600 mt-1">{reg.event.organizing_department}</p>
-                              <div className="flex items-center text-sm text-cool-gray-500 mt-2">
-                                <i className="fas fa-calendar-alt text-seafoam-500 mr-2"></i>
-                                {reg.event.start_datetime ? new Date(reg.event.start_datetime).toLocaleDateString() : 'TBD'}
-                                <i className="fas fa-map-marker-alt text-seafoam-500 ml-4 mr-2"></i>
-                                {reg.event.venue}
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              {reg.event.status === "upcoming" && (
-                                <span className="px-3 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-full">Upcoming</span>
-                              )}
-                              {reg.event.status === "ongoing" && (
-                                <span className="px-3 py-1 text-xs font-medium bg-mint-100 text-mint-800 rounded-full">Live Now</span>
-                              )}
-                              {reg.event.status === "completed" && (
-                                <span className="px-3 py-1 text-xs font-medium bg-cool-gray-100 text-cool-gray-800 rounded-full">Completed</span>
-                              )}
-                              <div className="flex flex-col space-y-2 mt-2">
-                                <Link
-                                  to={`/client/events/${reg.event_id}`}
-                                  className="inline-flex items-center px-3 py-1 bg-seafoam-100 text-seafoam-700 rounded-md hover:bg-seafoam-200 transition-colors font-medium text-sm"
-                                >
-                                  <i className="fas fa-eye mr-1"></i>
-                                  View Details
-                                </Link>
-
-                                {/* Registration Management Buttons */}
-                                {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
-                                  <>
-                                    {reg.registration?.registration_type === "team_leader" && (
-                                      <>
-                                        <Link
-                                          to={`/client/events/${reg.event_id}/manage-team`}
-                                          className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium text-sm"
-                                        >
-                                          <i className="fas fa-users mr-1"></i>
-                                          Manage Team
-                                        </Link>
-                                        <button
-                                          onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                                          className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors font-medium text-sm"
-                                        >
-                                          <i className="fas fa-times mr-1"></i>
-                                          Cancel Registration
-                                        </button>
-                                      </>
-                                    )}
-
-                                    {reg.registration?.registration_type === "individual" && (
-                                      <button
-                                        onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                                        className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors font-medium text-sm"
-                                      >
-                                        <i className="fas fa-times mr-1"></i>
-                                        Cancel Registration
-                                      </button>
-                                    )}
-
-                                    {reg.registration?.registration_type === "team_participant" && (
-                                      <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">
-                                        <i className="fas fa-info-circle mr-1"></i>
-                                        Contact team leader to cancel
-                                      </span>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      </div>
-                    ) : (<div className="text-center py-12">
-                      <div className="text-6xl text-seafoam-300 mb-4">
-                        <i className="fas fa-clipboard-list"></i>
-                      </div>
-                      <h4 className="text-lg font-medium text-cool-gray-900 mb-2">No Events Yet</h4>
-                      <p className="text-cool-gray-600 mb-6">
-                        Start exploring campus events and register for activities you're interested in.
-                      </p>
-                      <Link
-                        to="/client/events"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-seafoam-500 to-sky-600 text-white rounded-lg hover:from-seafoam-600 hover:to-sky-700 transition-all duration-300 shadow-md hover:shadow-lg"
-                      >
-                        <i className="fas fa-compass mr-2"></i>
-                        Explore Events
-                      </Link>
-                    </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* All Events Modal */}
-      {showEventsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-          <div className="bg-white rounded-lg max-w-4xl mx-4 shadow-xl max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">All My Events ({registrations.length})</h3>
-              <button
-                onClick={closeEventsModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {registrations.length > 0 && (
-                <div className="space-y-4">                  {registrations.map((reg, index) => (
-                  <div
-                    key={index}
-                    className="border border-seafoam-200 rounded-lg p-4 bg-gradient-to-r from-seafoam-25 to-sky-25 hover:from-seafoam-50 hover:to-sky-50 hover:shadow-md transition-all duration-300"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-cool-gray-900">{reg.event.event_name}</h4>
-                        <p className="text-sm text-cool-gray-600 mt-1">{reg.event.organizing_department}</p>
-                        <div className="flex items-center text-sm text-cool-gray-500 mt-2">
-                          <i className="fas fa-calendar-alt text-seafoam-500 mr-2"></i>
-                          {reg.event.start_datetime ? new Date(reg.event.start_datetime).toLocaleDateString() : 'TBD'}
-                          <i className="fas fa-map-marker-alt text-seafoam-500 ml-4 mr-2"></i>
-                          {reg.event.venue}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        {reg.event.status === "upcoming" && (
-                          <span className="px-3 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-full">Upcoming</span>
-                        )}
-                        {reg.event.status === "ongoing" && (
-                          <span className="px-3 py-1 text-xs font-medium bg-mint-100 text-mint-800 rounded-full">Live Now</span>
-                        )}
-                        {reg.event.status === "completed" && (
-                          <span className="px-3 py-1 text-xs font-medium bg-cool-gray-100 text-cool-gray-800 rounded-full">Completed</span>
-                        )}                          <div className="flex flex-col space-y-2 mt-2">
-                          <Link
-                            to={`/client/events/${reg.event_id}`}
-                            className="inline-flex items-center px-3 py-1 bg-seafoam-100 text-seafoam-700 rounded-md hover:bg-seafoam-200 transition-colors font-medium text-sm"
-                          >
-                            <i className="fas fa-eye mr-1"></i>
-                            View Details
-                          </Link>
-
-                          {/* Registration Management Buttons */}
-                          {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
-                            <>
-                              {reg.registration?.registration_type === "team_leader" && (
-                                <>
-                                  <Link
-                                    to={`/client/events/${reg.event_id}/manage-team`}
-                                    className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium text-sm"
-                                  >
-                                    <i className="fas fa-users mr-1"></i>
-                                    Manage Team
-                                  </Link>
-                                  <button
-                                    onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                                    className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors font-medium text-sm"
-                                  >
-                                    <i className="fas fa-times mr-1"></i>
-                                    Cancel Registration
-                                  </button>
-                                </>
-                              )}
-
-                              {reg.registration?.registration_type === "individual" && (
-                                <button
-                                  onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                                  className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors font-medium text-sm"
-                                >
-                                  <i className="fas fa-times mr-1"></i>
-                                  Cancel Registration
-                                </button>
-                              )}
-
-                              {reg.registration?.registration_type === "team_participant" && (
-                                <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">
-                                  <i className="fas fa-info-circle mr-1"></i>
-                                  Contact team leader to cancel
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end p-6 border-t border-gray-200">
-              <button
-                onClick={closeEventsModal}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                Close
-              </button>
+            <div className="flex items-center gap-2 bg-slate-50 rounded-full px-3 py-1.5">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="font-medium">{reg.event.venue}</span>
             </div>
           </div>
         </div>
-      )}
+        <StatusBadge status={reg.event.status} />
+      </div>
 
-      {/* Cancel Registration Confirmation Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <i className="fas fa-exclamation-triangle text-yellow-500 text-2xl mr-3"></i>
-              <h3 className="text-lg font-semibold text-gray-900">Cancel Registration</h3>
+      {showActions && (
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <Link
+            to={`/client/events/${reg.event_id}`}
+            className="inline-flex items-center text-sm font-semibold text-seafoam-600 hover:text-seafoam-700 bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200 group"
+          >
+            View Details
+            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+
+          {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
+            <div className="flex items-center gap-2">
+              {reg.registration?.registration_type === "team_leader" && (
+                <>
+                  <Link
+                    to={`/client/events/${reg.event_id}/manage-team`}
+                    className="text-xs px-3 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-semibold transition-colors duration-200"
+                  >
+                    Manage Team
+                  </Link>
+                  <button
+                    onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
+                    className="text-xs px-3 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+
+              {reg.registration?.registration_type === "individual" && (
+                <button
+                  onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
+                  className="text-xs px-3 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              )}
+
+              {reg.registration?.registration_type === "team_participant" && (
+                <span className="text-xs px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-medium">
+                  Contact team leader
+                </span>
+              )}
             </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to cancel your registration for "{currentEventName}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={closeCancelModal}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Keep Registration
-              </button>
-              <button
-                onClick={() => {
-                  // Handle cancel registration logic here
-                  closeCancelModal();
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Yes, Cancel Registration
-              </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+  return (
+    <ClientLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 border-2 border-seafoam-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-slate-600 font-medium">Loading profile...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        {!loading && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">            {/* Enhanced Profile Header */}
+            <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl shadow-xl overflow-hidden mb-8">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-300 rounded-full -translate-y-48 translate-x-48"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400 rounded-full translate-y-32 -translate-x-32"></div>
+              </div>
+              
+              <div className="relative px-8 py-12">                
+                <div className="flex flex-col lg:flex-row lg:items-baseline lg:justify-between gap-8">
+                  <div className="flex flex-col gap-6">
+                    {/* Profile Info with Avatar */}
+                    <div className="flex items-center gap-4 text-white">
+                      {/* Round Avatar */}
+                      <div className="relative group flex-shrink-0">
+                        <div className="w-30 h-30 bg-white/90 rounded-full flex items-center justify-center shadow-lg border-2 border-white group-hover:scale-105 transition-transform duration-300">
+                          <span className="text-4xl font-bold text-slate-800">
+                            {getInitials()}
+                          </span>
+                        </div>
+                        <div className="absolute bottom-0 right-2 w-7 h-7 bg-emerald-500 rounded-full border-3 border-white flex items-center justify-center shadow-lg">
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                        {/* Name and Department */}
+                      <div className='flex flex-col gap-1 items-baseline mb-0'>
+                        <h1 className="text-2xl lg:text-3xl font-bold mb-1">
+                          {(profileData?.full_name || user?.full_name || user?.enrollment_no || 'Guest User')}
+                        </h1>
+                        <p className="text-blue-100 text-lg lg:text-xl font-medium">
+                          {(profileData?.department || user?.department || "Department not specified")}
+                        </p>
+                        <p className="text-blue-200 text-sm font-medium mt-1">
+                          Member since {formatMemberSince(profileData?.profile_created_at || user?.created_at)}
+                        </p>
+                      </div>
+                    </div>                    {/* Action Buttons in Profile Header */}
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                      <Link
+                        to="/client/profile/edit"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white/90 text-blue-600 rounded-xl hover:bg-white transition-all duration-200 font-medium text-sm shadow-md hover:shadow-lg group border border-white"
+                      >
+                        <svg className="w-4 h-4 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit Profile
+                      </Link>
+                      <Link
+                        to="/client/certificates"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all duration-200 font-medium text-sm shadow-md hover:shadow-lg group"
+                      >
+                        <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        View Certificates
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Combined Event Stats Card */}
+                  <div className="bg-white/90 rounded-2xl p-6 border-2 border-white shadow-lg">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Event Stats
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                          {dashboardStats.total_registrations || 0}
+                        </div>
+                        <div className="text-xs text-slate-600">Total</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-emerald-600 mb-1">
+                          {registrations.filter(reg => reg.event?.status === 'completed').length}
+                        </div>
+                        <div className="text-xs text-slate-600">Completed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600 mb-1">
+                          {registrations.filter(reg => reg.event?.status === 'upcoming').length}
+                        </div>
+                        <div className="text-xs text-slate-600">Upcoming</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600 mb-1">
+                          {registrations.filter(reg => reg.event?.status === 'ongoing').length}
+                        </div>
+                        <div className="text-xs text-slate-600">Live</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>            {/* Enhanced Events Section */}
+            <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+              {/* Section Header */}
+              <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900">My Events</h2>
+                  </div>
+                  {registrations.length > 3 ? (
+                    <button
+                      onClick={openEventsModal}
+                      className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200"
+                    >
+                      View All ({registrations.length})
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <Link
+                      to="/client/events"
+                      className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200"
+                    >
+                      Browse Events
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* Events List */}
+              <div className="p-8">
+                {registrations.length > 0 ? (
+                  <div className="grid gap-6">
+                    {registrations.slice(0, 3).map((reg, index) => (
+                      <EventCard key={index} reg={reg} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center">
+                      <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-3">No Events Yet</h3>
+                    <p className="text-slate-600 mb-8 max-w-md mx-auto text-lg">
+                      Ready to dive into campus life? Discover amazing events and start building your journey!
+                    </p>
+                    <Link
+                      to="/client/events"
+                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-seafoam-600 to-blue-600 text-white rounded-xl hover:from-seafoam-700 hover:to-blue-700 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl group"
+                    >
+                      <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      Explore Events
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>      {/* All Events Modal */}      {showEventsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
+            {/* Modal Header */}
+            <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    All My Events ({registrations.length})
+                  </h3>
+                </div>
+                <button
+                  onClick={closeEventsModal}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
+                >
+                  <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>            {/* Modal Content */}
+            <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
+              <div className="grid gap-6">
+                {registrations.map((reg, index) => (
+                  <EventCard key={index} reg={reg} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}      {/* Cancel Registration Modal */}      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg">
+                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Cancel Registration</h3>
+              <p className="text-slate-600 mb-8 leading-relaxed">
+                Are you sure you want to cancel your registration for <strong className="text-slate-900">"{currentEventName}"</strong>? This action cannot be undone.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={closeCancelModal}
+                  className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
+                >
+                  Keep Registration
+                </button>
+                <button
+                  onClick={() => {
+                    // Handle cancel registration logic here
+                    closeCancelModal();
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                >
+                  Yes, Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

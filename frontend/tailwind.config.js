@@ -56,8 +56,7 @@ module.exports = {
           700: '#0369a1',
           800: '#075985',
           900: '#0c4a6e',
-        },
-      },
+        },      },
       fontFamily: {
         'sans': ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
       },
@@ -71,6 +70,23 @@ module.exports = {
         '80': '80',
         '90': '90',
         '100': '100',
+      },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'float-delay': 'float 6s ease-in-out infinite 3s',
+        'reverse': 'reverse 3s linear infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0px) translateX(0px)' },
+          '25%': { transform: 'translateY(-20px) translateX(10px)' },
+          '50%': { transform: 'translateY(-10px) translateX(-10px)' },
+          '75%': { transform: 'translateY(-30px) translateX(5px)' },
+        },
+        reverse: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(-360deg)' },
+        },
       }
     },
   },
