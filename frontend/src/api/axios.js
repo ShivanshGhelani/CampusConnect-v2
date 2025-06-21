@@ -1,13 +1,37 @@
 import axios from 'axios';
 
+// Function to get the API base URL
+const getApiBaseUrl = () => {
+  // Check for environment variable first
+  const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+  
+  // If no env var, derive from current location for external access
+  const currentHost = window.location.hostname;
+  const currentProtocol = window.location.protocol;
+  
+  // If accessing via localhost, use localhost
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  
+  // For external hosts (ngrok, --host, etc.), assume API is on port 8000
+  return `${currentProtocol}//${currentHost}:8000`;
+};
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8000/',
+  baseURL: getApiBaseUrl(),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Log the API base URL for debugging
+console.log('API Base URL:', getApiBaseUrl());
 
 // Request interceptor
 api.interceptors.request.use(

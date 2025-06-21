@@ -662,47 +662,207 @@ function EventDetail() {
         <div className="container mx-auto max-w-5xl px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column */}
-            <div className="flex flex-col space-y-8">
-              {/* Organizer Details */}
+            <div className="flex flex-col space-y-8">              
+              {/* Event Organizers */}
               <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-purple-100 p-6">
                 <div className="flex items-center mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white mr-3">
-                    <i className="fas fa-users text-lg"></i>
+                  <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                      <path d="M6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                    </svg>
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">Event Organizers</h2>
+                  <h2 className="text-xl font-bold text-gray-800">Event Organizers</h2>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-building text-purple-600"></i>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">
-                        {event.organizing_department || 'Campus Connect'}
-                      </div>
-                      <div className="text-sm text-gray-500">Organizing Department</div>
-                    </div>
-                  </div>
-                  {event.coordinator_name && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-user text-purple-600"></i>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{event.coordinator_name}</div>
-                        <div className="text-sm text-gray-500">Event Coordinator</div>
-                      </div>
+                  {/* Organizing Department */}
+                  {event.organizing_department && (
+                    <div className="text-sm font-medium text-gray-800 mb-3">
+                      {event.organizing_department}
                     </div>
                   )}
-                  {event.contact_email && (
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-envelope text-purple-600"></i>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{event.contact_email}</div>
-                        <div className="text-sm text-gray-500">Contact Email</div>
-                      </div>
+
+                  {/* Organizing Team */}
+                  {(event.organizers || event.organizer_name || event.contacts) && (
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-gray-800 mb-3">Organizing Team</div>
+
+                      {/* Display organizers from array */}
+                      {event.organizers && event.organizers.map((organizer, index) => {
+                        if (!organizer) return null;
+                        
+                        const organizerParts = organizer.split(' - ');
+                        const organizerName = organizerParts[0] || organizer;
+                        const organizerTitle = organizerParts[1] || '';
+                        const organizerInitial = organizerName.charAt(0).toUpperCase();
+
+                        return (
+                          <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                            <div className="flex items-start space-x-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {organizerInitial}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-800 mb-1">{organizer}</div>
+                                
+                                {/* Contact Details */}
+                                {event.contacts && event.contacts.length > 0 && event.contacts.map((contact, contactIndex) => {
+                                  if (!contact || !contact.name || !contact.contact) return null;
+                                  
+                                  const contactName = contact.name.toLowerCase();
+                                  const organizerNameLower = organizerName.toLowerCase();
+                                  
+                                  if (contactName === organizerNameLower || 
+                                      contactName.includes(organizerNameLower) || 
+                                      organizerNameLower.includes(contactName)) {
+                                    
+                                    const isEmail = contact.contact.includes('@');
+                                    const isPhone = contact.contact.startsWith('+') || 
+                                                   contact.contact.replace(/[-\s]/g, '').match(/^\d+$/);
+                                    
+                                    return (
+                                      <div key={contactIndex} className="mt-2 space-y-1">
+                                        <div className="flex items-center">
+                                          {isEmail ? (
+                                            <>
+                                              <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                              </svg>
+                                              <a href={`mailto:${contact.contact}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                                {contact.contact}
+                                              </a>
+                                            </>
+                                          ) : isPhone ? (
+                                            <>
+                                              <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                              </svg>
+                                              <a href={`tel:${contact.contact}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                                {contact.contact}
+                                              </a>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                              </svg>
+                                              <span className="text-sm text-gray-600">{contact.contact}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Fallback for single organizer */}
+                      {!event.organizers && event.organizer_name && (
+                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              {event.organizer_name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-800 mb-1">{event.organizer_name}</div>
+                              
+                              {(event.organizer_email || event.organizer_phone) && (
+                                <div className="mt-2 space-y-1">
+                                  {event.organizer_email && (
+                                    <div className="flex items-center">
+                                      <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                      </svg>
+                                      <a href={`mailto:${event.organizer_email}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                        {event.organizer_email}
+                                      </a>
+                                    </div>
+                                  )}
+                                  {event.organizer_phone && (
+                                    <div className="flex items-center">
+                                      <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                      </svg>
+                                      <a href={`tel:${event.organizer_phone}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                        {event.organizer_phone}
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Fallback for contacts only */}
+                      {!event.organizers && !event.organizer_name && event.contacts && event.contacts.map((contact, index) => {
+                        if (!contact || !contact.name || !contact.contact) return null;
+                        
+                        const isEmail = contact.contact.includes('@');
+                        const isPhone = contact.contact.startsWith('+') || 
+                                       contact.contact.replace(/[-\s]/g, '').match(/^\d+$/);
+                        
+                        return (
+                          <div key={index} className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                            <div className="flex items-start space-x-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {contact.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-800 mb-1">{contact.name}</div>
+                                
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex items-center">
+                                    {isEmail ? (
+                                      <>
+                                        <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                        </svg>
+                                        <a href={`mailto:${contact.contact}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                          {contact.contact}
+                                        </a>
+                                      </>
+                                    ) : isPhone ? (
+                                      <>
+                                        <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                                        </svg>
+                                        <a href={`tel:${contact.contact}`} className="text-sm text-blue-600 hover:text-blue-800 transition-colors">
+                                          {contact.contact}
+                                        </a>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg className="w-4 h-4 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="text-sm text-gray-600">{contact.contact}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}                  {/* Fallback message if no organizers found */}
+                  {!event.organizers && !event.organizer_name && !event.contacts && (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                      </svg>
+                      <p>Organizer information will be updated soon.</p>
                     </div>
                   )}
                 </div>
