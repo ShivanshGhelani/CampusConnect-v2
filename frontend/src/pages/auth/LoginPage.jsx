@@ -15,13 +15,11 @@ function LoginPage() {
     admin_password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { login, error, clearError, isAuthenticated } = useAuth();  const navigate = useNavigate();
+  const { login, error, clearError, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  // Handle return URL from query params or state
-  const urlParams = new URLSearchParams(location.search);
-  const returnTo = urlParams.get('returnTo') || location.state?.from?.pathname;
-  const from = returnTo || (activeTab === 'admin' ? '/admin/dashboard' : '/client/dashboard');
+  const from = location.state?.from?.pathname || (activeTab === 'admin' ? '/admin/dashboard' : '/client/dashboard');
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -102,23 +100,17 @@ function LoginPage() {
         </div>
       </div>
 
-      <div className="max-w-md w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
+      <div className="max-w-md w-full mx-auto space-y-8 mt-10">
+        {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-3 mb-6">
-            <img 
-              src="/logo/ksv.png" 
-              alt="KSV Logo" 
-              className="h-16 w-16 object-contain"
-            />
-            <div className={`h-20 w-20 flex items-center justify-center rounded-full ${
-              activeTab === 'admin' 
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600' 
-                : 'bg-gradient-to-r from-green-600 to-emerald-600'
-            } shadow-lg`}>
-              <i className={`${
-                activeTab === 'admin' ? 'fas fa-user-shield' : 'fas fa-user-graduate'
-              } text-white text-3xl`}></i>
-            </div>
+          <div className={`mx-auto h-20 w-20 flex items-center justify-center rounded-full ${
+            activeTab === 'admin' 
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600' 
+              : 'bg-gradient-to-r from-green-600 to-emerald-600'
+          } shadow-lg mb-8`}>
+            <i className={`${
+              activeTab === 'admin' ? 'fas fa-user-shield' : 'fas fa-user-graduate'
+            } text-white text-3xl`}></i>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
             {activeTab === 'admin' ? 'Admin Portal' : 'Student Portal'}
@@ -347,7 +339,7 @@ function LoginPage() {
               {/* Create Account Link */}
               <div className="text-center">
                 <Link
-                  to="/auth/register"
+                  to="/client/register"
                   className="inline-flex items-center px-6 py-3 border-2 border-green-200 text-green-700 bg-green-50 rounded-lg text-sm font-semibold hover:bg-green-100 hover:border-green-300 transition-all duration-200"
                 >
                   <i className="fas fa-user-plus mr-2"></i>

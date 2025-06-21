@@ -451,16 +451,22 @@ function EventDetail() {
                           {registrationEnd.dayWithSuffix} {registrationEnd.time}
                         </span>
                       </div>
-                    )}
-
-                    <button
+                    )}                    <button
                       onClick={handleRegister}
-                      className="w-full bg-gradient-to-r from-white to-blue-50 text-blue-600 hover:from-blue-50 hover:to-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl"
+                      className="group relative w-full bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-blue-50 hover:via-blue-100 hover:to-white text-blue-700 hover:text-blue-800 font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border border-blue-200/50"
                     >
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM8 15a1 1 0 112 0v1H8v-1zm2-3a1 1 0 10-2 0v1h2v-1z" clipRule="evenodd" />
-                      </svg>
-                      Register Now
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                      
+                      <div className="relative flex items-center justify-center">
+                        <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM8 15a1 1 0 112 0v1H8v-1zm2-3a1 1 0 10-2 0v1h2v-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-lg font-extrabold tracking-wide">Register Now</span>
+                      </div>
+                      
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-300 to-blue-500 opacity-0 group-hover:opacity-15 transition-opacity duration-300 blur-xl"></div>
                     </button>
                   </div>
                 )}{event.sub_status === 'event_started' && (
@@ -470,12 +476,20 @@ function EventDetail() {
                       <p className="text-orange-100 text-sm">Mark your attendance now</p>
                     </div>                    <button
                       onClick={handleAttendance}
-                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl"
+                      className="group relative w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
                     >
-                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                      </svg>
-                      Mark Attendance
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                      
+                      <div className="relative flex items-center justify-center">
+                        <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-lg font-extrabold tracking-wide">Mark Attendance</span>
+                      </div>
+                      
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
                     </button>
                   </div>
                 )}                
@@ -484,24 +498,43 @@ function EventDetail() {
                     <div className="space-y-1">
                       <h3 className="text-xl font-bold text-white">Congratulations!</h3>
                       <p className="text-purple-100 text-sm">Your certificate is ready</p>
-                    </div>
-                    <div className="space-y-2">                      <button
+                    </div>                    <div className="space-y-3">
+                      {/* Submit Feedback Button */}
+                      <button
                         onClick={handleFeedback}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl"
+                        className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-                        </svg>
-                        Submit Feedback
+                        {/* Shine effect */}
+                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        
+                        <div className="relative flex items-center justify-center">
+                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-lg font-extrabold tracking-wide">Submit Feedback</span>
+                        </div>
+                        
+                        {/* Glow effect */}
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
                       </button>
+
+                      {/* Collect Certificate Button */}
                       <button
                         onClick={handleCertificate}
-                        className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl"
+                        className="group relative w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 hover:from-violet-700 hover:via-purple-700 hover:to-indigo-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        Collect Certificate
+                        {/* Shine effect */}
+                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        
+                        <div className="relative flex items-center justify-center">
+                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-lg font-extrabold tracking-wide">Collect Certificate</span>
+                        </div>
+                        
+                        {/* Glow effect */}
+                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
                       </button>
                     </div>
                   </div>
@@ -531,11 +564,13 @@ function EventDetail() {
                     </div>                    <button className="w-full bg-gray-400/50 text-gray-200 px-6 py-3 rounded-xl font-bold cursor-not-allowed" disabled>
                       Registration Unavailable
                     </button>
-                  </div>                )}
+                  </div>                
+                )}
               </div>
             </div>
           </div>
-        </div>        {/* Event Timeline */}
+        </div>        
+        {/* Event Timeline */}
         <div className="container mx-auto max-w-5xl px-4 py-4 mt-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white/80 rounded-2xl shadow border border-blue-100 py-6 px-2">
             <div className="flex w-full justify-between items-center relative">              {/* Registration Opens */}
@@ -552,7 +587,7 @@ function EventDetail() {
                   {registrationStart ? (
                     <>
                       {registrationStart.dayWithSuffix}
-                      {event.registration_start_time && <br />}
+                      {event.registration_start_time && <br />}-  
                       {event.registration_start_time || registrationStart.time}
                     </>
                   ) : 'TBA'}
@@ -560,7 +595,7 @@ function EventDetail() {
               </div>
 
               {/* Connecting line */}
-              <div className="hidden md:block h-1 w-6 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
 
               {/* Registration Closes */}
               <div className="flex flex-col items-center flex-1">
@@ -576,7 +611,7 @@ function EventDetail() {
                   {registrationEnd ? (
                     <>
                       {registrationEnd.dayWithSuffix}
-                      {event.registration_end_time && <br />}
+                      {event.registration_end_time && <br />}-
                       {event.registration_end_time || registrationEnd.time}
                     </>
                   ) : 'TBA'}
@@ -584,7 +619,7 @@ function EventDetail() {
               </div>
 
               {/* Connecting line */}
-              <div className="hidden md:block h-1 w-6 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
 
               {/* Event Starts */}
               <div className="flex flex-col items-center flex-1">
@@ -600,7 +635,7 @@ function EventDetail() {
                   {startDate ? (
                     <>
                       {startDate.dayWithSuffix}
-                      {event.start_time && <br />}
+                      {event.start_time && <br />}-
                       {event.start_time || startDate.time}
                     </>
                   ) : 'TBA'}
@@ -608,7 +643,7 @@ function EventDetail() {
               </div>
 
               {/* Connecting line */}
-              <div className="hidden md:block h-1 w-6 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
 
               {/* Event Ends */}
               <div className="flex flex-col items-center flex-1">
@@ -624,7 +659,7 @@ function EventDetail() {
                   {endDate ? (
                     <>
                       {endDate.dayWithSuffix}
-                      {event.end_time && <br />}
+                      {event.end_time && <br />}-
                       {event.end_time || endDate.time}
                     </>
                   ) : 'TBA'}
@@ -632,7 +667,7 @@ function EventDetail() {
               </div>
 
               {/* Connecting line */}
-              <div className="hidden md:block h-1 w-6 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
 
               {/* Certificate Available */}
               <div className="flex flex-col items-center flex-1">
