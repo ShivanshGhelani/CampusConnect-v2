@@ -11,6 +11,7 @@ import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackPage from '../pages/client/FeedbackPage';
 import CertificatePage from '../pages/client/CertificatePage';
 import ProfilePage from '../pages/client/ProfilePage';
+import EditProfile from '../pages/client/EditProfile';
 
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
@@ -80,14 +81,21 @@ function AppRoutes() {
               <CertificatePage />
             </ProtectedRoute>
           }
-        />
-        <Route
+        />        <Route
           path="/client/profile"
           element={
             <ProtectedRoute userType="student">
               <ProfilePage />
             </ProtectedRoute>
           }        />
+        <Route
+          path="/client/profile/edit"
+          element={
+            <ProtectedRoute userType="student">
+              <EditProfile />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<Navigate to="/auth/login?mode=admin" replace />} />

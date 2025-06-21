@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAvatar } from '../../hooks/useAvatar';
+import Avatar from '../common/Avatar';
 
 function ClientNavigation() {
   const { user, logout, isAuthenticated } = useAuth();
+  const { avatarUrl } = useAvatar(user);
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -162,23 +165,12 @@ function ClientNavigation() {
                   >                    <Link
                     to="/client/dashboard"
                     className="flex items-center space-x-3 rounded-lg px-4 py-2.5 transition-colors min-w-0"
-                  >
-                      <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {user?.avatar_url ? (
-                          <img
-                            src={user.avatar_url}
-                            alt="Avatar"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm">
-                            {user?.full_name ?
-                              user.full_name.split(' ').map(name => name[0]).join('').substring(0, 2).toUpperCase()
-                              : (user?.enrollment_no ? user.enrollment_no.substring(0, 2).toUpperCase() : 'GU')
-                            }
-                          </div>
-                        )}
-                      </div>
+                  >                      <Avatar 
+                        src={avatarUrl}
+                        size="md"
+                        name={user?.full_name || user?.enrollment_no}
+                        className="flex-shrink-0"
+                      />
                       <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap">
                         <div className="font-medium">
                           {user?.full_name || user?.enrollment_no || 'Guest User'}

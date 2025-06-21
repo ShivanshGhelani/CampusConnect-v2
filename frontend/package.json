@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
     "@tailwindcss/vite": "^4.1.10",
     "axios": "^1.10.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-image-crop": "^11.0.10",
     "react-router-dom": "^7.6.2",
     "tailwindcss": "^4.1.10",
     "unsplash-js": "^7.0.19"

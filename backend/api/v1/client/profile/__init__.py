@@ -20,8 +20,7 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return {"success": False, "message": "Student profile not found"}
-        
-        # Remove sensitive information
+          # Remove sensitive information
         profile_data = {
             "enrollment_no": student_data.get('enrollment_no', ''),
             "full_name": student_data.get('full_name', ''),
@@ -37,7 +36,8 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
             "emergency_contact": student_data.get('emergency_contact', ''),
             "profile_created_at": student_data.get('created_at', ''),
             "last_updated": student_data.get('updated_at', ''),
-            "is_active": student_data.get('is_active', True)
+            "is_active": student_data.get('is_active', True),
+            "avatar_url": student_data.get('avatar_url', None)
         }
         
         return {
@@ -54,34 +54,33 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
 async def update_profile(request: Request, student: Student = Depends(require_student_login)):
     """Update student profile information"""
     try:
-        data = await request.json()
-        
-        # Define updatable fields
+        data = await request.json()        # Define updatable fields
         updatable_fields = [
             'full_name', 'email', 'mobile_no', 'department', 'semester',
-            'date_of_birth', 'gender', 'address', 'parent_mobile', 'emergency_contact'
+            'date_of_birth', 'gender', 'address', 'parent_mobile', 'emergency_contact',
+            'avatar_path', 'avatar_url'
         ]
-        
-        # Build update data with only allowed fields
+          # Build update data with only allowed fields
         update_data = {}
         for field in updatable_fields:
-            if field in data and data[field] is not None:
-                update_data[field] = data[field]
+            if field in data:
+                # Allow null values for avatar_url (to remove avatar)
+                if field == 'avatar_url' or data[field] is not None:
+                    update_data[field] = data[field]
         
         if not update_data:
             return {"success": False, "message": "No valid fields provided for update"}
         
         # Add timestamp
         update_data['updated_at'] = datetime.utcnow()
-        
-        # Update database
+          # Update database
         result = await DatabaseOperations.update_one(
             "students",
             {"enrollment_no": student.enrollment_no},
             {"$set": update_data}
         )
         
-        if result.modified_count > 0:
+        if result:
             return {
                 "success": True,
                 "message": "Profile updated successfully",

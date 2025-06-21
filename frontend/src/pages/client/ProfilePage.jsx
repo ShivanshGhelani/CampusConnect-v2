@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAvatar } from '../../hooks/useAvatar';
 import ClientLayout from '../../components/client/Layout';
 import ProfileEventCard from '../../components/client/ProfileEventCard';
+import AvatarUpload from '../../components/client/AvatarUpload';
 import api from '../../api/axios';
 
 function ProfilePage() {
   const { user } = useAuth();
+  const { avatarUrl, updateAvatar, forceRefreshAvatar } = useAvatar(user);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({
@@ -16,8 +19,7 @@ function ProfilePage() {
     certificates_earned: 0
   });
   const [loading, setLoading] = useState(true);
-  const [showEventsModal, setShowEventsModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showEventsModal, setShowEventsModal] = useState(false);  const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentEventId, setCurrentEventId] = useState(null);
   const [currentEventName, setCurrentEventName] = useState('');
 
@@ -25,12 +27,11 @@ function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-
-        // Fetch complete profile data
+        setLoading(true);        // Fetch complete profile data
         const profileResponse = await api.get('/api/v1/client/profile/info');
         if (profileResponse.data.success) {
-          setProfileData(profileResponse.data.profile || {});
+          const profile = profileResponse.data.profile || {};
+          setProfileData(profile);
         }
 
         // Fetch event history
@@ -132,11 +133,12 @@ function ProfilePage() {
     setCurrentEventId(eventId);
     setCurrentEventName(eventName);
     setShowCancelModal(true);
-  };
-  const closeCancelModal = () => {
+  };  const closeCancelModal = () => {
     setShowCancelModal(false);
     setCurrentEventId(null);
     setCurrentEventName('');
+  };  const handleAvatarUpdate = (newAvatarUrl) => {
+    updateAvatar(newAvatarUrl);
   };
 
   return (
@@ -165,20 +167,12 @@ function ProfilePage() {
                     <div className="absolute inset-0 opacity-10">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-blue-300 rounded-full -translate-y-20 translate-x-20"></div>
                       <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400 rounded-full translate-y-16 -translate-x-16"></div>
-                    </div>
-                      <div className="relative flex items-center gap-6">                      {/* Avatar */}
-                      <div className="relative group flex-shrink-0">
-                        <div className="w-40 h-40 bg-white/90 rounded-full flex items-center justify-center shadow-lg border-4 border-white group-hover:scale-105 transition-transform duration-300">
-                          <span className="text-5xl font-bold text-slate-800">
-                            {getInitials()}
-                          </span>
-                        </div>
-                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
+                    </div>                      <div className="relative flex items-center gap-6">                      {/* Avatar */}
+                      <AvatarUpload 
+                        currentAvatar={avatarUrl}
+                        onAvatarUpdate={handleAvatarUpdate}
+                        className="flex-shrink-0"
+                      />
                         {/* Name and Basic Info */}
                       <div className="flex-1">                        <h1 className="text-2xl font-bold text-white mb-1">
                           {(profileData?.full_name || user?.full_name || 'Guest User')}
@@ -189,22 +183,19 @@ function ProfilePage() {
                         <p className="text-blue-200 text-sm mb-4">
                           Member since {formatMemberSince(profileData?.profile_created_at || user?.created_at)}
                         </p>
-                        
-                        {/* Quick Actions */}
+                          {/* Quick Actions */}
                         <div className="flex gap-3">
                           <Link
                             to="/client/profile/edit"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 hover:border-white/30 transition-all duration-200 text-sm font-semibold"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl border border-blue-500 hover:border-blue-600 transition-all duration-200 text-sm font-semibold"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                             Edit Profile
-                          </Link>
-
-                          <Link
+                          </Link>                          <Link
                             to="/client/certificates"
-                            className="relative inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 hover:border-white/30 transition-all duration-200 text-sm font-semibold"
+                            className="relative inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl border border-orange-500 hover:border-orange-600 transition-all duration-200 text-sm font-semibold"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -339,22 +330,22 @@ function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                </div>            {/* Right Column */}
-              <div className="flex-1 space-y-8">
+                </div>            
+              {/* Right Column */}
+              <div className="flex-1 space-y-8">                
                 {/* My Events Section */}
                   <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
                     {/* Section Header */}
-                    <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
+                    <div className="px-6 py-4 border-b border-gray-200">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center">
+                          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                           <h2 className="text-xl font-bold text-slate-900">My Events</h2>
-                        </div>
-                        {registrations.length > 2 ? (
+                        </div>                        {registrations.length > 3 ? (
                           <button
                             onClick={openEventsModal}
                             className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-3 py-1.5 rounded-xl transition-all duration-200"
@@ -379,9 +370,8 @@ function ProfilePage() {
                     </div>
 
                     {/* Events List */}
-                    <div className="p-6">
-                      {registrations.length > 0 ? (                        <div className="space-y-4">
-                          {registrations.slice(0, 2).map((reg, index) => (
+                    <div className="p-6">                      {registrations.length > 0 ? (                        <div className="space-y-4">
+                          {registrations.slice(0, 3).map((reg, index) => (
                             <ProfileEventCard 
                               key={index} 
                               reg={reg} 
