@@ -15,11 +15,13 @@ function LoginPage() {
     admin_password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { login, error, clearError, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { login, error, clearError, isAuthenticated } = useAuth();  const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || (activeTab === 'admin' ? '/admin/dashboard' : '/client/dashboard');
+  // Handle return URL from query params or state
+  const urlParams = new URLSearchParams(location.search);
+  const returnTo = urlParams.get('returnTo') || location.state?.from?.pathname;
+  const from = returnTo || (activeTab === 'admin' ? '/admin/dashboard' : '/client/dashboard');
 
   // Check if user is already authenticated
   useEffect(() => {

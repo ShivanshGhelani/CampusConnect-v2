@@ -45,24 +45,16 @@ function AppRoutes() {
         <Route path="/login" element={<Navigate to="/auth/login" replace />} />
         <Route path="/register" element={<Navigate to="/auth/register" replace />} />
         <Route path="/client/login" element={<Navigate to="/auth/login" replace />} />
-        <Route path="/client/register" element={<Navigate to="/auth/register" replace />} />
-        
-        {/* Client/Student Routes */}
+        <Route path="/client/register" element={<Navigate to="/auth/register" replace />} />        {/* Client/Student Routes - Public */}
         <Route path="/client/events" element={<EventListPage />} />
+        <Route path="/client/events/:eventId" element={<EventDetailPage />} />
         
-        {/* Protected Client Routes */}        <Route
+        {/* Protected Client Routes */}
+        <Route
           path="/client/dashboard"
           element={
             <ProtectedRoute userType="student">
               <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId"
-          element={
-            <ProtectedRoute userType="student">
-              <EventDetailPage />
             </ProtectedRoute>
           }
         />
