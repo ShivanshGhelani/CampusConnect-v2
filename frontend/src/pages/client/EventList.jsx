@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { clientAPI } from '../../api/axios';
 import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 
 function EventList() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,10 +17,17 @@ function EventList() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') || 'all');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   // Event type counts for filter buttons
-  const [eventTypeCounts, setEventTypeCounts] = useState({});
+  const [eventTypeCounts, setEventTypeCounts] = useState({});  // Update statusFilter when URL parameters change
+  useEffect(() => {
+    const filterParam = searchParams.get('filter') || 'all';
+    setStatusFilter(filterParam);
+    // Clear search and category filters when switching event status to avoid confusion
+    setSearchTerm('');
+    setSelectedCategory('all');
+  }, [searchParams, location.search]);
 
   // College event background images
   const eventBackgrounds = [
@@ -29,9 +37,7 @@ function EventList() {
     'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Graduation ceremony
     'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Students working together
     'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Students studying
-  ];
-
-  useEffect(() => {
+  ];  useEffect(() => {
     fetchEvents();
     // Set a random background image
     const randomImage = eventBackgrounds[Math.floor(Math.random() * eventBackgrounds.length)];
@@ -41,9 +47,7 @@ function EventList() {
   useEffect(() => {
     applyFilters();
     calculateEventTypeCounts();
-  }, [events, searchTerm, selectedCategory]);
-
-  const fetchEvents = async () => {
+  }, [events, searchTerm, selectedCategory]);  const fetchEvents = async () => {
     try {
       setIsLoading(true);
       setError('');
@@ -142,7 +146,7 @@ function EventList() {
 
   const statusCounts = getEventStatusCounts();  return (
     <ClientLayout>
-      <div className="min-h-screen relative overflow-x-hidden">
+      <div key={`events-${statusFilter}`} className="min-h-screen relative overflow-x-hidden">
         {/* Subtle Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
