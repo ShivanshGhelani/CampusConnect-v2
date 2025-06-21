@@ -249,8 +249,7 @@ function ProfilePage() {
                   className="text-xs px-3 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold transition-colors duration-200"
                 >
                   Cancel
-                </button>
-              )}
+                </button>)}
 
               {reg.registration?.registration_type === "team_participant" && (
                 <span className="text-xs px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-medium">
@@ -274,223 +273,274 @@ function ProfilePage() {
               <span className="text-slate-600 font-medium">Loading profile...</span>
             </div>
           </div>
-        )}
-
-        {/* Main Content */}
+        )}              {/* Main Content */}
         {!loading && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">            {/* Enhanced Profile Header */}
-            <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl shadow-xl overflow-hidden mb-8">
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-300 rounded-full -translate-y-48 translate-x-48"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400 rounded-full translate-y-32 -translate-x-32"></div>
-              </div>              <div className="relative px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Profile Info with Avatar Card */}
-                  <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-                    <div className="flex flex-col items-center text-center text-white">
-                      {/* Round Avatar */}
-                      <div className="relative group flex-shrink-0 mb-4">
-                        <div className="w-24 h-24 bg-white/90 rounded-full flex items-center justify-center shadow-lg border-2 border-white group-hover:scale-105 transition-transform duration-300">
-                          <span className="text-3xl font-bold text-slate-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">            {/* Main 2-Column Layout */}
+            <div className="flex gap-8">
+              {/* Left Column */}
+              <div className="space-y-3 sticky top-8 h-fit w-130 flex-shrink-3">
+                {/* Profile Card with Student Info & Quick Actions */}
+                <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">                  
+                  {/* Profile Header Section */}
+                  <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-8 border-b border-slate-200 overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-10">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-blue-300 rounded-full -translate-y-20 translate-x-20"></div>
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400 rounded-full translate-y-16 -translate-x-16"></div>
+                    </div>
+                      <div className="relative flex items-center gap-6">                      {/* Avatar */}
+                      <div className="relative group flex-shrink-0">
+                        <div className="w-40 h-40 bg-white/90 rounded-full flex items-center justify-center shadow-lg border-4 border-white group-hover:scale-105 transition-transform duration-300">
+                          <span className="text-5xl font-bold text-slate-800">
                             {getInitials()}
                           </span>
                         </div>
-                        <div className="absolute bottom-0 right-2 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-emerald-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         </div>
                       </div>
-                      {/* Name and Department */}
-                      <div className='flex flex-col gap-1 items-center'>
-                        <h1 className="text-xl lg:text-2xl font-bold mb-1">
-                          {(profileData?.full_name || user?.full_name || user?.enrollment_no || 'Guest User')}
+                        {/* Name and Basic Info */}
+                      <div className="flex-1">                        <h1 className="text-2xl font-bold text-white mb-1">
+                          {(profileData?.full_name || user?.full_name || 'Guest User')}
                         </h1>
-                        <p className="text-blue-100 text-lg font-medium">
-                          {(profileData?.department || user?.department || "Department not specified")}
+                        <p className="text-blue-100 text-sm font-medium mb-1">
+                          {profileData?.enrollment_no || user?.enrollment_no || 'Enrollment not provided'}
                         </p>
-                        <p className="text-blue-200 text-sm font-medium mt-1">
+                        <p className="text-blue-200 text-sm mb-4">
                           Member since {formatMemberSince(profileData?.profile_created_at || user?.created_at)}
                         </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Event Stats Card */}
-                  <div className="bg-white/90 rounded-2xl p-6 border border-white shadow-lg">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                      <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      Event Statistics
-                    </h3>
-                    <div className="space-y-3">
-                      {/* Row 1: Events, Complete */}
-                      <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <span className="text-sm text-slate-600 block">Events</span>
-                          <span className="text-xl font-bold text-blue-600">
-                            {dashboardStats.total_registrations || 0}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-600 block">Complete</span>
-                          <span className="text-xl font-bold text-emerald-600">
-                            {registrations.filter(reg => reg.event?.status === 'completed').length}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Row 2: Upcoming, Live */}
-                      <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <span className="text-sm text-slate-600 block">Upcoming</span>
-                          <span className="text-xl font-bold text-orange-600">
-                            {registrations.filter(reg => reg.event?.status === 'upcoming').length}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-600 block">Live</span>
-                          <span className="text-xl font-bold text-purple-600">
-                            {registrations.filter(reg => reg.event?.status === 'ongoing').length}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>                  {/* User Details & Actions Card */}
-                  <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-                    <div className="space-y-6">
-                      {/* Student Details */}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                          </svg>
-                          Student Details
-                        </h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-blue-100 text-sm">Enrollment Number</p>
-                              <p className="text-white font-medium">
-                                {profileData?.enrollment_no || user?.enrollment_no || 'Not provided'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-blue-100 text-sm">Current Semester</p>
-                              <p className="text-white font-medium">
-                                {formatSemester(profileData?.semester || user?.semester) !== 'N/A'
-                                  ? `${formatSemester(profileData?.semester || user?.semester)}${getSuffix(formatSemester(profileData?.semester || user?.semester))} Semester`
-                                  : 'Not specified'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-blue-100 text-sm">Email</p>
-                              <p className="text-white font-medium truncate">
-                                {profileData?.email || user?.email || 'Not provided'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Quick Actions */}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Quick Actions
-                        </h3>                        <div className="space-y-3">
+                        
+                        {/* Quick Actions */}
+                        <div className="flex gap-3">
                           <Link
                             to="/client/profile/edit"
-                            className="flex items-center gap-3 w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all duration-200 group"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 hover:border-white/30 transition-all duration-200 text-sm font-semibold"
                           >
-                            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-medium">Edit Profile</p>
-                              <p className="text-blue-100 text-sm">Update your information</p>
-                            </div>
-                            <svg className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
+                            Edit Profile
                           </Link>
 
                           <Link
                             to="/client/certificates"
-                            className="flex items-center gap-3 w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all duration-200 group"
+                            className="relative inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 hover:border-white/30 transition-all duration-200 text-sm font-semibold"
                           >
-                            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                              </svg>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-medium">View Certificates</p>
-                              <p className="text-blue-100 text-sm">Check your achievements</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                {dashboardStats.certificates_earned || 0}
-                              </span>
-                              <svg className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                          </Link>
-
-                          <button
-                            onClick={() => window.location.href = `mailto:${profileData?.email || user?.email}`}
-                            className="flex items-center gap-3 w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl transition-all duration-200 group"
-                            disabled={!profileData?.email && !user?.email}
-                          >
-                            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-white font-medium text-left">Contact Support</p>
-                              <p className="text-blue-100 text-sm text-left">Get help or report issues</p>
-                            </div>
-                            <svg className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
-                          </button>
+                            Certificates
+                            {dashboardStats.certificates_earned > 0 && (
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">{dashboardStats.certificates_earned}</span>
+                              </div>
+                            )}
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>                  
+                  {/* Student Details */}
+                  <div className="p-8">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Student Details                    </h3>                      <div className="grid grid-cols-1 gap-6 items-start">
+                        {/* Left Column - All Student Detail Cards Stacked */}
+                        <div className="space-y-4">
+                          {/* Academic Progress Card */}
+                          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-slate-500 text-sm">Academic Progress</p>
+                              <p className="text-slate-900 font-semibold">
+                                {formatSemester(profileData?.semester || user?.semester) !== 'N/A'
+                                  ? `Semester ${formatSemester(profileData?.semester || user?.semester)} • Year ${getAcademicYear(profileData?.semester || user?.semester)}`
+                                  : 'Not specified'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Department Card */}
+                          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-slate-500 text-sm">Department</p>
+                              <p className="text-slate-900 font-semibold">
+                                {profileData?.department || user?.department || 'Not specified'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Contact Details Card */}
+                          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-slate-500 text-sm mb-1">Contact Details</p>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <svg className="w-3 h-3 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-slate-900 truncate">
+                                    {profileData?.email || user?.email || 'Email not provided'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <svg className="w-3 h-3 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                  </svg>
+                                  <span className="text-xs font-medium text-slate-900">
+                                    {profileData?.phone_number || profileData?.contact_no || profileData?.mobile_no || profileData?.mobile || user?.phone_number || user?.contact_no || user?.mobile_no || user?.mobile || 'Phone not provided'}
+                                  </span>
+                                </div>
+                              </div>                            
+                            </div>
+                          </div>                        </div>
+
+                        {/* Event Statistics Section Heading */}
+                        <div className="col-span-full">
+                          <h4 className="text-base font-bold text-slate-800 -mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            Event Statistics
+                          </h4>
+                        </div>
+
+                        {/* Full-width edge-to-edge separator */}
+                        <div className="col-span-full -mx-8 border-t border-slate-200"></div>
+
+                        {/* Event Statistics Block */}
+                        <div className="col-span-full mt-0">
+                          <div className="flex">
+                            <div className="flex-1 text-center">
+                              <span className="text-xs text-slate-600 block mb-1">Total</span>
+                              <span className="text-sm font-bold text-blue-600">
+                                {dashboardStats.total_registrations || 0}
+                              </span>
+                            </div>
+                            <div className="w-px bg-slate-300 mx-2"></div>
+                            <div className="flex-1 text-center">
+                              <span className="text-xs text-slate-600 block mb-1">Done</span>
+                              <span className="text-sm font-bold text-emerald-600">
+                                {registrations.filter(reg => reg.event?.status === 'completed').length}
+                              </span>
+                            </div>
+                            <div className="w-px bg-slate-300 mx-2"></div>
+                            <div className="flex-1 text-center">
+                              <span className="text-xs text-slate-600 block mb-1">Coming</span>
+                              <span className="text-sm font-bold text-orange-600">
+                                {registrations.filter(reg => reg.event?.status === 'upcoming').length}
+                              </span>
+                            </div>
+                            <div className="w-px bg-slate-300 mx-2"></div>
+                            <div className="flex-1 text-center">
+                              <span className="text-xs text-slate-600 block mb-1">Live</span>
+                              <span className="text-sm font-bold text-purple-600">
+                                {registrations.filter(reg => reg.event?.status === 'ongoing').length}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-            </div>
+                </div>            {/* Right Column */}
+              <div className="flex-1 space-y-8">
+                {/* My Events Section */}
+                  <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+                    {/* Section Header */}
+                    <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <h2 className="text-xl font-bold text-slate-900">My Events</h2>
+                        </div>
+                        {registrations.length > 2 ? (
+                          <button
+                            onClick={openEventsModal}
+                            className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-3 py-1.5 rounded-xl transition-all duration-200"
+                          >
+                            View All ({registrations.length})
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <Link
+                            to="/client/events"
+                            className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-3 py-1.5 rounded-xl transition-all duration-200"
+                          >
+                            Browse Events
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
 
-            {/* Enhanced Events Section */}
-            <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
-              {/* Section Header */}
+                    {/* Events List */}
+                    <div className="p-6">
+                      {registrations.length > 0 ? (
+                        <div className="space-y-4">
+                          {registrations.slice(0, 2).map((reg, index) => (
+                            <EventCard key={index} reg={reg} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center">
+                            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-900 mb-2">No Events Yet</h3>
+                          <p className="text-slate-600 mb-6 max-w-sm mx-auto">
+                            Ready to dive into campus life? Discover amazing events and start building your journey!
+                          </p>
+                          <Link
+                            to="/client/events"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-seafoam-600 to-blue-600 text-white rounded-xl hover:from-seafoam-700 hover:to-blue-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl group"
+                          >                            <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Explore Events
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+              </div>
+            </div>   
+          </div>
+        )}
+      </div>
+      {/* All Events Modal */}
+        {showEventsModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
+              {/* Modal Header */}
               <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -499,131 +549,64 @@ function ProfilePage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900">My Events</h2>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      All My Events ({registrations.length})
+                    </h3>
                   </div>
-                  {registrations.length > 3 ? (
-                    <button
-                      onClick={openEventsModal}
-                      className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200"
-                    >
-                      View All ({registrations.length})
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <Link
-                      to="/client/events"
-                      className="inline-flex items-center gap-2 text-seafoam-600 hover:text-seafoam-700 text-sm font-semibold bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200"
-                    >
-                      Browse Events
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  )}
-                </div>
-              </div>
-
-              {/* Events List */}
-              <div className="p-8">
-                {registrations.length > 0 ? (
-                  <div className="grid gap-6">
-                    {registrations.slice(0, 3).map((reg, index) => (
-                      <EventCard key={index} reg={reg} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-20">
-                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center">
-                      <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-3">No Events Yet</h3>
-                    <p className="text-slate-600 mb-8 max-w-md mx-auto text-lg">
-                      Ready to dive into campus life? Discover amazing events and start building your journey!
-                    </p>
-                    <Link
-                      to="/client/events"
-                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-seafoam-600 to-blue-600 text-white rounded-xl hover:from-seafoam-700 hover:to-blue-700 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl group"
-                    >
-                      <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>                      Explore Events                    </Link>                  </div>
-                )}              </div>            </div>          </div>        </div>
-        )}
-      </div>      {/* All Events Modal */}
-      {showEventsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
-            {/* Modal Header */}
-            <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <button
+                    onClick={closeEventsModal}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
+                  >
+                    <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-900">
-                    All My Events ({registrations.length})
-                  </h3>
+                  </button>
                 </div>
-                <button
-                  onClick={closeEventsModal}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
-                >
-                  <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>            {/* Modal Content */}
-            <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
-              <div className="grid gap-6">
-                {registrations.map((reg, index) => (
-                  <EventCard key={index} reg={reg} />
-                ))}
+              </div>            {/* Modal Content */}
+              <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
+                <div className="grid gap-6">
+                  {registrations.map((reg, index) => (
+                    <EventCard key={index} reg={reg} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Cancel Registration Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg">
-                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Cancel Registration</h3>
-              <p className="text-slate-600 mb-8 leading-relaxed">
-                Are you sure you want to cancel your registration for <strong className="text-slate-900">"{currentEventName}"</strong>? This action cannot be undone.
-              </p>
-              <div className="flex gap-4">
-                <button
-                  onClick={closeCancelModal}
-                  className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
-                >
-                  Keep Registration
-                </button>
-                <button
-                  onClick={() => {
-                    // Handle cancel registration logic here
-                    closeCancelModal();
-                  }}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
-                >
-                  Yes, Cancel
-                </button>              </div>
-            </div>          </div>
-        </div>
-      )}
+        {/* Cancel Registration Modal */}
+        {showCancelModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg">
+                  <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Cancel Registration</h3>
+                <p className="text-slate-600 mb-8 leading-relaxed">
+                  Are you sure you want to cancel your registration for <strong className="text-slate-900">"{currentEventName}"</strong>? This action cannot be undone.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={closeCancelModal}
+                    className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
+                  >
+                    Keep Registration
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Handle cancel registration logic here
+                      closeCancelModal();
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                  >
+                    Yes, Cancel
+                  </button>              </div>
+              </div>          </div>
+          </div>
+        )}
     </ClientLayout>
   );
 }
