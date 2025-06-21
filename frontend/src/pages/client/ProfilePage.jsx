@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ClientLayout from '../../components/client/Layout';
+import ProfileEventCard from '../../components/client/ProfileEventCard';
 import api from '../../api/axios';
 
 function ProfilePage() {
@@ -132,136 +133,12 @@ function ProfilePage() {
     setCurrentEventName(eventName);
     setShowCancelModal(true);
   };
-
   const closeCancelModal = () => {
     setShowCancelModal(false);
     setCurrentEventId(null);
     setCurrentEventName('');
   };
-  // Status badge component
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      upcoming: {
-        bg: 'bg-gradient-to-r from-blue-500 to-blue-600',
-        text: 'text-white',
-        label: 'Upcoming',
-        icon: '⏳'
-      },
-      ongoing: {
-        bg: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
-        text: 'text-white',
-        label: 'Live',
-        icon: '🔴'
-      },
-      completed: {
-        bg: 'bg-gradient-to-r from-slate-500 to-slate-600',
-        text: 'text-white',
-        label: 'Completed',
-        icon: '✅'
-      }
-    };
 
-    const config = statusConfig[status] || statusConfig.upcoming;
-
-    return (
-      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${config.bg} ${config.text}`}>
-        <span>{config.icon}</span>
-        {config.label}
-      </span>
-    );
-  };  // Event card component
-  const EventCard = ({ reg, showActions = true }) => (
-    <div className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-4 mb-4">
-            {/* Event Icon */}
-            <div className="w-12 h-12 bg-gradient-to-br from-seafoam-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-slate-900 text-lg mb-2 truncate group-hover:text-seafoam-700 transition-colors duration-200">
-                {reg.event.event_name}
-              </h3>
-              <p className="text-slate-600 text-sm mb-3 font-medium">
-                {reg.event.organizing_department}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-            <div className="flex items-center gap-2 bg-slate-50 rounded-full px-3 py-1.5">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="font-medium">
-                {reg.event.start_datetime ? new Date(reg.event.start_datetime).toLocaleDateString() : 'TBD'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-50 rounded-full px-3 py-1.5">
-              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="font-medium">{reg.event.venue}</span>
-            </div>
-          </div>
-        </div>
-        <StatusBadge status={reg.event.status} />
-      </div>
-
-      {showActions && (
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          <Link
-            to={`/client/events/${reg.event_id}`}
-            className="inline-flex items-center text-sm font-semibold text-seafoam-600 hover:text-seafoam-700 bg-seafoam-50 hover:bg-seafoam-100 px-4 py-2 rounded-xl transition-all duration-200 group"
-          >
-            View Details
-            <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-
-          {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
-            <div className="flex items-center gap-2">
-              {reg.registration?.registration_type === "team_leader" && (
-                <>
-                  <Link
-                    to={`/client/events/${reg.event_id}/manage-team`}
-                    className="text-xs px-3 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 font-semibold transition-colors duration-200"
-                  >
-                    Manage Team
-                  </Link>
-                  <button
-                    onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                    className="text-xs px-3 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold transition-colors duration-200"
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-
-              {reg.registration?.registration_type === "individual" && (
-                <button
-                  onClick={() => confirmCancelRegistration(reg.event_id, reg.event.event_name)}
-                  className="text-xs px-3 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold transition-colors duration-200"
-                >
-                  Cancel
-                </button>)}
-
-              {reg.registration?.registration_type === "team_participant" && (
-                <span className="text-xs px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-medium">
-                  Contact team leader
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
   return (
     <ClientLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -273,7 +150,8 @@ function ProfilePage() {
               <span className="text-slate-600 font-medium">Loading profile...</span>
             </div>
           </div>
-        )}              {/* Main Content */}
+        )}              
+        {/* Main Content */}
         {!loading && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">            {/* Main 2-Column Layout */}
             <div className="flex gap-8">
@@ -502,10 +380,13 @@ function ProfilePage() {
 
                     {/* Events List */}
                     <div className="p-6">
-                      {registrations.length > 0 ? (
-                        <div className="space-y-4">
+                      {registrations.length > 0 ? (                        <div className="space-y-4">
                           {registrations.slice(0, 2).map((reg, index) => (
-                            <EventCard key={index} reg={reg} />
+                            <ProfileEventCard 
+                              key={index} 
+                              reg={reg} 
+                              onCancelRegistration={confirmCancelRegistration}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -562,11 +443,14 @@ function ProfilePage() {
                     </svg>
                   </button>
                 </div>
-              </div>            {/* Modal Content */}
-              <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
+              </div>            {/* Modal Content */}              <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
                 <div className="grid gap-6">
                   {registrations.map((reg, index) => (
-                    <EventCard key={index} reg={reg} />
+                    <ProfileEventCard 
+                      key={index} 
+                      reg={reg} 
+                      onCancelRegistration={confirmCancelRegistration}
+                    />
                   ))}
                 </div>
               </div>
