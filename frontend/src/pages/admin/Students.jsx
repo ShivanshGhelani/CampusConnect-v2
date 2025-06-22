@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminLayout from '../../components/admin/Layout';
+import AdminLayout from '../../components/admin/AdminLayout';
 
 function Students() {
   return (

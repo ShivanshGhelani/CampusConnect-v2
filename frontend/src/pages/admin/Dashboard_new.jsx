@@ -57,37 +57,31 @@ function Dashboard() {
     setServerTimeOffset(serverTime.getTime() - clientTime.getTime());
     setCurrentTime(new Date(Date.now() + serverTimeOffset));
   };
+
   const fetchDashboardData = async () => {
     try {
       setIsLoading(!stats.total_events_count); // Only show loading spinner on first load
       
-      // Fetch real data from API
-      const response = await adminAPI.getDashboardStats();
-      
-      if (response.data.success) {
-        const data = response.data.data;
-        setStats({
-          active_events_count: data.active_events_count || 0,
-          total_events_count: data.total_events_count || 0,
-          pending_jobs: data.pending_jobs || 0,
-          system_status: data.system_status || 'Online',
-          upcoming_events: data.upcoming_events || 0,
-          ongoing_events: data.ongoing_events || 0,
-          completed_events: data.completed_events || 0,
-          draft_events: data.draft_events || 0,
-          triggers_queued: data.triggers_queued || 0,
-          detailed_status_counts: data.detailed_status_counts || {
-            registration_open: 0,
-            live: 0,
-            registration_not_started: 0,
-            certificate_available: 0
-          }
-        });
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch dashboard data');
-      }
+      // Mock data - in real app, this would come from API
+      setStats({
+        active_events_count: 5,
+        total_events_count: 25,
+        pending_jobs: 3,
+        system_status: 'Online',
+        upcoming_events: 8,
+        ongoing_events: 2,
+        completed_events: 15,
+        draft_events: 2,
+        triggers_queued: 1,
+        detailed_status_counts: {
+          registration_open: 8,
+          live: 2,
+          registration_not_started: 10,
+          certificate_available: 5
+        }
+      });
 
-      // Mock recent activity for now (can be replaced with real API data later)
+      // Mock recent activity
       setRecentActivity([
         {
           id: 1,
@@ -121,33 +115,13 @@ function Dashboard() {
           icon: 'fas fa-check-circle',
           color: 'text-indigo-600'
         }
-      ]);      setLastRefreshed(new Date());
+      ]);
+
+      setLastRefreshed(new Date());
       setError('');
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       setError('Failed to load dashboard data');
-      
-      // Set fallback values on error
-      setStats({
-        active_events_count: 0,
-        total_events_count: 0,
-        pending_jobs: 0,
-        system_status: 'Offline',
-        upcoming_events: 0,
-        ongoing_events: 0,
-        completed_events: 0,
-        draft_events: 0,
-        triggers_queued: 0,
-        detailed_status_counts: {
-          registration_open: 0,
-          live: 0,
-          registration_not_started: 0,
-          certificate_available: 0
-        }
-      });
-      
-      // Keep recent activity as empty array on error
-      setRecentActivity([]);
     } finally {
       setIsLoading(false);
     }
