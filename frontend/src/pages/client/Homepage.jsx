@@ -498,7 +498,8 @@ function Homepage() {
               </div>
             </div>
           </div>
-        </footer>      </div>
+        </footer>      
+      </div>
       
       {/* Full Width Floor Typography */}
       <div className="w-screen bg-gradient-to-r from-teal-50 to-sky-50 m-0 p-0 overflow-hidden">
