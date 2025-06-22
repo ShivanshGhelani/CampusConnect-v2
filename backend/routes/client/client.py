@@ -382,17 +382,14 @@ async def event_details(request: Request, event_id: str):
         }
 
         try:
-            # Use event-specific database for registrations
-            event_collection = await Database.get_event_collection(event_id)
-            if event_collection is not None:
-                cursor = event_collection.find({})
-                registrations = await cursor.to_list(length=None)
-                registration_stats["total_registrations"] = len(registrations)
-                
-                # Calculate available spots if there's a limit
-                if event_data.get('registration_limit'):
-                    registration_stats["available_spots"] = max(0, event_data['registration_limit'] - registration_stats["total_registrations"])
-                    if registration_stats["total_registrations"] > event_data['registration_limit']:
+            # Get registrations for this event
+            registrations = await DatabaseOperations.find_many("registrations", {"event_id": event_id})
+            registration_stats["total_registrations"] = len(registrations)
+            
+            # Calculate available spots if there's a limit
+            if event_data.get('registration_limit'):
+                registration_stats["available_spots"] = max(0, event_data['registration_limit'] - registration_stats["total_registrations"])
+                if registration_stats["total_registrations"] > event_data['registration_limit']:
                         registration_stats["waiting_list"] = registration_stats["total_registrations"] - event_data['registration_limit']
         except Exception as e:
             print(f"Could not fetch registration stats: {e}")

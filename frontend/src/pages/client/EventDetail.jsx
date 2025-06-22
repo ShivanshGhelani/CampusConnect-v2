@@ -323,11 +323,11 @@ function EventDetail() {
   const endDate = formatDate(event.end_date || event.end_datetime);
   const registrationStart = formatDate(event.registration_start_date);
   const registrationEnd = formatDate(event.registration_end_date);
-
   return (
     <ClientLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <style jsx>{`
+        <style>
+          {`
           @keyframes float {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
             50% { transform: translateY(-20px) rotate(5deg); }
@@ -337,13 +337,13 @@ function EventDetail() {
             50% { transform: translateY(-15px) rotate(-3deg); }
           }
           @keyframes title-glow {
-            0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
-            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.5), 0 0 60px rgba(59, 130, 246, 0.3); }
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.5), 0 0 60px rgba(59, 130, 246, 0.3); }
           }
           .animate-float { animation: float 6s ease-in-out infinite; }
           .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
           .animate-title-glow { animation: title-glow 3s ease-in-out infinite; }
-        `}</style>
+        `}
+        </style>
         
         {/* Hero Section */}
         <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white overflow-hidden">

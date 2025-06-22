@@ -121,11 +121,14 @@ async def show_registration_form(request: Request, event_id: str, student: Stude
         # Fetch event details
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
         if not event:
-            raise HTTPException(status_code=404, detail="Event not found")        # Check if student has already registered for this event using event-specific collection
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is not None:
-            existing_registration = await event_collection.find_one({"enrollment_no": student.enrollment_no})
-            if existing_registration:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Check if student has already registered for this event
+        existing_registration = await DatabaseOperations.find_one("registrations", {
+            "event_id": event_id,
+            "enrollment_no": student.enrollment_no
+        })
+        if existing_registration:
                 # Student has already registered - show existing registration
                 # Get participation data from student's event_participations
                 student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})

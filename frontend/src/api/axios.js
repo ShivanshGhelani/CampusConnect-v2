@@ -112,10 +112,9 @@ export const clientAPI = {
   // Feedback
   submitFeedback: (eventId, feedbackData) => api.post(`/client/events/${eventId}/feedback`, feedbackData),
   getFeedbackStatus: (eventId) => api.get(`/api/v1/client/feedback/status/${eventId}`),
-  
   // Certificates
-  getCertificateStatus: (eventId) => api.get(`/api/v1/client/certificates/status/${eventId}`),
-  getCertificateTemplate: (eventId) => api.get(`/api/v1/client/certificates/template/${eventId}`),
+  getCertificateStatus: (eventId) => api.get(`/client/api/certificate-status/${eventId}`),
+  getCertificateTemplate: (eventId) => api.get(`/client/api/certificate-template/${eventId}`),
   sendCertificateEmail: (certificateData) => api.post('/api/v1/client/certificates/send-email', certificateData),
   
   // Profile

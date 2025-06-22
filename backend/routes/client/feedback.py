@@ -394,17 +394,14 @@ async def submit_feedback(request: Request, event_id: str, student: Student = De
 @router.get("/events/{event_id}/feature-development")
 async def show_feature_development(request: Request, event_id: str, student: Student = Depends(require_student_login)):
     """Display the feature under development page"""
-    try:
-        # Get event details
+    try:        # Get event details
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
-          # Get registration record
-        event_collection = await Database.get_event_collection(event_id)
-        if event_collection is None:
-            raise HTTPException(status_code=500, detail="Event collection not found")
-
-        registration = await event_collection.find_one({
+        
+        # Get registration record
+        registration = await DatabaseOperations.find_one("registrations", {
+            "event_id": event_id,
             "enrollment_no": student.enrollment_no
         })
         

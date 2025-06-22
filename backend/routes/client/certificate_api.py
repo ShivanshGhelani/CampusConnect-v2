@@ -5,6 +5,8 @@ Handles API endpoints for certificate data retrieval and email sending
 
 import logging
 from pathlib import Path
+from datetime import datetime
+from typing import Any, Dict
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
@@ -14,6 +16,20 @@ from utils.db_operations import DatabaseOperations
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+def clean_mongo_data(data: Any) -> Any:
+    """Clean MongoDB data for JSON serialization by converting ObjectId and datetime objects"""
+    if isinstance(data, dict):
+        return {key: clean_mongo_data(value) for key, value in data.items() if key != '_id'}
+    elif isinstance(data, list):
+        return [clean_mongo_data(item) for item in data]
+    elif hasattr(data, '__dict__') and hasattr(data, '__class__'):
+        # Handle ObjectId and other MongoDB objects
+        return str(data)
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    else:
+        return data
 
 @router.post("/certificate-data")
 async def get_certificate_data_api(request: Request, student: Student = Depends(require_student_login)):
@@ -102,39 +118,87 @@ async def send_certificate_email_api(request: Request, student: Student = Depend
         return {"success": False, "message": f"Error sending certificate email: {str(e)}"}
 
 @router.get("/certificate-status/{event_id}")
-async def get_certificate_status(event_id: str, current_student: dict = Depends(get_current_student)):
+async def get_certificate_status(event_id: str, current_student: Student = Depends(get_current_student)):
     """Check if certificate is available for download for a specific event"""
     try:
         from utils.js_certificate_generator import validate_certificate_eligibility
-        from utils.db_operations import DatabaseOperations
         
-        enrollment_no = current_student['enrollment_no']
+        enrollment_no = current_student.enrollment_no
         
         # Check eligibility
         is_eligible, message = await validate_certificate_eligibility(event_id, enrollment_no)
         
         if not is_eligible:
             return {"success": False, "message": message, "eligible": False}
+          # Get event details
+        event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event_data:
+            return {"success": False, "message": "Event not found"}
         
-        # Get certificate ID if it exists
+        # Clean event data immediately
+        event_data = clean_mongo_data(event_data)
+        
+        # Get student data for certificate
         student_doc = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+        if not student_doc:
+            return {"success": False, "message": "Student not found"}
+        
+        # Clean student data immediately  
+        student_doc = clean_mongo_data(student_doc)
+              # Get participation details
         participations = student_doc.get("event_participations", {})
         participation = participations.get(event_id, {})
+        participation = clean_mongo_data(participation)  # Clean participation data
         certificate_id = participation.get("certificate_id")
+          # Get team info if it's a team event
+        team_info = None
+        if participation.get("team_name"):
+            team_info = clean_mongo_data({
+                "team_name": participation.get("team_name"),
+                "team_registration_id": participation.get("team_registration_id")
+            })
         
-        return {
+        # Convert ObjectId fields to strings and clean the data
+        event_clean = clean_mongo_data({
+            "event_id": event_data.get("event_id"),
+            "event_name": event_data.get("event_name"),
+            "event_type": event_data.get("event_type"),
+            "start_datetime": event_data.get("start_datetime"),
+            "end_datetime": event_data.get("end_datetime"),
+            "description": event_data.get("detailed_description", ""),
+            "sub_status": event_data.get("sub_status")
+        })
+        
+        student_clean = clean_mongo_data({
+            "enrollment_no": student_doc.get("enrollment_no"),
+            "full_name": student_doc.get("full_name"),
+            "department": student_doc.get("department"),
+            "email": student_doc.get("email")
+        })
+        
+        certificate_clean = clean_mongo_data({
+            "certificate_id": certificate_id
+        })
+        
+        # Clean the entire response to ensure no ObjectId fields remain
+        response = clean_mongo_data({
             "success": True,
             "eligible": True,
-            "certificate_id": certificate_id,
+            "event": event_clean,
+            "student": student_clean,
+            "certificate": certificate_clean,
+            "team_info": team_info,
             "message": "Certificate is available for download"
-        }
+        })
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error checking certificate status: {str(e)}")
         return {"success": False, "message": f"Error checking certificate status: {str(e)}"}
 
 @router.get("/certificate-template/{event_id}")
-async def get_certificate_template(event_id: str, current_student: dict = Depends(get_current_student)):
+async def get_certificate_template(event_id: str, current_student: Student = Depends(get_current_student)):
     """API endpoint to get certificate template content and placeholder data"""
     try:
         # Get event data
@@ -143,7 +207,7 @@ async def get_certificate_template(event_id: str, current_student: dict = Depend
             raise HTTPException(status_code=404, detail="Event not found")
         
         # Get student data
-        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_student['enrollment_no']})
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_student.enrollment_no})
         if not student_data:
             raise HTTPException(status_code=404, detail="Student not found")
         
@@ -270,7 +334,7 @@ async def test_certificate_template(event_id: str):
         return {"success": False, "message": f"Error: {str(e)}"}
 
 @router.get("/email-queue-stats")
-async def get_email_queue_stats(current_student: dict = Depends(get_current_student)):
+async def get_email_queue_stats(current_student: Student = Depends(get_current_student)):
     """Get email queue statistics (for debugging/monitoring)"""
     try:
         from utils.email_queue import certificate_email_queue

@@ -328,13 +328,8 @@ function EventList() {
       <ClientLayout>
         <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 flex items-center justify-center">
           <div className="text-center">
-            <LoadingSpinner size="lg" />
-            <div className="mt-4 text-gray-600">
-              <p>Loading events...</p>              <p className="text-sm mt-2">
-                Cache: {eventsCache.isValid() ? `🟢 Valid (${eventsCache.getAge()}s old)` : '🔴 Invalid'} | 
-                Fetching: {fetchingRef.current ? '🔄 Yes' : '✅ No'} |
-                Events: {allEvents.length}
-              </p>
+            <LoadingSpinner size="lg" />            <div className="mt-4 text-gray-600">
+              <p>Loading events...</p>
               {error && (
                 <p className="text-red-500 text-sm mt-2">Error: {error}</p>
               )}
@@ -442,12 +437,9 @@ function EventList() {
                       <div className="flex items-center space-x-1">
                         <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
                         <span className="text-sky-600 font-medium">{statusCounts.upcoming} Upcoming</span>
-                      </div>
-                    )}
-                    {/* Cache status and refresh button */}
-                    <div className="flex items-center space-x-2">                      <span className="text-xs text-gray-400">
-                        {eventsCache.isValid() ? `🟢 Cached (${eventsCache.getAge()}s)` : '🔴 Fresh'}
-                      </span>
+                      </div>                    )}
+                    {/* Refresh button */}
+                    <div className="flex items-center space-x-2">
                       <button
                         onClick={handleRefresh}
                         className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
