@@ -1,5 +1,5 @@
 """
-Client Events API
+Client Events API with Redis Caching Support
 Handles event-related API endpoints for students (browsing, details, etc.)
 """
 import logging
@@ -10,6 +10,14 @@ from utils.db_operations import DatabaseOperations
 from utils.event_status_manager import EventStatusManager
 from bson import ObjectId
 from datetime import datetime
+
+# Import Redis cache with fallback
+try:
+    from utils.redis_cache import event_cache
+    REDIS_CACHE_AVAILABLE = True
+except ImportError:
+    REDIS_CACHE_AVAILABLE = False
+    event_cache = None
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -50,20 +58,43 @@ async def get_events_list(
     category: str = Query(None, description="Filter by event category"),
     page: int = Query(1, description="Page number for pagination"),
     limit: int = Query(10, description="Number of events per page"),
+    force_refresh: bool = Query(False, description="Force refresh cache"),
     student: Student = Depends(get_current_student_optional)
 ):
-    """Get paginated list of events with optional filters"""
+    """Get paginated list of events with optional filters and Redis caching"""
     try:
-        # Get events using EventStatusManager
-        if status == "all":
-            events = await EventStatusManager.get_available_events("all")
+        # Try to get from Redis cache first (if not forcing refresh and caching is available)
+        cached_events = None
+        if REDIS_CACHE_AVAILABLE and event_cache and not force_refresh:
+            try:
+                cached_events = event_cache.get_events()
+                if cached_events:
+                    logger.info(f"Using cached events data from Redis")
+            except Exception as e:
+                logger.warning(f"Redis cache retrieval failed: {e}")
+        
+        # Get fresh data if no cache hit
+        if not cached_events:
+            logger.info(f"Fetching fresh events data for status: {status}")
+            # Get events using EventStatusManager
+            if status == "all":
+                events = await EventStatusManager.get_available_events("all")
+            else:
+                events = await EventStatusManager.get_available_events(status)
+            
+            # Cache the fresh data in Redis (for better performance on subsequent requests)
+            if REDIS_CACHE_AVAILABLE and event_cache and status == "all":
+                try:
+                    event_cache.set_events(events)
+                    logger.info(f"Cached {len(events)} events in Redis")
+                except Exception as e:
+                    logger.warning(f"Redis cache storage failed: {e}")
         else:
-            events = await EventStatusManager.get_available_events(status)
+            events = cached_events
         
         # Filter by category if specified
         if category:
-            events = [event for event in events if event.get('category', '').lower() == category.lower()]
-        
+            events = [event for event in events if event.get('category', '').lower() == category.lower()]        
         # Add registration status for logged-in students
         if student:
             student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
@@ -83,7 +114,8 @@ async def get_events_list(
                         }
                     else:
                         event['user_registration_status'] = {"registered": False}
-          # Pagination
+        
+        # Pagination
         total_events = len(events)
         start_idx = (page - 1) * limit
         end_idx = start_idx + limit
@@ -91,6 +123,14 @@ async def get_events_list(
         
         # Serialize events to handle ObjectIds and datetime objects
         serialized_events = [serialize_event(event) for event in paginated_events]
+        
+        # Add cache information to response
+        cache_info = {}
+        if REDIS_CACHE_AVAILABLE and event_cache:
+            try:
+                cache_info = event_cache.get_cache_info()
+            except Exception as e:
+                cache_info = {"error": str(e)}
         
         return {
             "success": True,
@@ -103,7 +143,9 @@ async def get_events_list(
                 "events_per_page": limit,
                 "has_next": end_idx < total_events,
                 "has_previous": page > 1
-            }
+            },
+            "cache_info": cache_info,
+            "from_cache": bool(cached_events)
         }
         
     except Exception as e:
@@ -114,7 +156,7 @@ async def get_events_list(
 async def get_event_details(event_id: str, student: Student = Depends(get_current_student_optional)):
     """Get detailed information about a specific event"""
     try:
-        # Get event details with updated status
+        # Get event details with updated status (no caching for event details to ensure freshness)
         event = await EventStatusManager.get_event_by_id(event_id)
         if not event:
             return {"success": False, "message": "Event not found"}
@@ -156,7 +198,8 @@ async def get_event_details(event_id: str, student: Student = Depends(get_curren
         
         registration_stats["individual_registrations"] = len(registrations)
         registration_stats["team_registrations"] = len(team_registrations)
-          # Count total participants (individuals + team members)
+        
+        # Count total participants (individuals + team members)
         total_participants = len(registrations)
         for team_data in team_registrations.values():
             if isinstance(team_data, dict) and 'members' in team_data:

@@ -56,6 +56,8 @@ def get_cors_origins():
             "http://127.0.0.1:5173",
             "http://localhost:8080",  # Alternative development ports
             "http://127.0.0.1:8080",
+            "https://jaguar-giving-awfully.ngrok-free.app",
+            "http://192.168.29.221:5173", 
         ]
         
         # Add any additional development origins from environment
