@@ -132,10 +132,11 @@ export const adminAPI = {
   updateEvent: (eventId, eventData) => api.put(`/api/v1/admin/events/update/${eventId}`, eventData),
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
   getEventStats: (eventId) => api.get(`/api/v1/admin/events/stats?event_id=${eventId}`),
-  
   // Students
   getStudents: (filters) => api.get('/api/v1/admin/students/list', { params: filters }),
+  getStudentDetails: (enrollmentNo) => api.get(`/api/v1/admin/students/details/${enrollmentNo}`),
   searchStudents: (query) => api.get(`/api/v1/admin/students/search?q=${query}`),
+  updateStudentStatus: (studentId, statusData) => api.put(`/api/v1/admin/students/update-status/${studentId}`, statusData),
   bulkImportStudents: (studentsData) => api.post('/api/v1/admin/students/bulk-import', studentsData),
   exportStudents: (filters) => api.get('/api/v1/admin/students/export', { params: filters }),
   

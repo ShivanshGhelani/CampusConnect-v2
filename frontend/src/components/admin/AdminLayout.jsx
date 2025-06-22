@@ -31,35 +31,41 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
   // Fetch real stats from backend
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
+        console.log('Fetching dashboard stats...');
         const response = await adminAPI.getDashboardStats();
+        console.log('Dashboard stats response:', response.data);
         
-        if (response.data.success) {
-          const data = response.data.data;
-          setStats({
-            totalEvents: data.totalEvents || data.total_events_count || 0,
-            liveEvents: data.liveEvents || data.ongoing_events || 0,
-            upcomingEvents: data.upcomingEvents || data.upcoming_events || 0,
+        if (response.data && response.data.success) {
+          const data = response.data.data || response.data;
+          console.log('Dashboard stats data:', data);
+          
+          const newStats = {
+            totalEvents: data.totalEvents || data.total_events_count || data.allEventsCount || 0,
+            liveEvents: data.liveEvents || data.ongoing_events || data.ongoingEventsCount || 0,
+            upcomingEvents: data.upcomingEvents || data.upcoming_events || data.upcomingEventsCount || 0,
             totalStudents: data.totalStudents || data.student_count || 0,
-            allEventsCount: data.all_events_count || data.total_events_count || 0,
-            ongoingEventsCount: data.ongoing_events_count || data.ongoing_events || 0,
-            upcomingEventsCount: data.upcoming_events_count || data.upcoming_events || 0,
-            completedEventsCount: data.completed_events_count || data.completed_events || 0
-          });
+            allEventsCount: data.all_events_count || data.total_events_count || data.totalEvents || 0,
+            ongoingEventsCount: data.ongoing_events_count || data.ongoing_events || data.liveEvents || 0,
+            upcomingEventsCount: data.upcoming_events_count || data.upcoming_events || data.upcomingEvents || 0,
+            completedEventsCount: data.completed_events_count || data.completed_events || data.completedEvents || 0
+          };
+          
+          console.log('Setting stats:', newStats);
+          setStats(newStats);
           setError('');
         } else {
-          throw new Error(response.data.message || 'Failed to fetch stats');
+          throw new Error(response.data?.message || 'Failed to fetch stats');
         }
       } catch (error) {
         console.error('Error fetching admin layout stats:', error);
         setError('Failed to load dashboard stats');
         // Set fallback values on error
-        setStats({
+        const fallbackStats = {
           totalEvents: 0,
           liveEvents: 0,
           upcomingEvents: 0,
@@ -68,7 +74,9 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
           ongoingEventsCount: 0,
           upcomingEventsCount: 0,
           completedEventsCount: 0
-        });
+        };
+        console.log('Setting fallback stats:', fallbackStats);
+        setStats(fallbackStats);
       } finally {
         setIsLoading(false);
       }
@@ -102,11 +110,19 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
       minute: '2-digit'
     });
   };
-
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', { 
       month: 'short',
       day: 'numeric'
+    });
+  };
+
+  const formatFullDate = (date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -140,405 +156,357 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     }
     return 0;
   };
+
   // Determine if sidebar should be hidden (for event admins)
   const showSidebar = user && user.role !== 'event_admin';
   
   return (
-    <div className={`h-screen w-screen bg-slate-100 ${showSidebar ? 'grid grid-cols-[280px_1fr] grid-rows-[70px_1fr]' : 'grid grid-cols-1 grid-rows-[70px_1fr]'}`} 
+    <div className={`h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${showSidebar ? 'grid grid-cols-[280px_1fr] grid-rows-[80px_1fr]' : 'grid grid-cols-1 grid-rows-[80px_1fr]'}`} 
          style={{ gridTemplateAreas: showSidebar ? '"sidebar header" "sidebar main"' : '"header" "main"' }}>
       
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-[999] lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] lg:hidden transition-all duration-300"
           onClick={closeMobileMenu}
         />
       )}
       
-      {/* Professional Sidebar */}
+      {/* Professional Enterprise Sidebar */}
       {showSidebar && (
         <aside 
-          className={`bg-white flex flex-col shadow-2xl transition-all duration-300 lg:relative fixed inset-y-0 left-0 z-[1000] w-[280px] ${
+          className={`bg-white/95 backdrop-blur-xl flex flex-col shadow-2xl shadow-slate-900/10 border-r border-slate-200/50 transition-all duration-300 lg:relative fixed inset-y-0 left-0 z-[1000] w-[280px] ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
           style={{ gridArea: 'sidebar' }}
-        >          {/* Logo Section */}
-          <div className="p-4 bg-blue bg-opacity-10 backdrop-blur-lg border-b border-blue-500 border-opacity-10">
-            <div className="flex items-center gap-3">
-                <img
-                  src="/logo/ksv.png"
-                  alt="KSV Logo"
-                  className="h-10 w-10 object-contain"
-                />
-                <span className="text-xl italic font-bold">
-                  <span className="text-slate-800">Campus</span>
-                  <span className="bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent">Connect</span>
+        >
+          {/* Premium Logo Section */}
+          <div className="p-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-indigo-600/20"></div>
+            <div className="relative flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-white tracking-tight">
+                  Campus<span className="text-blue-400">Connect</span>
                 </span>
+                <span className="text-xs text-slate-300 font-medium uppercase tracking-widest">
+                  Admin Portal
+                </span>
+              </div>
             </div>
-          </div>          
-          {/* Navigation Container */}
-          <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-white scrollbar-thumb-opacity-20 scrollbar-track-transparent">
+          </div>
+            {/* Navigation Container */}
+          <div className="flex-1 overflow-y-auto py-5 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             
-            {/* Overview Section (Super Admin Only) */}
+            {/* Clock Section */}
+            <div className="mb-4">
+              <div className="mx-6 p-2 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-xl border border-blue-200/30">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-slate-800 font-mono mb-1">
+                    {formatTime(currentTime)}
+                  </div>
+                  <div className="text-sm font-medium text-slate-600 mb-1">
+                    {formatFullDate(currentTime)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats Section (Live, Students, Events) */}
+            {user && (user.role === 'super_admin' || user.role === 'executive_admin') && (
+              <div className="mb-5 flex items-center justify-center">
+                <div className="flex flex-row  gap-3 mx-6">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200/50">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-semibold text-blue-700">
+                      {stats.ongoingEventsCount} Live
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-violet-50 rounded-xl border border-violet-200/50">
+                    <svg className="w-4 h-4 text-violet-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-semibold text-violet-700">
+                      {stats.allEventsCount} Events
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Overview Section */}
             {user?.role === 'super_admin' && (
-              <div className="mb-6">
-                <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
+              <div className="mb-8">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-6">
                   Overview
                 </div>
-                <div className="mx-3">
+                <div className="mx-3 space-y-1">
                   <Link
                     to="/admin/dashboard"
-                    className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                      isActive('/admin/dashboard') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
+                    className={`group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${
+                      isActive('/admin/dashboard') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
                     }`}
                     onClick={closeMobileMenu}
                   >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="fas fa-chart-line text-base"></i>
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                      </svg>
                     </div>
-                    <span className="font-medium">Dashboard</span>
+                    <span className="font-semibold">Dashboard</span>
+                    {isActive('/admin/dashboard') && (
+                      <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                    )}
+                  </Link>
+                  <Link
+                    to="/admin/analytics"
+                    className={`group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${
+                      isActive('/admin/analytics') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
+                    }`}
+                    onClick={closeMobileMenu}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                      </svg>
+                    </div>
+                    <span className="font-semibold">Analytics</span>
+                    {isActive('/admin/analytics') && (
+                      <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                    )}
                   </Link>
                 </div>
               </div>
-            )}            
-            {/* Student Management Section (Content Admin+ Only) */}
+            )}
+            
+            {/* Management Section */}
             {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
-              <div className="mb-6">
-                <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
+              <div className="mb-8">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-6">
                   Management
                 </div>
-                <div className="mx-3">
+                <div className="mx-3 space-y-1">
                   <Link
                     to="/admin/students"
-                    className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                      isActive('/admin/students') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
+                    className={`group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${
+                      isActive('/admin/students') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
                     }`}
                     onClick={closeMobileMenu}
                   >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="fas fa-user-graduate text-base"></i>
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM9.5 15.5L7 18l-2.5-2.5L9.5 11 14 15.5z" />
+                        <path fillRule="evenodd" d="M3 20a6 6 0 1112 0v-1a1 1 0 00-1-1H4a1 1 0 00-1 1v1zM12.5 4.5a.5.5 0 11-1 0 .5.5 0 011 0z" clipRule="evenodd" />
+                      </svg>
                     </div>
-                    <span className="font-medium flex-1">Students</span>                    <span className="bg-cyan-300 bg-opacity-80 text-black text-xs font-semibold px-2 py-1 rounded-full min-w-6 text-center backdrop-blur-sm border border-cyan-200 border-opacity-50 transition-all duration-300 group-hover:scale-105">
-                      {isLoading ? '...' : (stats.totalStudents || 0)}
+                    <span className="font-semibold flex-1">Students</span>                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-200 ${
+                      isActive('/admin/students') 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-blue-100 text-blue-700 group-hover:bg-blue-200'
+                    }`}>
+                      {stats.totalStudents}
                     </span>
+                    {isActive('/admin/students') && (
+                      <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
+                    )}
                   </Link>
                 </div>
               </div>
-            )}            
-            {/* Event Management Section (Hidden for Event Admins) */}
+            )}
+            
+            {/* Events Section */}
             {user?.role !== 'event_admin' && (
-              <div className="mb-6">
-                <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
+              <div className="mb-8">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-6">
                   Events
                 </div>
-                <div className="mx-3">
+                <div className="mx-3 space-y-1">
                   <Link
                     to="/admin/events"
-                    className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                      isActive('/admin/events') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
+                    className={`group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${
+                      isActive('/admin/events') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
                     }`}
                     onClick={closeMobileMenu}
                   >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="fas fa-calendar-alt text-base"></i>
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                      </svg>
                     </div>
-                    <span className="font-medium flex-1">Events</span>
-                    <span className="bg-blue-400 bg-opacity-30 text-black text-xs font-semibold px-2 py-1 rounded-full min-w-6 text-center backdrop-blur-sm border border-blue-300 border-opacity-50 transition-all duration-300 group-hover:scale-105">
-                      {isLoading ? '...' : (stats.totalEvents || 0)}
+                    <span className="font-semibold flex-1">Events</span>                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all duration-200 ${
+                      isActive('/admin/events') 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-green-100 text-green-700 group-hover:bg-green-200'
+                    }`}>
+                      {stats.totalEvents}
                     </span>
-                  </Link>
-                </div>
-              </div>
-            )}            
-            {/* Assets Management Section (Content Admin+ Only) */}
-            {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
-              <div className="mb-6">
-                <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
-                  Assets
-                </div>
-                <div className="mx-3">
-                  <Link
-                    to="/admin/assets"
-                    className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                      isActive('/admin/assets') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
-                    }`}
-                    onClick={closeMobileMenu}
-                  >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="fas fa-folder text-base"></i>
-                    </div>
-                    <span className="font-medium">Assets</span>
+                    {isActive('/admin/events') && (
+                      <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
+                    )}
                   </Link>
                 </div>
               </div>
             )}
 
-            {/* Simple Event Access for Event Admins */}
-            {user?.role === 'event_admin' && (
-              <div className="mb-6">
-                <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
-                  My Events
-                </div>
-                <div className="mx-3">
-                  <Link
-                    to="/admin/events"
-                    className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                      isActive('/admin/events') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
-                    }`}
-                    onClick={closeMobileMenu}
-                  >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="fas fa-calendar-check text-base"></i>
-                    </div>
-                    <span className="font-medium">Assigned Events</span>
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {/* Admin Management Section (Super Admins Only) */}
+            {/* Quick Actions */}
             {user?.role === 'super_admin' && (
-              <>
-                <div className="mb-6">
-                  <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
-                    Administration
-                  </div>
-                  <div className="mx-3">
-                    <Link
-                      to="/admin/manage-admins"
-                      className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                        isActive('/admin/manage-admins') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
-                      }`}
-                      onClick={closeMobileMenu}
-                    >
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        <i className="fas fa-users-cog text-base"></i>
-                      </div>
-                      <span className="font-medium">Admin Management</span>
-                    </Link>
-                  </div>
+              <div className="mb-8">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-6">
+                  Quick Actions
                 </div>
-                <div className="mb-6">
-                  <div className="mx-3">
-                    <Link
-                      to="/admin/events/create"
-                      className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                        isActive('/admin/events/create') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
-                      }`}
-                      onClick={closeMobileMenu}
-                    >
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        <i className="fas fa-plus text-base"></i>
-                      </div>
-                      <span className="font-medium">Create Event</span>
-                    </Link>
-                  </div>
+                <div className="mx-3 space-y-1">
+                  <Link
+                    to="/admin/events/create"
+                    className="group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+                    onClick={closeMobileMenu}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="font-semibold">Create Event</span>
+                  </Link>
+                  <Link
+                    to="/admin/manage-admins"
+                    className="group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-violet-700 hover:bg-violet-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+                    onClick={closeMobileMenu}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                      </svg>
+                    </div>
+                    <span className="font-semibold">Manage Admins</span>
+                  </Link>
                 </div>
-              </>
+              </div>
             )}
 
             {/* System Section */}
-            <div className="mb-6">
-              <div className="text-xs font-medium text-black text-opacity-60 uppercase tracking-wider mb-2 px-6">
+            <div className="mb-8">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-6">
                 System
               </div>
-              <div className="mx-3">
+              <div className="mx-3 space-y-1">
                 <Link
                   to="/admin/settings"
-                  className={`group flex items-center gap-3 px-4 py-3 text-black text-opacity-80 hover:text-white hover:bg-blue-400 hover:bg-opacity-10 rounded-lg transition-all duration-300 hover:translate-x-1 ${
-                    isActive('/admin/settings') ? 'bg-blue-500 bg-opacity-20 text-white shadow-lg backdrop-blur-sm' : ''
+                  className={`group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-slate-700 hover:bg-slate-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${
+                    isActive('/admin/settings') ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/25' : ''
                   }`}
                   onClick={closeMobileMenu}
                 >
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <i className="fas fa-cog text-base"></i>
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                  <span className="font-medium">Settings</span>
+                  <span className="font-semibold">Settings</span>
+                  {isActive('/admin/settings') && (
+                    <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                  )}
                 </Link>
               </div>
             </div>
           </div>
+
+          {/* User Profile Section */}
+          <div className="p-4 border-t border-slate-200/50 bg-slate-50/50">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/70 border border-slate-200/50">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg">
+                {getUserInitials(user)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-slate-900 truncate">
+                  {user?.full_name || 'Admin User'}
+                </div>
+                <div className="text-xs text-slate-500 capitalize">
+                  {user?.role?.replace('_', ' ') || 'admin'}
+                </div>
+              </div>
+            </div>
+          </div>
         </aside>
-      )}      
-      {/* Professional Header */}
+      )}
+      
+      {/* Premium Header */}
       <header 
-        className="bg-white h-18 flex items-center justify-between px-6 shadow-lg drop-shadow-9xl shadow-blue-50 border-b border-blue-200 relative z-50"
+        className="bg-white/95 backdrop-blur-xl h-20 flex items-center justify-between px-8 shadow-lg shadow-slate-900/5 border-b border-slate-200/50 relative z-50"
         style={{ gridArea: 'header' }}
       >
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           {showSidebar && (
             <button
-              className="md:hidden bg-blue-500 bg-opacity-10 border-none text-blue-600 text-lg cursor-pointer p-3 rounded-lg transition-all duration-300 hover:bg-opacity-20 hover:scale-105"
+              className="md:hidden bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 p-3 rounded-xl transition-all duration-200 hover:scale-105"
               onClick={toggleMobileMenu}
             >
-              <i className="fas fa-bars"></i>
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
             </button>
           )}
-          
-          <h1 className="text-2xl font-bold text-black">
-            {pageTitle}
-          </h1>
-          
-          {/* Real-time Statistics Dashboard Widget */}
-          {user && (
-            <div className="hidden lg:flex items-center gap-6 ml-8">
-              {(user.role === 'super_admin' || user.role === 'executive_admin') && (
-                <>
-                  {/* Total Events */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-blue-600 leading-none">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.allEventsCount || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Events
-                    </div>
-                  </div>
-                  
-                  {/* Live Events */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-green-500 leading-none animate-pulse">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.ongoingEventsCount || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Live
-                    </div>
-                  </div>
-                  
-                  {/* Upcoming Events */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-yellow-500 leading-none">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.upcomingEventsCount || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Upcoming
-                    </div>
-                  </div>
-                  
-                  {/* Students Count */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-blue-600 leading-none">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.totalStudents || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Students
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {user.role === 'content_admin' && (
-                <>
-                  {/* Content Admin focused stats */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-blue-600 leading-none">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.totalStudents || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Students
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-blue-600 leading-none">
-                      {isLoading ? <i className="fas fa-spinner fa-spin"></i> : (stats.totalEvents || 0)}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      Events
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {user.role === 'event_admin' && (
-                <>
-                  {/* Event Admin focused stats */}
-                  <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 hover:bg-gray-100 hover:-translate-y-0.5 hover:shadow-md min-w-20">
-                    <div className="text-lg font-bold text-blue-600 leading-none">3</div>
-                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide mt-0.5">
-                      My Events
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {/* Error indicator */}
-              {error && (
-                <div className="flex flex-col items-center px-4 py-2 bg-red-50 rounded-lg border border-red-200 transition-all duration-300 hover:bg-red-100 hover:-translate-y-0.5 hover:shadow-md min-w-20" title={`Error: ${error}`}>
-                  <div className="text-lg font-bold text-red-500 leading-none">
-                    <i className="fas fa-exclamation-triangle"></i>
-                  </div>
-                  <div className="text-xs text-red-500 font-medium uppercase tracking-wide mt-0.5">
-                    Error
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+              {pageTitle}
+            </h1>
+          </div>
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Time Widget */}
-          <div className="flex flex-col items-center px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 mr-4">
-            <div className="text-sm font-semibold text-gray-800 leading-none">
-              {formatTime(currentTime)}
-            </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">
-              {formatDate(currentTime)}
-            </div>
-          </div>
-          
-          {/* User Info Widget */}
-          {user && (
-            <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 mr-4">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm">
-                {getUserInitials(user)}
-              </div>
-              <div className="flex flex-col">
-                <div className="text-sm font-semibold text-gray-800 leading-none">
-                  {user.full_name || 'Admin User'}
-                </div>
-                <div className="text-xs text-gray-500 capitalize">
-                  {user.role?.replace('_', ' ') || 'admin'}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Notification Bell */}
-          <div className="relative mr-2">
-            <Link
-              to="/admin/notifications"
-              className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gray-50 text-gray-500 hover:bg-blue-500 hover:text-white hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 border border-gray-200"
-              title="Notifications"
-            >
-              <i className="fas fa-bell"></i>
+          {/* Notifications */}
+          <div className="relative">
+            <button className="relative p-3 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-105">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+              </svg>
               {getNotificationCount() > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-semibold px-1.5 py-0.5 rounded-lg min-w-5 text-center border-2 border-white animate-bounce">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[1.25rem] text-center">
                   {getNotificationCount() < 100 ? getNotificationCount() : '99+'}
                 </span>
               )}
-            </Link>
+            </button>
+          </div>
+
+          {/* User Menu */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200/50">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+              {getUserInitials(user)}
+            </div>
+            <div className="hidden md:block">
+              <div className="text-sm font-semibold text-slate-900">
+                {user?.full_name || 'Admin User'}
+              </div>
+              <div className="text-xs text-slate-500 capitalize">
+                {user?.role?.replace('_', ' ') || 'admin'}
+              </div>
+            </div>
           </div>
           
-          {/* Logout Action */}
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-50 text-gray-500 hover:bg-red-500 hover:text-white hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 border border-gray-200"
+            className="p-3 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-105"
             title="Logout"
           >
-            <i className="fas fa-sign-out-alt"></i>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+            </svg>
           </button>
         </div>
-      </header>      
+      </header>
+      
       {/* Main Content */}
       <main 
-        className="overflow-y-auto p-8 bg-gray-50"
-        style={{ gridArea: 'main' }}
+        className="overflow-y-auto p-8 bg-gradient-to-br from-slate-50/50 to-blue-50/30"        style={{ gridArea: 'main' }}
       >
         {children}
       </main>
     </div>
   );
-}
+};
 
 export default AdminLayout;
