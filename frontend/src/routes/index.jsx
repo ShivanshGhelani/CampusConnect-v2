@@ -17,6 +17,7 @@ import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
 import AdminAnalytics from '../pages/admin/Analytics';
+import CreateEvent from '../pages/admin/CreateEvent';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -130,6 +131,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <AdminAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/create-event"
+          element={
+            <ProtectedRoute userType="admin">
+              <CreateEvent />
             </ProtectedRoute>
           }
         />

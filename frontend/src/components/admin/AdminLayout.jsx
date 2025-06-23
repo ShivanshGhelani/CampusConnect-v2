@@ -345,7 +345,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                                 <div className="mx-3 space-y-1">
                                     <Link
-                                        to="/admin/events/create"
+                                        to="/admin/create-event"
                                         className="group flex items-center gap-4 px-4 py-3.5 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02]"
                                         onClick={closeMobileMenu}
                                     >
