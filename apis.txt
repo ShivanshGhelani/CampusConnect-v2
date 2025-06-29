@@ -1,0 +1,568 @@
+============================================================================
+                        CAMPUSCONNECT BACKEND API DOCUMENTATION
+                                    API v1 Reference
+============================================================================
+
+BASE URL: /api/v1
+
+This document provides a complete categorized list of all available API endpoints
+in the CampusConnect backend system, organized by functionality and access level.
+
+============================================================================
+1. AUTHENTICATION APIs (/api/v1/auth)
+============================================================================
+
+1.1 ADMIN AUTHENTICATION
+------------------------
+• GET    /api/v1/auth/admin/status
+  Purpose: Check if admin is authenticated
+  Access: Any admin
+  Returns: Authentication status and admin info
+
+• POST   /api/v1/auth/admin/login
+  Purpose: Admin login authentication
+  Access: Public
+  Body: { username, password }
+  Returns: Auth token and admin details
+
+• POST   /api/v1/auth/admin/logout
+  Purpose: Admin logout
+  Access: Authenticated admin
+  Returns: Logout confirmation
+
+1.2 STUDENT AUTHENTICATION
+---------------------------
+• GET    /api/v1/auth/student/status
+  Purpose: Check if student is authenticated
+  Access: Any student
+  Returns: Authentication status and student info
+
+• POST   /api/v1/auth/student/login
+  Purpose: Student login authentication
+  Access: Public
+  Body: { enrollment_no, password }
+  Returns: Auth token and student details
+
+• POST   /api/v1/auth/student/logout
+  Purpose: Student logout
+  Access: Authenticated student
+  Returns: Logout confirmation
+
+• POST   /api/v1/auth/student/register
+  Purpose: Student account registration
+  Access: Public
+  Body: { full_name, enrollment_no, email, mobile_no, gender, date_of_birth, department, semester, password }
+  Returns: Registration confirmation
+
+============================================================================
+2. ADMIN APIs (/api/v1/admin)
+============================================================================
+
+2.1 ADMIN ANALYTICS (/api/v1/admin/analytics)
+---------------------------------------------
+• GET    /api/v1/admin/analytics/dashboard
+  Purpose: Get main dashboard analytics
+  Access: Admin (all roles)
+  Returns: Overall system statistics
+
+• GET    /api/v1/admin/analytics/events
+  Purpose: Get event-specific analytics
+  Access: Admin (all roles)
+  Query: event_id, date_range
+  Returns: Event performance metrics
+
+• GET    /api/v1/admin/analytics/students
+  Purpose: Get student analytics
+  Access: Admin (all roles)
+  Returns: Student engagement statistics
+
+• GET    /api/v1/admin/analytics/registrations
+  Purpose: Get registration analytics
+  Access: Admin (all roles)
+  Query: event_id, date_range
+  Returns: Registration trends and metrics
+
+• GET    /api/v1/admin/analytics/certificates
+  Purpose: Get certificate issuance analytics
+  Access: Admin (all roles)
+  Returns: Certificate statistics
+
+• GET    /api/v1/admin/analytics/export
+  Purpose: Export analytics data
+  Access: Admin (all roles)
+  Query: format, date_range, type
+  Returns: Downloadable analytics report
+
+• GET    /api/v1/admin/analytics/dashboard-stats
+  Purpose: Get real-time dashboard statistics
+  Access: Admin (all roles)
+  Returns: Live system metrics
+
+2.2 ADMIN CERTIFICATE MANAGEMENT (/api/v1/admin/certificates)
+-------------------------------------------------------------
+• GET    /api/v1/admin/certificates/list
+  Purpose: Get list of all certificates
+  Access: Admin (all roles)
+  Query: page, limit, event_id, status
+  Returns: Paginated certificate list
+
+• GET    /api/v1/admin/certificates/event/{event_id}
+  Purpose: Get certificates for specific event
+  Access: Admin (all roles)
+  Returns: Event-specific certificates
+
+• POST   /api/v1/admin/certificates/bulk-issue
+  Purpose: Issue certificates in bulk
+  Access: Executive Admin or higher
+  Body: { event_id, participant_list }
+  Returns: Bulk issuance result
+
+• POST   /api/v1/admin/certificates/revoke/{certificate_id}
+  Purpose: Revoke a certificate
+  Access: Executive Admin or higher
+  Returns: Revocation confirmation
+
+• GET    /api/v1/admin/certificates/templates
+  Purpose: Get available certificate templates
+  Access: Admin (all roles)
+  Returns: Template list
+
+• GET    /api/v1/admin/certificates/statistics
+  Purpose: Get certificate issuance statistics
+  Access: Admin (all roles)
+  Returns: Certificate metrics
+
+2.3 ADMIN EVENT MANAGEMENT (/api/v1/admin/events)
+-------------------------------------------------
+• GET    /api/v1/admin/events/list
+  Purpose: Get paginated list of events for admin management
+  Access: Admin (all roles, filtered by role)
+  Query: status, page, limit
+  Returns: Events with admin statistics
+
+• GET    /api/v1/admin/events/details/{event_id}
+  Purpose: Get detailed event information
+  Access: Admin (access controlled by role)
+  Returns: Complete event details with admin metrics
+
+• POST   /api/v1/admin/events/create
+  Purpose: Create new event
+  Access: Executive Admin or higher
+  Body: Complete event data
+  Returns: Created event details
+
+• PUT    /api/v1/admin/events/update/{event_id}
+  Purpose: Update existing event
+  Access: Admin (with event access)
+  Body: Updated event data
+  Returns: Updated event details
+
+• DELETE /api/v1/admin/events/delete/{event_id}
+  Purpose: Delete event
+  Access: Executive Admin or higher
+  Returns: Deletion confirmation
+
+• GET    /api/v1/admin/events/registrations/{event_id}
+  Purpose: Get event registrations
+  Access: Admin (with event access)
+  Query: page, limit, type
+  Returns: Event registration details
+
+• POST   /api/v1/admin/events/bulk-update-status
+  Purpose: Update multiple event statuses
+  Access: Executive Admin or higher
+  Body: { event_ids, new_status }
+  Returns: Bulk update result
+
+2.4 ADMIN PROFILE MANAGEMENT (/api/v1/admin/profile)
+----------------------------------------------------
+• GET    /api/v1/admin/profile/data
+  Purpose: Get admin profile information
+  Access: Authenticated admin
+  Returns: Admin profile data
+
+• PUT    /api/v1/admin/profile/update
+  Purpose: Update admin profile
+  Access: Authenticated admin
+  Body: { fullname, email, phone, preferences }
+  Returns: Updated profile
+
+• PUT    /api/v1/admin/profile/update-username
+  Purpose: Update admin username
+  Access: Authenticated admin
+  Body: { new_username, current_password }
+  Returns: Username update confirmation
+
+• PUT    /api/v1/admin/profile/update-password
+  Purpose: Change admin password
+  Access: Authenticated admin
+  Body: { current_password, new_password }
+  Returns: Password change confirmation
+
+• PUT    /api/v1/admin/profile/update-settings
+  Purpose: Update admin settings/preferences
+  Access: Authenticated admin
+  Body: { settings_object }
+  Returns: Settings update confirmation
+
+2.5 ADMIN STUDENT MANAGEMENT (/api/v1/admin/students)
+-----------------------------------------------------
+• GET    /api/v1/admin/students/list
+  Purpose: Get paginated list of students
+  Access: Admin (Content Admin or higher)
+  Query: page, limit, department, status, search
+  Returns: Student list with statistics
+
+• GET    /api/v1/admin/students/details/{enrollment_no}
+  Purpose: Get detailed student information
+  Access: Admin (Content Admin or higher)
+  Returns: Complete student profile and activity
+
+• PUT    /api/v1/admin/students/update/{enrollment_no}
+  Purpose: Update student information
+  Access: Admin (Content Admin or higher)
+  Body: Updated student data
+  Returns: Updated student details
+
+• POST   /api/v1/admin/students/create
+  Purpose: Create new student account
+  Access: Admin (Content Admin or higher)
+  Body: Complete student data
+  Returns: Created student details
+
+• POST   /api/v1/admin/students/bulk-import
+  Purpose: Import students in bulk
+  Access: Admin (Content Admin or higher)
+  Body: CSV/Excel file or student array
+  Returns: Import results
+
+• GET    /api/v1/admin/students/statistics
+  Purpose: Get student statistics
+  Access: Admin (Content Admin or higher)
+  Returns: Student metrics and analytics
+
+• PUT    /api/v1/admin/students/toggle-status/{enrollment_no}
+  Purpose: Enable/disable student account
+  Access: Admin (Content Admin or higher)
+  Returns: Status change confirmation
+
+• PUT    /api/v1/admin/students/update-status/{student_id}
+  Purpose: Update student status
+  Access: Admin (Content Admin or higher)
+  Body: { status, reason }
+  Returns: Status update confirmation
+
+2.6 ADMIN USER MANAGEMENT (/api/v1/admin/users)
+-----------------------------------------------
+• GET    /api/v1/admin/users/list
+  Purpose: Get list of admin users
+  Access: Super Admin only
+  Query: page, limit, role, status
+  Returns: Admin users list
+
+• GET    /api/v1/admin/users/details/{username}
+  Purpose: Get admin user details
+  Access: Super Admin only
+  Returns: Complete admin user information
+
+• POST   /api/v1/admin/users/create
+  Purpose: Create new admin user
+  Access: Super Admin only
+  Body: { username, fullname, email, role, permissions }
+  Returns: Created admin user
+
+• PUT    /api/v1/admin/users/update/{username}
+  Purpose: Update admin user
+  Access: Super Admin only
+  Body: Updated admin data
+  Returns: Updated admin user
+
+• DELETE /api/v1/admin/users/delete/{username}
+  Purpose: Delete admin user
+  Access: Super Admin only
+  Returns: Deletion confirmation
+
+• POST   /api/v1/admin/users/assign-events/{username}
+  Purpose: Assign events to event admin
+  Access: Super Admin only
+  Body: { event_ids }
+  Returns: Assignment confirmation
+
+• PUT    /api/v1/admin/users/toggle-status/{username}
+  Purpose: Enable/disable admin user
+  Access: Super Admin only
+  Returns: Status change confirmation
+
+• GET    /api/v1/admin/users/roles
+  Purpose: Get available admin roles
+  Access: Admin (all roles)
+  Returns: Role definitions and permissions
+
+• GET    /api/v1/admin/users/statistics
+  Purpose: Get admin user statistics
+  Access: Super Admin only
+  Returns: Admin user metrics
+
+============================================================================
+3. CLIENT APIs (/api/v1/client)
+============================================================================
+
+3.1 CLIENT ATTENDANCE (/api/v1/client/attendance)
+-------------------------------------------------
+• GET    /api/v1/client/attendance/status/{event_id}
+  Purpose: Check attendance status for event
+  Access: Authenticated student
+  Returns: Attendance status and eligibility
+
+• POST   /api/v1/client/attendance/mark/{event_id}
+  Purpose: Mark attendance for event
+  Access: Authenticated student
+  Body: { location_data, timestamp }
+  Returns: Attendance confirmation
+
+• GET    /api/v1/client/attendance/validate-form/{event_id}
+  Purpose: Validate attendance form/requirements
+  Access: Authenticated student
+  Returns: Form validation status
+
+• GET    /api/v1/client/attendance/history
+  Purpose: Get student's attendance history
+  Access: Authenticated student
+  Query: page, limit
+  Returns: Complete attendance record
+
+3.2 CLIENT CERTIFICATES (/api/v1/client/certificates)
+-----------------------------------------------------
+• POST   /api/v1/client/certificates/data
+  Purpose: Get certificate data for student
+  Access: Authenticated student
+  Body: { event_id }
+  Returns: Certificate information and download link
+
+• POST   /api/v1/client/certificates/send-email
+  Purpose: Send certificate via email
+  Access: Authenticated student
+  Body: { event_id, email }
+  Returns: Email sending confirmation
+
+• GET    /api/v1/client/certificates/status/{event_id}
+  Purpose: Check certificate availability
+  Access: Authenticated student
+  Returns: Certificate generation status
+
+• GET    /api/v1/client/certificates/template/{event_id}
+  Purpose: Get certificate template preview
+  Access: Authenticated student
+  Returns: Certificate template data
+
+• POST   /api/v1/client/certificates/validate-access
+  Purpose: Validate certificate access
+  Access: Authenticated student
+  Body: { event_id }
+  Returns: Access validation result
+
+• GET    /api/v1/client/certificates/debug/{event_id}/{enrollment_no}
+  Purpose: Debug certificate generation (development)
+  Access: Public (debug only)
+  Returns: Debug information
+
+3.3 CLIENT EVENTS (/api/v1/client/events)
+-----------------------------------------
+• GET    /api/v1/client/events/list
+  Purpose: Get list of available events for students
+  Access: Public/Authenticated student
+  Query: status, category, page, limit
+  Returns: Public event information
+
+• GET    /api/v1/client/events/details/{event_id}
+  Purpose: Get detailed event information
+  Access: Public/Authenticated student
+  Returns: Complete event details for students
+
+• GET    /api/v1/client/events/categories
+  Purpose: Get available event categories
+  Access: Public
+  Returns: Event category list
+
+• GET    /api/v1/client/events/search
+  Purpose: Search events
+  Access: Public
+  Query: query, category, date_range
+  Returns: Filtered event results
+
+• GET    /api/v1/client/events/upcoming
+  Purpose: Get upcoming events
+  Access: Public
+  Query: limit, days_ahead
+  Returns: Upcoming events list
+
+3.4 CLIENT FEEDBACK (/api/v1/client/feedback)
+---------------------------------------------
+• GET    /api/v1/client/feedback/status/{event_id}
+  Purpose: Check feedback submission status
+  Access: Authenticated student
+  Returns: Feedback eligibility and status
+
+• POST   /api/v1/client/feedback/submit/{event_id}
+  Purpose: Submit event feedback
+  Access: Authenticated student
+  Body: { feedback_responses }
+  Returns: Submission confirmation
+
+• GET    /api/v1/client/feedback/form-data/{event_id}
+  Purpose: Get feedback form structure
+  Access: Authenticated student
+  Returns: Feedback form questions and format
+
+• GET    /api/v1/client/feedback/history
+  Purpose: Get student's feedback history
+  Access: Authenticated student
+  Query: page, limit
+  Returns: Previous feedback submissions
+
+• GET    /api/v1/client/feedback/analytics/{event_id}
+  Purpose: Get feedback analytics (for participants)
+  Access: Authenticated student
+  Returns: Public feedback insights
+
+3.5 CLIENT PROFILE (/api/v1/client/profile)
+-------------------------------------------
+• GET    /api/v1/client/profile/info
+  Purpose: Get student profile information
+  Access: Authenticated student
+  Returns: Student profile data
+
+• PUT    /api/v1/client/profile/update
+  Purpose: Update student profile
+  Access: Authenticated student
+  Body: { full_name, email, mobile_no, department, semester }
+  Returns: Updated profile
+
+• GET    /api/v1/client/profile/dashboard-stats
+  Purpose: Get student dashboard statistics
+  Access: Authenticated student
+  Returns: Personal activity metrics
+
+• GET    /api/v1/client/profile/event-history
+  Purpose: Get student's event participation history
+  Access: Authenticated student
+  Query: page, limit, status
+  Returns: Complete event history
+
+• POST   /api/v1/client/profile/change-password
+  Purpose: Change student password
+  Access: Authenticated student
+  Body: { current_password, new_password }
+  Returns: Password change confirmation
+
+3.6 CLIENT REGISTRATION (/api/v1/client/registration)
+-----------------------------------------------------
+• GET    /api/v1/client/registration/validate
+  Purpose: Validate registration eligibility
+  Access: Public/Authenticated student
+  Query: event_id, enrollment_no
+  Returns: Registration validation result
+
+• GET    /api/v1/client/registration/validate-participant
+  Purpose: Validate participant details
+  Access: Public
+  Query: enrollment_no
+  Returns: Participant validation
+
+• POST   /api/v1/client/registration/check-conflicts
+  Purpose: Check for registration conflicts
+  Access: Public
+  Body: { event_id, participant_data }
+  Returns: Conflict check result
+
+• GET    /api/v1/client/registration/status/{event_id}
+  Purpose: Get registration status for event
+  Access: Authenticated student
+  Returns: Current registration status
+
+• POST   /api/v1/client/registration/cancel/{event_id}
+  Purpose: Cancel event registration
+  Access: Authenticated student
+  Returns: Cancellation confirmation
+
+============================================================================
+4. API ACCESS LEVELS & PERMISSIONS
+============================================================================
+
+4.1 ADMIN ROLES HIERARCHY
+-------------------------
+• Super Admin: Full system access, user management
+• Executive Admin: Event management, content management, analytics
+• Content Admin: Student management, content updates
+• Event Admin: Limited to assigned events only
+
+4.2 AUTHENTICATION REQUIREMENTS
+-------------------------------
+• Public: No authentication required
+• Authenticated Student: Valid student session
+• Authenticated Admin: Valid admin session with appropriate role
+• Role-Specific: Additional role validation required
+
+4.3 RATE LIMITING & SECURITY
+----------------------------
+• All APIs implement proper authentication and authorization
+• Sensitive operations require password confirmation
+• File uploads are validated and secured
+• Rate limiting applied to prevent abuse
+
+============================================================================
+5. API RESPONSE FORMATS
+============================================================================
+
+5.1 STANDARD SUCCESS RESPONSE
+-----------------------------
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": { ... },
+  "pagination": { ... } // For paginated endpoints
+}
+
+5.2 STANDARD ERROR RESPONSE
+---------------------------
+{
+  "success": false,
+  "message": "Error description",
+  "error_code": "ERROR_CODE",
+  "details": { ... } // Optional additional details
+}
+
+5.3 PAGINATION FORMAT
+---------------------
+{
+  "current_page": 1,
+  "total_pages": 10,
+  "total_items": 100,
+  "items_per_page": 10,
+  "has_next": true,
+  "has_previous": false
+}
+
+============================================================================
+6. NOTES & CONVENTIONS
+============================================================================
+
+• All timestamps are in ISO 8601 format
+• Date ranges use 'start_date' and 'end_date' parameters
+• File uploads support multiple formats (CSV, Excel, PDF, Images)
+• All endpoints support CORS for frontend integration
+• API versioning allows for future compatibility
+• Comprehensive logging for all operations
+• Database operations are optimized for performance
+• Real-time updates available via WebSocket connections
+
+============================================================================
+END OF API DOCUMENTATION
+============================================================================
+
+Generated on: June 29, 2025
+API Version: v1.0
+Total Endpoints: 87+
+Documentation Status: Complete
+
+For technical support or API questions, contact the development team.

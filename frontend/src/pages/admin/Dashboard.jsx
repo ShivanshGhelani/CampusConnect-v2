@@ -14,13 +14,9 @@ function Dashboard() {
     completed_events: 0,
     draft_events: 0,
     triggers_queued: 0,
-    detailed_status_counts: {
-      registration_open: 0,
-      live: 0,
-      registration_not_started: 0,
-      certificate_available: 0
-    }
+    scheduler_running: true
   });
+  const [activeJobs, setActiveJobs] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,30 +34,35 @@ function Dashboard() {
       setCurrentTime(new Date(Date.now() + serverTimeOffset));
     }, 1000);
     
-    // Set up auto-refresh
-    let refreshInterval;
+    // Set up auto-refresh for live data
+    let liveDataInterval;
+    let fullRefreshInterval;
+    
     if (autoRefresh) {
-      refreshInterval = setInterval(fetchDashboardData, 15000); // Refresh every 15 seconds
+      liveDataInterval = setInterval(fetchLiveData, 15000); // Live data every 15 seconds
+      fullRefreshInterval = setInterval(fetchDashboardData, 120000); // Full refresh every 2 minutes
     }
     
     return () => {
       clearInterval(timeInterval);
-      if (refreshInterval) clearInterval(refreshInterval);
+      if (liveDataInterval) clearInterval(liveDataInterval);
+      if (fullRefreshInterval) clearInterval(fullRefreshInterval);
     };
   }, [autoRefresh, serverTimeOffset]);
 
   const initializeTime = () => {
-    // Initialize server time - in a real app, this would come from the server
-    const serverTime = new Date(); // Mock server time
+    // In a real app, this would come from the server
+    const serverTime = new Date();
     const clientTime = new Date();
     setServerTimeOffset(serverTime.getTime() - clientTime.getTime());
     setCurrentTime(new Date(Date.now() + serverTimeOffset));
   };
+
   const fetchDashboardData = async () => {
     try {
       setIsLoading(!stats.total_events_count); // Only show loading spinner on first load
       
-      // Fetch real data from API
+      // Fetch complete dashboard data
       const response = await adminAPI.getDashboardStats();
       
       if (response.data.success) {
@@ -76,81 +77,141 @@ function Dashboard() {
           completed_events: data.completed_events || 0,
           draft_events: data.draft_events || 0,
           triggers_queued: data.triggers_queued || 0,
-          detailed_status_counts: data.detailed_status_counts || {
-            registration_open: 0,
-            live: 0,
-            registration_not_started: 0,
-            certificate_available: 0
-          }
+          scheduler_running: data.scheduler_running !== false
         });
+
+        // Mock active jobs data
+        setActiveJobs([
+          {
+            id: 1,
+            name: 'Email Reminders - Tech Workshop',
+            type: 'email_reminder',
+            status: 'running',
+            progress: 75,
+            estimated_completion: '2 min'
+          },
+          {
+            id: 2,
+            name: 'Certificate Generation - Hackathon 2025',
+            type: 'certificate_generation',
+            status: 'queued',
+            progress: 0,
+            estimated_completion: '5 min'
+          },
+          {
+            id: 3,
+            name: 'Attendance Analytics - Code Challenge',
+            type: 'analytics',
+            status: 'completed',
+            progress: 100,
+            estimated_completion: 'Completed'
+          }
+        ]);
       } else {
         throw new Error(response.data.message || 'Failed to fetch dashboard data');
       }
 
-      // Mock recent activity for now (can be replaced with real API data later)
+      // Enhanced recent activity with more variety
       setRecentActivity([
         {
           id: 1,
           type: 'event_created',
-          message: 'New event "Code Challenge 2025" created',
+          message: 'New event "AI Workshop 2025" created by Admin',
           timestamp: new Date(Date.now() - 1000 * 60 * 30),
           icon: 'fas fa-plus-circle',
-          color: 'text-green-600'
+          color: 'text-green-600',
+          priority: 'normal'
         },
         {
           id: 2,
-          type: 'student_registered',
-          message: '15 new student registrations',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+          type: 'registration_spike',
+          message: '50 new registrations in the last hour',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1),
           icon: 'fas fa-user-plus',
-          color: 'text-blue-600'
+          color: 'text-blue-600',
+          priority: 'high'
         },
         {
           id: 3,
-          type: 'certificate_generated',
-          message: 'Certificates generated for "Workshop 2024"',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
-          icon: 'fas fa-certificate',
-          color: 'text-purple-600'
+          type: 'system_alert',
+          message: 'Email service temporarily unavailable',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+          icon: 'fas fa-exclamation-triangle',
+          color: 'text-yellow-600',
+          priority: 'high'
         },
         {
           id: 4,
+          type: 'certificate_generated',
+          message: 'Certificates generated for "Tech Symposium"',
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
+          icon: 'fas fa-certificate',
+          color: 'text-purple-600',
+          priority: 'normal'
+        },
+        {
+          id: 5,
           type: 'event_completed',
-          message: 'Event "Tech Symposium" completed successfully',
+          message: 'Event "Data Science Bootcamp" completed successfully',
           timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12),
           icon: 'fas fa-check-circle',
-          color: 'text-indigo-600'
+          color: 'text-indigo-600',
+          priority: 'normal'
         }
-      ]);      setLastRefreshed(new Date());
+      ]);
+
+      setLastRefreshed(new Date());
       setError('');
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       setError('Failed to load dashboard data');
       
       // Set fallback values on error
-      setStats({
-        active_events_count: 0,
-        total_events_count: 0,
-        pending_jobs: 0,
+      setStats(prevStats => ({
+        ...prevStats,
         system_status: 'Offline',
-        upcoming_events: 0,
-        ongoing_events: 0,
-        completed_events: 0,
-        draft_events: 0,
-        triggers_queued: 0,
-        detailed_status_counts: {
-          registration_open: 0,
-          live: 0,
-          registration_not_started: 0,
-          certificate_available: 0
-        }
-      });
+        scheduler_running: false
+      }));
       
-      // Keep recent activity as empty array on error
+      setActiveJobs([]);
       setRecentActivity([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchLiveData = async () => {
+    try {
+      // Simulate live data endpoint
+      const response = await adminAPI.getDashboardStats();
+      
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        // Update only live statistics without full re-render
+        setStats(prevStats => ({
+          ...prevStats,
+          active_events_count: data.active_events_count || prevStats.active_events_count,
+          pending_jobs: data.pending_jobs || prevStats.pending_jobs,
+          triggers_queued: data.triggers_queued || prevStats.triggers_queued,
+          scheduler_running: data.scheduler_running !== false
+        }));
+        
+        updateLastRefreshedTime();
+        
+        // Show success notification for live updates (less intrusive)
+        if (autoRefresh) {
+          showNotification('Data updated', 'success', 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Live data fetch error:', error);
+      // Don't show error notifications for live data failures to avoid spam
+    }
+  };
+
+  const updateLastRefreshedTime = () => {
+    setLastRefreshed(new Date(Date.now() + serverTimeOffset));
   };
 
   const handleManualRefresh = async () => {
@@ -165,26 +226,44 @@ function Dashboard() {
       
       refreshBtn.innerHTML = originalContent;
       refreshBtn.disabled = false;
+    } else {
+      await fetchDashboardData();
+      showNotification('Dashboard refreshed successfully', 'success');
     }
   };
 
   const handleClearCache = async () => {
     const clearBtn = document.getElementById('clear-cache');
-    if (clearBtn) {
+    const isButton = clearBtn !== null;
+    
+    if (isButton) {
       const originalContent = clearBtn.innerHTML;
       clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.25rem;"></i>Clearing...';
       clearBtn.disabled = true;
-      
-      try {
-        // Mock cache clear API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        showNotification('Cache cleared successfully', 'success');
-      } catch (error) {
-        showNotification('Failed to clear cache', 'error');
-      } finally {
-        clearBtn.innerHTML = originalContent;
+    }
+    
+    try {
+      // Mock cache clear API call - replace with real endpoint when available
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      showNotification('Cache cleared successfully', 'success');
+    } catch (error) {
+      showNotification('Failed to clear cache', 'error');
+    } finally {
+      if (isButton) {
+        clearBtn.innerHTML = clearBtn.originalContent || '<i class="fas fa-trash" style="margin-right: 0.25rem;"></i>Clear Cache';
         clearBtn.disabled = false;
       }
+    }
+  };
+
+  const toggleAutoRefresh = (enabled) => {
+    setAutoRefresh(enabled);
+    localStorage.setItem('admin-dashboard-auto-refresh', enabled.toString());
+    
+    if (enabled) {
+      showNotification('Live updates enabled', 'success', 3000);
+    } else {
+      showNotification('Live updates disabled', 'info', 3000);
     }
   };
 
@@ -229,6 +308,26 @@ function Dashboard() {
     });
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+
+  const getJobStatusColor = (status) => {
+    switch (status) {
+      case 'running': return { bg: '#dbeafe', text: '#2563eb' };
+      case 'completed': return { bg: '#dcfce7', text: '#059669' };
+      case 'queued': return { bg: '#fef3c7', text: '#d97706' };
+      case 'failed': return { bg: '#fee2e2', text: '#dc2626' };
+      default: return { bg: '#f3f4f6', text: '#6b7280' };
+    }
+  };
+
   if (isLoading && !stats.total_events_count) {
     return (
       <AdminLayout pageTitle="Dashboard Overview">
@@ -241,216 +340,82 @@ function Dashboard() {
 
   return (
     <AdminLayout pageTitle="Dashboard Overview">
-      <div style={{
-        minHeight: '100%',
-        background: 'linear-gradient(to bottom right, #f8fafc, #eff6ff, #eef2ff)',
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-      }}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         {/* Dashboard Header */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(229, 231, 235, 0.6)',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            maxWidth: '1280px',
-            margin: '0 auto',
-            padding: '2rem 1rem'
-          }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: window.innerWidth < 1024 ? 'column' : 'row',
-              justifyContent: 'space-between',
-              alignItems: window.innerWidth < 1024 ? 'flex-start' : 'center',
-              gap: '1.5rem'
-            }}>
+        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
               {/* Header Section */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  background: 'linear-gradient(to right, #2563eb, #4f46e5)',
-                  borderRadius: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <i className="fas fa-chart-line" style={{ color: 'white', fontSize: '24px' }}></i>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <i className="fas fa-chart-line text-white text-2xl"></i>
                 </div>
                 <div>
-                  <h1 style={{
-                    fontSize: '2.5rem',
-                    fontWeight: 'bold',
-                    background: 'linear-gradient(to right, #2563eb, #4f46e5, #7c3aed)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    lineHeight: '1.2',
-                    margin: '0'
-                  }}>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     Admin Dashboard
                   </h1>
-                  <p style={{
-                    color: '#6b7280',
-                    marginTop: '0.25rem',
-                    fontSize: '1.125rem',
-                    margin: '0.25rem 0 0.5rem 0'
-                  }}>
-                    Real-time monitoring and control center
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      Last updated: <span id="last-updated">{formatTime(lastRefreshed)}</span>
+                  <p className="text-gray-600 text-lg mt-1">Real-time monitoring and control center</p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="text-sm text-gray-500">
+                      Last updated: <span id="last-updated" className="font-medium">{formatTime(lastRefreshed)}</span>
                     </span>
+                    <div className="flex items-center gap-1">
+                      <div className={`w-2 h-2 rounded-full ${stats.scheduler_running ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                      <span className="text-sm text-gray-500">
+                        System {stats.scheduler_running ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
               
               {/* Control Panel */}
-              <div style={{
-                display: 'flex',
-                flexDirection: window.innerWidth < 640 ? 'column' : 'row',
-                gap: '1rem',
-                width: window.innerWidth < 1024 ? '100%' : 'auto'
-              }}>
-                <div style={{
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  backdropFilter: 'blur(4px)',
-                  borderRadius: '12px',
-                  padding: '1rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid #f3f4f6'
-                }}>
-                  <h3 style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0.75rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    margin: '0 0 0.75rem 0'
-                  }}>
-                    <i className="fas fa-cog" style={{ marginRight: '0.5rem' }}></i>
-                    Quick Controls
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <i className="fas fa-cog mr-2"></i>Quick Controls
                   </h3>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: window.innerWidth < 640 ? '1fr' : '1fr 1fr',
-                    gap: '0.75rem'
-                  }}>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     <button
                       id="manual-refresh"
                       onClick={handleManualRefresh}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0.5rem 0.75rem',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-                      onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                      className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                     >
-                      <i className="fas fa-sync-alt" style={{ marginRight: '0.25rem' }}></i>
-                      Refresh
+                      <i className="fas fa-sync-alt mr-1"></i>Refresh
                     </button>
                     <button
                       id="clear-cache"
                       onClick={handleClearCache}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0.5rem 0.75rem',
-                        backgroundColor: '#6b7280',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseOver={(e) => e.target.style.backgroundColor = '#4b5563'}
-                      onMouseOut={(e) => e.target.style.backgroundColor = '#6b7280'}
+                      className="flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
                     >
-                      <i className="fas fa-trash" style={{ marginRight: '0.25rem' }}></i>
-                      Clear Cache
+                      <i className="fas fa-trash mr-1"></i>Cache
                     </button>
                   </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '0.5rem',
-                    marginTop: '0.75rem'
-                  }}>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '0.875rem'
-                    }}>
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center text-sm">
                       <input
                         id="auto-refresh"
                         type="checkbox"
                         checked={autoRefresh}
-                        onChange={(e) => setAutoRefresh(e.target.checked)}
-                        style={{ marginRight: '0.5rem' }}
+                        onChange={(e) => toggleAutoRefresh(e.target.checked)}
+                        className="mr-2"
                       />
                       Live Updates
                     </label>
-                    <span
-                      id="refresh-status"
-                      style={{
-                        fontSize: '0.75rem',
-                        color: autoRefresh ? '#059669' : '#6b7280'
-                      }}
-                    >
+                    <span className={`text-xs ${autoRefresh ? 'text-green-600' : 'text-gray-600'}`}>
                       {autoRefresh ? 'Active' : 'Disabled'}
                     </span>
                   </div>
                 </div>
                 
                 {/* Live Clock */}
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '1rem',
-                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                  border: '1px solid #f3f4f6',
-                  minWidth: 'max-content'
-                }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div
-                      id="current-time"
-                      style={{
-                        fontSize: '1.125rem',
-                        fontWeight: 'bold',
-                        color: '#1f2937'
-                      }}
-                    >
+                <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100 min-w-max">
+                  <div className="text-center">
+                    <div id="current-time" className="text-xl font-bold text-gray-900">
                       {formatTime(currentTime)}
                     </div>
-                    <div
-                      id="current-date"
-                      style={{
-                        fontSize: '0.875rem',
-                        color: '#6b7280'
-                      }}
-                    >
-                      {currentTime.toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                    <div id="current-date" className="text-sm text-gray-600">
+                      {formatDate(currentTime)}
                     </div>
                   </div>
                 </div>
@@ -460,372 +425,225 @@ function Dashboard() {
         </div>
 
         {/* Main Dashboard Content */}
-        <div style={{
-          maxWidth: '1280px',
-          margin: '0 auto',
-          padding: '0 1rem 2rem'
-        }}>
+        <div className="max-w-7xl mx-auto px-4 py-8">
           
           {/* Statistics Cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '1.5rem',
-            marginBottom: '2rem'
-          }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Active Events Card */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #f3f4f6',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    margin: '0'
-                  }}>
-                    Active Events
-                  </p>
-                  <p
-                    id="active-events-count"
-                    style={{
-                      fontSize: '2rem',
-                      fontWeight: 'bold',
-                      color: '#2563eb',
-                      marginTop: '0.5rem',
-                      margin: '0.5rem 0 0 0'
-                    }}
-                  >
+                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Active Events</p>
+                  <p id="active-events-count" className="text-3xl font-bold text-blue-600 mt-2">
                     {stats.active_events_count || 0}
                   </p>
+                  <div className="flex items-center mt-3 text-sm">
+                    <span className="text-blue-600 font-medium">
+                      <i className="fas fa-arrow-up mr-1"></i>{stats.upcoming_events || 0} upcoming
+                    </span>
+                    <span className="text-gray-500 ml-3">{stats.ongoing_events || 0} live</span>
+                  </div>
                 </div>
-                <div style={{
-                  background: '#dbeafe',
-                  borderRadius: '50%',
-                  padding: '0.75rem'
-                }}>
-                  <i className="fas fa-calendar-check" style={{ color: '#2563eb', fontSize: '1.25rem' }}></i>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-calendar-check text-blue-500 text-xl"></i>
                 </div>
-              </div>
-              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center' }}>
-                <span style={{
-                  color: '#3b82f6',
-                  fontSize: '0.875rem',
-                  fontWeight: '600'
-                }}>
-                  <i className="fas fa-arrow-up" style={{ marginRight: '0.25rem' }}></i>
-                  {stats.upcoming_events || 0} upcoming
-                </span>
-                <span style={{
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
-                  marginLeft: '0.5rem'
-                }}>
-                  {stats.ongoing_events || 0} ongoing
-                </span>
               </div>
             </div>
 
             {/* Total Events Card */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #f3f4f6',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    margin: '0'
-                  }}>
-                    Total Events
-                  </p>
-                  <p
-                    id="total-events-count"
-                    style={{
-                      fontSize: '2rem',
-                      fontWeight: 'bold',
-                      color: '#059669',
-                      marginTop: '0.5rem',
-                      margin: '0.5rem 0 0 0'
-                    }}
-                  >
+                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Total Events</p>
+                  <p id="total-events-count" className="text-3xl font-bold text-green-600 mt-2">
                     {stats.total_events_count || 0}
                   </p>
+                  <div className="flex items-center mt-3 text-sm">
+                    <span className="text-green-600 font-medium">
+                      <i className="fas fa-check mr-1"></i>{stats.completed_events || 0} completed
+                    </span>
+                    <span className="text-gray-500 ml-3">{stats.draft_events || 0} drafts</span>
+                  </div>
                 </div>
-                <div style={{
-                  background: '#d1fae5',
-                  borderRadius: '50%',
-                  padding: '0.75rem'
-                }}>
-                  <i className="fas fa-chart-line" style={{ color: '#059669', fontSize: '1.25rem' }}></i>
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-chart-line text-green-500 text-xl"></i>
                 </div>
-              </div>
-              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center' }}>
-                <span style={{
-                  color: '#10b981',
-                  fontSize: '0.875rem',
-                  fontWeight: '600'
-                }}>
-                  <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>
-                  {stats.completed_events || 0} completed
-                </span>
-                <span style={{
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
-                  marginLeft: '0.5rem'
-                }}>
-                  {stats.draft_events || 0} drafts
-                </span>
               </div>
             </div>
 
             {/* Pending Jobs Card */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #f3f4f6',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    margin: '0'
-                  }}>
-                    Pending Jobs
-                  </p>
-                  <p
-                    id="pending-jobs-count"
-                    style={{
-                      fontSize: '2rem',
-                      fontWeight: 'bold',
-                      color: '#d97706',
-                      marginTop: '0.5rem',
-                      margin: '0.5rem 0 0 0'
-                    }}
-                  >
+                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Pending Jobs</p>
+                  <p id="pending-jobs-count" className="text-3xl font-bold text-yellow-600 mt-2">
                     {stats.pending_jobs || 0}
                   </p>
+                  <div className="flex items-center mt-3 text-sm">
+                    <span className="text-yellow-600 font-medium">
+                      <i className="fas fa-hourglass-half mr-1"></i>{stats.triggers_queued || 0} queued
+                    </span>
+                    <span className="text-gray-500 ml-3">in scheduler</span>
+                  </div>
                 </div>
-                <div style={{
-                  background: '#fef3c7',
-                  borderRadius: '50%',
-                  padding: '0.75rem'
-                }}>
-                  <i className="fas fa-clock" style={{ color: '#d97706', fontSize: '1.25rem' }}></i>
+                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-clock text-yellow-500 text-xl"></i>
                 </div>
-              </div>
-              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center' }}>
-                <span style={{
-                  color: '#f59e0b',
-                  fontSize: '0.875rem',
-                  fontWeight: '600'
-                }}>
-                  <i className="fas fa-hourglass-half" style={{ marginRight: '0.25rem' }}></i>
-                  {stats.triggers_queued || 0} queued
-                </span>
-                <span style={{
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
-                  marginLeft: '0.5rem'
-                }}>
-                  in scheduler
-                </span>
               </div>
             </div>
 
             {/* System Status Card */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #f3f4f6',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    margin: '0'
-                  }}>
-                    System Status
+                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">System Status</p>
+                  <p id="system-status" className={`text-3xl font-bold mt-2 ${stats.scheduler_running ? 'text-green-600' : 'text-red-600'}`}>
+                    {stats.scheduler_running ? 'Online' : 'Offline'}
                   </p>
-                  <p
-                    id="system-status"
-                    style={{
-                      fontSize: '2rem',
-                      fontWeight: 'bold',
-                      color: stats.system_status === 'Online' ? '#059669' : '#dc2626',
-                      marginTop: '0.5rem',
-                      margin: '0.5rem 0 0 0'
-                    }}
-                  >
-                    {stats.system_status || 'Online'}
-                  </p>
+                  <div className="flex items-center mt-3">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${stats.scheduler_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm text-gray-700">All systems operational</span>
+                  </div>
                 </div>
-                <div style={{
-                  background: stats.system_status === 'Online' ? '#d1fae5' : '#fee2e2',
-                  borderRadius: '50%',
-                  padding: '0.75rem'
-                }}>
-                  <i
-                    className={stats.system_status === 'Online' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'}
-                    style={{
-                      color: stats.system_status === 'Online' ? '#059669' : '#dc2626',
-                      fontSize: '1.25rem'
-                    }}
-                  ></i>
-                </div>
-              </div>
-              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: stats.system_status === 'Online' ? '#10b981' : '#ef4444',
-                    marginRight: '0.5rem'
-                  }}></div>
-                  <span style={{
-                    fontSize: '0.875rem',
-                    color: '#374151'
-                  }}>
-                    All systems operational
-                  </span>
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.scheduler_running ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <i className={`fas ${stats.scheduler_running ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'} text-xl`}></i>
                 </div>
               </div>
             </div>
           </div>
 
+
+
+          {/* Active Jobs Table */}
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-8">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <i className="fas fa-tasks text-purple-500 mr-3"></i>
+                Active Background Jobs
+              </h2>
+              <p className="text-gray-600 mt-1">Currently running and queued system tasks</p>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {activeJobs.length > 0 ? (
+                    activeJobs.map((job) => {
+                      const statusColor = getJobStatusColor(job.status);
+                      return (
+                        <tr key={job.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{job.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-500 capitalize">
+                              {job.type.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span 
+                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                              style={{ 
+                                backgroundColor: statusColor.bg, 
+                                color: statusColor.text 
+                              }}
+                            >
+                              {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
+                                <div 
+                                  className="h-2 rounded-full transition-all duration-300"
+                                  style={{ 
+                                    width: `${job.progress}%`,
+                                    backgroundColor: job.status === 'completed' ? '#10b981' : 
+                                                   job.status === 'running' ? '#3b82f6' : '#6b7280'
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="text-sm text-gray-600">{job.progress}%</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {job.estimated_completion}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                        <i className="fas fa-tasks text-3xl mb-2 block"></i>
+                        No active background jobs
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
           {/* Recent Activity */}
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #f3f4f6'
-          }}>
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid #f3f4f6'
-            }}>
-              <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: '#1f2937',
-                display: 'flex',
-                alignItems: 'center',
-                margin: '0'
-              }}>
-                <i className="fas fa-history" style={{ color: '#2563eb', marginRight: '0.5rem' }}></i>
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <i className="fas fa-history text-green-500 mr-3"></i>
                 Recent Activity
               </h2>
+              <p className="text-gray-600 mt-1">Latest system events and notifications</p>
             </div>
-            <div style={{ padding: '1.5rem' }}>
-              <div id="activity-log" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="p-6">
+              <div id="activity-log" className="space-y-4">
                 {recentActivity.length > 0 ? (
                   recentActivity.map((log) => (
                     <div
                       key={log.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.75rem',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <i className={log.icon} style={{ color: 'white', fontSize: '0.875rem' }}></i>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        log.priority === 'high' ? 'bg-red-100' : 'bg-blue-100'
+                      }`}>
+                        <i className={`${log.icon} ${log.priority === 'high' ? 'text-red-600' : 'text-blue-600'} text-sm`}></i>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{
-                          margin: '0',
-                          fontSize: '0.875rem',
-                          color: '#1f2937',
-                          fontWeight: '500'
-                        }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 mb-1">
                           {log.message}
                         </p>
-                        <p style={{
-                          margin: '0.25rem 0 0 0',
-                          fontSize: '0.75rem',
-                          color: '#6b7280'
-                        }}>
+                        <p className="text-xs text-gray-500">
                           {log.timestamp.toLocaleString()}
                         </p>
                       </div>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        color: '#10b981',
-                        background: '#dcfce7',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '12px',
-                        fontWeight: '500'
-                      }}>
-                        {log.type.replace('_', ' ')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {log.priority === 'high' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            High Priority
+                          </span>
+                        )}
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          log.type === 'system_alert' ? 'bg-yellow-100 text-yellow-800' :
+                          log.type === 'event_created' ? 'bg-green-100 text-green-800' :
+                          log.type === 'registration_spike' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {log.type.replace('_', ' ')}
+                        </span>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#6b7280',
-                    padding: '2rem',
-                    fontSize: '0.875rem'
-                  }}>
-                    <i className="fas fa-inbox" style={{ fontSize: '2rem', marginBottom: '1rem', display: 'block' }}></i>
-                    No recent activity to display
+                  <div className="text-center py-8 text-gray-500">
+                    <i className="fas fa-inbox text-3xl mb-3 block"></i>
+                    <p className="text-sm">No recent activity to display</p>
                   </div>
                 )}
               </div>
@@ -833,6 +651,44 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Enhanced Styling */}
+      <style jsx>{`
+        .progress-bar {
+          transition: width 0.5s ease;
+        }
+        
+        .bg-gradient-to-br {
+          background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
+        }
+        
+        .backdrop-blur-md {
+          backdrop-filter: blur(12px);
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        
+        .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .hover\\:shadow-xl:hover {
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .hover\\:-translate-y-1:hover {
+          transform: translateY(-0.25rem);
+        }
+        
+        .transition-all {
+          transition-property: all;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+          transition-duration: 300ms;
+        }
+      `}</style>
     </AdminLayout>
   );
 }

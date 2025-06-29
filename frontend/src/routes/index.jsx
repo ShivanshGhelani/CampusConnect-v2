@@ -16,8 +16,11 @@ import EditProfile from '../pages/client/EditProfile';
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
-import AdminAnalytics from '../pages/admin/Analytics';
 import CreateEvent from '../pages/admin/CreateEvent';
+import EditEvent from '../pages/admin/EditEvent';
+import EventDetail from '../pages/admin/EventDetail';
+import ManageAdmin from '../pages/admin/ManageAdmin';
+import SettingsProfile from '../pages/admin/SettingsProfile';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -119,6 +122,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/admin/events/:eventId"
+          element={
+            <ProtectedRoute userType="admin">
+              <EventDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/students"
           element={
             <ProtectedRoute userType="admin">
@@ -127,18 +138,34 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/admin/analytics"
-          element={
-            <ProtectedRoute userType="admin">
-              <AdminAnalytics />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/admin/create-event"
           element={
             <ProtectedRoute userType="admin">
               <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/:eventId/edit"
+          element={
+            <ProtectedRoute userType="admin">
+              <EditEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/manage-admins"
+          element={
+            <ProtectedRoute userType="admin">
+              <ManageAdmin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute userType="admin">
+              <SettingsProfile />
             </ProtectedRoute>
           }
         />
