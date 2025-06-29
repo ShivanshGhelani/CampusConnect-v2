@@ -16,6 +16,10 @@ import EditProfile from '../pages/client/EditProfile';
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
+import Faculty from '../pages/admin/Faculty';
+import ManageCertificates from '../pages/admin/ManageCertificates';
+import Assets from '../pages/admin/Assets';
+import Venue from '../pages/admin/Venue';
 import CreateEvent from '../pages/admin/CreateEvent';
 import EditEvent from '../pages/admin/EditEvent';
 import EventDetail from '../pages/admin/EventDetail';
@@ -134,6 +138,38 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <AdminStudents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/faculty"
+          element={
+            <ProtectedRoute userType="admin">
+              <Faculty />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/certificates"
+          element={
+            <ProtectedRoute userType="admin">
+              <ManageCertificates />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/assets"
+          element={
+            <ProtectedRoute userType="admin">
+              <Assets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/venue"
+          element={
+            <ProtectedRoute userType="admin">
+              <Venue />
             </ProtectedRoute>
           }
         />

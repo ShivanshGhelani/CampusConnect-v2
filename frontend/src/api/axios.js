@@ -323,6 +323,28 @@ export const adminAPI = {
   updateUsername: (usernameData) => api.put('/api/v1/admin/profile/update-username', usernameData),
   updatePassword: (passwordData) => api.put('/api/v1/admin/profile/update-password', passwordData),
   updateSettings: (settingsData) => api.put('/api/v1/admin/profile/update-settings', settingsData),
+  
+  // Asset Management
+  getAssets: (assetType) => api.get('/api/v1/admin/assets/list', { params: assetType ? { asset_type: assetType } : {} }),
+  getAssetStatistics: () => api.get('/api/v1/admin/assets/statistics'),
+  deleteAsset: (assetId, assetPath) => api.delete(`/api/v1/admin/assets/${assetId}`, { data: { asset_path: assetPath } }),
+  uploadAsset: (formData, config) => api.post('/api/v1/admin/assets/upload', formData, config),
+};
+
+// Dedicated asset API object for easier use
+export const assetApi = {
+  list: (endpoint = '') => {
+    if (endpoint.startsWith('/category/')) {
+      const category = endpoint.replace('/category/', '');
+      return api.get(`/api/v1/admin/assets/dashboard?category=${category}`);
+    }
+    return api.get('/api/v1/admin/assets/dashboard');
+  },
+  stats: () => adminAPI.getAssetStatistics(),
+  upload: (formData, config) => adminAPI.uploadAsset(formData, config),
+  delete: (assetId) => {
+    return api.delete(`/api/v1/admin/assets/${assetId}`);
+  }
 };
 
 export default api;

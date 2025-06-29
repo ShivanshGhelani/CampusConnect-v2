@@ -21,37 +21,48 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(() => {
+    // Load auto-refresh state from localStorage
+    const saved = localStorage.getItem('admin-dashboard-auto-refresh');
+    return saved ? saved === 'true' : false;
+  });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [serverTimeOffset, setServerTimeOffset] = useState(0);
+
+  // Rate limiting state
+  const [isDataFetching, setIsDataFetching] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const MIN_FETCH_INTERVAL = 5000; // Minimum 5 seconds between fetches
 
   useEffect(() => {
     fetchDashboardData();
     initializeTime();
-    
-    // Set up time update
+  }, []);
+
+  useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date(Date.now() + serverTimeOffset));
     }, 1000);
     
-    // Set up auto-refresh for live data
+    return () => clearInterval(timeInterval);
+  }, [serverTimeOffset]);
+
+  useEffect(() => {
     let liveDataInterval;
     let fullRefreshInterval;
     
     if (autoRefresh) {
-      liveDataInterval = setInterval(fetchLiveData, 15000); // Live data every 15 seconds
-      fullRefreshInterval = setInterval(fetchDashboardData, 120000); // Full refresh every 2 minutes
+      liveDataInterval = setInterval(fetchLiveData, 60000); // Live data every 1 minute
+      fullRefreshInterval = setInterval(fetchDashboardData, 600000); // Full refresh every 10 minutes
     }
     
     return () => {
-      clearInterval(timeInterval);
       if (liveDataInterval) clearInterval(liveDataInterval);
       if (fullRefreshInterval) clearInterval(fullRefreshInterval);
     };
-  }, [autoRefresh, serverTimeOffset]);
+  }, [autoRefresh]);
 
   const initializeTime = () => {
-    // In a real app, this would come from the server
     const serverTime = new Date();
     const clientTime = new Date();
     setServerTimeOffset(serverTime.getTime() - clientTime.getTime());
@@ -59,14 +70,30 @@ function Dashboard() {
   };
 
   const fetchDashboardData = async () => {
+    const now = Date.now();
+    if (isDataFetching || (now - lastFetchTime) < MIN_FETCH_INTERVAL) {
+      console.log('Skipping fetch due to rate limiting');
+      return;
+    }
+
     try {
-      setIsLoading(!stats.total_events_count); // Only show loading spinner on first load
+      setIsDataFetching(true);
+      setLastFetchTime(now);
+      setIsLoading(!stats.total_events_count);
       
-      // Fetch complete dashboard data
-      const response = await adminAPI.getDashboardStats();
+      const response = await adminAPI.getDashboardRealTimeStats();
       
       if (response.data.success) {
         const data = response.data.data;
+        
+        if (data.server_time) {
+          const serverTime = new Date(data.server_time);
+          const clientTime = new Date();
+          const offset = serverTime.getTime() - clientTime.getTime();
+          setServerTimeOffset(offset);
+          setCurrentTime(new Date(Date.now() + offset));
+        }
+        
         setStats({
           active_events_count: data.active_events_count || 0,
           total_events_count: data.total_events_count || 0,
@@ -77,88 +104,39 @@ function Dashboard() {
           completed_events: data.completed_events || 0,
           draft_events: data.draft_events || 0,
           triggers_queued: data.triggers_queued || 0,
-          scheduler_running: data.scheduler_running !== false
+          scheduler_running: data.system_health?.scheduler_running !== false || data.scheduler_running !== false
         });
 
-        // Mock active jobs data
-        setActiveJobs([
-          {
-            id: 1,
-            name: 'Email Reminders - Tech Workshop',
-            type: 'email_reminder',
-            status: 'running',
-            progress: 75,
-            estimated_completion: '2 min'
-          },
-          {
-            id: 2,
-            name: 'Certificate Generation - Hackathon 2025',
-            type: 'certificate_generation',
-            status: 'queued',
-            progress: 0,
-            estimated_completion: '5 min'
-          },
-          {
-            id: 3,
-            name: 'Attendance Analytics - Code Challenge',
-            type: 'analytics',
-            status: 'completed',
-            progress: 100,
-            estimated_completion: 'Completed'
-          }
-        ]);
+        // Format recent activity data to match backend template structure
+        const recentActivityData = data.recent_activity || [];
+        const formattedActivity = recentActivityData.map((activity, index) => ({
+          id: index + 1,
+          event_id: activity.event_id || `Event ${index + 1}`,
+          old_status: activity.old_status || 'unknown',
+          new_status: activity.new_status || 'unknown',
+          trigger_type: activity.trigger_type || 'system',
+          time_ago: activity.time_ago || 'Unknown time',
+          timestamp: activity.timestamp ? new Date(activity.timestamp) : new Date()
+        }));
+
+        setRecentActivity(formattedActivity);
+
+        // Format upcoming triggers data to match backend template structure
+        const triggersData = data.upcoming_triggers || [];
+        const formattedJobs = triggersData.slice(0, 10).map((trigger, index) => ({
+          id: index + 1,
+          event_id: trigger.event_id || 'N/A',
+          trigger_type: trigger.trigger_type || 'unknown',
+          status: trigger.status || 'scheduled',
+          is_past_due: trigger.is_past_due || false,
+          trigger_time: trigger.trigger_time,
+          time_until_formatted: trigger.time_until_formatted || 'Unknown'
+        }));
+
+        setActiveJobs(formattedJobs);
       } else {
         throw new Error(response.data.message || 'Failed to fetch dashboard data');
       }
-
-      // Enhanced recent activity with more variety
-      setRecentActivity([
-        {
-          id: 1,
-          type: 'event_created',
-          message: 'New event "AI Workshop 2025" created by Admin',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30),
-          icon: 'fas fa-plus-circle',
-          color: 'text-green-600',
-          priority: 'normal'
-        },
-        {
-          id: 2,
-          type: 'registration_spike',
-          message: '50 new registrations in the last hour',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1),
-          icon: 'fas fa-user-plus',
-          color: 'text-blue-600',
-          priority: 'high'
-        },
-        {
-          id: 3,
-          type: 'system_alert',
-          message: 'Email service temporarily unavailable',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-          icon: 'fas fa-exclamation-triangle',
-          color: 'text-yellow-600',
-          priority: 'high'
-        },
-        {
-          id: 4,
-          type: 'certificate_generated',
-          message: 'Certificates generated for "Tech Symposium"',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
-          icon: 'fas fa-certificate',
-          color: 'text-purple-600',
-          priority: 'normal'
-        },
-        {
-          id: 5,
-          type: 'event_completed',
-          message: 'Event "Data Science Bootcamp" completed successfully',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12),
-          icon: 'fas fa-check-circle',
-          color: 'text-indigo-600',
-          priority: 'normal'
-        }
-      ]);
 
       setLastRefreshed(new Date());
       setError('');
@@ -166,7 +144,6 @@ function Dashboard() {
       console.error('Dashboard data fetch error:', error);
       setError('Failed to load dashboard data');
       
-      // Set fallback values on error
       setStats(prevStats => ({
         ...prevStats,
         system_status: 'Offline',
@@ -177,126 +154,51 @@ function Dashboard() {
       setRecentActivity([]);
     } finally {
       setIsLoading(false);
+      setIsDataFetching(false);
     }
   };
 
   const fetchLiveData = async () => {
     try {
-      // Simulate live data endpoint
-      const response = await adminAPI.getDashboardStats();
+      const response = await adminAPI.getDashboardRealTimeStats();
       
       if (response.data.success) {
         const data = response.data.data;
         
-        // Update only live statistics without full re-render
         setStats(prevStats => ({
           ...prevStats,
-          active_events_count: data.active_events_count || prevStats.active_events_count,
-          pending_jobs: data.pending_jobs || prevStats.pending_jobs,
-          triggers_queued: data.triggers_queued || prevStats.triggers_queued,
-          scheduler_running: data.scheduler_running !== false
+          active_events_count: data.active_events_count || 0,
+          total_events_count: data.total_events_count || 0,
+          pending_jobs: data.pending_jobs || 0,
+          system_status: data.system_status || 'Online',
+          upcoming_events: data.upcoming_events || 0,
+          ongoing_events: data.ongoing_events || 0,
+          completed_events: data.completed_events || 0,
+          draft_events: data.draft_events || 0,
+          triggers_queued: data.triggers_queued || 0,
+          scheduler_running: data.system_health?.scheduler_running !== false || data.scheduler_running !== false
         }));
-        
-        updateLastRefreshedTime();
-        
-        // Show success notification for live updates (less intrusive)
-        if (autoRefresh) {
-          showNotification('Data updated', 'success', 2000);
-        }
+
+        setLastRefreshed(new Date());
       }
     } catch (error) {
       console.error('Live data fetch error:', error);
-      // Don't show error notifications for live data failures to avoid spam
-    }
-  };
-
-  const updateLastRefreshedTime = () => {
-    setLastRefreshed(new Date(Date.now() + serverTimeOffset));
-  };
-
-  const handleManualRefresh = async () => {
-    const refreshBtn = document.getElementById('manual-refresh');
-    if (refreshBtn) {
-      const originalContent = refreshBtn.innerHTML;
-      refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.25rem;"></i>Refreshing...';
-      refreshBtn.disabled = true;
-      
-      await fetchDashboardData();
-      showNotification('Dashboard refreshed successfully', 'success');
-      
-      refreshBtn.innerHTML = originalContent;
-      refreshBtn.disabled = false;
-    } else {
-      await fetchDashboardData();
-      showNotification('Dashboard refreshed successfully', 'success');
-    }
-  };
-
-  const handleClearCache = async () => {
-    const clearBtn = document.getElementById('clear-cache');
-    const isButton = clearBtn !== null;
-    
-    if (isButton) {
-      const originalContent = clearBtn.innerHTML;
-      clearBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.25rem;"></i>Clearing...';
-      clearBtn.disabled = true;
-    }
-    
-    try {
-      // Mock cache clear API call - replace with real endpoint when available
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      showNotification('Cache cleared successfully', 'success');
-    } catch (error) {
-      showNotification('Failed to clear cache', 'error');
-    } finally {
-      if (isButton) {
-        clearBtn.innerHTML = clearBtn.originalContent || '<i class="fas fa-trash" style="margin-right: 0.25rem;"></i>Clear Cache';
-        clearBtn.disabled = false;
-      }
     }
   };
 
   const toggleAutoRefresh = (enabled) => {
     setAutoRefresh(enabled);
     localStorage.setItem('admin-dashboard-auto-refresh', enabled.toString());
-    
-    if (enabled) {
-      showNotification('Live updates enabled', 'success', 3000);
-    } else {
-      showNotification('Live updates disabled', 'info', 3000);
-    }
   };
 
-  const showNotification = (message, type = 'info', duration = 5000) => {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${
-      type === 'success' ? 'bg-green-500 text-white' :
-      type === 'error' ? 'bg-red-500 text-white' :
-      type === 'warning' ? 'bg-yellow-500 text-white' :
-      'bg-blue-500 text-white'
-    }`;
-    
-    notification.innerHTML = `
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-medium">${message}</span>
-        <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.style.transform = 'translateX(0)';
-      notification.style.opacity = '1';
-    }, 100);
-    
-    setTimeout(() => {
-      notification.style.transform = 'translateX(100%)';
-      notification.style.opacity = '0';
-      setTimeout(() => notification.remove(), 300);
-    }, duration);
+  const handleManualRefresh = () => {
+    fetchDashboardData();
+  };
+
+  const handleClearCache = () => {
+    // Clear local storage or cache here
+    localStorage.removeItem('admin-dashboard-auto-refresh');
+    console.log('Cache cleared');
   };
 
   const formatTime = (date) => {
@@ -317,17 +219,6 @@ function Dashboard() {
     });
   };
 
-
-  const getJobStatusColor = (status) => {
-    switch (status) {
-      case 'running': return { bg: '#dbeafe', text: '#2563eb' };
-      case 'completed': return { bg: '#dcfce7', text: '#059669' };
-      case 'queued': return { bg: '#fef3c7', text: '#d97706' };
-      case 'failed': return { bg: '#fee2e2', text: '#dc2626' };
-      default: return { bg: '#f3f4f6', text: '#6b7280' };
-    }
-  };
-
   if (isLoading && !stats.total_events_count) {
     return (
       <AdminLayout pageTitle="Dashboard Overview">
@@ -346,76 +237,108 @@ function Dashboard() {
           <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
               {/* Header Section */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <i className="fas fa-chart-line text-white text-2xl"></i>
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Admin Dashboard
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    CampusConnect Dashboard
                   </h1>
-                  <p className="text-gray-600 text-lg mt-1">Real-time monitoring and control center</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="text-sm text-gray-500">
-                      Last updated: <span id="last-updated" className="font-medium">{formatTime(lastRefreshed)}</span>
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${stats.scheduler_running ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                      <span className="text-sm text-gray-500">
-                        System {stats.scheduler_running ? 'Online' : 'Offline'}
-                      </span>
+                  <p className="text-gray-600 mt-1 text-lg">Real-time monitoring and control center</p>
+                  <div className="flex items-center space-x-4 mt-2">
+                    <div className="flex items-center text-sm font-medium">
+                      {stats.scheduler_running ? (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                          <span className="text-green-600">System Online</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                          <span className="text-red-600">System Offline</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Welcome back, <span className="font-semibold text-gray-700">Admin</span>
                     </div>
                   </div>
                 </div>
               </div>
               
-              {/* Control Panel */}
-              <div className="flex flex-col sm:flex-row gap-4">
+              {/* Control Panel */}                
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
                 <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                    <i className="fas fa-cog mr-2"></i>Quick Controls
+                    <i className="fas fa-cogs text-blue-600 mr-2"></i>
+                    Quick Controls
                   </h3>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <button
-                      id="manual-refresh"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-lg">
+                      <span className="text-xs font-medium text-gray-700 mx-2">Auto Refresh</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={autoRefresh}
+                          onChange={(e) => toggleAutoRefresh(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-lg">
+                      <span className="text-xs font-medium text-gray-700">Status</span>
+                      <span className={`text-xs ${autoRefresh ? 'text-green-600' : 'text-gray-600'}`}>
+                        {autoRefresh ? 'Active' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button 
                       onClick={handleManualRefresh}
-                      className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-medium"
                     >
                       <i className="fas fa-sync-alt mr-1"></i>Refresh
                     </button>
-                    <button
-                      id="clear-cache"
+                    <button 
                       onClick={handleClearCache}
-                      className="flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-medium"
                     >
-                      <i className="fas fa-trash mr-1"></i>Cache
+                      <i className="fas fa-trash-alt mr-1"></i>Clear Cache
                     </button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center text-sm">
-                      <input
-                        id="auto-refresh"
-                        type="checkbox"
-                        checked={autoRefresh}
-                        onChange={(e) => toggleAutoRefresh(e.target.checked)}
-                        className="mr-2"
-                      />
-                      Live Updates
-                    </label>
-                    <span className={`text-xs ${autoRefresh ? 'text-green-600' : 'text-gray-600'}`}>
-                      {autoRefresh ? 'Active' : 'Disabled'}
-                    </span>
                   </div>
                 </div>
                 
                 {/* Live Clock */}
                 <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-100 min-w-max">
                   <div className="text-center">
-                    <div id="current-time" className="text-xl font-bold text-gray-900">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="flex items-center text-xs font-medium">
+                        {stats.scheduler_running ? (
+                          <>
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                            <span className="text-green-600">LIVE</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                            <span className="text-red-600">OFFLINE</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-2xl font-mono font-bold text-gray-800">
                       {formatTime(currentTime)}
                     </div>
-                    <div id="current-date" className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-500 mt-1">
                       {formatDate(currentTime)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Updated: <span className="font-mono">{formatTime(lastRefreshed)}</span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Server Time (UTC)
                     </div>
                   </div>
                 </div>
@@ -430,162 +353,153 @@ function Dashboard() {
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Active Events Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Active Events</p>
-                  <p id="active-events-count" className="text-3xl font-bold text-blue-600 mt-2">
-                    {stats.active_events_count || 0}
-                  </p>
-                  <div className="flex items-center mt-3 text-sm">
-                    <span className="text-blue-600 font-medium">
-                      <i className="fas fa-arrow-up mr-1"></i>{stats.upcoming_events || 0} upcoming
-                    </span>
-                    <span className="text-gray-500 ml-3">{stats.ongoing_events || 0} live</span>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Active Events</p>
+                  <p className="text-3xl font-bold text-blue-600 mt-2">{stats.active_events_count || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <i className="fas fa-calendar-check text-blue-500 text-xl"></i>
+                <div className="bg-blue-100 rounded-full p-3">
+                  <i className="fas fa-calendar-check text-blue-600 text-xl"></i>
                 </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="text-blue-500 text-sm font-semibold">
+                  <i className="fas fa-arrow-up mr-1"></i>{stats.upcoming_events || 0} upcoming
+                </span>
+                <span className="text-gray-500 text-sm ml-2">{stats.ongoing_events || 0} ongoing</span>
               </div>
             </div>
 
             {/* Total Events Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Total Events</p>
-                  <p id="total-events-count" className="text-3xl font-bold text-green-600 mt-2">
-                    {stats.total_events_count || 0}
-                  </p>
-                  <div className="flex items-center mt-3 text-sm">
-                    <span className="text-green-600 font-medium">
-                      <i className="fas fa-check mr-1"></i>{stats.completed_events || 0} completed
-                    </span>
-                    <span className="text-gray-500 ml-3">{stats.draft_events || 0} drafts</span>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Events</p>
+                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.total_events_count || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <i className="fas fa-chart-line text-green-500 text-xl"></i>
+                <div className="bg-green-100 rounded-full p-3">
+                  <i className="fas fa-chart-line text-green-600 text-xl"></i>
                 </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="text-green-500 text-sm font-semibold">
+                  <i className="fas fa-check mr-1"></i>{stats.completed_events || 0} completed
+                </span>
+                <span className="text-gray-500 text-sm ml-2">{stats.draft_events || 0} drafts</span>
               </div>
             </div>
 
             {/* Pending Jobs Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Pending Jobs</p>
-                  <p id="pending-jobs-count" className="text-3xl font-bold text-yellow-600 mt-2">
-                    {stats.pending_jobs || 0}
-                  </p>
-                  <div className="flex items-center mt-3 text-sm">
-                    <span className="text-yellow-600 font-medium">
-                      <i className="fas fa-hourglass-half mr-1"></i>{stats.triggers_queued || 0} queued
-                    </span>
-                    <span className="text-gray-500 ml-3">in scheduler</span>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Pending Jobs</p>
+                  <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending_jobs || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <i className="fas fa-clock text-yellow-500 text-xl"></i>
+                <div className="bg-yellow-100 rounded-full p-3">
+                  <i className="fas fa-clock text-yellow-600 text-xl"></i>
                 </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="text-yellow-500 text-sm font-semibold">
+                  <i className="fas fa-hourglass-half mr-1"></i>{stats.triggers_queued || 0} queued
+                </span>
+                <span className="text-gray-500 text-sm ml-2">in scheduler</span>
               </div>
             </div>
 
             {/* System Status Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">System Status</p>
-                  <p id="system-status" className={`text-3xl font-bold mt-2 ${stats.scheduler_running ? 'text-green-600' : 'text-red-600'}`}>
-                    {stats.scheduler_running ? 'Online' : 'Offline'}
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">System Status</p>
+                  <p className={`text-3xl font-bold mt-2 ${stats.system_status === 'Online' ? 'text-green-600' : 'text-red-600'}`}>
+                    {stats.system_status || 'Unknown'}
                   </p>
-                  <div className="flex items-center mt-3">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${stats.scheduler_running ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="text-sm text-gray-700">All systems operational</span>
-                  </div>
                 </div>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stats.scheduler_running ? 'bg-green-100' : 'bg-red-100'}`}>
-                  <i className={`fas ${stats.scheduler_running ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'} text-xl`}></i>
+                <div className={`rounded-full p-3 ${stats.system_status === 'Online' ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <i className={`fas fa-server text-xl ${stats.system_status === 'Online' ? 'text-green-600' : 'text-red-600'}`}></i>
                 </div>
               </div>
-            </div>
+              <div className="mt-4 flex items-center">
+                <div className="flex items-center">
+                  {stats.scheduler_running ? (
+                    <>
+                      <div className="w-2 h-2 bg-green-500 animate-pulse rounded-full mr-2"></div>
+                      <span className="text-green-500 text-sm font-semibold">Scheduler Running</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                      <span className="text-red-500 text-sm font-semibold">Scheduler Stopped</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>        
           </div>
-
-
 
           {/* Active Jobs Table */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-8">
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <i className="fas fa-tasks text-purple-500 mr-3"></i>
-                Active Background Jobs
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                <i className="fas fa-tasks text-blue-600 mr-2"></i>
+                Active Jobs
               </h2>
-              <p className="text-gray-600 mt-1">Currently running and queued system tasks</p>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trigger Type</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Execution</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Until</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {activeJobs.length > 0 ? (
-                    activeJobs.map((job) => {
-                      const statusColor = getJobStatusColor(job.status);
-                      return (
-                        <tr key={job.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{job.name}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-500 capitalize">
-                              {job.type.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                              style={{ 
-                                backgroundColor: statusColor.bg, 
-                                color: statusColor.text 
-                              }}
-                            >
-                              {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
-                                <div 
-                                  className="h-2 rounded-full transition-all duration-300"
-                                  style={{ 
-                                    width: `${job.progress}%`,
-                                    backgroundColor: job.status === 'completed' ? '#10b981' : 
-                                                   job.status === 'running' ? '#3b82f6' : '#6b7280'
-                                  }}
-                                ></div>
-                              </div>
-                              <span className="text-sm text-gray-600">{job.progress}%</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {job.estimated_completion}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
+                  {activeJobs.length > 0 ? activeJobs.map((trigger) => (
+                    <tr key={trigger.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {trigger.event_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {trigger.trigger_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {trigger.is_past_due ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Past Due
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Scheduled
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {trigger.trigger_time ? new Date(trigger.trigger_time).toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                        }) : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {trigger.is_past_due ? (
+                          <span className="text-red-600 font-semibold">{trigger.time_until_formatted || 'Past Due'}</span>
+                        ) : (
+                          <span className="text-gray-600">{trigger.time_until_formatted || 'Unknown'}</span>
+                        )}
+                      </td>
+                    </tr>
+                  )) : (
                     <tr>
                       <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                        <i className="fas fa-tasks text-3xl mb-2 block"></i>
-                        No active background jobs
+                        <i className="fas fa-clock text-3xl mb-2 block"></i>
+                        No scheduled triggers found
                       </td>
                     </tr>
                   )}
@@ -593,57 +507,45 @@ function Dashboard() {
               </table>
             </div>
           </div>
+
           {/* Recent Activity */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-100">
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <i className="fas fa-history text-green-500 mr-3"></i>
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                <i className="fas fa-history text-blue-600 mr-2"></i>
                 Recent Activity
               </h2>
-              <p className="text-gray-600 mt-1">Latest system events and notifications</p>
             </div>
             <div className="p-6">
-              <div id="activity-log" className="space-y-4">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        log.priority === 'high' ? 'bg-red-100' : 'bg-blue-100'
-                      }`}>
-                        <i className={`${log.icon} ${log.priority === 'high' ? 'text-red-600' : 'text-blue-600'} text-sm`}></i>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 mb-1">
-                          {log.message}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {log.timestamp.toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {log.priority === 'high' && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            High Priority
-                          </span>
-                        )}
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          log.type === 'system_alert' ? 'bg-yellow-100 text-yellow-800' :
-                          log.type === 'event_created' ? 'bg-green-100 text-green-800' :
-                          log.type === 'registration_spike' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {log.type.replace('_', ' ')}
-                        </span>
+              <div className="space-y-4">
+                {recentActivity.length > 0 ? recentActivity.map((log) => (
+                  <div key={log.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        {log.trigger_type === 'registration_close' && <i className="fas fa-calendar-check text-blue-600 text-sm"></i>}
+                        {log.trigger_type === 'registration_open' && <i className="fas fa-calendar-plus text-blue-600 text-sm"></i>}
+                        {log.trigger_type === 'event_start' && <i className="fas fa-play text-blue-600 text-sm"></i>}
+                        {log.trigger_type === 'event_end' && <i className="fas fa-stop text-blue-600 text-sm"></i>}
+                        {!['registration_close', 'registration_open', 'event_start', 'event_end'].includes(log.trigger_type) && 
+                          <i className="fas fa-sync text-blue-600 text-sm"></i>}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <i className="fas fa-inbox text-3xl mb-3 block"></i>
-                    <p className="text-sm">No recent activity to display</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">
+                        Event <strong>{log.event_id}</strong> changed from 
+                        <span className="text-orange-600 font-semibold"> {log.old_status}</span> to 
+                        <span className="text-green-600 font-semibold"> {log.new_status}</span>
+                        {log.trigger_type && (
+                          <> via <em>{log.trigger_type.replace('_', ' ')}</em> trigger</>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{log.time_ago}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <i className="fas fa-clock text-3xl mb-2 block"></i>
+                    No recent activity
                   </div>
                 )}
               </div>
@@ -651,44 +553,6 @@ function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Enhanced Styling */}
-      <style jsx>{`
-        .progress-bar {
-          transition: width 0.5s ease;
-        }
-        
-        .bg-gradient-to-br {
-          background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
-        }
-        
-        .backdrop-blur-md {
-          backdrop-filter: blur(12px);
-        }
-        
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        
-        .animate-pulse {
-          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        .hover\\:shadow-xl:hover {
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        
-        .hover\\:-translate-y-1:hover {
-          transform: translateY(-0.25rem);
-        }
-        
-        .transition-all {
-          transition-property: all;
-          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-          transition-duration: 300ms;
-        }
-      `}</style>
     </AdminLayout>
   );
 }

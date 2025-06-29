@@ -256,29 +256,8 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Quick Stats Section (Live, Events) */}
-                        {user && (user.role === 'super_admin' || user.role === 'executive_admin') && (
-                            <div className="mb-4 flex items-center justify-center">
-                                <div className="flex flex-row gap-2 mx-4">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-200/50">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        <span className="text-xs font-semibold text-green-700">
-                                            {stats.ongoingEventsCount || stats.liveEvents} Live
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 rounded-xl border border-violet-200/50">
-                                        <svg className="w-3 h-3 text-violet-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                        </svg>
-                                        <span className="text-xs font-semibold text-violet-700">
-                                            {stats.allEventsCount || stats.totalEvents} Events
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}                        {/* Dashboard */}
+                        </div>                        
+                        {/* Dashboard */}
                         {user?.role === 'super_admin' && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
@@ -313,13 +292,37 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                         onClick={closeMobileMenu}
                                     >
                                         <div className="w-5 h-5 flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                             </svg>
 
                                         </div>
                                         <span className="font-semibold text-sm flex-1">Students</span>
                                         {isActive('/admin/students') && (
+                                            <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Faculty */}
+                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/faculty"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-white-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/faculty') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443a55.381 55.381 0 0 1 5.25 2.882V15" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm flex-1">Faculty</span>
+                                        {isActive('/admin/faculty') && (
                                             <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
                                         )}
                                     </Link>
@@ -370,6 +373,80 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                             </div>
                         )}
+
+                        {/* Manage Certificates */}
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/certificates"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/certificates') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Certificates</span>
+                                        {isActive('/admin/certificates') && (
+                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Venue */}
+                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/venue"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-teal-700 hover:bg-teal-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/venue') ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Venue</span>
+                                        {isActive('/admin/venue') && (
+                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Assets */}
+                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/assets"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/assets') ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Assets</span>
+                                        {isActive('/admin/assets') && (
+                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Admin Management */}
                         {user?.role === 'super_admin' && (
                             <div className="mb-2">
