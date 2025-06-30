@@ -380,7 +380,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 <div className="mx-2 space-y-1">
                                     <Link
                                         to="/admin/certificates"
-                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/certificates') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25' : ''
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/certificates') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25 hover:text-white' : ''
                                             }`}
                                         onClick={closeMobileMenu}
                                     >
@@ -404,7 +404,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 <div className="mx-2 space-y-1">
                                     <Link
                                         to="/admin/venue"
-                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-teal-700 hover:bg-teal-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/venue') ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/25' : ''
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-teal-700 hover:bg-teal-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/venue') ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg hover:text-white  shadow-teal-500/25' : ''
                                             }`}
                                         onClick={closeMobileMenu}
                                     >
@@ -429,7 +429,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 <div className="mx-2 space-y-1">
                                     <Link
                                         to="/admin/assets"
-                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/assets') ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25' : ''
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/assets') ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:text-white shadow-lg shadow-amber-500/25' : ''
                                             }`}
                                         onClick={closeMobileMenu}
                                     >
