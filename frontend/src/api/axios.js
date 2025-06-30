@@ -333,18 +333,15 @@ export const adminAPI = {
 
 // Dedicated asset API object for easier use
 export const assetApi = {
-  list: (endpoint = '') => {
-    if (endpoint.startsWith('/category/')) {
-      const category = endpoint.replace('/category/', '');
-      return api.get(`/api/v1/admin/assets/dashboard?category=${category}`);
+  list: (params = {}) => {
+    if (params.asset_type && params.asset_type !== 'all') {
+      return api.get(`/admin/assets/list?asset_type=${params.asset_type}`);
     }
-    return api.get('/api/v1/admin/assets/dashboard');
+    return api.get('/admin/assets/list', { params });
   },
-  stats: () => adminAPI.getAssetStatistics(),
-  upload: (formData, config) => adminAPI.uploadAsset(formData, config),
-  delete: (assetId) => {
-    return api.delete(`/api/v1/admin/assets/${assetId}`);
-  }
+  stats: () => api.get('/admin/assets/statistics'),
+  upload: (formData, config) => api.post('/admin/assets/upload', formData, config),
+  delete: (filename) => api.delete(`/admin/assets/delete/${filename}`)
 };
 
 export default api;

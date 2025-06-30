@@ -47,26 +47,30 @@ function Events() {
     return counts;
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Date TBA';
+const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return {
+      dateOnly: date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+      weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
+      timeOnly: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+  }
+  const duration = (start, end) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const durationMs = endDate - startDate;
+    const durationMinutes = Math.floor(durationMs / 60000);
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    return `${hours}h ${minutes}m`;
   };
-
-  const formatTime = (dateString) => {
-    if (!dateString) return 'Time TBA';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  };
-
   const handleViewEvent = (eventId) => {
     navigate(`/admin/events/${eventId}`);
   };
@@ -76,7 +80,6 @@ function Events() {
   };
 
   const statusCounts = getStatusCounts();
-
   if (isLoading) {
     return (
       <AdminLayout>
@@ -246,17 +249,17 @@ function Events() {
                     </div>
                     
                     {/* Event Details with consistent height */}
-                    <div className="space-y-2 mb-5">
+                    <div className="space-y-2 mb-5 flex flex-col">
                       <div className="flex items-center text-sm">
                         <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
                           <i className="fas fa-calendar text-gray-600 text-xs"></i>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-gray-900 text-xs truncate">
-                            {formatDate(event.event_date)}
+                            {formatDate(event.start_datetime).dateOnly}
                           </div>
                           <div className="text-gray-500 text-xs">
-                            Event Date
+                            {formatDate(event.start_datetime).weekday}
                           </div>
                         </div>
                       </div>
@@ -267,14 +270,13 @@ function Events() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-gray-900 text-xs">
-                            {formatTime(event.start_time)} - {formatTime(event.end_time)}
+                            {formatDate(event.start_datetime).timeOnly}
                           </div>
                           <div className="text-gray-500 text-xs">
-                            Duration
+                            Duration: {duration(event.start_datetime, event.end_datetime)}
                           </div>
                         </div>
                       </div>
-                      
                       <div className="flex items-center text-sm">
                         <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
                           <i className="fas fa-building text-gray-600 text-xs"></i>
@@ -289,6 +291,7 @@ function Events() {
                         </div>
                       </div>
                     </div>
+                      
                     
                     {/* Action Button with consistent positioning */}
                     <div className="mt-auto">

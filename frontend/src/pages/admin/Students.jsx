@@ -129,7 +129,7 @@ function Students() {
 
   return (
     <AdminLayout pageTitle="Students Management">
-      <div className="space-y-6">
+      <div className="mx-24 space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
@@ -155,7 +155,8 @@ function Students() {
               Export
             </button>
           </div>
-        </div>        {/* Search Bar */}
+        </div>        
+        {/* Search Bar */}
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -171,6 +172,46 @@ function Students() {
           </div>
         </div>
 
+        {/* Stats Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <i className="fas fa-users text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Total Students</h3>
+                <p className="text-2xl font-semibold text-gray-900">{students.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <i className="fas fa-user-check text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Active Students</h3>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {students.filter(s => s.is_active !== false).length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <i className="fas fa-calendar-check text-xl"></i>
+              </div>              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Avg. Events/Student</h3>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {students.length > 0 ? Math.round((students.reduce((acc, s) => acc + getEventParticipationCount(s), 0) / students.length) * 10) / 10 : 0}
+                </p>
+              </div>
+            </div>
+          </div>        </div>
         {/* Students Table */}
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -189,7 +230,7 @@ function Students() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Events Participated</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Events Participated</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -236,7 +277,7 @@ function Students() {
                         <div className="flex items-center">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             <i className="fas fa-calendar-check mr-1"></i>
-                            {getEventParticipationCount(student)}
+                            {getEventParticipationCount(student)} Events
                           </span>
                         </div>
                       </td>
@@ -251,7 +292,7 @@ function Students() {
                             onClick={() => handleViewStudentDetails(student)}
                           >
                             <i className="fas fa-eye mr-1"></i>
-                            Details
+                            
                           </button>
                           <button 
                             className={`${
@@ -298,46 +339,6 @@ function Students() {
           )}
         </div>
 
-        {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                <i className="fas fa-users text-xl"></i>
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Total Students</h3>
-                <p className="text-2xl font-semibold text-gray-900">{students.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
-                <i className="fas fa-user-check text-xl"></i>
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Active Students</h3>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {students.filter(s => s.is_active !== false).length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                <i className="fas fa-calendar-check text-xl"></i>
-              </div>              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Avg. Events/Student</h3>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {students.length > 0 ? Math.round((students.reduce((acc, s) => acc + getEventParticipationCount(s), 0) / students.length) * 10) / 10 : 0}
-                </p>
-              </div>
-            </div>
-          </div>        </div>
 
         {/* Student Details Modal */}
         <StudentCard 

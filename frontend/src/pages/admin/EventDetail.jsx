@@ -192,15 +192,7 @@ function EventDetail() {
   if (!event) {
     return (
       <AdminLayout>
-        <div className="text-center py-16">
-          <h3 className="text-xl font-bold text-gray-700 mb-3">Event Not Found</h3>
-          <button
-            onClick={() => navigate('/admin/events')}
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-          >
-            <i className="fas fa-arrow-left mr-2"></i>Back to Events
-          </button>
-        </div>
+      
       </AdminLayout>
     );
   }
@@ -221,10 +213,9 @@ function EventDetail() {
                   onClick={() => navigate('/admin/events')}
                   className="hover:text-blue-600 transition-colors"
                 >
-                  <i className="fas fa-arrow-left mr-1"></i>Events
+                  <i className="fas fa-arrow-left mr-1"></i>Back to Events
                 </button>
-                <span className="text-gray-400">→</span>
-                <span className="text-gray-800 font-medium">{event.event_name}</span>
+               
               </div>
               <div className="flex items-center gap-3">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.text}`}>
