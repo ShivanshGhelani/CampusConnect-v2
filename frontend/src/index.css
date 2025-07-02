@@ -5,11 +5,6 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -25,19 +20,29 @@ a:hover {
   color: #535bf2;
 }
 
-body {
+html, body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
   min-height: 100vh;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+/* Commented out to avoid conflicts with Tailwind CSS
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
+*/
 
+/* Commented out to avoid conflicts with Tailwind CSS
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -56,6 +61,7 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+*/
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -65,9 +71,11 @@ button:focus-visible {
   a:hover {
     color: #747bff;
   }
+  /* Commented out to avoid conflicts with Tailwind CSS
   button {
     background-color: #f9f9f9;
   }
+  */
 }
 
 /* Google Font - Pacifico */
@@ -227,4 +235,92 @@ button:focus-visible {
 .typography-section-tight .container-custom {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+/* Modal and backdrop styles for professional glass morphism effect */
+.modal-backdrop-blur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  z-index: 49;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-container {
+  animation: modalSlideIn 0.3s ease-out;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.modal-shadow {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.glass-modal {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes modalSlideOut {
+  from { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateY(-20px) scale(0.95); 
+  }
+}
+
+/* Professional modal styles that work perfectly with backdrop blur */
+.professional-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.professional-modal-content {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 
+              0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  width: 100% !important;
+  max-width: 28rem !important;
+  margin-left: 1rem !important;
+  margin-right: 1rem !important;
+  animation: modalSlideIn 0.3s ease-out;
+  position: relative !important;
 }
