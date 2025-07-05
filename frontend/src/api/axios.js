@@ -209,6 +209,12 @@ export const authAPI = {
   studentLogout: () => api.post('/api/v1/auth/student/logout'),
   studentStatus: () => api.get('/api/v1/auth/student/status'),
   
+  // Faculty authentication
+  facultyLogin: (credentials) => api.post('/api/v1/auth/faculty/login', credentials),
+  facultyRegister: (userData) => api.post('/api/v1/auth/faculty/register', userData),
+  facultyLogout: () => api.post('/api/v1/auth/faculty/logout'),
+  facultyStatus: () => api.get('/api/v1/auth/faculty/status'),
+  
   // Admin authentication
   adminLogin: (credentials) => api.post('/api/v1/auth/admin/login', credentials),
   adminLogout: () => api.post('/api/v1/auth/admin/logout'),
@@ -325,6 +331,18 @@ export const adminAPI = {
   updateUsername: (usernameData) => api.put('/api/v1/admin/profile/update-username', usernameData),
   updatePassword: (passwordData) => api.put('/api/v1/admin/profile/update-password', passwordData),
   updateSettings: (settingsData) => api.put('/api/v1/admin/profile/update-settings', settingsData),
+  
+  // Faculty Management
+  getFaculty: (filters) => api.get('/api/v1/admin/faculty/list', { params: filters }),
+  getFacultyDetails: (facultyId) => api.get(`/api/v1/admin/faculty/details/${facultyId}`),
+  createFaculty: (facultyData) => api.post('/api/v1/admin/faculty/create', facultyData),
+  updateFaculty: (facultyId, facultyData) => api.put(`/api/v1/admin/faculty/update/${facultyId}`, facultyData),
+  deleteFaculty: (facultyId) => api.delete(`/api/v1/admin/faculty/delete/${facultyId}`),
+  toggleFacultyStatus: (facultyId) => api.put(`/api/v1/admin/faculty/toggle-status/${facultyId}`),
+  updateFacultyStatus: (facultyId, statusData) => api.put(`/api/v1/admin/faculty/update-status/${facultyId}`, statusData),
+  getFacultyStatistics: () => api.get('/api/v1/admin/faculty/statistics'),
+  bulkImportFaculty: (facultyData) => api.post('/api/v1/admin/faculty/bulk-import', facultyData),
+  exportFaculty: (filters) => api.get('/api/v1/admin/faculty/export', { params: filters }),
   
   // Asset Management
   getAssets: (assetType) => api.get('/api/v1/admin/assets/list', { params: assetType ? { asset_type: assetType } : {} }),

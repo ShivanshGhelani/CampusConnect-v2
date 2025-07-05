@@ -199,106 +199,115 @@ function ExportData() {
               {event.event_name}
             </button>
             <span>→</span>
-            <span className="text-gray-900 font-medium">Export Data</span>
+            <span className="text-gray-800 font-medium">Export Registrations</span>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Report</h3>
-            <p className="text-gray-600 mb-4">
-              Generate a standard registration report with all essential information.
-            </p>
-            <button 
-              onClick={handleQuickReport}
-              disabled={isExporting}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i> Generating...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-file-pdf"></i> Generate Quick Report
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sign Sheet</h3>
-            <p className="text-gray-600 mb-4">
-              Generate a printable sign sheet for attendance tracking.
-            </p>
-            <button 
-              onClick={handleSignSheet}
-              disabled={isExporting}
-              className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isExporting ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i> Generating...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-clipboard-list"></i> Generate Sign Sheet
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Custom Export */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Custom Export</h3>
-          <p className="text-gray-600 mb-6">
-            Select specific fields to include in your custom export report.
-          </p>
-
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Select Fields to Export:</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {availableFields.map((field) => (
-                <div key={field.id} className="flex items-center space-x-3">
-                  <input 
-                    type="checkbox" 
-                    id={field.id}
-                    checked={selectedFields.includes(field.id)}
-                    onChange={() => handleFieldToggle(field.id)}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor={field.id} className="text-gray-700 cursor-pointer">
-                    {field.label}
-                  </label>
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm">
+          <div className="p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                <i className="fas fa-file-export text-blue-500"></i> Export Registration Data
+              </h2>
+              <p className="text-gray-600">Select the fields you want to include in the export</p>
+              
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 mb-6">
+                {/* Quick Standard Report */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-lg font-medium text-blue-800 mb-2 flex items-center gap-2">
+                    <i className="fas fa-file-pdf"></i> Quick Report
+                  </h3>
+                  <p className="text-blue-700 text-sm mb-3">Generate registration report with predefined fields: Enrollment No., Full Name, Department, Semester, Email, Mobile No., and Registration Date</p>
+                  <button 
+                    onClick={handleQuickReport}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExporting ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i> Generating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-download"></i> Generate Report
+                      </>
+                    )}
+                  </button>
                 </div>
-              ))}
+                
+                {/* Sign Sheet */}
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="text-lg font-medium text-green-800 mb-2 flex items-center gap-2">
+                    <i className="fas fa-signature"></i> Attendance Sign Sheet
+                  </h3>
+                  <p className="text-green-700 text-sm mb-3">Generate a sign sheet for attendance with predefined fields: Enrollment No., Full Name, Department, Semester and Signature column</p>
+                  <button 
+                    onClick={handleSignSheet}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExporting ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i> Generating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-signature"></i> Generate Sign Sheet
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+            
+            {/* Custom Field Selection */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Custom Field Selection</h3>
+              <p className="text-gray-600 mb-4">Select specific fields to include in your custom export</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {availableFields.map((field) => (
+                  <div key={field.id} className="flex items-center space-x-3">
+                    <input 
+                      type="checkbox" 
+                      id={field.id}
+                      checked={selectedFields.includes(field.id)}
+                      onChange={() => handleFieldToggle(field.id)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor={field.id} className="text-gray-700 cursor-pointer">
+                      {field.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
 
-          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-            <button 
-              onClick={() => navigate(`/admin/events/${eventId}`)}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleCustomExport}
-              disabled={isExporting || selectedFields.length === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-            >
-              {isExporting ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i> Exporting...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-download"></i> Export as PDF
-                </>
-              )}
-            </button>
+              <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                <button 
+                  onClick={() => navigate(`/admin/events/${eventId}`)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCustomExport}
+                  disabled={isExporting || selectedFields.length === 0}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                >
+                  {isExporting ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i> Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-download"></i> Export as PDF
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

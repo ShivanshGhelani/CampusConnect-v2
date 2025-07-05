@@ -236,7 +236,10 @@ function EventDetail() {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap justify-center gap-4">
-              <button className="px-6 py-3 bg-gradient-to-r from-green-400 to-green-600 text-white rounded-lg hover:from-green-500 hover:to-green-700 transition-all font-semibold shadow-lg">
+              <button 
+                onClick={() => navigate(`/admin/events/${eventId}/export`)}
+                className="px-6 py-3 bg-gradient-to-r from-green-400 to-green-600 text-white rounded-lg hover:from-green-500 hover:to-green-700 transition-all font-semibold shadow-lg"
+              >
                 <i className="fas fa-download mr-2"></i>Export Data
               </button>
               

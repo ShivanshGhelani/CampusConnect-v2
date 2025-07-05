@@ -1,102 +1,383 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import FacultyCard from '../../components/admin/FacultyCard';
 
 function Faculty() {
+  const [faculty, setFaculty] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFaculty, setSelectedFaculty] = useState(null);
+  const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchFaculty();
+  }, []);
+
+  const fetchFaculty = async () => {
+    try {
+      setIsLoading(true);
+      const response = await adminAPI.getFaculty();
+      
+      if (response.data.success) {
+        setFaculty(response.data.faculty || []);
+        setError('');
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch faculty');
+      }
+    } catch (error) {
+      console.error('Error fetching faculty:', error);
+      setError('Failed to load faculty');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredFaculty = faculty.filter(facultyMember =>
+    facultyMember.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.designation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.phone_number?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return 'N/A';
+    
+    // Remove any non-digit characters
+    const cleaned = phone.toString().replace(/\D/g, '');
+    
+    // Format Indian phone numbers
+    if (cleaned.length === 10) {
+      return `+91 ${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+    } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return `+${cleaned.slice(0, 2)} ${cleaned.slice(2, 7)} ${cleaned.slice(7)}`;
+    } else if (cleaned.length === 13 && cleaned.startsWith('091')) {
+      return `+${cleaned.slice(1, 3)} ${cleaned.slice(3, 8)} ${cleaned.slice(8)}`;
+    }
+    
+    // Return as-is if format doesn't match expected patterns
+    return phone;
+  };
+
+  const getExperienceYears = (facultyMember) => {
+    if (facultyMember.experience_years && typeof facultyMember.experience_years === 'number') {
+      return facultyMember.experience_years;
+    }
+    
+    if (facultyMember.date_of_joining) {
+      const joiningDate = new Date(facultyMember.date_of_joining);
+      const today = new Date();
+      const diffTime = Math.abs(today - joiningDate);
+      const diffYears = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 365));
+      return diffYears;
+    }
+    
+    return 0;
+  };
+
+  const toggleFacultyStatus = async (facultyId, currentStatus) => {
+    try {
+      const newStatus = !currentStatus;
+      const response = await adminAPI.updateFacultyStatus(facultyId, { is_active: newStatus });
+      
+      if (response.data.success) {
+        // Update local state
+        setFaculty(prevFaculty => 
+          prevFaculty.map(facultyMember => 
+            facultyMember.user_id === facultyId || facultyMember._id === facultyId
+              ? { ...facultyMember, is_active: newStatus }
+              : facultyMember
+          )
+        );
+      } else {
+        throw new Error(response.data.message || 'Failed to update faculty status');
+      }
+    } catch (error) {
+      console.error('Error updating faculty status:', error);
+      setError('Failed to update faculty status');
+    }
+  };
+
+  const handleViewFacultyDetails = (facultyMember) => {
+    setSelectedFaculty(facultyMember);
+    setIsFacultyModalOpen(true);
+  };
+
+  const handleCloseFacultyModal = () => {
+    setSelectedFaculty(null);
+    setIsFacultyModalOpen(false);
+  };
+
+  if (isLoading) {
+    return (
+      <AdminLayout pageTitle="Faculty Management">
+        <div className="flex justify-center items-center h-64">
+          <LoadingSpinner size="lg" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout pageTitle="Faculty Management">
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 text-white">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443a55.381 55.381 0 0 1 5.25 2.882V15" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Faculty Management
-                </h1>
-                <p className="text-gray-600 mt-1 text-lg">Manage faculty members and their information</p>
-              </div>
-            </div>
+      <div className="mx-24 space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Header with Search */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Faculty</h2>
+            <p className="text-gray-600">Manage faculty members and their profiles</p>
+          </div>
+          <div className="flex space-x-3">
+            <button 
+              onClick={fetchFaculty}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center"
+            >
+              <i className="fas fa-sync-alt mr-2"></i>
+              Refresh
+            </button>
+            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+              <i className="fas fa-plus mr-2"></i>
+              Add Faculty
+            </button>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+              <i className="fas fa-download mr-2"></i>
+              Export
+            </button>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            {/* Under Development Section */}
-            <div className="text-center py-16">
-              <div className="max-w-md mx-auto">
-                {/* Construction Icon */}
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 text-white">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" />
-                  </svg>
-                </div>
+        {/* Search Bar */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i className="fas fa-search text-gray-400"></i>
+            </div>
+            <input
+              type="text"
+              placeholder="Search faculty by name, email, employee ID, department, designation..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
 
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Under Development
-                </h2>
-                
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  The Faculty Management module is currently being developed. 
-                  This section will allow you to manage faculty members, their profiles, 
-                  departments, and academic information.
+        {/* Stats Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                <i className="fas fa-user-tie text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Total Faculty</h3>
+                <p className="text-2xl font-semibold text-gray-900">{faculty.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-100 text-green-600">
+                <i className="fas fa-user-check text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Active Faculty</h3>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {faculty.filter(f => f.is_active !== false).length}
                 </p>
+              </div>
+            </div>
+          </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    Coming Soon Features:
-                  </h3>
-                  <ul className="text-blue-700 space-y-1 text-left">
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Add and manage faculty profiles
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Department and designation management
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Faculty event assignments
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Academic credentials tracking
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Contact and communication tools
-                    </li>
-                  </ul>
-                </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                <i className="fas fa-building text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Departments</h3>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {new Set(faculty.map(f => f.department).filter(d => d)).size}
+                </p>
+              </div>
+            </div>
+          </div>
 
-                <div className="flex justify-center space-x-4">
-                  <div className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium">
-                    <svg className="w-4 h-4 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
-                    Expected Release: Q3 2025
-                  </div>
-                </div>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-orange-100 text-orange-600">
+                <i className="fas fa-clock text-xl"></i>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Avg. Experience</h3>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {faculty.length > 0 ? Math.round((faculty.reduce((acc, f) => acc + getExperienceYears(f), 0) / faculty.length) * 10) / 10 : 0} yrs
+                </p>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Faculty Table */}
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              All Faculty ({filteredFaculty.length})
+            </h3>
+          </div>
+          
+          {filteredFaculty.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredFaculty.map((facultyMember) => (
+                    <tr key={facultyMember.user_id || facultyMember._id || facultyMember.employee_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <span className="text-indigo-600 font-medium text-sm">
+                              {facultyMember.full_name?.charAt(0)?.toUpperCase() || 'F'}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {facultyMember.full_name || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {facultyMember.qualification || 'No Qualification'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {facultyMember.employee_id || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {facultyMember.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatPhoneNumber(facultyMember.phone_number)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {facultyMember.department || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {facultyMember.designation || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          facultyMember.is_active !== false 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {facultyMember.is_active !== false ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <i className="fas fa-clock mr-1"></i>
+                            {getExperienceYears(facultyMember)} yrs
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {facultyMember.created_at ? formatDate(facultyMember.created_at) : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex space-x-2 justify-end">
+                          <button 
+                            className="text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
+                            title="View Faculty Details"
+                            onClick={() => handleViewFacultyDetails(facultyMember)}
+                          >
+                            <i className="fas fa-eye mr-1"></i>
+                            View
+                          </button>
+                          <button 
+                            className={`${
+                              facultyMember.is_active !== false 
+                                ? 'text-red-600 hover:text-red-900 hover:bg-red-50' 
+                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                            } transition-colors px-2 py-1 rounded-md`}
+                            title={facultyMember.is_active !== false ? 'Deactivate Faculty' : 'Activate Faculty'}
+                            onClick={() => toggleFacultyStatus(facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
+                          >
+                            <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} mr-1`}></i>
+                            {facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-user-tie text-2xl text-gray-400"></i>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {searchTerm ? 'No Faculty Found' : 'No Faculty Registered'}
+              </h3>
+              <p className="text-gray-500 mb-4">
+                {searchTerm 
+                  ? 'Try adjusting your search terms.' 
+                  : 'Faculty members will appear here once they register.'
+                }
+              </p>
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Faculty Details Modal */}
+        <FacultyCard 
+          faculty={selectedFaculty}
+          isOpen={isFacultyModalOpen}
+          onClose={handleCloseFacultyModal}
+        />
       </div>
     </AdminLayout>
   );

@@ -7,7 +7,7 @@ const AuthContext = createContext();
 // Auth states
 const initialState = {
   user: null,
-  userType: null, // 'admin' | 'student' | null
+  userType: null, // 'admin' | 'student' | 'faculty' | null
   isAuthenticated: false,
   isLoading: true,
   error: null,
@@ -104,6 +104,8 @@ export function AuthProvider({ children }) {
           response = await authAPI.adminStatus();
         } else if (storedUserType === 'student') {
           response = await authAPI.studentStatus();
+        } else if (storedUserType === 'faculty') {
+          response = await authAPI.facultyStatus();
         }
         
         if (response.data.authenticated) {
@@ -142,6 +144,8 @@ export function AuthProvider({ children }) {
       
       if (userType === 'admin') {
         response = await authAPI.adminLogin(credentials);
+      } else if (userType === 'faculty') {
+        response = await authAPI.facultyLogin(credentials);
       } else {
         response = await authAPI.studentLogin(credentials);
       }
@@ -190,6 +194,8 @@ export function AuthProvider({ children }) {
         await authAPI.adminLogout();
       } else if (state.userType === 'student') {
         await authAPI.studentLogout();
+      } else if (state.userType === 'faculty') {
+        await authAPI.facultyLogout();
       }
     } catch (error) {
       console.error('Logout API failed:', error);
@@ -204,21 +210,36 @@ export function AuthProvider({ children }) {
     dispatch({ type: authActions.LOGOUT });
   };
 
-  const register = async (userData) => {
+  const register = async (userData, userType = 'student') => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     dispatch({ type: authActions.CLEAR_ERROR });
     
     try {
-      const response = await authAPI.studentRegister(userData);
+      let response;
+      
+      if (userType === 'faculty') {
+        response = await authAPI.facultyRegister(userData);
+      } else {
+        response = await authAPI.studentRegister(userData);
+      }
       
       if (response.data.success) {
         // Auto-login after successful registration
-        const loginData = {
-          enrollment_no: userData.enrollment_no,
-          password: userData.password
-        };
+        let loginData;
         
-        const loginResult = await login(loginData, 'student');
+        if (userType === 'faculty') {
+          loginData = {
+            employee_id: userData.employee_id,
+            password: userData.password
+          };
+        } else {
+          loginData = {
+            enrollment_no: userData.enrollment_no,
+            password: userData.password
+          };
+        }
+        
+        const loginResult = await login(loginData, userType);
         return loginResult;
       } else {
         dispatch({
