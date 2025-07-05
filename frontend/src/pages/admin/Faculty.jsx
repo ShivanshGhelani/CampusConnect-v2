@@ -41,6 +41,10 @@ function Faculty() {
     facultyMember.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     facultyMember.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     facultyMember.designation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.qualification?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.employment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    facultyMember.contact_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     facultyMember.phone_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

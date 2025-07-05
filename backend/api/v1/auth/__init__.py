@@ -53,9 +53,15 @@ class FacultyRegisterRequest(BaseModel):
     email: str
     contact_no: str
     department: str
+    designation: str
+    qualification: str
+    specialization: str = None
+    experience_years: int
     seating: str = None
     gender: str
     date_of_birth: str
+    date_of_joining: str = None
+    employment_type: str = None
     password: str
 
 @router.get("/admin/status")
@@ -490,9 +496,15 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         contact_no = register_data.contact_no.strip()
         password = register_data.password
         department = register_data.department.strip()
+        designation = register_data.designation.strip()
+        qualification = register_data.qualification.strip()
+        specialization = register_data.specialization.strip() if register_data.specialization else None
+        experience_years = register_data.experience_years
         seating = register_data.seating.strip() if register_data.seating else None
         gender = register_data.gender.strip()
         date_of_birth = register_data.date_of_birth.strip()
+        date_of_joining = register_data.date_of_joining.strip() if register_data.date_of_joining else None
+        employment_type = register_data.employment_type.strip() if register_data.employment_type else None
         
         # Validation
         errors = []
@@ -527,6 +539,18 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         # Department validation
         if not department:
             errors.append("Department is required")
+        
+        # Designation validation
+        if not designation:
+            errors.append("Designation is required")
+        
+        # Qualification validation
+        if not qualification:
+            errors.append("Qualification is required")
+        
+        # Experience validation
+        if experience_years is None or experience_years < 0 or experience_years > 50:
+            errors.append("Experience years must be between 0 and 50")
         
         # Date of birth validation
         if not date_of_birth:
@@ -582,17 +606,33 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         # Create new faculty
         hashed_password = pwd_context.hash(password)
         birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
+        joining_date = None
+        if date_of_joining:
+            try:
+                joining_date = datetime.strptime(date_of_joining, '%Y-%m-%d')
+            except ValueError:
+                errors.append("Invalid date of joining format. Use YYYY-MM-DD")
+                return JSONResponse(
+                    status_code=400,
+                    content={"success": False, "message": "; ".join(errors)}
+                )
         
         faculty_doc = {
             "employee_id": employee_id,
             "full_name": full_name,
             "department": department,
+            "designation": designation,
+            "qualification": qualification,
+            "specialization": specialization,
+            "experience_years": experience_years,
             "password": hashed_password,
             "email": email,
             "contact_no": contact_no,
             "seating": seating,
             "gender": gender,
             "date_of_birth": birth_date,
+            "date_of_joining": joining_date,
+            "employment_type": employment_type,
             "event_participation": [],
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),

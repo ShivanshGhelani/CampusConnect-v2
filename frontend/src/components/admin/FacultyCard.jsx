@@ -126,7 +126,7 @@ function FacultyCard({ faculty, isOpen, onClose }) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Phone Number</label>
-                    <p className="text-gray-900">{formatPhoneNumber(facultyDetails.phone_number)}</p>
+                    <p className="text-gray-900">{formatPhoneNumber(facultyDetails.contact_no || facultyDetails.phone_number)}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Status</label>
@@ -176,21 +176,12 @@ function FacultyCard({ faculty, isOpen, onClose }) {
                     <label className="block text-sm font-medium text-gray-500">Date of Joining</label>
                     <p className="text-gray-900">{facultyDetails.date_of_joining ? formatDate(facultyDetails.date_of_joining) : 'N/A'}</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Address Information */}
-              {facultyDetails.address && (
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <i className="fas fa-map-marker-alt mr-2 text-red-600"></i>
-                    Address Information
-                  </h3>
-                  <div className="text-gray-900">
-                    <p>{facultyDetails.address}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Employment Type</label>
+                    <p className="text-gray-900">{facultyDetails.employment_type || 'N/A'}</p>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* System Information */}
               <div className="bg-gray-50 rounded-lg p-6">
