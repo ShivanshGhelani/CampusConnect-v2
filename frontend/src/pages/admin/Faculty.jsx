@@ -255,7 +255,7 @@ function Faculty() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Employee ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -321,7 +321,7 @@ function Faculty() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {facultyMember.created_at ? formatDate(facultyMember.created_at) : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex space-x-2 justify-end">
                           <button 
                             className="text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
@@ -329,7 +329,7 @@ function Faculty() {
                             onClick={() => handleViewFacultyDetails(facultyMember)}
                           >
                             <i className="fas fa-eye mr-1"></i>
-                            View
+                            
                           </button>
                           <button 
                             className={`${
@@ -341,7 +341,7 @@ function Faculty() {
                             onClick={() => toggleFacultyStatus(facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
                           >
                             <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} mr-1`}></i>
-                            {facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
+                            {facultyMember.is_active !== false ? '' : ''}
                           </button>
                         </div>
                       </td>
