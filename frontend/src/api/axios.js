@@ -289,6 +289,8 @@ export const adminAPI = {
   updateEvent: (eventId, eventData) => api.put(`/api/v1/admin/events/update/${eventId}`, eventData),
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
   getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/events/registrations/${eventId}`, { params: filters }),
+  getEventAttendance: (eventId, filters) => api.get(`/api/v1/admin/events/attendance/${eventId}`, { params: filters }),
+  exportEventData: (eventId, exportData) => api.post(`/api/v1/admin/events/export/${eventId}`, exportData, { responseType: 'blob' }),
   bulkUpdateEventStatus: (updateData) => api.post('/api/v1/admin/events/bulk-update-status', updateData),
   // Legacy endpoint
   getEventStats: (eventId) => api.get(`/api/v1/admin/events/stats?event_id=${eventId}`),

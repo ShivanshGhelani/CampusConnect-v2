@@ -9,10 +9,11 @@ function SettingsProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
-  
+
   // Modal states
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
+
   // Profile form data
   const [profileForm, setProfileForm] = useState({
     fullname: user?.fullname || '',
@@ -33,12 +34,7 @@ function SettingsProfile() {
     confirm_password: ''
   });
 
-  // Settings
-  const [settings, setSettings] = useState({
-    email_notifications: true,
-    auto_update_status: true,
-    dark_mode: false
-  });
+  // Settings (removed - no longer needed)
 
   // Password visibility toggles
   const [passwordVisibility, setPasswordVisibility] = useState({
@@ -80,7 +76,7 @@ function SettingsProfile() {
 
     try {
       const response = await adminAPI.updateProfile(profileForm);
-      
+
       if (response.data.success) {
         showNotification('Profile updated successfully!', 'success');
       } else {
@@ -100,10 +96,11 @@ function SettingsProfile() {
 
     try {
       const response = await adminAPI.updateUsername(usernameForm);
-      
+
       if (response.data.success) {
         showNotification('Username updated successfully!', 'success');
         setUsernameForm(prev => ({ ...prev, current_password: '' }));
+        setIsUsernameModalOpen(false);
       } else {
         throw new Error(response.data.message || 'Failed to update username');
       }
@@ -127,7 +124,7 @@ function SettingsProfile() {
 
     try {
       const response = await adminAPI.updatePassword(passwordForm);
-      
+
       if (response.data.success) {
         showNotification('Password updated successfully!', 'success');
         setPasswordForm({
@@ -172,7 +169,7 @@ function SettingsProfile() {
         {/* Header */}
         {user?.role === 'event_admin' && (
           <div className="mb-6">
-            <button 
+            <button
               onClick={() => window.history.back()}
               className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium flex items-center space-x-2"
             >
@@ -189,7 +186,7 @@ function SettingsProfile() {
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
                 <i className="fas fa-check-circle mr-2"></i>
                 {successMessage}
-                <button 
+                <button
                   onClick={() => setSuccessMessage('')}
                   className="ml-auto text-green-600 hover:text-green-800"
                 >
@@ -201,7 +198,7 @@ function SettingsProfile() {
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
                 <i className="fas fa-exclamation-circle mr-2"></i>
                 {error}
-                <button 
+                <button
                   onClick={() => setError('')}
                   className="ml-auto text-red-600 hover:text-red-800"
                 >
@@ -298,153 +295,36 @@ function SettingsProfile() {
                 </button>
               </form>
             </div>
-
-            {/* Update Username Form */}
-            <div className="border-t pt-6 mt-6">
-              <h4 className="text-lg font-semibold text-gray-800 mb-4">Change Username</h4>
-              <form onSubmit={handleUsernameSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">New Username</label>
-                  <input
-                    type="text"
-                    value={usernameForm.username}
-                    onChange={(e) => setUsernameForm(prev => ({ ...prev, username: e.target.value }))}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter new username"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                  <input
-                    type="password"
-                    value={usernameForm.current_password}
-                    onChange={(e) => setUsernameForm(prev => ({ ...prev, current_password: e.target.value }))}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter current password to confirm"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Changing...
-                    </>
-                  ) : (
-                    'Change Username'
-                  )}
-                </button>
-              </form>
-            </div>
           </div>
 
           {/* Settings Section */}
           <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200">
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">System Settings</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-800">Email Notifications</h4>
-                    <p className="text-sm text-gray-600">Receive email notifications for new events</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={settings.email_notifications}
-                      onChange={(e) => setSettings(prev => ({ ...prev, email_notifications: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-800">Auto-Update Event Status</h4>
-                    <p className="text-sm text-gray-600">Automatically update event status based on date/time</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={settings.auto_update_status}
-                      onChange={(e) => setSettings(prev => ({ ...prev, auto_update_status: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-800">Dark Mode</h4>
-                    <p className="text-sm text-gray-600">Use dark theme for admin interface</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={settings.dark_mode}
-                      onChange={(e) => setSettings(prev => ({ ...prev, dark_mode: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Security Settings</h3>
               <div className="space-y-4">
-                <button 
+                <button
                   onClick={() => setIsPasswordModalOpen(true)}
                   className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div>
-                    <h4 className="font-medium text-gray-800">Change Password</h4>
+                    <h4 className="font-medium text-gray-800 text-left">Change Password</h4>
                     <p className="text-sm text-gray-600">Update your account password</p>
                   </div>
                   <i className="fas fa-chevron-right text-gray-400"></i>
                 </button>
-
-                <button className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                
+                <button
+                  onClick={() => setIsUsernameModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <div>
-                    <h4 className="font-medium text-gray-800">Two-Factor Authentication</h4>
-                    <p className="text-sm text-gray-600">Add an extra layer of security</p>
+                    <h4 className="font-medium text-gray-800 text-left">Change Username</h4>
+                    <p className="text-sm text-gray-600">Update your login username</p>
                   </div>
                   <i className="fas fa-chevron-right text-gray-400"></i>
                 </button>
               </div>
             </div>
-
-            {/* Additional Settings for Admins */}
-            {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
-              <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Admin Settings</h3>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-800 mb-2">System Maintenance</h4>
-                    <p className="text-sm text-blue-700 mb-3">Perform system maintenance tasks</p>
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                      Access Maintenance
-                    </button>
-                  </div>
-                  
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-green-800 mb-2">Backup & Export</h4>
-                    <p className="text-sm text-green-700 mb-3">Backup system data and export reports</p>
-                    <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">
-                      Manage Backups
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -462,7 +342,7 @@ function SettingsProfile() {
                     <i className="fas fa-times"></i>
                   </button>
                 </div>
-                
+
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
@@ -564,6 +444,75 @@ function SettingsProfile() {
                         </>
                       ) : (
                         'Update Password'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change Username Modal */}
+        {isUsernameModalOpen && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Change Username</h3>
+                  <button
+                    onClick={() => setIsUsernameModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+
+                <form onSubmit={handleUsernameSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Username</label>
+                    <input
+                      type="text"
+                      value={usernameForm.username}
+                      onChange={(e) => setUsernameForm(prev => ({ ...prev, username: e.target.value }))}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter new username"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={usernameForm.current_password}
+                      onChange={(e) => setUsernameForm(prev => ({ ...prev, current_password: e.target.value }))}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter current password to confirm"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsUsernameModalOpen(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin mr-2"></i>
+                          Updating...
+                        </>
+                      ) : (
+                        'Update Username'
                       )}
                     </button>
                   </div>
