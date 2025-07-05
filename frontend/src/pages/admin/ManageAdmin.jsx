@@ -262,11 +262,19 @@ function ManageAdmin() {
   return (
     <>
       <AdminLayout pageTitle="Admin Management">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Management</h1>
-          <p className="text-gray-600">Manage admin accounts and their roles (Super Admin Only)</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Management</h1>
+              <p className="text-gray-600">Manage admin accounts and their roles (Super Admin Only)</p>
+            </div>
+            <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
+              <i className="fas fa-shield-alt"></i>
+              <span>Super Admin Access Required</span>
+            </div>
+          </div>
         </div>
 
         {/* Flash Messages */}
@@ -318,8 +326,8 @@ function ManageAdmin() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Create New Admin Form */}
           <div className="lg:col-span-1">
-            <div className="bg-white shadow-lg rounded-lg p-6 border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <div className="bg-white shadow-lg rounded-xl p-6 border border-gray-200 sticky top-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                 <i className="fas fa-user-plus mr-2 text-seafoam-600"></i>Create New Admin
               </h2>
               
@@ -462,7 +470,7 @@ function ManageAdmin() {
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-seafoam-500 to-sky-500 text-black py-3 px-4 rounded-lg hover:from-seafoam-600 hover:to-sky-600 transition-all font-medium shadow-lg"
+                  className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-all font-medium shadow-lg"
                 >
                   <i className="fas fa-plus mr-2"></i>
                   Create Admin
@@ -473,80 +481,122 @@ function ManageAdmin() {
 
           {/* Existing Admins List */}
           <div className="lg:col-span-2">
-            <div className="bg-white shadow-lg rounded-lg border border-gray-200">
-              <div className="p-6 border-b border-gray-200">
+            <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <i className="fas fa-users-cog mr-2 text-seafoam-600"></i>
-                  Existing Admins
+                  Existing Admins ({admins.length})
                 </h2>
+                <p className="text-sm text-gray-600 mt-1">Manage admin accounts and their permissions</p>
               </div>
               
               {admins.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-2 font-medium text-gray-700">Admin Details</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-700">Role</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
-                        <th className="text-left py-3 px-2 font-medium text-gray-700">Actions</th>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Admin Details
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Role & Permissions
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Status & Activity
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {admins.map((admin) => (
-                        <tr key={admin.username} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-2">
-                            <div>
-                              <p className="font-medium text-gray-900">{admin.fullname}</p>
-                              <p className="text-sm text-gray-600">@{admin.username}</p>
-                              <p className="text-sm text-gray-500">{admin.email}</p>
-                              {admin.created_by && (
-                                <p className="text-xs text-gray-400">Created by: {admin.created_by}</p>
+                        <tr key={admin.username} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-5">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-semibold text-blue-700">
+                                  {admin.fullname?.charAt(0)?.toUpperCase() || 'A'}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {admin.fullname}
+                                </p>
+                                <p className="text-sm text-gray-600 truncate">
+                                  @{admin.username}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {admin.email}
+                                </p>
+                                {admin.created_by && (
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    Created by: {admin.created_by}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="space-y-2">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(admin.role)}`}>
+                                {admin.role === 'super_admin' && <i className="fas fa-crown mr-1"></i>}
+                                {admin.role === 'executive_admin' && <i className="fas fa-user-tie mr-1"></i>}
+                                {admin.role === 'event_admin' && <i className="fas fa-calendar-check mr-1"></i>}
+                                {admin.role === 'content_admin' && <i className="fas fa-edit mr-1"></i>}
+                                {formatRoleName(admin.role)}
+                              </span>
+                              
+                              {admin.assigned_events && admin.assigned_events.length > 0 && (
+                                <div className="mt-2">
+                                  <div className="flex items-center text-xs text-gray-500">
+                                    <i className="fas fa-calendar-alt mr-1"></i>
+                                    <span>Assigned Events: </span>
+                                    <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-medium">
+                                      {admin.assigned_events.length}
+                                    </span>
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </td>
-                          <td className="py-4 px-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(admin.role)}`}>
-                              {admin.role === 'super_admin' && <i className="fas fa-crown mr-1"></i>}
-                              {admin.role === 'executive_admin' && <i className="fas fa-user-tie mr-1"></i>}
-                              {admin.role === 'event_admin' && <i className="fas fa-calendar-check mr-1"></i>}
-                              {admin.role === 'content_admin' && <i className="fas fa-edit mr-1"></i>}
-                              {formatRoleName(admin.role)}
-                            </span>
-                            
-                            {admin.assigned_events && admin.assigned_events.length > 0 && (
-                              <div className="mt-1">
-                                <p className="text-xs text-gray-500">Assigned Events: {admin.assigned_events.length}</p>
-                              </div>
-                            )}
+                          <td className="px-6 py-5">
+                            <div className="space-y-2">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                admin.is_active 
+                                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}>
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                  admin.is_active ? 'bg-green-500' : 'bg-red-500'
+                                }`}></div>
+                                {admin.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                              {admin.last_login && (
+                                <p className="text-xs text-gray-500 flex items-center">
+                                  <i className="fas fa-clock mr-1"></i>
+                                  Last login: {admin.last_login}
+                                </p>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-4 px-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              admin.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {admin.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                            {admin.last_login && (
-                              <p className="text-xs text-gray-500 mt-1">Last: {admin.last_login}</p>
-                            )}
-                          </td>
-                          <td className="py-4 px-2">
-                            <div className="flex space-x-2">
+                          <td className="px-6 py-5">
+                            <div className="flex justify-center space-x-2">
                               <button
                                 onClick={() => openEditModal(admin)}
-                                className="text-blue-600 hover:text-blue-800 text-sm"
+                                className="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-md transition-colors duration-150"
                                 title="Edit Admin"
                               >
-                                <i className="fas fa-edit mr-1"></i>Edit
+                                <i className="fas fa-edit mr-1"></i>
+                                Edit
                               </button>
                               <button
                                 onClick={() => openDeleteModal(admin)}
-                                className="text-red-600 hover:text-red-800 text-sm"
+                                className="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-md transition-colors duration-150"
                                 title="Delete Admin"
                               >
-                                <i className="fas fa-trash mr-1"></i>Delete
+                                <i className="fas fa-trash mr-1"></i>
+                                Delete
                               </button>
                             </div>
                           </td>
@@ -556,9 +606,18 @@ function ManageAdmin() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <i className="fas fa-users text-4xl text-gray-300 mb-4"></i>
-                  <p className="text-gray-600">No admin users found.</p>
+                <div className="text-center py-12 px-6">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <i className="fas fa-users text-2xl text-gray-400"></i>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No admin users found</h3>
+                  <p className="text-gray-600 mb-4">Get started by creating your first admin user.</p>
+                  <div className="flex justify-center">
+                    <div className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                      <i className="fas fa-info-circle mr-1"></i>
+                      Use the form on the left to create an admin
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
