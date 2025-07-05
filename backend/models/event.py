@@ -44,6 +44,7 @@ class Event(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     venue: str
+    venue_id: Optional[str] = None  # Link to venue management system
     mode: str
     status: str = "upcoming"  # Values: "upcoming", "ongoing", "completed"
     sub_status: Optional[str] = "registration_not_started"  # Detailed status

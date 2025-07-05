@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 
 // Helper for step progress
@@ -17,6 +17,46 @@ const steps = [
 function CreateEvent() {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = steps.length;
+  const [venues, setVenues] = useState([]);
+  const [selectedVenueId, setSelectedVenueId] = useState('');
+  const [venueBookings, setVenueBookings] = useState([]);
+  const [showVenueAvailability, setShowVenueAvailability] = useState(false);
+
+  // Load venues on component mount
+  useEffect(() => {
+    loadVenues();
+  }, []);
+
+  const loadVenues = async () => {
+    try {
+      const response = await fetch('/api/v1/admin/venues');
+      if (response.ok) {
+        const data = await response.json();
+        setVenues(data.venues || []);
+      }
+    } catch (err) {
+      console.error('Error loading venues:', err);
+    }
+  };
+
+  // Check venue availability when venue or date changes
+  useEffect(() => {
+    if (selectedVenueId && form.start_date) {
+      checkVenueAvailability();
+    }
+  }, [selectedVenueId, form.start_date]);
+
+  const checkVenueAvailability = async () => {
+    try {
+      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/availability?date=${form.start_date}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVenueBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Error checking venue availability:', err);
+    }
+  };
 
   // Form state (expanded for all fields)
   const [form, setForm] = useState({
@@ -40,6 +80,7 @@ function CreateEvent() {
     certificate_end_time: '',
     mode: '',
     venue: '',
+    venue_id: '',
     target_outcomes: '',
     prerequisites: '',
     what_to_bring: '',
@@ -88,6 +129,26 @@ function CreateEvent() {
   const removeContact = (idx) => {
     const newContacts = form.contacts.filter((_, i) => i !== idx);
     setForm((prev) => ({ ...prev, contacts: newContacts }));
+  };
+
+  // Handle venue selection
+  const handleVenueSelection = (venueId) => {
+    setSelectedVenueId(venueId);
+    const selectedVenue = venues.find(v => v.id === venueId);
+    if (selectedVenue) {
+      setForm(prev => ({
+        ...prev,
+        venue_id: venueId,
+        venue: selectedVenue.name + ' - ' + selectedVenue.location
+      }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        venue_id: '',
+        venue: ''
+      }));
+    }
+    setShowVenueAvailability(venueId !== '');
   };
 
   // Dynamic fields for registration/fee/team
@@ -401,7 +462,7 @@ function CreateEvent() {
         return (
           <div className="form-section">
             <h2 className="text-xl font-semibold mb-6">Event Mode & Location</h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Mode<span className="text-red-500">*</span></label>
                 <select name="mode" value={form.mode} onChange={handleChange} required className={`mt-1 block w-full rounded-md border ${errors.mode ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500`}>
@@ -412,11 +473,167 @@ function CreateEvent() {
                 </select>
                 {errors.mode && <p className="text-xs text-red-500">{errors.mode}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Venue / Platform Link<span className="text-red-500">*</span></label>
-                <input type="text" name="venue" value={form.venue} onChange={handleChange} required className={`mt-1 block w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500`} />
-                {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
-              </div>
+
+              {form.mode === 'offline' || form.mode === 'hybrid' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Venue Selection<span className="text-red-500">*</span>
+                  </label>
+                  
+                  {/* Venue Selection */}
+                  <div className="mb-4">
+                    <select 
+                      value={selectedVenueId} 
+                      onChange={(e) => handleVenueSelection(e.target.value)}
+                      className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
+                    >
+                      <option value="">Select a venue...</option>
+                      {venues.filter(v => v.status === 'active').map((venue) => (
+                        <option key={venue.id} value={venue.id}>
+                          {venue.name} - {venue.location} (Capacity: {venue.capacity})
+                        </option>
+                      ))}
+                    </select>
+                    {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                  </div>
+
+                  {/* Selected Venue Details */}
+                  {selectedVenueId && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      {(() => {
+                        const selectedVenue = venues.find(v => v.id === selectedVenueId);
+                        return selectedVenue ? (
+                          <div>
+                            <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.name}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+                              <div>
+                                <p><strong>Location:</strong> {selectedVenue.location}</p>
+                                <p><strong>Capacity:</strong> {selectedVenue.capacity} people</p>
+                                {selectedVenue.contactPersonName && (
+                                  <p><strong>Contact:</strong> {selectedVenue.contactPersonName}</p>
+                                )}
+                              </div>
+                              <div>
+                                {selectedVenue.facilities && selectedVenue.facilities.length > 0 && (
+                                  <div>
+                                    <p><strong>Facilities:</strong></p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {selectedVenue.facilities.slice(0, 3).map((facility, idx) => (
+                                        <span key={idx} className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
+                                          {facility}
+                                        </span>
+                                      ))}
+                                      {selectedVenue.facilities.length > 3 && (
+                                        <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
+                                          +{selectedVenue.facilities.length - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Venue Availability Check */}
+                  {showVenueAvailability && form.start_date && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h5 className="font-semibold text-gray-900 mb-3">
+                        Venue Availability for {new Date(form.start_date).toLocaleDateString()}
+                      </h5>
+                      {venueBookings.length > 0 ? (
+                        <div>
+                          <p className="text-sm text-amber-700 mb-3">
+                            <i className="fas fa-exclamation-triangle mr-1"></i>
+                            The following time slots are already booked:
+                          </p>
+                          <div className="space-y-2">
+                            {venueBookings.map((booking, idx) => (
+                              <div key={idx} className="bg-red-100 border border-red-200 rounded-lg p-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-medium text-red-900">{booking.eventName}</p>
+                                    <p className="text-sm text-red-700">
+                                      {booking.startTime} - {booking.endTime}
+                                    </p>
+                                  </div>
+                                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">
+                                    Booked
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-sm text-gray-600 mt-3">
+                            Please select a different time slot or venue to avoid conflicts.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-green-100 border border-green-200 rounded-lg p-3">
+                          <p className="text-green-800">
+                            <i className="fas fa-check-circle mr-2"></i>
+                            Venue is available for the selected date!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Manual venue entry for custom locations */}
+                  <div className="mt-4">
+                    <label className="flex items-center text-sm text-gray-600">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedVenueId === 'custom'}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            handleVenueSelection('custom');
+                            setForm(prev => ({ ...prev, venue: '' }));
+                          } else {
+                            handleVenueSelection('');
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      Use custom venue/location (not in the venue list)
+                    </label>
+                  </div>
+
+                  {selectedVenueId === 'custom' && (
+                    <div className="mt-3">
+                      <input 
+                        type="text" 
+                        name="venue" 
+                        value={form.venue} 
+                        onChange={handleChange} 
+                        placeholder="Enter custom venue or location"
+                        className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : form.mode === 'online' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Platform/Meeting Link<span className="text-red-500">*</span></label>
+                  <input 
+                    type="url" 
+                    name="venue" 
+                    value={form.venue} 
+                    onChange={handleChange} 
+                    placeholder="e.g., https://meet.google.com/xyz-abc-def or Zoom Meeting ID"
+                    required 
+                    className={`mt-1 block w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`} 
+                  />
+                  {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                  <p className="text-xs text-gray-500 mt-1">
+                    For online events, provide the meeting platform link or details
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         );

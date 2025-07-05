@@ -14,6 +14,13 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       'jaguar-giving-awfully.ngrok-free.app'
-    ]
+    ],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })
