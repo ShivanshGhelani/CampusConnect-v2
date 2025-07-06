@@ -22,43 +22,7 @@ function CreateEvent() {
   const [venueBookings, setVenueBookings] = useState([]);
   const [showVenueAvailability, setShowVenueAvailability] = useState(false);
 
-  // Load venues on component mount
-  useEffect(() => {
-    loadVenues();
-  }, []);
-
-  const loadVenues = async () => {
-    try {
-      const response = await fetch('/api/v1/admin/venues');
-      if (response.ok) {
-        const data = await response.json();
-        setVenues(data.venues || []);
-      }
-    } catch (err) {
-      console.error('Error loading venues:', err);
-    }
-  };
-
-  // Check venue availability when venue or date changes
-  useEffect(() => {
-    if (selectedVenueId && form.start_date) {
-      checkVenueAvailability();
-    }
-  }, [selectedVenueId, form.start_date]);
-
-  const checkVenueAvailability = async () => {
-    try {
-      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/availability?date=${form.start_date}`);
-      if (response.ok) {
-        const data = await response.json();
-        setVenueBookings(data.bookings || []);
-      }
-    } catch (err) {
-      console.error('Error checking venue availability:', err);
-    }
-  };
-
-  // Form state (expanded for all fields)
+  // Form state (expanded for all fields) - Move this before useEffect that uses it
   const [form, setForm] = useState({
     event_id: '',
     event_name: '',
@@ -96,6 +60,42 @@ function CreateEvent() {
     assets: [],
   });
   const [errors, setErrors] = useState({});
+
+  // Load venues on component mount
+  useEffect(() => {
+    loadVenues();
+  }, []);
+
+  const loadVenues = async () => {
+    try {
+      const response = await fetch('/api/v1/admin/venues');
+      if (response.ok) {
+        const data = await response.json();
+        setVenues(data.venues || []);
+      }
+    } catch (err) {
+      console.error('Error loading venues:', err);
+    }
+  };
+
+  // Check venue availability when venue or date changes
+  useEffect(() => {
+    if (selectedVenueId && form.start_date) {
+      checkVenueAvailability();
+    }
+  }, [selectedVenueId, form.start_date]);
+
+  const checkVenueAvailability = async () => {
+    try {
+      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/availability?date=${form.start_date}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVenueBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Error checking venue availability:', err);
+    }
+  };
 
   // Handlers
   const handleChange = (e) => {

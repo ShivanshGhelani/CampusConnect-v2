@@ -75,7 +75,16 @@ function EventDetail() {
       }
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert('Failed to delete event: ' + error.message);
+      
+      // Provide more user-friendly error messages
+      let errorMessage = 'Failed to delete event: ';
+      if (error.message.includes('existing registrations')) {
+        errorMessage = 'Cannot delete this event because it has existing registrations. Please contact participants and cancel their registrations first, or consider marking the event as cancelled instead of deleting it.';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      alert(errorMessage);
     }
     setDeleteModalOpen(false);
   };
@@ -592,7 +601,6 @@ function EventDetail() {
                     {/* Registration Rows */}
                     <div className="bg-white">
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
-                        console.log(reg, 'Recent Registration Data'),
                         <div key={index} className="grid grid-cols-6 gap-4 py-4 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
                           <div className="font-medium text-gray-900">{reg.full_name}</div>
                           <div className="text-gray-700">{reg.enrollment_no}</div>
@@ -856,9 +864,24 @@ function EventDetail() {
                     <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Event</h3>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-4">
                     Are you sure you want to delete "{event.event_name}"? This action cannot be undone.
                   </p>
+                  
+                  {/* Warning about registrations */}
+                  {recentRegistrations && recentRegistrations.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center text-amber-800">
+                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                        <span className="text-sm font-medium">Warning</span>
+                      </div>
+                      <p className="text-amber-700 text-sm mt-1">
+                        This event has {recentRegistrations.length} registration(s). 
+                        Deletion will fail if registrations exist.
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="flex space-x-3">
                     <button
                       onClick={() => setDeleteModalOpen(false)}

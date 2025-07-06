@@ -392,7 +392,7 @@ function ProfilePage() {
                           </p>
                           <Link
                             to="/client/events"
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-seafoam-600 to-blue-600 text-white rounded-xl hover:from-seafoam-700 hover:to-blue-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl group"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-700 text-white rounded-xl hover:bg-blue-500 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl group"
                           >                            <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>

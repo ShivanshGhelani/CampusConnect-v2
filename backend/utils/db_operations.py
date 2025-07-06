@@ -48,6 +48,15 @@ class DatabaseOperations:
         return result.modified_count > 0
 
     @classmethod
+    async def update_many(cls, collection_name: str, query: Dict, update: Dict, db_name: str = "CampusConnect") -> object:
+        """Update multiple documents in the specified collection"""
+        db = await Database.get_database(db_name)
+        if db is None:
+            return None
+        result = await db[collection_name].update_many(query, update)
+        return result
+
+    @classmethod
     async def delete_one(cls, collection_name: str, query: Dict, db_name: str = "CampusConnect") -> bool:
         """Delete a single document from the specified collection"""
         db = await Database.get_database(db_name)
