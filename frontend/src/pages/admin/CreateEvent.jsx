@@ -362,26 +362,42 @@ function CreateEvent() {
         min_participants: parseInt(form.min_participants) || 1
       };
 
+      console.log('Submitting event data:', eventData);
+
       const response = await fetch('/api/v1/admin/events/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Important for session-based auth
         body: JSON.stringify(eventData)
       });
 
+      console.log('Response status:', response.status);
       const result = await response.json();
+      console.log('Response data:', result);
 
       if (response.ok && result.success) {
         alert(`Event "${form.event_name}" created successfully! Event ID: ${result.event_id}`);
         // Reset form or redirect
         window.location.href = '/admin/events';
       } else {
-        alert(`Error creating event: ${result.message || 'Unknown error'}`);
+        // More detailed error reporting
+        if (response.status === 401) {
+          alert('Authentication required. Please log in as admin first.');
+          window.location.href = '/auth/login?mode=admin';
+        } else if (response.status === 403) {
+          alert('Access denied. You do not have permission to create events.');
+        } else if (response.status === 422) {
+          alert(`Validation error: ${result.detail || 'Please check your form data'}`);
+          console.error('Validation errors:', result.detail);
+        } else {
+          alert(`Error creating event: ${result.message || result.detail || 'Unknown error'}`);
+        }
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Error creating event. Please try again.');
+      alert('Network error creating event. Please check your connection and try again.');
     }
   };
 
