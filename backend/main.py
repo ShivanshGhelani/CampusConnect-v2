@@ -192,16 +192,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
                 status_code=401,
                 content={"success": False, "message": "Authentication required", "detail": exc.detail}
             )
-        # Check if this is a student-related route
-        elif request.url.path.startswith("/client/"):
-            # For student routes, redirect to student login with return URL
-            return RedirectResponse(
-                url=f"/client/login?redirect={request.url.path}",
-                status_code=302
-            )
         else:
-            # For admin routes, redirect to admin login
-            return RedirectResponse(url="/auth/login", status_code=302)
+            # For any other protected routes, redirect to React frontend login
+            return RedirectResponse(url="http://localhost:3000/login", status_code=302)
     
     # Prepare enhanced error context
     from datetime import datetime
@@ -216,10 +209,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     
     # Add specific error messages based on status code
     if exc.status_code == 404:
-        if "/client/" in request.url.path:
-            error_context["user_friendly_message"] = "The page or event you're looking for doesn't exist."
-        else:
-            error_context["user_friendly_message"] = "The requested resource was not found."
+        error_context["user_friendly_message"] = "The requested resource was not found."
     elif exc.status_code == 403:
         error_context["user_friendly_message"] = "You don't have permission to access this resource."
     elif exc.status_code >= 500:
@@ -271,7 +261,6 @@ async def internal_server_error_handler(request: Request, exc):
 
 # Include routes
 from routes.admin import router as admin_router
-from routes.client import router as client_router
 from routes.auth import router as auth_router
 from api import router as api_router
 
@@ -279,7 +268,6 @@ from api import router as api_router
 app.include_router(api_router)     # API routes at /api/...
 app.include_router(admin_router)   # Admin routes including /admin/...
 app.include_router(auth_router)    # Auth routes at /auth/...
-app.include_router(client_router)  # Client routes at /client/...
 
 # Global variable to keep scheduler task alive
 scheduler_task = None
@@ -365,48 +353,8 @@ async def health_check(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    """Render the homepage with upcoming and ongoing events"""
-    try:
-        # Get template context including student authentication status
-        from utils.template_context import get_template_context
-        from utils.event_status_manager import EventStatusManager
-        from datetime import datetime
-          # Get events and update their status
-        upcoming_events = await EventStatusManager.get_available_events("upcoming")
-        ongoing_events = await EventStatusManager.get_available_events("ongoing")
-        
-        # Sort by relevant dates and limit to 3 events each for homepage
-        current_date = datetime.now()
-        upcoming_events.sort(key=lambda x: x.get('start_datetime', current_date))
-        ongoing_events.sort(key=lambda x: x.get('end_datetime', current_date))
-        
-        # Limit to maximum 3 events per section for homepage
-        upcoming_events = upcoming_events[:3]
-        ongoing_events = ongoing_events[:3]
-        
-        template_context = await get_template_context(request)
-        
-        return templates.TemplateResponse("client/index.html", {
-            "request": request,
-            "upcoming_events": upcoming_events,
-            "ongoing_events": ongoing_events,
-            "current_datetime": datetime.now(),
-            **template_context
-        })
-    except Exception as e:
-        print(f"Error in homepage: {str(e)}")
-        # Fallback with empty events if there's an error
-        from utils.template_context import get_template_context
-        from datetime import datetime
-        template_context = await get_template_context(request)
-        
-        return templates.TemplateResponse("client/index.html", {
-            "request": request,
-            "upcoming_events": [],
-            "ongoing_events": [],
-            "current_datetime": datetime.now(),
-            **template_context
-        })
+    """Redirect root to React frontend"""
+    return RedirectResponse(url="http://localhost:3000", status_code=302)
 
 @app.get("/favicon.ico")
 async def favicon():
@@ -434,13 +382,13 @@ async def admin_login_post_redirect():
 
 @app.get("/login")
 async def login_redirect():
-    """Redirect /login to student login page"""
-    return RedirectResponse(url="/client/login", status_code=301)
+    """Redirect /login to React frontend"""
+    return RedirectResponse(url="http://localhost:3000/login", status_code=301)
 
 @app.get("/event-categories")
 async def event_categories():
-    """Redirect event categories to events page"""
-    return RedirectResponse(url="/client/events", status_code=301)
+    """Redirect event categories to React frontend"""
+    return RedirectResponse(url="http://localhost:3000/events", status_code=301)
 
 @app.get("/health/scheduler")
 async def scheduler_health():

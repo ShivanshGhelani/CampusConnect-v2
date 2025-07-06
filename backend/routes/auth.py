@@ -140,8 +140,8 @@ async def admin_login_page(request: Request):
             return RedirectResponse(url="/admin/events", status_code=302)
         else:
             return RedirectResponse(url="/admin/dashboard", status_code=302)
-    except HTTPException:        # Not logged in or session expired, redirect to unified login with admin tab
-        return RedirectResponse(url="/client/login?tab=admin", status_code=302)
+    except HTTPException:        # Not logged in or session expired, redirect to React frontend login with admin tab
+        return RedirectResponse(url="http://localhost:3000/login?tab=admin", status_code=302)
 
 @router.post("/login")  # Now this will be /auth/login
 async def admin_login(request: Request):
@@ -150,12 +150,12 @@ async def admin_login(request: Request):
     username = form_data.get("username")
     password = form_data.get("password")    # Validate required fields
     if not all([username, password]):
-        return RedirectResponse(url="/client/login?tab=admin&error=Both username and password are required", status_code=302)
+        return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Both username and password are required", status_code=302)
     
     # Authenticate admin
     admin = await authenticate_admin(username, password)
     if not admin:
-        return RedirectResponse(url="/client/login?tab=admin&error=Invalid username or password", status_code=302)
+        return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Invalid username or password", status_code=302)
       # Update last login time
     await DatabaseOperations.update_one(
         "users",
@@ -175,29 +175,29 @@ async def admin_login(request: Request):
     
     request.session["admin"] = admin_data
     
-    # Role-based redirect after login
+    # Role-based redirect after login to React frontend
     if admin.role == AdminRole.SUPER_ADMIN:
         # Super Admin goes to dashboard
-        return RedirectResponse(url="/admin/dashboard", status_code=303)
+        return RedirectResponse(url="http://localhost:3000/admin/dashboard", status_code=303)
     elif admin.role == AdminRole.EXECUTIVE_ADMIN:
         # Executive Admin goes directly to create event page
-        return RedirectResponse(url="/admin/events/create", status_code=303)
+        return RedirectResponse(url="http://localhost:3000/admin/events/create", status_code=303)
     elif admin.role == AdminRole.EVENT_ADMIN:
         # Event Admin goes to events page (filtered view)
-        return RedirectResponse(url="/admin/events", status_code=303)
+        return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)
     elif admin.role == AdminRole.CONTENT_ADMIN:
         # Content Admin goes to events page (read-only view)
-        return RedirectResponse(url="/admin/events", status_code=303)
+        return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)
     else:
         # Default fallback to dashboard
-        return RedirectResponse(url="/admin/dashboard", status_code=303)
+        return RedirectResponse(url="http://localhost:3000/admin/dashboard", status_code=303)
 
 @router.get("/logout")
 async def admin_logout(request: Request):
     """Handle admin logout"""
     # Clear all session data
-    request.session.clear()    # Create a response that redirects to unified login page with admin tab
-    response = RedirectResponse(url="/client/login?tab=admin", status_code=302)
+    request.session.clear()    # Create a response that redirects to React frontend with admin tab
+    response = RedirectResponse(url="http://localhost:3000/login?tab=admin", status_code=302)
     
     # Add comprehensive cache control headers to prevent caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
@@ -221,7 +221,7 @@ async def admin_auth_status(request: Request):
                 "fullname": admin.fullname,
                 "role": admin.role.value if admin.role else None
             },
-            "redirect_url": "/admin/dashboard"
+            "redirect_url": "http://localhost:3000/admin/dashboard"
         }
     except HTTPException:
         return {"authenticated": False}

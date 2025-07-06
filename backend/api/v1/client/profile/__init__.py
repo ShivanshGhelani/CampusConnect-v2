@@ -286,27 +286,26 @@ async def change_password(request: Request, student: Student = Depends(require_s
         if not student_data:
             return {"success": False, "message": "Student not found"}
         
-        # Verify current password (assuming password is hashed)
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        # Verify current password using the same method as authentication
+        from models.student import Student as StudentModel
         
-        if not pwd_context.verify(current_password, student_data.get('password', '')):
+        if not StudentModel.verify_password(current_password, student_data.get('password_hash', '')):
             return {"success": False, "message": "Current password is incorrect"}
         
-        # Hash new password
-        hashed_new_password = pwd_context.hash(new_password)
+        # Hash new password using the same method as registration
+        hashed_new_password = StudentModel.hash_password(new_password)
         
-        # Update password in database
+        # Update password in database (note: field is 'password_hash', not 'password')
         result = await DatabaseOperations.update_one(
             "students",
             {"enrollment_no": student.enrollment_no},
             {"$set": {
-                "password": hashed_new_password,
+                "password_hash": hashed_new_password,
                 "updated_at": datetime.utcnow()
             }}
         )
         
-        if result.modified_count > 0:
+        if result:  # DatabaseOperations.update_one returns boolean
             return {
                 "success": True,
                 "message": "Password changed successfully"

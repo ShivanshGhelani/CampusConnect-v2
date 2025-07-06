@@ -12,6 +12,7 @@ function EditProfile() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState({
+    current_password: false,
     new_password: false,
     confirm_new_password: false
   });
@@ -25,6 +26,7 @@ function EditProfile() {
     enrollment_no: '',
     department: '',
     semester: '',
+    current_password: '',
     new_password: '',
     confirm_new_password: ''
   });
@@ -46,6 +48,7 @@ function EditProfile() {
             enrollment_no: profile.enrollment_no || user?.enrollment_no || '',
             department: profile.department || '',
             semester: profile.semester || '',
+            current_password: '',
             new_password: '',
             confirm_new_password: ''
           });
@@ -95,15 +98,23 @@ function EditProfile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check if password change is requested
+    const hasPasswordChange = formData.new_password || formData.confirm_new_password;
+    
     // Validate passwords if provided
-    if (formData.new_password || formData.confirm_new_password) {
+    if (hasPasswordChange) {
+      if (!formData.current_password) {
+        setError('Current password is required to change password');
+        return;
+      }
+      
       if (formData.new_password !== formData.confirm_new_password) {
-        setError('Passwords do not match');
+        setError('New passwords do not match');
         return;
       }
       
       if (formData.new_password.length < 6) {
-        setError('Password must be at least 6 characters long');
+        setError('New password must be at least 6 characters long');
         return;
       }
     }
@@ -113,33 +124,55 @@ function EditProfile() {
       setError('');
       setSuccess('');
 
-      // Prepare data for submission
-      const submitData = { ...formData };
-      
-      // Remove password fields if empty
-      if (!submitData.new_password) {
-        delete submitData.new_password;
-        delete submitData.confirm_new_password;
+      // Prepare profile data for submission (exclude password fields)
+      const profileData = { ...formData };
+      delete profileData.current_password;
+      delete profileData.new_password;
+      delete profileData.confirm_new_password;
+
+      // Update profile first
+      const profileResponse = await api.put('/api/v1/client/profile/update', profileData);
+      if (!profileResponse.data.success) {
+        throw new Error(profileResponse.data.message || 'Failed to update profile');
       }
 
-      const response = await api.put('/api/v1/client/profile/update', submitData);
-        if (response.data.success) {
-        setSuccess('Profile updated successfully!');
-        // Clear password fields
-        setFormData(prev => ({
-          ...prev,
-          new_password: '',
-          confirm_new_password: ''
-        }));
+      // Handle password change separately if requested
+      if (hasPasswordChange) {
+        const passwordData = {
+          current_password: formData.current_password,
+          new_password: formData.new_password,
+          confirm_password: formData.confirm_new_password
+        };
         
-        // Redirect immediately to profile page
-        navigate('/client/profile');
-      } else {
-        setError(response.data.message || 'Failed to update profile');
+        const passwordResponse = await api.post('/api/v1/client/profile/change-password', passwordData);
+        if (!passwordResponse.data.success) {
+          throw new Error(passwordResponse.data.message || 'Failed to change password');
+        }
       }
+
+      // Success message
+      if (hasPasswordChange) {
+        setSuccess('Profile and password updated successfully!');
+      } else {
+        setSuccess('Profile updated successfully!');
+      }
+      
+      // Clear password fields
+      setFormData(prev => ({
+        ...prev,
+        current_password: '',
+        new_password: '',
+        confirm_new_password: ''
+      }));
+      
+      // Redirect to profile page after a short delay
+      setTimeout(() => {
+        navigate('/client/profile');
+      }, 1500);
+      
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(error.response?.data?.message || 'Failed to update profile');
+      setError(error.message || error.response?.data?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -465,7 +498,39 @@ function EditProfile() {
                   Change Password (Optional)
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Current Password */}
+                  <div>
+                    <label htmlFor="current_password" className="block text-sm font-semibold text-gray-800 mb-2">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="current_password" 
+                        name="current_password" 
+                        type={showPassword.current_password ? "text" : "password"}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Enter your current password"
+                        value={formData.current_password}
+                        onChange={handleInputChange}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => togglePasswordVisibility('current_password')}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.current_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Required only if changing password</p>
+                  </div>
+
                   {/* New Password */}
                   <div>
                     <label htmlFor="new_password" className="block text-sm font-semibold text-gray-800 mb-2">
@@ -529,6 +594,9 @@ function EditProfile() {
                       </button>
                     </div>
                     <div className="mt-2 text-xs">
+                      {(formData.new_password || formData.confirm_new_password) && !formData.current_password && (
+                        <div className="text-orange-600 mb-1">⚠ Current password is required to change password</div>
+                      )}
                       {formData.new_password && formData.confirm_new_password && (
                         formData.new_password === formData.confirm_new_password ? (
                           <span className="text-green-600">✓ Passwords match</span>

@@ -9,16 +9,40 @@ from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from models.faculty import Faculty, FacultyCreate
 from routes.auth import get_current_admin, authenticate_admin
-from routes.client.client import authenticate_student
 from dependencies.auth import get_current_student_optional, get_current_student
 from utils.db_operations import DatabaseOperations
 from datetime import datetime
+from typing import Union
 import logging
 import re
 from passlib.context import CryptContext
 
 # Password hashing context for faculty
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+async def authenticate_student(enrollment_no: str, password: str) -> Union[Student, None]:
+    """Authenticate student using enrollment number and password"""
+    try:
+        # Find student in database
+        student_data = await DatabaseOperations.find_one(
+            "students",
+            {
+                "enrollment_no": enrollment_no,
+                "is_active": True
+            }
+        )
+        
+        if not student_data:
+            return None
+        
+        # Verify password using Student model method
+        if Student.verify_password(password, student_data.get("password_hash", "")):
+            return Student(**student_data)
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error authenticating student: {e}")
+        return None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -187,6 +211,26 @@ async def admin_login_api(request: Request):
         
     except Exception as e:
         logger.error(f"Error in admin login API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/admin/logout")
+async def admin_logout_api(request: Request):
+    """API endpoint for admin logout"""
+    try:
+        # Clear admin session
+        if "admin" in request.session:
+            del request.session["admin"]
+        
+        return {
+            "success": True,
+            "message": "Logout successful"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in admin logout API: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": "Internal server error"}
