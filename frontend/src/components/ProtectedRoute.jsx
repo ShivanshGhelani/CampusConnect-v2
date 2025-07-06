@@ -23,7 +23,14 @@ function ProtectedRoute({ children, userType }) {
 
   if (userType && currentUserType !== userType) {
     // User type mismatch - redirect to appropriate dashboard
-    const dashboardPath = currentUserType === 'admin' ? '/admin/dashboard' : '/client/dashboard';
+    let dashboardPath;
+    if (currentUserType === 'admin') {
+      dashboardPath = '/admin/dashboard';
+    } else if (currentUserType === 'faculty') {
+      dashboardPath = '/faculty/profile';
+    } else {
+      dashboardPath = '/client/profile';
+    }
     return <Navigate to={dashboardPath} replace />;
   }
 

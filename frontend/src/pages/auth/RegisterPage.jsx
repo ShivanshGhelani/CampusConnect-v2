@@ -47,7 +47,7 @@ function RegisterPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectPath = activeTab === 'faculty' ? '/faculty/dashboard' : '/client/dashboard';
+      const redirectPath = activeTab === 'faculty' ? '/faculty/profile' : '/client/dashboard';
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, activeTab]);
@@ -351,7 +351,7 @@ function RegisterPage() {
     }
 
     if (result.success) {
-      const redirectPath = activeTab === 'faculty' ? '/faculty/dashboard' : '/client/dashboard';
+      const redirectPath = activeTab === 'faculty' ? '/faculty/profile' : '/client/dashboard';
       navigate(redirectPath, { replace: true });
     }
 

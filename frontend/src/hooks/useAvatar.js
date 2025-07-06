@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAvatarUrl } from '../lib/supabase';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 // Global avatar state
 let globalAvatarUrl = null;
@@ -9,14 +10,15 @@ let isAvatarFetched = false; // Track if we've already fetched the avatar
 let isFetching = false; // Prevent multiple simultaneous fetches
 
 export const useAvatar = (user) => {
+  const { userType } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState(globalAvatarUrl);
   useEffect(() => {
     // Add this component to listeners
     avatarListeners.push(setAvatarUrl);
 
     // Fetch avatar on mount if we haven't fetched it yet and user exists
-    if (!isAvatarFetched && user && !isFetching) {
-      console.log('useAvatar: Initial fetch triggered for user:', user.enrollment_no);
+    if (!isAvatarFetched && user && userType && !isFetching) {
+      console.log('useAvatar: Initial fetch triggered for user:', user.enrollment_no || user.employee_id);
       fetchAvatar();
     } else if (isAvatarFetched) {
       console.log('useAvatar: Avatar already fetched, using cached value:', globalAvatarUrl ? 'has avatar' : 'no avatar');
@@ -26,14 +28,20 @@ export const useAvatar = (user) => {
     return () => {
       avatarListeners = avatarListeners.filter(listener => listener !== setAvatarUrl);
     };
-  }, [user]);
+  }, [user, userType]);
   const fetchAvatar = async () => {
-    if (!user || isFetching) return;
+    if (!user || !userType || isFetching) return;
     
-    console.log('useAvatar: Fetching avatar for user:', user.enrollment_no);
+    console.log('useAvatar: Fetching avatar for user:', user.enrollment_no || user.employee_id);
     isFetching = true;
     
-    try {      const response = await api.get('/api/v1/client/profile/info');
+    try {
+      // Use different API endpoint based on user type
+      const endpoint = userType === 'faculty' 
+        ? '/api/v1/client/profile/faculty/info' 
+        : '/api/v1/client/profile/info';
+      
+      const response = await api.get(endpoint);
       if (response.data.success && response.data.profile?.avatar_url) {
         // Use the stored avatar_url directly
         const avatarUrl = response.data.profile.avatar_url;

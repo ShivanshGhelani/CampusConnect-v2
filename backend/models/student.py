@@ -22,6 +22,27 @@ class EventParticipation(BaseModel):
     team_name: Optional[str] = Field(default=None, description="Team name if part of a team event")
     team_registration_id: Optional[str] = Field(default=None, description="Team registration ID for team events")
 
+class StudentUpdate(BaseModel):
+    """Model for updating student profile information"""
+    full_name: Optional[str] = Field(default=None, min_length=2, max_length=100, description="Full name of the student")
+    department: Optional[str] = Field(default=None, description="Department name")
+    semester: Optional[int] = Field(default=None, ge=1, le=8, description="Current semester (1-8)")
+    mobile_no: Optional[str] = Field(default=None, pattern="^[0-9]{10}$", description="10-digit mobile number")
+    date_of_birth: Optional[datetime] = Field(default=None, description="Date of birth of the student")
+    gender: Optional[str] = Field(default=None, description="Male or Female")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "full_name": "John Doe",
+                "department": "Information Technology",
+                "semester": 5,
+                "mobile_no": "9876543210",
+                "date_of_birth": "2000-01-15T00:00:00",
+                "gender": "Male"
+            }
+        }
+
 class Student(BaseModel):
     """Student model for authentication and registration tracking"""
     enrollment_no: str = Field(..., min_length=3, max_length=20, description="Student enrollment number")

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
+import DateRangePicker from '../../components/common/DateRangePicker';
 
 // Helper for step progress
 const steps = [
@@ -21,12 +22,17 @@ function CreateEvent() {
   const [selectedVenueId, setSelectedVenueId] = useState('');
   const [venueBookings, setVenueBookings] = useState([]);
   const [showVenueAvailability, setShowVenueAvailability] = useState(false);
+  const [bookingDateRange, setBookingDateRange] = useState({ start: null, end: null });
+  const [venueAvailability, setVenueAvailability] = useState([]);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   // Form state (expanded for all fields) - Move this before useEffect that uses it
   const [form, setForm] = useState({
     event_id: '',
     event_name: '',
     event_type: '',
+    target_audience: '',
+    is_xenesis_event: false,
     short_description: '',
     detailed_description: '',
     organizing_department: '',
@@ -86,16 +92,40 @@ function CreateEvent() {
   }, [selectedVenueId, form.start_date]);
 
   const checkVenueAvailability = async () => {
+    if (!selectedVenueId || selectedVenueId === 'custom') return;
+    
     try {
-      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/availability?date=${form.start_date}`);
+      setCheckingAvailability(true);
+      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/bookings`);
       if (response.ok) {
         const data = await response.json();
         setVenueBookings(data.bookings || []);
+        
+        // Convert bookings to date ranges for the date picker
+        const bookedRanges = data.bookings?.map(booking => ({
+          start: booking.start_datetime.split('T')[0],
+          end: booking.end_datetime.split('T')[0],
+          eventName: booking.event_name
+        })) || [];
+        
+        setVenueAvailability(bookedRanges);
       }
     } catch (err) {
       console.error('Error checking venue availability:', err);
+    } finally {
+      setCheckingAvailability(false);
     }
   };
+
+  // Check venue availability when venue changes
+  useEffect(() => {
+    if (selectedVenueId && selectedVenueId !== 'custom') {
+      checkVenueAvailability();
+    } else {
+      setVenueAvailability([]);
+      setVenueBookings([]);
+    }
+  }, [selectedVenueId]);
 
   // Handlers
   const handleChange = (e) => {
@@ -134,12 +164,18 @@ function CreateEvent() {
   // Handle venue selection
   const handleVenueSelection = (venueId) => {
     setSelectedVenueId(venueId);
-    const selectedVenue = venues.find(v => v.id === venueId);
+    const selectedVenue = venues.find(v => v.venue_id === venueId);
     if (selectedVenue) {
       setForm(prev => ({
         ...prev,
         venue_id: venueId,
-        venue: selectedVenue.name + ' - ' + selectedVenue.location
+        venue: selectedVenue.venue_name + ' - ' + selectedVenue.location
+      }));
+    } else if (venueId === 'custom') {
+      setForm(prev => ({
+        ...prev,
+        venue_id: '',
+        venue: ''
       }));
     } else {
       setForm(prev => ({
@@ -148,7 +184,21 @@ function CreateEvent() {
         venue: ''
       }));
     }
-    setShowVenueAvailability(venueId !== '');
+    setShowVenueAvailability(venueId !== '' && venueId !== 'custom');
+  };
+
+  // Handle date range change for venue booking
+  const handleBookingDateChange = (startDate, endDate) => {
+    setBookingDateRange({ start: startDate, end: endDate });
+    
+    if (startDate && endDate) {
+      // Update form dates to match the selected booking range
+      setForm(prev => ({
+        ...prev,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0]
+      }));
+    }
   };
 
   // Dynamic fields for registration/fee/team
@@ -162,6 +212,7 @@ function CreateEvent() {
       if (!form.event_id) stepErrors.event_id = 'Event ID is required';
       if (!form.event_name) stepErrors.event_name = 'Event Title is required';
       if (!form.event_type) stepErrors.event_type = 'Event Type is required';
+      if (!form.target_audience) stepErrors.target_audience = 'Target Audience is required';
       if (!form.short_description) stepErrors.short_description = 'Short Description is required';
       if (!form.detailed_description) stepErrors.detailed_description = 'Detailed Description is required';
     } else if (step === 2) {
@@ -268,11 +319,70 @@ function CreateEvent() {
   );
 
   // Form submission (optional backend integration)
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateStep(currentStep)) return;
-    // TODO: Backend integration (FormData, API call)
-    alert('Event created! (Backend integration not implemented)');
+    
+    try {
+      // Prepare form data for submission
+      const eventData = {
+        event_id: form.event_id,
+        event_name: form.event_name,
+        event_type: form.event_type,
+        target_audience: form.target_audience,
+        is_xenesis_event: form.is_xenesis_event,
+        short_description: form.short_description,
+        detailed_description: form.detailed_description,
+        organizing_department: form.organizing_department,
+        organizers: form.organizers.filter(org => org.trim() !== ''),
+        contacts: form.contacts.filter(contact => contact.name.trim() !== '' && contact.contact.trim() !== ''),
+        start_date: form.start_date,
+        start_time: form.start_time,
+        end_date: form.end_date,
+        end_time: form.end_time,
+        registration_start_date: form.registration_start_date,
+        registration_start_time: form.registration_start_time,
+        registration_end_date: form.registration_end_date,
+        registration_end_time: form.registration_end_time,
+        certificate_end_date: form.certificate_end_date,
+        certificate_end_time: form.certificate_end_time,
+        mode: form.mode,
+        venue: form.venue,
+        venue_id: form.venue_id || null,
+        target_outcomes: form.target_outcomes,
+        prerequisites: form.prerequisites || null,
+        what_to_bring: form.what_to_bring || null,
+        registration_type: form.registration_type,
+        registration_fee: form.registration_fee ? parseFloat(form.registration_fee) : null,
+        fee_description: form.fee_description || null,
+        registration_mode: form.registration_mode,
+        team_size_min: form.team_size_min ? parseInt(form.team_size_min) : null,
+        team_size_max: form.team_size_max ? parseInt(form.team_size_max) : null,
+        max_participants: form.max_participants ? parseInt(form.max_participants) : null,
+        min_participants: parseInt(form.min_participants) || 1
+      };
+
+      const response = await fetch('/api/v1/admin/events/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(`Event "${form.event_name}" created successfully! Event ID: ${result.event_id}`);
+        // Reset form or redirect
+        window.location.href = '/admin/events';
+      } else {
+        alert(`Error creating event: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error creating event. Please try again.');
+    }
   };
 
   // Render step content
@@ -299,24 +409,60 @@ function CreateEvent() {
                 <p className="helper-text text-xs text-gray-500 mt-1">Choose a clear, descriptive title that reflects the event's purpose</p>
                 {errors.event_name && <p className="text-xs text-red-500">{errors.event_name}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Event Type<span className="text-red-500">*</span>
-                </label>
-                <select name="event_type" value={form.event_type} onChange={handleChange} required className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.event_type ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}>
-                  <option value="">Select Event Type</option>
-                  <option value="technical">Technical Event</option>
-                  <option value="cultural">Cultural Event</option>
-                  <option value="sports">Sports Event</option>
-                  <option value="workshop">Workshop/Training</option>
-                  <option value="seminar">Seminar/Conference</option>
-                  <option value="competition">Competition</option>
-                  <option value="hackathon">Hackathon</option>
-                  <option value="other">Other</option>
-                </select>
-                <p className="helper-text text-xs text-gray-500 mt-1">Category that best describes your event</p>
-                {errors.event_type && <p className="text-xs text-red-500">{errors.event_type}</p>}
+              
+              {/* Event Type, Target Audience, and Xenesis Event in same row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Event Type<span className="text-red-500">*</span>
+                  </label>
+                  <select name="event_type" value={form.event_type} onChange={handleChange} required className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.event_type ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}>
+                    <option value="">Select Type</option>
+                    <option value="technical">Technical Event</option>
+                    <option value="cultural">Cultural Event</option>
+                    <option value="sports">Sports Event</option>
+                    <option value="workshop">Workshop/Training</option>
+                    <option value="seminar">Seminar/Conference</option>
+                    <option value="competition">Competition</option>
+                    <option value="hackathon">Hackathon</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {errors.event_type && <p className="text-xs text-red-500">{errors.event_type}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Target Audience<span className="text-red-500">*</span>
+                  </label>
+                  <select name="target_audience" value={form.target_audience} onChange={handleChange} required className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.target_audience ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}>
+                    <option value="">Select Audience</option>
+                    <option value="student">Students Only</option>
+                    <option value="faculty">Faculty Only</option>
+                    <option value="both">Students & Faculty</option>
+                  </select>
+                  {errors.target_audience && <p className="text-xs text-red-500">{errors.target_audience}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Event Category
+                  </label>
+                  <div className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 bg-white min-h-[42px] flex items-center">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="is_xenesis_event"
+                        checked={form.is_xenesis_event}
+                        onChange={(e) => setForm(prev => ({ ...prev, is_xenesis_event: e.target.checked }))}
+                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700">Xenesis Event</span>
+                    </label>
+                  </div>
+                  <p className="helper-text text-xs text-gray-500 mt-1">Check if this is a Xenesis category event</p>
+                </div>
               </div>
+              
               <div>
                 <label className="block text-sm font-semibold text-gray-700">
                   Short Description<span className="text-red-500">*</span>
@@ -488,9 +634,9 @@ function CreateEvent() {
                       className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
                     >
                       <option value="">Select a venue...</option>
-                      {venues.filter(v => v.status === 'active').map((venue) => (
-                        <option key={venue.id} value={venue.id}>
-                          {venue.name} - {venue.location} (Capacity: {venue.capacity})
+                      {venues.filter(v => v.is_active).map((venue) => (
+                        <option key={venue.venue_id} value={venue.venue_id}>
+                          {venue.venue_name} - {venue.location} (Capacity: {venue.facilities?.capacity || 'N/A'})
                         </option>
                       ))}
                     </select>
@@ -498,34 +644,34 @@ function CreateEvent() {
                   </div>
 
                   {/* Selected Venue Details */}
-                  {selectedVenueId && (
+                  {selectedVenueId && selectedVenueId !== 'custom' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                       {(() => {
-                        const selectedVenue = venues.find(v => v.id === selectedVenueId);
+                        const selectedVenue = venues.find(v => v.venue_id === selectedVenueId);
                         return selectedVenue ? (
                           <div>
-                            <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.name}</h4>
+                            <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.venue_name}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
                               <div>
                                 <p><strong>Location:</strong> {selectedVenue.location}</p>
-                                <p><strong>Capacity:</strong> {selectedVenue.capacity} people</p>
-                                {selectedVenue.contactPersonName && (
-                                  <p><strong>Contact:</strong> {selectedVenue.contactPersonName}</p>
+                                <p><strong>Capacity:</strong> {selectedVenue.facilities?.capacity || 'N/A'} people</p>
+                                {selectedVenue.contact_person?.name && (
+                                  <p><strong>Contact:</strong> {selectedVenue.contact_person.name}</p>
                                 )}
                               </div>
                               <div>
-                                {selectedVenue.facilities && selectedVenue.facilities.length > 0 && (
+                                {selectedVenue.facilities?.additional_facilities && selectedVenue.facilities.additional_facilities.length > 0 && (
                                   <div>
                                     <p><strong>Facilities:</strong></p>
                                     <div className="flex flex-wrap gap-1 mt-1">
-                                      {selectedVenue.facilities.slice(0, 3).map((facility, idx) => (
+                                      {selectedVenue.facilities.additional_facilities.slice(0, 3).map((facility, idx) => (
                                         <span key={idx} className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
                                           {facility}
                                         </span>
                                       ))}
-                                      {selectedVenue.facilities.length > 3 && (
+                                      {selectedVenue.facilities.additional_facilities.length > 3 && (
                                         <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
-                                          +{selectedVenue.facilities.length - 3} more
+                                          +{selectedVenue.facilities.additional_facilities.length - 3} more
                                         </span>
                                       )}
                                     </div>
@@ -539,47 +685,55 @@ function CreateEvent() {
                     </div>
                   )}
 
-                  {/* Venue Availability Check */}
-                  {showVenueAvailability && form.start_date && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  {/* Date Range Selection for Venue Booking */}
+                  {selectedVenueId && selectedVenueId !== 'custom' && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select Booking Date Range<span className="text-red-500">*</span>
+                      </label>
+                      <DateRangePicker
+                        startDate={bookingDateRange.start}
+                        endDate={bookingDateRange.end}
+                        onDateChange={handleBookingDateChange}
+                        bookedDates={venueAvailability}
+                        minDate={new Date().toISOString().split('T')[0]}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        {checkingAvailability ? 'Checking availability...' : 'Red dates are already booked. Select available dates for your event.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Venue Availability Status */}
+                  {showVenueAvailability && venueBookings.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
                       <h5 className="font-semibold text-gray-900 mb-3">
-                        Venue Availability for {new Date(form.start_date).toLocaleDateString()}
+                        <i className="fas fa-info-circle mr-2"></i>
+                        Current Bookings for This Venue
                       </h5>
-                      {venueBookings.length > 0 ? (
-                        <div>
-                          <p className="text-sm text-amber-700 mb-3">
-                            <i className="fas fa-exclamation-triangle mr-1"></i>
-                            The following time slots are already booked:
-                          </p>
-                          <div className="space-y-2">
-                            {venueBookings.map((booking, idx) => (
-                              <div key={idx} className="bg-red-100 border border-red-200 rounded-lg p-3">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <p className="font-medium text-red-900">{booking.eventName}</p>
-                                    <p className="text-sm text-red-700">
-                                      {booking.startTime} - {booking.endTime}
-                                    </p>
-                                  </div>
-                                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">
-                                    Booked
-                                  </span>
-                                </div>
+                      <div className="space-y-2">
+                        {venueBookings.slice(0, 3).map((booking, idx) => (
+                          <div key={idx} className="bg-red-100 border border-red-200 rounded-lg p-3">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium text-red-900">{booking.event_name}</p>
+                                <p className="text-sm text-red-700">
+                                  {new Date(booking.start_datetime).toLocaleDateString()} - {new Date(booking.end_datetime).toLocaleDateString()}
+                                </p>
                               </div>
-                            ))}
+                              <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">
+                                Booked
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 mt-3">
-                            Please select a different time slot or venue to avoid conflicts.
+                        ))}
+                        {venueBookings.length > 3 && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            And {venueBookings.length - 3} more bookings...
                           </p>
-                        </div>
-                      ) : (
-                        <div className="bg-green-100 border border-green-200 rounded-lg p-3">
-                          <p className="text-green-800">
-                            <i className="fas fa-check-circle mr-2"></i>
-                            Venue is available for the selected date!
-                          </p>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
 

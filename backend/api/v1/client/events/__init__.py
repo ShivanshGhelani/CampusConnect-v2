@@ -1,15 +1,17 @@
 """
 Client Events API with Redis Caching Support
-Handles event-related API endpoints for students (browsing, details, etc.)
+Handles event-related API endpoints for students and faculty (browsing, details, etc.)
 """
 import logging
 from fastapi import APIRouter, Request, HTTPException, Depends, Query
-from dependencies.auth import get_current_student_optional, require_student_login
+from dependencies.auth import get_current_student_optional, get_current_faculty_optional, get_current_user, require_student_login
 from models.student import Student
+from models.faculty import Faculty
 from utils.db_operations import DatabaseOperations
 from utils.event_status_manager import EventStatusManager
 from bson import ObjectId
 from datetime import datetime
+from typing import Union, Optional
 
 # Import Redis cache with fallback
 try:
@@ -59,9 +61,9 @@ async def get_events_list(
     page: int = Query(1, description="Page number for pagination"),
     limit: int = Query(10, description="Number of events per page"),
     force_refresh: bool = Query(False, description="Force refresh cache"),
-    student: Student = Depends(get_current_student_optional)
+    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Get paginated list of events with optional filters and Redis caching"""
+    """Get paginated list of events with optional filters and Redis caching, filtered by user type"""
     try:
         # Try to get from Redis cache first (if not forcing refresh and caching is available)
         cached_events = None
@@ -92,28 +94,50 @@ async def get_events_list(
         else:
             events = cached_events
         
+        # Filter by target audience based on current user type
+        if current_user:
+            user_type = "student" if isinstance(current_user, Student) else "faculty"
+            events = [
+                event for event in events 
+                if event.get('target_audience') in [user_type, 'both']
+            ]
+        else:
+            # For non-logged in users, show all events
+            pass
+        
         # Filter by category if specified
         if category:
             events = [event for event in events if event.get('category', '').lower() == category.lower()]        
-        # Add registration status for logged-in students
-        if student:
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
-            if student_data:
-                event_participations = student_data.get('event_participations', {})
-                for event in events:
-                    event_id = event.get('event_id')
-                    if event_id in event_participations:
-                        participation = event_participations[event_id]
-                        event['user_registration_status'] = {
-                            "registered": True,
-                            "registration_id": participation.get('registration_id'),
-                            "registration_type": participation.get('registration_type', 'individual'),
-                            "attendance_marked": bool(participation.get('attendance_id')),
-                            "feedback_submitted": bool(participation.get('feedback_id')),
-                            "certificate_available": bool(participation.get('certificate_id'))
-                        }
-                    else:
+        
+        # Add registration status for logged-in users
+        if current_user:
+            if isinstance(current_user, Student):
+                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
+                if student_data:
+                    event_participations = student_data.get('event_participations', {})
+                    for event in events:
+                        event_id = event.get('event_id')
+                        if event_id in event_participations:
+                            participation = event_participations[event_id]
+                            event['user_registration_status'] = {
+                                "registered": True,
+                                "registration_id": participation.get('registration_id'),
+                                "registration_type": participation.get('registration_type', 'individual'),
+                                "attendance_marked": bool(participation.get('attendance_id')),
+                                "feedback_submitted": bool(participation.get('feedback_id')),
+                                "certificate_available": bool(participation.get('certificate_id'))
+                            }
+                        else:
+                            event['user_registration_status'] = {"registered": False}
+                else:
+                    # Student not found in database, mark all as not registered
+                    for event in events:
                         event['user_registration_status'] = {"registered": False}
+            elif isinstance(current_user, Faculty):
+                # For faculty, we might add similar tracking in the future
+                # For now, just mark all events as not registered (faculty don't register for events)
+                for event in events:
+                    event['user_registration_status'] = {"registered": False}
         
         # Pagination
         total_events = len(events)

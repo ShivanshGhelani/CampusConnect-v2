@@ -12,6 +12,8 @@ import FeedbackPage from '../pages/client/FeedbackPage';
 import CertificatePage from '../pages/client/CertificatePage';
 import ProfilePage from '../pages/client/ProfilePage';
 import EditProfile from '../pages/client/EditProfile';
+import FacultyProfilePage from '../pages/client/FacultyProfilePage';
+import FacultyProfileEdit from '../pages/client/FacultyProfileEdit';
 
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
@@ -54,7 +56,12 @@ function AppRoutes() {
         <Route path="/login" element={<Navigate to="/auth/login" replace />} />
         <Route path="/register" element={<Navigate to="/auth/register" replace />} />
         <Route path="/client/login" element={<Navigate to="/auth/login" replace />} />
-        <Route path="/client/register" element={<Navigate to="/auth/register" replace />} />        {/* Client/Student Routes - Public */}
+        <Route path="/client/register" element={<Navigate to="/auth/register" replace />} />
+        
+        {/* Faculty legacy redirects */}
+        <Route path="/faculty/dashboard" element={<Navigate to="/faculty/profile" replace />} />
+        
+        {/* Client/Student Routes - Public */}
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
         
@@ -82,18 +89,54 @@ function AppRoutes() {
               <CertificatePage />
             </ProtectedRoute>
           }
-        />        <Route
+        />
+        <Route
           path="/client/profile"
           element={
             <ProtectedRoute userType="student">
               <ProfilePage />
             </ProtectedRoute>
-          }        />
+          }
+        />
         <Route
           path="/client/profile/edit"
           element={
             <ProtectedRoute userType="student">
               <EditProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Faculty Routes */}
+        <Route
+          path="/faculty/profile"
+          element={
+            <ProtectedRoute userType="faculty">
+              <FacultyProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/profile/edit"
+          element={
+            <ProtectedRoute userType="faculty">
+              <FacultyProfileEdit />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/events"
+          element={
+            <ProtectedRoute userType="faculty">
+              <EventListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/events/:eventId"
+          element={
+            <ProtectedRoute userType="faculty">
+              <EventDetailPage />
             </ProtectedRoute>
           }
         />

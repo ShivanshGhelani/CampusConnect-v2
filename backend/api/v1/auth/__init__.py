@@ -144,7 +144,7 @@ async def faculty_auth_status(request: Request):
                     "department": faculty_data.get("department"),
                     "user_type": "faculty"
                 },
-                "redirect_url": "/faculty/dashboard"
+                "redirect_url": "/faculty/profile"
             }
         else:
             return {"authenticated": False, "user_type": "faculty"}
@@ -331,7 +331,7 @@ async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
         return {
             "success": True,
             "message": "Login successful",
-            "redirect_url": "/faculty/dashboard",
+            "redirect_url": "/faculty/profile",
             "user": {
                 "employee_id": faculty.employee_id,
                 "full_name": faculty.full_name,

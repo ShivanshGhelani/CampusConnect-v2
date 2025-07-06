@@ -108,7 +108,7 @@ export function AuthProvider({ children }) {
           response = await authAPI.facultyStatus();
         }
         
-        if (response.data.authenticated) {
+        if (response && response.data.authenticated) {
           dispatch({
             type: authActions.LOGIN_SUCCESS,
             payload: {
@@ -145,12 +145,15 @@ export function AuthProvider({ children }) {
       if (userType === 'admin') {
         response = await authAPI.adminLogin(credentials);
       } else if (userType === 'faculty') {
+        console.log('Faculty login attempt with credentials:', { employee_id: credentials.employee_id });
         response = await authAPI.facultyLogin(credentials);
+        console.log('Faculty login response:', response.data);
       } else {
         response = await authAPI.studentLogin(credentials);
       }
       
       if (response.data.success) {
+        console.log('Login successful, storing user data:', response.data.user);
         // Store user data
         localStorage.setItem('user_data', JSON.stringify(response.data.user));
         localStorage.setItem('user_type', userType);

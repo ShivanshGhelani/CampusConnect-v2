@@ -5,7 +5,7 @@ import { useAvatar } from '../../hooks/useAvatar';
 import Avatar from '../common/Avatar';
 
 function ClientNavigation() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, userType, logout, isAuthenticated } = useAuth();
   const { avatarUrl } = useAvatar(user);
   const location = useLocation();
   const navigate = useNavigate();
@@ -107,8 +107,8 @@ function ClientNavigation() {
               {/* Main Navigation Pills */}
               <div className="flex items-center backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-1">
                 <Link
-                  to="/client/events?filter=all"
-                  className={`group relative ${isActivePathNoFilter('/client/events')
+                  to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
+                  className={`group relative ${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'bg-white text-black hover:text-blue-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
@@ -118,8 +118,8 @@ function ClientNavigation() {
                 </Link>
 
                 <Link
-                  to="/client/events?filter=upcoming"
-                  className={`group relative ${isActivePath('/client/events', 'upcoming')
+                  to={userType === 'faculty' ? '/faculty/events?filter=upcoming' : '/client/events?filter=upcoming'}
+                  className={`group relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'upcoming')
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'bg-white text-black hover:text-blue-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
@@ -129,8 +129,8 @@ function ClientNavigation() {
                 </Link>
 
                 <Link
-                  to="/client/events?filter=ongoing"
-                  className={`group relative ${isActivePath('/client/events', 'ongoing')
+                  to={userType === 'faculty' ? '/faculty/events?filter=ongoing' : '/client/events?filter=ongoing'}
+                  className={`group relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing')
                     ? 'bg-green-500 text-white shadow-md'
                     : 'bg-white text-green-600'
                     } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
@@ -138,7 +138,7 @@ function ClientNavigation() {
                   <div className="flex items-center space-x-2">
                     {/* Improved blinking dot with better positioning */}
                     <div className="relative flex items-center justify-center w-3 h-3">
-                      {isActivePath('/client/events', 'ongoing') ? (
+                      {isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing') ? (
                         <>
                           <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                           <span className="absolute w-2 h-2 bg-white/40 rounded-full animate-ping"></span>
@@ -163,7 +163,7 @@ function ClientNavigation() {
                     onMouseEnter={() => setIsProfileDropdownOpen(true)}
                     onMouseLeave={() => setIsProfileDropdownOpen(false)}
                   >                    <Link
-                    to="/client/dashboard"
+                    to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
                     className="flex items-center space-x-3 rounded-lg px-4 py-2.5 transition-colors min-w-0"
                   >                      <Avatar 
                         src={avatarUrl}
@@ -173,9 +173,11 @@ function ClientNavigation() {
                       />
                       <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap">
                         <div className="font-medium">
-                          {user?.full_name || user?.enrollment_no || 'Guest User'}
+                          {user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User'}
                         </div>
-                        <div className="text-xs text-gray-500">Student</div>
+                        <div className="text-xs text-gray-500">
+                          {userType === 'faculty' ? 'Faculty' : 'Student'}
+                        </div>
                       </div>
                     </Link>{/* Hover Card - Simple Design */}
                     <div
@@ -183,13 +185,13 @@ function ClientNavigation() {
                         }`}
                       onMouseEnter={() => setIsProfileDropdownOpen(true)}
                       onMouseLeave={() => setIsProfileDropdownOpen(false)}
-                    >{/* Header */}
+                    >                      {/* Header */}
                       <div className="pl-4 pr-8 py-3 border-b border-gray-100">
                         <div className="text-sm font-medium text-gray-900">{user?.full_name || 'Guest User'}</div>
-                        <div className="text-xs text-gray-500">{user?.enrollment_no || 'No enrollment number'}</div>
-                      </div>                      {/* Menu Items */}
+                        <div className="text-xs text-gray-500">{user?.enrollment_no || user?.employee_id || 'No ID'}</div>
+                      </div>{/* Menu Items */}
                       <div className="py-2">                        <Link
-                        to="/client/profile/edit"
+                        to={userType === 'faculty' ? '/faculty/profile/edit' : '/client/profile/edit'}
                         className="flex items-center pl-4 pr-8 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
                       >
                         <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
@@ -249,8 +251,8 @@ function ClientNavigation() {
         <div className="grid grid-cols-5 h-16">
           {/* Upcoming Button */}
           <Link
-            to="/client/events?filter=upcoming"
-            className={`flex flex-col items-center justify-center ${isActivePath('/client/events', 'upcoming')
+            to={userType === 'faculty' ? '/faculty/events?filter=upcoming' : '/client/events?filter=upcoming'}
+            className={`flex flex-col items-center justify-center ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'upcoming')
               ? 'text-blue-600'
               : 'text-gray-500'
               } transition-colors`}
@@ -261,8 +263,8 @@ function ClientNavigation() {
 
           {/* Live Button */}
           <Link
-            to="/client/events?filter=ongoing"
-            className={`flex flex-col items-center justify-center relative ${isActivePath('/client/events', 'ongoing')
+            to={userType === 'faculty' ? '/faculty/events?filter=ongoing' : '/client/events?filter=ongoing'}
+            className={`flex flex-col items-center justify-center relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing')
               ? 'text-green-600'
               : 'text-gray-500'
               } transition-colors`}
@@ -290,8 +292,10 @@ function ClientNavigation() {
           {/* Profile/Join Button */}
           {isAuthenticated ? (
             <Link
-              to="/client/dashboard"
-              className={`flex flex-col items-center justify-center ${location.pathname === '/client/dashboard'
+              to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
+              className={`flex flex-col items-center justify-center ${
+                (userType === 'faculty' && location.pathname === '/faculty/profile') ||
+                (userType === 'student' && location.pathname === '/client/profile')
                 ? 'text-indigo-600'
                 : 'text-gray-500'
                 } transition-colors`}
@@ -320,8 +324,8 @@ function ClientNavigation() {
             </button>
           ) : (
             <Link
-              to="/client/events?filter=all"
-              className={`flex flex-col items-center justify-center ${isActivePathNoFilter('/client/events')
+              to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
+              className={`flex flex-col items-center justify-center ${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
                 ? 'text-blue-600'
                 : 'text-gray-500'
                 } transition-colors`}

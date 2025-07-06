@@ -48,6 +48,25 @@ class Event(BaseModel):
     mode: str
     status: str = "upcoming"  # Values: "upcoming", "ongoing", "completed"
     sub_status: Optional[str] = "registration_not_started"  # Detailed status
+    
+    # New fields for event targeting and categorization
+    target_audience: str = Field(..., description="Target audience: student, faculty, or both")
+    is_xenesis_event: bool = Field(default=False, description="Whether this is a Xenesis event")
+    
+    # Additional event details
+    organizers: List[str] = Field(default=[], description="List of event organizers")
+    contacts: List[Dict[str, str]] = Field(default=[], description="Contact information")
+    target_outcomes: Optional[str] = Field(default=None, description="Learning objectives and goals")
+    prerequisites: Optional[str] = Field(default=None, description="Prerequisites for participation")
+    what_to_bring: Optional[str] = Field(default=None, description="What participants should bring")
+    
+    # Registration settings extended
+    registration_mode: str = Field(default="individual", description="individual or team")
+    team_size_min: Optional[int] = Field(default=None, description="Minimum team size for team events")
+    team_size_max: Optional[int] = Field(default=None, description="Maximum team size for team events")
+    max_participants: Optional[int] = Field(default=None, description="Maximum number of participants")
+    min_participants: int = Field(default=1, description="Minimum number of participants")
+    fee_description: Optional[str] = Field(default=None, description="Description of what the fee includes")
     published: bool = False
     
     # Registration settings
@@ -202,3 +221,123 @@ class Event(BaseModel):
             available_forms.append("attendance")
         
         return available_forms
+
+class CreateEvent(BaseModel):
+    """Model for creating a new event"""
+    event_id: str = Field(..., description="Unique event identifier")
+    event_name: str = Field(..., description="Event title")
+    event_type: str = Field(..., description="Type of event")
+    organizing_department: str = Field(..., description="Organizing department/club")
+    short_description: str = Field(..., description="Brief description")
+    detailed_description: str = Field(..., description="Detailed description")
+    
+    # Date and time fields
+    start_date: str = Field(..., description="Event start date (YYYY-MM-DD)")
+    start_time: str = Field(..., description="Event start time (HH:MM)")
+    end_date: str = Field(..., description="Event end date (YYYY-MM-DD)")
+    end_time: str = Field(..., description="Event end time (HH:MM)")
+    registration_start_date: str = Field(..., description="Registration start date")
+    registration_start_time: str = Field(..., description="Registration start time")
+    registration_end_date: str = Field(..., description="Registration end date")
+    registration_end_time: str = Field(..., description="Registration end time")
+    certificate_end_date: str = Field(..., description="Certificate availability end date")
+    certificate_end_time: str = Field(..., description="Certificate availability end time")
+    
+    # Venue and mode
+    mode: str = Field(..., description="Event mode: online, offline, hybrid")
+    venue: str = Field(..., description="Venue name or platform link")
+    venue_id: Optional[str] = Field(default=None, description="Venue ID from venue management")
+    
+    # New targeting fields
+    target_audience: str = Field(..., description="student, faculty, or both")
+    is_xenesis_event: bool = Field(default=False, description="Xenesis event flag")
+    
+    # Organizer information
+    organizers: List[str] = Field(..., description="List of organizer names")
+    contacts: List[Dict[str, str]] = Field(..., description="Contact information")
+    
+    # Event details
+    target_outcomes: str = Field(..., description="Learning objectives")
+    prerequisites: Optional[str] = Field(default=None, description="Prerequisites")
+    what_to_bring: Optional[str] = Field(default=None, description="What to bring")
+    
+    # Registration settings
+    registration_type: str = Field(..., description="free, paid, or sponsored")
+    registration_fee: Optional[float] = Field(default=None, description="Registration fee")
+    fee_description: Optional[str] = Field(default=None, description="Fee description")
+    registration_mode: str = Field(..., description="individual or team")
+    team_size_min: Optional[int] = Field(default=None, description="Min team size")
+    team_size_max: Optional[int] = Field(default=None, description="Max team size")
+    max_participants: Optional[int] = Field(default=None, description="Max participants")
+    min_participants: int = Field(default=1, description="Min participants")
+
+class UpdateEvent(BaseModel):
+    """Model for updating an existing event"""
+    event_name: Optional[str] = None
+    event_type: Optional[str] = None
+    organizing_department: Optional[str] = None
+    short_description: Optional[str] = None
+    detailed_description: Optional[str] = None
+    start_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_date: Optional[str] = None
+    end_time: Optional[str] = None
+    registration_start_date: Optional[str] = None
+    registration_start_time: Optional[str] = None
+    registration_end_date: Optional[str] = None
+    registration_end_time: Optional[str] = None
+    certificate_end_date: Optional[str] = None
+    certificate_end_time: Optional[str] = None
+    mode: Optional[str] = None
+    venue: Optional[str] = None
+    venue_id: Optional[str] = None
+    target_audience: Optional[str] = None
+    is_xenesis_event: Optional[bool] = None
+    organizers: Optional[List[str]] = None
+    contacts: Optional[List[Dict[str, str]]] = None
+    target_outcomes: Optional[str] = None
+    prerequisites: Optional[str] = None
+    what_to_bring: Optional[str] = None
+    registration_type: Optional[str] = None
+    registration_fee: Optional[float] = None
+    fee_description: Optional[str] = None
+    registration_mode: Optional[str] = None
+    team_size_min: Optional[int] = None
+    team_size_max: Optional[int] = None
+    max_participants: Optional[int] = None
+    min_participants: Optional[int] = None
+
+class EventResponse(BaseModel):
+    """Response model for event data"""
+    event_id: str
+    event_name: str
+    event_type: str
+    organizing_department: str
+    short_description: str
+    detailed_description: Optional[str] = None
+    start_datetime: datetime
+    end_datetime: datetime
+    venue: str
+    venue_id: Optional[str] = None
+    mode: str
+    status: str
+    sub_status: Optional[str] = None
+    target_audience: str
+    is_xenesis_event: bool
+    organizers: List[str] = []
+    contacts: List[Dict[str, str]] = []
+    target_outcomes: Optional[str] = None
+    prerequisites: Optional[str] = None
+    what_to_bring: Optional[str] = None
+    registration_mode: str = "individual"
+    team_size_min: Optional[int] = None
+    team_size_max: Optional[int] = None
+    max_participants: Optional[int] = None
+    min_participants: int = 1
+    fee_description: Optional[str] = None
+    registration_start_date: Optional[datetime] = None
+    registration_end_date: Optional[datetime] = None
+    certificate_end_date: Optional[datetime] = None
+    is_paid: bool = False
+    is_team_based: bool = False
+    registration_fee: Optional[float] = None

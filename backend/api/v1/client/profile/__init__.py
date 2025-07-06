@@ -1,13 +1,15 @@
 """
 Client Profile API
-Handles student profile-related API endpoints
+Handles student and faculty profile-related API endpoints
 """
 import logging
 from datetime import datetime
 from fastapi import APIRouter, Request, HTTPException, Depends
-from dependencies.auth import require_student_login, get_current_student
-from models.student import Student
+from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login
+from models.student import Student, StudentUpdate
+from models.faculty import Faculty, FacultyUpdate
 from utils.db_operations import DatabaseOperations
+from typing import Union
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -91,6 +93,94 @@ async def update_profile(request: Request, student: Student = Depends(require_st
         
     except Exception as e:
         logger.error(f"Error updating profile: {str(e)}")
+        return {"success": False, "message": f"Error updating profile: {str(e)}"}
+
+@router.get("/faculty/info")
+async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_login)):
+    """Get current faculty profile information"""
+    try:
+        # Get complete faculty data from database
+        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
+        if not faculty_data:
+            return {"success": False, "message": "Faculty profile not found"}
+        
+        # Remove sensitive information
+        profile_data = {
+            "employee_id": faculty_data.get('employee_id', ''),
+            "full_name": faculty_data.get('full_name', ''),
+            "email": faculty_data.get('email', ''),
+            "contact_no": faculty_data.get('contact_no', ''),
+            "department": faculty_data.get('department', ''),
+            "designation": faculty_data.get('designation', ''),
+            "qualification": faculty_data.get('qualification', ''),
+            "specialization": faculty_data.get('specialization', ''),
+            "experience_years": faculty_data.get('experience_years', ''),
+            "seating": faculty_data.get('seating', ''),
+            "gender": faculty_data.get('gender', ''),
+            "date_of_birth": faculty_data.get('date_of_birth', ''),
+            "date_of_joining": faculty_data.get('date_of_joining', ''),
+            "profile_created_at": faculty_data.get('created_at', ''),
+            "last_updated": faculty_data.get('updated_at', ''),
+            "is_active": faculty_data.get('is_active', True),
+            "event_participation": faculty_data.get('event_participation', [])
+        }
+        
+        return {
+            "success": True,
+            "message": "Faculty profile information retrieved successfully",
+            "profile": profile_data
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting faculty profile info: {str(e)}")
+        return {"success": False, "message": f"Error retrieving profile: {str(e)}"}
+
+@router.put("/faculty/update")
+async def update_faculty_profile(request: Request, faculty: Faculty = Depends(get_current_faculty_optional)):
+    """Update faculty profile information"""
+    if not faculty:
+        raise HTTPException(status_code=401, detail="Faculty not logged in")
+    
+    try:
+        data = await request.json()
+        
+        # Define updatable fields for faculty
+        updatable_fields = [
+            'full_name', 'email', 'contact_no', 'department', 'designation',
+            'qualification', 'specialization', 'experience_years', 'seating',
+            'gender', 'date_of_birth', 'date_of_joining'
+        ]
+        
+        # Build update data with only allowed fields
+        update_data = {}
+        for field in updatable_fields:
+            if field in data and data[field] is not None:
+                update_data[field] = data[field]
+        
+        if not update_data:
+            return {"success": False, "message": "No valid fields provided for update"}
+        
+        # Add timestamp
+        update_data['updated_at'] = datetime.utcnow()
+        
+        # Update database
+        result = await DatabaseOperations.update_one(
+            "faculties",
+            {"employee_id": faculty.employee_id},
+            {"$set": update_data}
+        )
+        
+        if result:
+            return {
+                "success": True,
+                "message": "Faculty profile updated successfully",
+                "updated_fields": list(update_data.keys())
+            }
+        else:
+            return {"success": False, "message": "No changes were made to the profile"}
+        
+    except Exception as e:
+        logger.error(f"Error updating faculty profile: {str(e)}")
         return {"success": False, "message": f"Error updating profile: {str(e)}"}
 
 @router.get("/dashboard-stats")
@@ -316,3 +406,55 @@ async def change_password(request: Request, student: Student = Depends(require_s
     except Exception as e:
         logger.error(f"Error changing password: {str(e)}")
         return {"success": False, "message": f"Error changing password: {str(e)}"}
+
+@router.get("/faculty/dashboard-stats")
+async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty_login)):
+    """Get dashboard statistics for faculty"""
+    try:
+        # Get faculty data
+        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
+        if not faculty_data:
+            return {"success": False, "message": "Faculty not found"}
+        
+        # Analyze event participations
+        event_participation = faculty_data.get('event_participation', [])
+        
+        stats = {
+            "total_events_participated": len(event_participation),
+            "total_registrations": len(event_participation),  # For compatibility with frontend
+            "attendance_marked": len(event_participation),   # Assuming faculty attended events they participated in
+            "feedback_submitted": 0,  # Could be extended based on faculty feedback system
+            "certificates_earned": len(event_participation),  # Assuming faculty get certificates
+            "individual_registrations": len(event_participation),
+            "team_registrations": 0,  # Faculty typically don't do team registrations
+            "recent_activities": []
+        }
+        
+        # Get recent activities (limit to last 5 events)
+        if event_participation:
+            # Get event details for recent activities
+            recent_event_ids = event_participation[-5:]  # Last 5 events
+            for event_id in recent_event_ids:
+                try:
+                    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                    if event:
+                        stats["recent_activities"].append({
+                            "event_id": event_id,
+                            "event_name": event.get("event_name", "Unknown Event"),
+                            "event_type": event.get("event_type", "Unknown"),
+                            "status": "participated",
+                            "date": event.get("start_datetime", datetime.now()).isoformat() if event.get("start_datetime") else datetime.now().isoformat()
+                        })
+                except Exception as e:
+                    logger.warning(f"Error getting event details for {event_id}: {e}")
+                    continue
+        
+        return {
+            "success": True,
+            "message": "Faculty dashboard stats retrieved successfully",
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting faculty dashboard stats: {str(e)}")
+        return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}

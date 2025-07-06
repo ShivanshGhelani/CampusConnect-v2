@@ -4,8 +4,9 @@ from datetime import datetime
 from routes.auth import get_current_admin, refresh_admin_session
 from models.admin_user import AdminUser, AdminRole
 from models.student import Student
+from models.faculty import Faculty
 from utils.permissions import PermissionManager, require_super_admin
-from typing import Optional
+from typing import Optional, Union
 
 async def get_current_student(request: Request) -> Student:
     """Get currently logged in student from session"""
@@ -37,6 +38,46 @@ async def get_current_student_optional(request: Request) -> Optional[Student]:
         return await get_current_student(request)
     except HTTPException:
         return None
+
+async def get_current_faculty(request: Request) -> Faculty:
+    """Get currently logged in faculty from session"""
+    faculty_data = request.session.get("faculty")
+    if not faculty_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Faculty not logged in"
+        )
+    
+    # Convert ISO datetime strings back to datetime objects
+    for key, value in faculty_data.items():
+        if isinstance(value, str) and ('_at' in key or key == 'last_login'):
+            try:
+                faculty_data[key] = datetime.fromisoformat(value) if value else None
+            except ValueError:
+                faculty_data[key] = None
+                
+    return Faculty(**faculty_data)
+
+async def get_current_faculty_optional(request: Request) -> Optional[Faculty]:
+    """Get currently logged in faculty from session, return None if not logged in"""
+    try:
+        return await get_current_faculty(request)
+    except HTTPException:
+        return None
+
+async def get_current_user(request: Request) -> Union[Student, Faculty, None]:
+    """Get currently logged in user (student or faculty), return None if not logged in"""
+    # Try student first
+    student = await get_current_student_optional(request)
+    if student:
+        return student
+    
+    # Try faculty
+    faculty = await get_current_faculty_optional(request)
+    if faculty:
+        return faculty
+    
+    return None
 
 async def require_admin(request: Request):
     """Dependency to require admin authentication"""
@@ -147,5 +188,18 @@ async def require_student_login(request: Request):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Student login required"
+            )
+        raise e
+
+async def require_faculty_login(request: Request):
+    """Dependency to require faculty authentication"""
+    try:
+        faculty = await get_current_faculty(request)
+        return faculty
+    except HTTPException as e:
+        if e.status_code == status.HTTP_401_UNAUTHORIZED:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Faculty login required"
             )
         raise e

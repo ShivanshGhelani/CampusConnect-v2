@@ -24,7 +24,7 @@ function LoginPage() {
 
   const from = location.state?.from?.pathname || (
     activeTab === 'admin' ? '/admin/dashboard' : 
-    activeTab === 'faculty' ? '/faculty/dashboard' : 
+    activeTab === 'faculty' ? '/faculty/profile' : 
     '/client/dashboard'
   );
 
@@ -97,7 +97,9 @@ function LoginPage() {
     const result = await login(loginData, activeTab);
     
     if (result.success) {
-      navigate(from, { replace: true });
+      // Use the redirect URL from backend response, or fallback to default
+      const redirectPath = result.redirectUrl || from;
+      navigate(redirectPath, { replace: true });
     }
     
     setIsLoading(false);
