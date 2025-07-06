@@ -13,10 +13,12 @@ function EventDetail() {
   const [eventStats, setEventStats] = useState(null);
   const [recentRegistrations, setRecentRegistrations] = useState([]);
   const [allRegistrations, setAllRegistrations] = useState([]);
+  const [attendeesList, setAttendeesList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [registrationsModalOpen, setRegistrationsModalOpen] = useState(false);
+  const [attendeesModalOpen, setAttendeesModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -93,6 +95,21 @@ function EventDetail() {
     }
   };
 
+  const fetchAttendees = async () => {
+    try {
+      setModalLoading(true);
+      const response = await adminAPI.getEventAttendance(eventId);
+      if (response.data.success) {
+        setAttendeesList(response.data.attendance || []);
+      }
+    } catch (error) {
+      console.error('Error fetching attendees:', error);
+      setAttendeesList([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   const handleViewAllRegistrations = async () => {
     setRegistrationsModalOpen(true);
     if (allRegistrations.length === 0) {
@@ -100,14 +117,52 @@ function EventDetail() {
     }
   };
 
-  const toggleTeamExpansion = (teamId) => {
-    const newExpanded = new Set(expandedTeams);
-    if (newExpanded.has(teamId)) {
-      newExpanded.delete(teamId);
-    } else {
-      newExpanded.add(teamId);
+  const handleViewAttendees = async () => {
+    setAttendeesModalOpen(true);
+    if (attendeesList.length === 0) {
+      await fetchAttendees();
     }
-    setExpandedTeams(newExpanded);
+  };
+
+  const toggleTeamExpansion = (teamId) => {
+    setExpandedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamId)) {
+        newSet.delete(teamId);
+      } else {
+        newSet.add(teamId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
+    try {
+      const date = new Date(dateTimeString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  const formatOrdinalNumber = (number) => {
+    if (!number || isNaN(number)) return 'N/A';
+    const num = parseInt(number);
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const value = num % 100;
+    const ordinal = suffix[(value - 20) % 10] || suffix[value] || suffix[0];
+    return (
+      <span>
+        {num}<sup className="text-xs">{ordinal}</sup> Semester
+      </span>
+    );
   };
 
   const filteredRegistrations = allRegistrations.filter(reg => {
@@ -123,19 +178,6 @@ function EventDetail() {
     
     return searchMatch && statusMatch;
   });
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return 'Not Set';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  };
 
   const getStatusConfig = (status) => {
     const configs = {
@@ -310,7 +352,11 @@ function EventDetail() {
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300">
+              <div 
+                className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:bg-purple-50"
+                onClick={handleViewAttendees}
+                title="Click to view attendees list"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
@@ -328,6 +374,9 @@ function EventDetail() {
                         }
                       </p>
                     </div>
+                  </div>
+                  <div className="text-purple-500">
+                    <i className="fas fa-eye text-lg"></i>
                   </div>
                 </div>
               </div>
@@ -432,6 +481,141 @@ function EventDetail() {
               </div>
             </div>
           )}
+
+          {/* Latest Registrations Section */}
+          <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
+            <div className="border-b border-gray-200 pb-6 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <i className="fas fa-user-check text-blue-500"></i>
+                    Latest Registrations
+                  </h2>
+                  <p className="text-gray-600 mt-2">Showing the most recent {Math.min(recentRegistrations.length, 5)} registrations</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-lg font-semibold text-gray-700">
+                    Total: <span className="text-blue-600">{eventStats?.registrations_count || 0}</span>
+                  </div>
+                  <button
+                    onClick={handleViewAllRegistrations}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-lg hover:from-blue-500 hover:to-blue-700 transition-all font-semibold shadow-lg flex items-center gap-2"
+                  >
+                    <i className="fas fa-list"></i>View All Registrations
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Registration Cards */}
+            <div className="space-y-4">
+              {recentRegistrations.length > 0 ? (
+                eventStats?.is_team_based ? (
+                  // Team Registrations Display
+                  recentRegistrations.map((reg, index) => (
+                    <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
+                      {/* Team Header */}
+                      <div className="grid grid-cols-6 gap-4 p-4 bg-blue-50 border-b border-blue-100">
+                        <div className="col-span-2">
+                          <div className="font-medium text-blue-900 flex items-center gap-2">
+                            <i className="fas fa-users text-blue-500"></i>{reg.team_name}
+                          </div>
+                          <div className="text-sm text-blue-700">{reg.member_count} members</div>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="font-medium text-gray-900">{reg.name}</div>
+                          <div className="text-sm text-gray-600">Team Leader</div>
+                        </div>
+                        <div className="col-span-1 text-gray-700">
+                          <div className="text-gray-900">{formatDateTime(reg.registration_date)}</div>
+                        </div>
+                        <div className="col-span-1 text-right">
+                          <button
+                            onClick={() => toggleTeamExpansion(`recent-${index}`)}
+                            className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          >
+                            <i className={`fas ${expandedTeams.has(`recent-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+                            <span className="ml-1">{expandedTeams.has(`recent-${index}`) ? 'Hide' : 'Show'} Details</span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Team Members - Hidden by default */}
+                      {expandedTeams.has(`recent-${index}`) && reg.team_members && (
+                        <div className="p-4 bg-gray-50">
+                          <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
+                          <div className="space-y-3">
+                            {reg.team_members.map((member, memberIndex) => (
+                              <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
+                                <div className="col-span-2 font-medium text-gray-900">
+                                  {member.full_name}
+                                  {member.registration_type === "team_leader" && (
+                                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
+                                  )}
+                                </div>
+                                <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
+                                <div className="col-span-1 text-gray-700">{member.department}</div>
+                                <div className="col-span-1 text-gray-700">{formatOrdinalNumber(member.semester)}</div>
+                                <div className="col-span-1 text-gray-700 truncate">{member.email}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  // Individual Registrations Display
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    {/* Table Headers */}
+                    <div className="grid grid-cols-6 gap-4 py-3 px-4 border-b-2 border-gray-200 bg-gray-50 font-semibold text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-user text-gray-500"></i>Name
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-id-card text-gray-500"></i>Enrollment
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-building text-gray-500"></i>Department
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-layer-group text-gray-500"></i>Semester
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-envelope text-gray-500"></i>Email
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-calendar text-gray-500"></i>Registration Date
+                      </div>
+                    </div>
+                    
+                    {/* Registration Rows */}
+                    <div className="bg-white">
+                      {recentRegistrations.slice(0, 5).map((reg, index) => (
+                        console.log(reg, 'Recent Registration Data'),
+                        <div key={index} className="grid grid-cols-6 gap-4 py-4 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
+                          <div className="font-medium text-gray-900">{reg.full_name}</div>
+                          <div className="text-gray-700">{reg.enrollment_no}</div>
+                          <div className="text-gray-700 text-nowrap">{reg.department}</div>
+                          <div className="text-gray-700">{formatOrdinalNumber(reg.semester)}</div>
+                          <div className="text-gray-700 truncate" title={reg.email}>{reg.email}</div>
+                          <div className="text-gray-700">{formatDateTime(reg.registration_date)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                    <i className="fas fa-users text-2xl text-gray-400"></i>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Registrations Yet</h3>
+                  <p className="text-gray-500">No registrations have been found for this event.</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Event Details Section */}
           <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
@@ -663,349 +847,290 @@ function EventDetail() {
             )}
           </div>
 
-          {/* Latest Registrations Section */}
-          <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
-            <div className="border-b border-gray-200 pb-6 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <i className="fas fa-user-check text-blue-500"></i>
-                    Latest Registrations
-                  </h2>
-                  <p className="text-gray-600 mt-2">Showing the most recent {Math.min(recentRegistrations.length, 5)} registrations</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-lg font-semibold text-gray-700">
-                    Total: <span className="text-blue-600">{eventStats?.registrations_count || 0}</span>
+          {/* Delete Confirmation Modal */}
+          {deleteModalOpen && (
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
+              <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
                   </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Event</h3>
+                  <p className="text-gray-600 mb-6">
+                    Are you sure you want to delete "{event.event_name}"? This action cannot be undone.
+                  </p>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setDeleteModalOpen(false)}
+                      className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteEvent}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* View All Registrations Modal */}
+          {registrationsModalOpen && (
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 overflow-y-auto">
+              <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
+                {/* Modal Header */}
+                <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900">{event?.event_name} - All Registrations</h3>
                   <button
-                    onClick={handleViewAllRegistrations}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-lg hover:from-blue-500 hover:to-blue-700 transition-all font-semibold shadow-lg flex items-center gap-2"
+                    onClick={() => setRegistrationsModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-500"
                   >
-                    <i className="fas fa-list"></i>View All Registrations
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
+                
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto flex-grow">
+                  <div className="mb-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search registrations..."
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="all">All Registrations</option>
+                        <option value="attended">Attended Only</option>
+                        <option value="not-attended">Not Attended</option>
+                      </select>
+                    </div>
+                    <div className="text-gray-600 font-medium">
+                      Total: <span>{filteredRegistrations.length}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Modal Table Container */}
+                  <div className="overflow-x-auto">
+                    {modalLoading ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <p className="mt-2 text-gray-600">Loading registrations...</p>
+                      </div>
+                    ) : filteredRegistrations.length > 0 ? (
+                      eventStats?.is_team_based ? (
+                        // Team Registrations in Modal
+                        <div className="space-y-4">
+                          {filteredRegistrations.map((team, index) => (
+                            <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
+                              <div className="grid grid-cols-5 gap-4 p-4 bg-blue-50 border-b border-blue-100">
+                                <div className="col-span-1">
+                                  <div className="font-medium text-blue-900 flex items-center gap-2">
+                                    <i className="fas fa-users text-blue-500"></i>{team.team_name}
+                                  </div>
+                                  <div className="text-sm text-blue-700">{team.member_count} members</div>
+                                </div>
+                                <div className="col-span-2">
+                                  <div className="font-medium text-gray-900">
+                                    {team.members?.find(m => m.registration_type === 'team_leader')?.full_name || 'N/A'}
+                                  </div>
+                                  <div className="text-sm text-gray-600">Team Leader</div>
+                                </div>
+                                <div className="col-span-1 text-gray-700">
+                                  {formatDateTime(team.registration_date)}
+                                </div>
+                                <div className="col-span-1 text-right">
+                                  <button
+                                    onClick={() => toggleTeamExpansion(`modal-${index}`)}
+                                    className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                  >
+                                    <i className={`fas ${expandedTeams.has(`modal-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+                                    <span className="ml-1">{expandedTeams.has(`modal-${index}`) ? 'Hide' : 'Show'} Details</span>
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {expandedTeams.has(`modal-${index}`) && team.members && (
+                                <div className="p-4 bg-gray-50">
+                                  <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
+                                  <div className="space-y-3">
+                                    {team.members.map((member, memberIndex) => (
+                                      <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
+                                        <div className="col-span-2 font-medium text-gray-900">
+                                          {member.full_name}
+                                          {member.registration_type === 'team_leader' && (
+                                            <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
+                                          )}
+                                        </div>
+                                        <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
+                                        <div className="col-span-1 text-gray-700">{member.department}</div>
+                                        <div className="col-span-1 text-gray-700">{formatOrdinalNumber(member.semester)}</div>
+                                        <div className="col-span-1 text-gray-700 truncate" title={member.email}>{member.email}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Individual Registrations in Modal
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {filteredRegistrations.map((reg, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="font-medium text-gray-900">{reg.full_name || reg.name}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.enrollment_no}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.department}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatOrdinalNumber(reg.semester)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 truncate max-w-[200px]" title={reg.email}>{reg.email}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatDateTime(reg.registration_date)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )
+                    ) : (
+                      <div className="text-center py-8">
+                        <i className="fas fa-search text-gray-400 text-3xl mb-3"></i>
+                        <p className="text-gray-600">No registrations found matching your search criteria.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-gray-200 flex justify-end">
+                  <button
+                    onClick={() => setRegistrationsModalOpen(false)}
+                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
             </div>
-            
-            {/* Registration Cards */}
-            <div className="space-y-4">
-              {recentRegistrations.length > 0 ? (
-                eventStats?.is_team_based ? (
-                  // Team Registrations Display
-                  recentRegistrations.map((reg, index) => (
-                    <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
-                      {/* Team Header */}
-                      <div className="grid grid-cols-6 gap-4 p-4 bg-blue-50 border-b border-blue-100">
-                        <div className="col-span-2">
-                          <div className="font-medium text-blue-900 flex items-center gap-2">
-                            <i className="fas fa-users text-blue-500"></i>{reg.team_name}
-                          </div>
-                          <div className="text-sm text-blue-700">{reg.member_count} members</div>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="font-medium text-gray-900">{reg.name}</div>
-                          <div className="text-sm text-gray-600">Team Leader</div>
-                        </div>
-                        <div className="col-span-1 text-gray-700">
-                          <div className="text-gray-900">{formatDateTime(reg.registration_date)}</div>
-                        </div>
-                        <div className="col-span-1 text-right">
-                          <button
-                            onClick={() => toggleTeamExpansion(`recent-${index}`)}
-                            className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          >
-                            <i className={`fas ${expandedTeams.has(`recent-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-                            <span className="ml-1">{expandedTeams.has(`recent-${index}`) ? 'Hide' : 'Show'} Details</span>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Team Members - Hidden by default */}
-                      {expandedTeams.has(`recent-${index}`) && reg.team_members && (
-                        <div className="p-4 bg-gray-50">
-                          <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
-                          <div className="space-y-3">
-                            {reg.team_members.map((member, memberIndex) => (
-                              <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
-                                <div className="col-span-2 font-medium text-gray-900">
-                                  {member.full_name}
-                                  {member.registration_type === "team_leader" && (
-                                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
-                                  )}
-                                </div>
-                                <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
-                                <div className="col-span-1 text-gray-700">{member.department}</div>
-                                <div className="col-span-1 text-gray-700">{member.semester}</div>
-                                <div className="col-span-1 text-gray-700 truncate">{member.email}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  // Individual Registrations Display
-                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                    {/* Table Headers */}
-                    <div className="grid grid-cols-6 gap-4 py-3 px-4 border-b-2 border-gray-200 bg-gray-50 font-semibold text-gray-700">
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-user text-gray-500"></i>Name
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-id-card text-gray-500"></i>Enrollment
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-building text-gray-500"></i>Department
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-layer-group text-gray-500"></i>Semester
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-envelope text-gray-500"></i>Email
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-calendar text-gray-500"></i>Registration Date
-                      </div>
-                    </div>
-                    
-                    {/* Registration Rows */}
-                    <div className="bg-white">
-                      {recentRegistrations.slice(0, 5).map((reg, index) => (
-                        console.log(reg, 'Recent Registration Data'),
-                        <div key={index} className="grid grid-cols-6 gap-4 py-4 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
-                          <div className="font-medium text-gray-900">{reg.full_name}</div>
-                          <div className="text-gray-700">{reg.enrollment_no}</div>
-                          <div className="text-gray-700 text-nowrap">{reg.department}</div>
-                          <div className="text-gray-700">{reg.semester}</div>
-                          <div className="text-gray-700 truncate" title={reg.email}>{reg.email}</div>
-                          <div className="text-gray-700">{formatDateTime(reg.registration_date)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                    <i className="fas fa-users text-2xl text-gray-400"></i>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Registrations Yet</h3>
-                  <p className="text-gray-500">No registrations have been found for this event.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+          )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Event</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete "{event.event_name}"? This action cannot be undone.
-              </p>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteEvent}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View All Registrations Modal */}
-      {registrationsModalOpen && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">{event?.event_name} - All Registrations</h3>
-              <button
-                onClick={() => setRegistrationsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-            
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto flex-grow">
-              <div className="mb-4 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search registrations..."
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          {/* Attendees Modal */}
+          {attendeesModalOpen && (
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
+              <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
+                {/* Modal Header */}
+                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                      <i className="fas fa-check-circle text-purple-500"></i>
+                      Event Attendees
+                    </h2>
+                    <p className="text-gray-600 mt-1">
+                      {attendeesList.length} attendees for {event?.event_name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setAttendeesModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl"
                   >
-                    <option value="all">All Registrations</option>
-                    <option value="attended">Attended Only</option>
-                    <option value="not-attended">Not Attended</option>
-                  </select>
+                    <i className="fas fa-times"></i>
+                  </button>
                 </div>
-                <div className="text-gray-600 font-medium">
-                  Total: <span>{filteredRegistrations.length}</span>
-                </div>
-              </div>
-              
-              {/* Modal Table Container */}
-              <div className="overflow-x-auto">
-                {modalLoading ? (
-                  <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <p className="mt-2 text-gray-600">Loading registrations...</p>
-                  </div>
-                ) : filteredRegistrations.length > 0 ? (
-                  eventStats?.is_team_based ? (
-                    // Team Registrations in Modal
+                
+                {/* Modal Content */}
+                <div className="flex-1 p-6 overflow-auto">
+                  {modalLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <i className="fas fa-spinner fa-spin text-3xl text-purple-500 mr-3"></i>
+                      <span className="text-lg text-gray-600">Loading attendees...</span>
+                    </div>
+                  ) : attendeesList.length > 0 ? (
                     <div className="space-y-4">
-                      {filteredRegistrations.map((team, index) => (
-                        <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
-                          <div className="grid grid-cols-5 gap-4 p-4 bg-blue-50 border-b border-blue-100">
-                            <div className="col-span-1">
-                              <div className="font-medium text-blue-900 flex items-center gap-2">
-                                <i className="fas fa-users text-blue-500"></i>{team.team_name}
-                              </div>
-                              <div className="text-sm text-blue-700">{team.member_count} members</div>
-                            </div>
-                            <div className="col-span-2">
-                              <div className="font-medium text-gray-900">
-                                {team.members?.find(m => m.registration_type === 'team_leader')?.full_name || 'N/A'}
-                              </div>
-                              <div className="text-sm text-gray-600">Team Leader</div>
-                            </div>
-                            <div className="col-span-1 text-gray-700">
-                              {formatDateTime(team.registration_date)}
-                            </div>
-                            <div className="col-span-1 text-right">
-                              <button
-                                onClick={() => toggleTeamExpansion(`modal-${index}`)}
-                                className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              >
-                                <i className={`fas ${expandedTeams.has(`modal-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-                                <span className="ml-1">{expandedTeams.has(`modal-${index}`) ? 'Hide' : 'Show'} Details</span>
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {expandedTeams.has(`modal-${index}`) && team.members && (
-                            <div className="p-4 bg-gray-50">
-                              <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
-                              <div className="space-y-3">
-                                {team.members.map((member, memberIndex) => (
-                                  <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
-                                    <div className="col-span-2 font-medium text-gray-900">
-                                      {member.full_name}
-                                      {member.registration_type === 'team_leader' && (
-                                        <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
-                                      )}
+                      {/* Attendees Table */}
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-purple-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Enrollment</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Department</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Semester</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Email</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Attendance Time</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {attendeesList.map((attendee, index) => (
+                              <tr key={index} className="hover:bg-purple-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                      <i className="fas fa-user text-purple-600 text-sm"></i>
                                     </div>
-                                    <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
-                                    <div className="col-span-1 text-gray-700">{member.department}</div>
-                                    <div className="col-span-1 text-gray-700">{member.semester}</div>
-                                    <div className="col-span-1 text-gray-700 truncate" title={member.email}>{member.email}</div>
+                                    <div className="font-medium text-gray-900">{attendee.full_name || attendee.name}</div>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{attendee.enrollment_no}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{attendee.department}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatOrdinalNumber(attendee.semester)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 max-w-[200px] truncate" title={attendee.email}>{attendee.email}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                                  {attendee.attendance_time ? formatDateTime(attendee.attendance_time) : 'Present'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ) : (
-                    // Individual Registrations in Modal
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredRegistrations.map((reg, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="font-medium text-gray-900">{reg.full_name || reg.name}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.enrollment_no}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.department}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.semester}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700 truncate max-w-[200px]" title={reg.email}>{reg.email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatDateTime(reg.registration_date)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                ) : (
-                  <div className="text-center py-8">
-                    <i className="fas fa-search text-gray-400 text-3xl mb-3"></i>
-                    <p className="text-gray-600">No registrations found matching your search criteria.</p>
-                  </div>
-                )}
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
+                        <i className="fas fa-user-check text-2xl text-purple-500"></i>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendees Yet</h3>
+                      <p className="text-gray-500">No one has marked attendance for this event yet.</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-gray-200 flex justify-end">
+                  <button
+                    onClick={() => setAttendeesModalOpen(false)}
+                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
-            
-            {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-200 flex justify-end">
-              <button
-                onClick={() => setRegistrationsModalOpen(false)}
-                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* Enhanced Styling */}
-      <style jsx>{`
-        .stats-card {
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .stats-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-        
-        @media print {
-          .print-hide {
-            display: none;
-          }
-        }
-      `}</style>
+      </div>
     </AdminLayout>
   );
 }
 
 export default EventDetail;
+

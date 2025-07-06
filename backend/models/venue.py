@@ -185,6 +185,39 @@ class VenueUpdate(BaseModel):
     status: Optional[VenueStatus] = None
     operating_hours: Optional[Dict[str, Dict[str, str]]] = None
 
+class VenueUpdateFlexible(BaseModel):
+    """Model for updating venue details with flexible field handling"""
+    venue_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    venue_type: Optional[str] = None  # Accept string instead of enum
+    location: Optional[str] = Field(None, min_length=1, max_length=500)
+    building: Optional[str] = Field(None, max_length=100)
+    floor: Optional[str] = Field(None, max_length=20)
+    room_number: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=1000)
+    
+    # Facilities fields (flat structure)
+    capacity: Optional[int] = Field(None, gt=0)
+    has_projector: Optional[bool] = None
+    has_audio_system: Optional[bool] = None
+    has_microphone: Optional[bool] = None
+    has_whiteboard: Optional[bool] = None
+    has_air_conditioning: Optional[bool] = None
+    has_wifi: Optional[bool] = None
+    has_parking: Optional[bool] = None
+    additional_facilities: Optional[List[str]] = None
+    
+    # Contact fields (flat structure)
+    contact_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    contact_designation: Optional[str] = Field(None, max_length=100)
+    contact_phone: Optional[str] = Field(None, min_length=10, max_length=20)
+    contact_email: Optional[str] = None
+    contact_department: Optional[str] = Field(None, max_length=100)
+    
+    # Status fields
+    is_active: Optional[bool] = None
+    status: Optional[str] = None  # Accept string instead of enum
+    operating_hours: Optional[Dict[str, Dict[str, str]]] = None
+
 class VenueBookingCreate(BaseModel):
     """Model for creating a new venue booking"""
     event_id: str = Field(..., description="Associated event ID")

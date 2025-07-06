@@ -266,13 +266,13 @@ class VenueService:
                 update_doc["venue_type"] = venue_data.venue_type.value
             if venue_data.location:
                 update_doc["location"] = venue_data.location
-            if venue_data.building:
+            if venue_data.building is not None:
                 update_doc["building"] = venue_data.building
-            if venue_data.floor:
+            if venue_data.floor is not None:
                 update_doc["floor"] = venue_data.floor
-            if venue_data.room_number:
+            if venue_data.room_number is not None:
                 update_doc["room_number"] = venue_data.room_number
-            if venue_data.description:
+            if venue_data.description is not None:
                 update_doc["description"] = venue_data.description
             if venue_data.facilities:
                 update_doc["facilities"] = venue_data.facilities.model_dump()
@@ -284,6 +284,97 @@ class VenueService:
                 update_doc["status"] = venue_data.status.value
             if venue_data.operating_hours:
                 update_doc["operating_hours"] = venue_data.operating_hours
+            
+            # Update venue
+            result = await db[self.venues_collection].update_one(
+                {"venue_id": venue_id},
+                {"$set": update_doc}
+            )
+            
+            if result.modified_count > 0:
+                return await self.get_venue_by_id(venue_id)
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error updating venue {venue_id}: {e}")
+            raise
+    
+    async def update_venue_flexible(self, venue_id: str, venue_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update a venue with flexible field handling"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            # Build update document
+            update_doc = {"updated_at": datetime.utcnow()}
+            
+            # Basic venue fields
+            if venue_data.get("venue_name"):
+                update_doc["venue_name"] = venue_data["venue_name"]
+            if venue_data.get("venue_type"):
+                update_doc["venue_type"] = venue_data["venue_type"]
+            if venue_data.get("location"):
+                update_doc["location"] = venue_data["location"]
+            if "building" in venue_data:
+                update_doc["building"] = venue_data["building"]
+            if "floor" in venue_data:
+                update_doc["floor"] = venue_data["floor"]
+            if "room_number" in venue_data:
+                update_doc["room_number"] = venue_data["room_number"]
+            if "description" in venue_data:
+                update_doc["description"] = venue_data["description"]
+            
+            # Handle facilities updates
+            facilities_updates = {}
+            if "capacity" in venue_data:
+                facilities_updates["capacity"] = venue_data["capacity"]
+            if "has_projector" in venue_data:
+                facilities_updates["has_projector"] = venue_data["has_projector"]
+            if "has_audio_system" in venue_data:
+                facilities_updates["has_audio_system"] = venue_data["has_audio_system"]
+            if "has_microphone" in venue_data:
+                facilities_updates["has_microphone"] = venue_data["has_microphone"]
+            if "has_whiteboard" in venue_data:
+                facilities_updates["has_whiteboard"] = venue_data["has_whiteboard"]
+            if "has_air_conditioning" in venue_data:
+                facilities_updates["has_air_conditioning"] = venue_data["has_air_conditioning"]
+            if "has_wifi" in venue_data:
+                facilities_updates["has_wifi"] = venue_data["has_wifi"]
+            if "has_parking" in venue_data:
+                facilities_updates["has_parking"] = venue_data["has_parking"]
+            if "additional_facilities" in venue_data:
+                facilities_updates["additional_facilities"] = venue_data["additional_facilities"]
+            
+            if facilities_updates:
+                for key, value in facilities_updates.items():
+                    update_doc[f"facilities.{key}"] = value
+            
+            # Handle contact person updates
+            contact_updates = {}
+            if "contact_name" in venue_data:
+                contact_updates["name"] = venue_data["contact_name"]
+            if "contact_designation" in venue_data:
+                contact_updates["designation"] = venue_data["contact_designation"]
+            if "contact_phone" in venue_data:
+                contact_updates["phone"] = venue_data["contact_phone"]
+            if "contact_email" in venue_data:
+                contact_updates["email"] = venue_data["contact_email"]
+            if "contact_department" in venue_data:
+                contact_updates["department"] = venue_data["contact_department"]
+            
+            if contact_updates:
+                for key, value in contact_updates.items():
+                    update_doc[f"contact_person.{key}"] = value
+            
+            # Status fields
+            if "is_active" in venue_data:
+                update_doc["is_active"] = venue_data["is_active"]
+            if "status" in venue_data:
+                update_doc["status"] = venue_data["status"]
+            if "operating_hours" in venue_data:
+                update_doc["operating_hours"] = venue_data["operating_hours"]
             
             # Update venue
             result = await db[self.venues_collection].update_one(
@@ -347,8 +438,8 @@ class VenueService:
                 "status": {"$nin": ["cancelled"]},
                 "$or": [
                     {
-                        "start_datetime": {"$lt": end_datetime},
-                        "end_datetime": {"$gt": start_datetime}
+                        "start_datetime": {"$lt": end_datetime.isoformat()},
+                        "end_datetime": {"$gt": start_datetime.isoformat()}
                     }
                 ]
             })
@@ -368,8 +459,8 @@ class VenueService:
                 "booked_by": booking_data.booked_by,
                 "booked_by_name": booking_data.booked_by_name,
                 "booking_date": datetime.utcnow(),
-                "start_datetime": start_datetime,
-                "end_datetime": end_datetime,
+                "start_datetime": start_datetime.isoformat(),
+                "end_datetime": end_datetime.isoformat(),
                 "status": "pending",
                 "notes": booking_data.notes,
                 "confirmed_by": None,
@@ -388,6 +479,93 @@ class VenueService:
                 
         except Exception as e:
             logger.error(f"Error creating booking for venue {venue_id}: {e}")
+            raise
+    
+    async def check_availability(self, venue_id: str, start_datetime: str, end_datetime: str, exclude_booking_id: Optional[str] = None) -> Dict[str, Any]:
+        """Check if a venue is available for a specific time slot"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            # Parse datetime strings
+            start_dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end_datetime.replace('Z', '+00:00'))
+            
+            # Build query to find conflicting bookings
+            query = {
+                "venue_id": venue_id,
+                "status": {"$nin": ["cancelled"]},
+                "$or": [
+                    {
+                        "start_datetime": {"$lt": end_dt.isoformat()},
+                        "end_datetime": {"$gt": start_dt.isoformat()}
+                    }
+                ]
+            }
+            
+            # Exclude specific booking if provided
+            if exclude_booking_id:
+                query["booking_id"] = {"$ne": exclude_booking_id}
+            
+            # Find conflicting bookings
+            conflicting_bookings_cursor = db[self.bookings_collection].find(query)
+            conflicting_bookings = await conflicting_bookings_cursor.to_list(length=None)
+            
+            is_available = len(conflicting_bookings) == 0
+            
+            return {
+                "is_available": is_available,
+                "conflicting_bookings": [
+                    {
+                        "booking_id": booking["booking_id"],
+                        "event_name": booking["event_name"],
+                        "start_datetime": booking["start_datetime"],
+                        "end_datetime": booking["end_datetime"],
+                        "status": booking["status"]
+                    }
+                    for booking in conflicting_bookings
+                ],
+                "message": "Venue is available" if is_available else f"Venue has {len(conflicting_bookings)} conflicting booking(s)"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking availability for venue {venue_id}: {e}")
+            raise
+    
+    async def get_venue_bookings(self, venue_id: str) -> List[Dict[str, Any]]:
+        """Get all bookings for a specific venue"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            # Get bookings for this venue
+            bookings_cursor = db[self.bookings_collection].find({"venue_id": venue_id})
+            bookings = await bookings_cursor.to_list(length=None)
+            
+            # Format bookings
+            formatted_bookings = []
+            for booking in bookings:
+                formatted_bookings.append({
+                    "booking_id": booking["booking_id"],
+                    "event_id": booking["event_id"],
+                    "event_name": booking["event_name"],
+                    "booked_by": booking["booked_by"],
+                    "booked_by_name": booking["booked_by_name"],
+                    "booking_date": booking["booking_date"].isoformat() if isinstance(booking["booking_date"], datetime) else booking["booking_date"],
+                    "start_datetime": booking["start_datetime"],
+                    "end_datetime": booking["end_datetime"],
+                    "status": booking["status"],
+                    "notes": booking.get("notes"),
+                    "confirmed_by": booking.get("confirmed_by"),
+                    "confirmed_at": booking.get("confirmed_at").isoformat() if booking.get("confirmed_at") and isinstance(booking.get("confirmed_at"), datetime) else booking.get("confirmed_at")
+                })
+            
+            return formatted_bookings
+            
+        except Exception as e:
+            logger.error(f"Error getting bookings for venue {venue_id}: {e}")
             raise
     
     async def get_statistics(self) -> Dict[str, Any]:

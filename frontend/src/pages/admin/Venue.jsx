@@ -10,6 +10,8 @@ function Venue() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [statistics, setStatistics] = useState({});
@@ -34,6 +36,31 @@ function Venue() {
     additional_facilities: [],
     contact_name: '',
     contact_designation: 'Venue Manager',
+    contact_email: '',
+    contact_phone: '',
+    contact_department: ''
+  });
+
+  // Form state for editing venue
+  const [editVenue, setEditVenue] = useState({
+    venue_name: '',
+    venue_type: '',
+    location: '',
+    building: '',
+    floor: '',
+    room_number: '',
+    description: '',
+    capacity: '',
+    has_projector: false,
+    has_audio_system: false,
+    has_microphone: false,
+    has_whiteboard: false,
+    has_air_conditioning: false,
+    has_wifi: false,
+    has_parking: false,
+    additional_facilities: [],
+    contact_name: '',
+    contact_designation: '',
     contact_email: '',
     contact_phone: '',
     contact_department: ''
@@ -145,6 +172,71 @@ function Venue() {
       setError(errorMessage);
       console.error('Error adding venue:', err);
     }
+  };
+
+  const handleEditVenue = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await venueApi.update(selectedVenue.venue_id, editVenue);
+
+      if (response.data) {
+        await loadVenues();
+        await loadStatistics();
+        setShowEditModal(false);
+        setSelectedVenue(null);
+        setError('');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Failed to update venue';
+      setError(errorMessage);
+      console.error('Error updating venue:', err);
+    }
+  };
+
+  const handleDeleteVenue = async () => {
+    try {
+      const response = await venueApi.delete(selectedVenue.venue_id);
+
+      if (response.data) {
+        await loadVenues();
+        await loadStatistics();
+        setShowDeleteModal(false);
+        setSelectedVenue(null);
+        setError('');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Failed to delete venue';
+      setError(errorMessage);
+      console.error('Error deleting venue:', err);
+    }
+  };
+
+  const openEditModal = (venue) => {
+    setSelectedVenue(venue);
+    setEditVenue({
+      venue_name: venue.venue_name || '',
+      venue_type: venue.venue_type || '',
+      location: venue.location || '',
+      building: venue.building || '',
+      floor: venue.floor || '',
+      room_number: venue.room_number || '',
+      description: venue.description || '',
+      capacity: venue.facilities?.capacity || venue.capacity || '',
+      has_projector: venue.facilities?.has_projector || false,
+      has_audio_system: venue.facilities?.has_audio_system || false,
+      has_microphone: venue.facilities?.has_microphone || false,
+      has_whiteboard: venue.facilities?.has_whiteboard || false,
+      has_air_conditioning: venue.facilities?.has_air_conditioning || false,
+      has_wifi: venue.facilities?.has_wifi || false,
+      has_parking: venue.facilities?.has_parking || false,
+      additional_facilities: venue.facilities?.additional_facilities || [],
+      contact_name: venue.contact_person?.name || '',
+      contact_designation: venue.contact_person?.designation || '',
+      contact_email: venue.contact_person?.email || '',
+      contact_phone: venue.contact_person?.phone || '',
+      contact_department: venue.contact_person?.department || ''
+    });
+    setShowEditModal(true);
   };
 
   const handleBookVenue = async (e) => {
@@ -419,15 +511,15 @@ function Venue() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex space-x-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => {
                           setSelectedVenue(venue);
                           setShowViewModal(true);
                         }}
-                        className="flex-1 bg-teal-100 hover:bg-teal-200 text-teal-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                        className="bg-teal-100 hover:bg-teal-200 text-teal-700 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center text-sm font-medium"
                       >
-                        <i className="fas fa-eye mr-2"></i>
+                        <i className="fas fa-eye mr-1"></i>
                         View
                       </button>
                       
@@ -436,21 +528,29 @@ function Venue() {
                           setSelectedVenue(venue);
                           setShowBookingModal(true);
                         }}
-                        className="flex-1 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                        className="bg-cyan-100 hover:bg-cyan-200 text-cyan-700 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center text-sm font-medium"
                       >
-                        <i className="fas fa-calendar-plus mr-2"></i>
+                        <i className="fas fa-calendar-plus mr-1"></i>
                         Book
                       </button>
                       
                       <button
-                        onClick={() => toggleVenueStatus(venue.venue_id, venue.status)}
-                        className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                          venue.status === 'active' 
-                            ? 'bg-red-100 hover:bg-red-200 text-red-700' 
-                            : 'bg-green-100 hover:bg-green-200 text-green-700'
-                        }`}
+                        onClick={() => openEditModal(venue)}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center text-sm font-medium"
                       >
-                        <i className={`fas ${venue.status === 'active' ? 'fa-pause' : 'fa-play'}`}></i>
+                        <i className="fas fa-edit mr-1"></i>
+                        Edit
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          setSelectedVenue(venue);
+                          setShowDeleteModal(true);
+                        }}
+                        className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center justify-center text-sm font-medium"
+                      >
+                        <i className="fas fa-trash mr-1"></i>
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -462,7 +562,7 @@ function Venue() {
 
         {/* Add Venue Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
@@ -778,7 +878,7 @@ function Venue() {
 
         {/* View Venue Modal */}
         {showViewModal && selectedVenue && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
@@ -919,7 +1019,7 @@ function Venue() {
 
         {/* Booking Modal */}
         {showBookingModal && selectedVenue && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
@@ -1047,6 +1147,355 @@ function Venue() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Venue Modal */}
+        {showEditModal && selectedVenue && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Edit Venue</h2>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <form onSubmit={handleEditVenue} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Venue Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editVenue.venue_name}
+                      onChange={(e) => setEditVenue({...editVenue, venue_name: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Venue Type</label>
+                    <select
+                      required
+                      value={editVenue.venue_type}
+                      onChange={(e) => setEditVenue({...editVenue, venue_type: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    >
+                      <option value="">Select Type</option>
+                      <option value="auditorium">Auditorium</option>
+                      <option value="classroom">Classroom</option>
+                      <option value="laboratory">Laboratory</option>
+                      <option value="seminar_hall">Seminar Hall</option>
+                      <option value="conference_room">Conference Room</option>
+                      <option value="outdoor_ground">Outdoor Ground</option>
+                      <option value="cafeteria">Cafeteria</option>
+                      <option value="library_hall">Library Hall</option>
+                      <option value="sports_complex">Sports Complex</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                    <input
+                      type="text"
+                      required
+                      value={editVenue.location}
+                      onChange={(e) => setEditVenue({...editVenue, location: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Building</label>
+                    <input
+                      type="text"
+                      value={editVenue.building}
+                      onChange={(e) => setEditVenue({...editVenue, building: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Floor</label>
+                    <input
+                      type="text"
+                      value={editVenue.floor}
+                      onChange={(e) => setEditVenue({...editVenue, floor: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                    <input
+                      type="text"
+                      value={editVenue.room_number}
+                      onChange={(e) => setEditVenue({...editVenue, room_number: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
+                    <input
+                      type="number"
+                      required
+                      value={editVenue.capacity}
+                      onChange={(e) => setEditVenue({
+                        ...editVenue, 
+                        capacity: parseInt(e.target.value) || 0
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    rows="3"
+                    value={editVenue.description}
+                    onChange={(e) => setEditVenue({...editVenue, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  ></textarea>
+                </div>
+
+                {/* Facilities Section */}
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Facilities Available</h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_projector}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_projector: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Projector
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_audio_system}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_audio_system: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Audio System
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_microphone}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_microphone: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Microphone
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_whiteboard}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_whiteboard: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Whiteboard
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_air_conditioning}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_air_conditioning: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Air Conditioning
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_wifi}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_wifi: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      WiFi
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editVenue.has_parking}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          has_parking: e.target.checked
+                        })}
+                        className="mr-2"
+                      />
+                      Parking
+                    </label>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Person</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={editVenue.contact_name}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          contact_name: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                      <input
+                        type="text"
+                        required
+                        value={editVenue.contact_designation}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          contact_designation: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={editVenue.contact_email}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          contact_email: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                      <input
+                        type="tel"
+                        required
+                        value={editVenue.contact_phone}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          contact_phone: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Department (Optional)</label>
+                      <input
+                        type="text"
+                        value={editVenue.contact_department || ''}
+                        onChange={(e) => setEditVenue({
+                          ...editVenue,
+                          contact_department: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700"
+                  >
+                    Update Venue
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedVenue && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                  </div>
+                  <h3 className="ml-4 text-lg font-semibold text-gray-900">Delete Venue</h3>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to delete "<span className="font-medium">{selectedVenue.venue_name || selectedVenue.name}</span>"? This action cannot be undone.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteVenue}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
