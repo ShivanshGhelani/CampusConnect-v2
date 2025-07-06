@@ -136,16 +136,39 @@ class Venue(BaseModel):
 # Pydantic models for API
 class VenueCreate(BaseModel):
     """Model for creating a new venue"""
-    venue_name: str = Field(..., min_length=1, max_length=200)
-    venue_type: VenueType
-    location: str = Field(..., min_length=1, max_length=500)
-    building: Optional[str] = Field(None, max_length=100)
-    floor: Optional[str] = Field(None, max_length=20)
-    room_number: Optional[str] = Field(None, max_length=50)
-    description: Optional[str] = Field(None, max_length=1000)
-    facilities: VenueFacilities
-    contact_person: VenueContact
-    operating_hours: Optional[Dict[str, Dict[str, str]]] = None
+    venue_name: str = Field(..., min_length=1, max_length=200, description="Name of the venue")
+    venue_type: VenueType = Field(..., description="Type of venue")
+    location: str = Field(..., min_length=1, max_length=500, description="Physical location/address")
+    building: Optional[str] = Field(None, max_length=100, description="Building name")
+    floor: Optional[str] = Field(None, max_length=20, description="Floor number")
+    room_number: Optional[str] = Field(None, max_length=50, description="Room number")
+    description: Optional[str] = Field(None, max_length=1000, description="Venue description")
+    
+    # Simplified facilities - just capacity is required
+    capacity: int = Field(..., gt=0, description="Maximum capacity")
+    has_projector: bool = Field(default=False, description="Projector available")
+    has_audio_system: bool = Field(default=False, description="Audio system available")
+    has_microphone: bool = Field(default=False, description="Microphone available")
+    has_whiteboard: bool = Field(default=False, description="Whiteboard available")
+    has_air_conditioning: bool = Field(default=False, description="Air conditioning available")
+    has_wifi: bool = Field(default=False, description="WiFi available")
+    has_parking: bool = Field(default=False, description="Parking available")
+    additional_facilities: List[str] = Field(default=[], description="Additional facilities")
+    
+    # Simplified contact - just name and phone required
+    contact_name: str = Field(..., min_length=1, max_length=100, description="Contact person name")
+    contact_designation: str = Field(default="Venue Manager", max_length=100, description="Contact person designation")
+    contact_phone: str = Field(..., min_length=10, max_length=20, description="Contact phone number")
+    contact_email: str = Field(..., description="Contact email address")
+    contact_department: Optional[str] = Field(None, max_length=100, description="Department of contact person")
+    
+    # Optional fields
+    is_active: bool = Field(default=True, description="Whether venue is active")
+    operating_hours: Optional[Dict[str, Dict[str, str]]] = Field(
+        default=None,
+        description="Operating hours for each day"
+    )
+    created_by: str = Field(default="admin", description="Admin who created the venue")
 
 class VenueUpdate(BaseModel):
     """Model for updating venue details"""
@@ -163,48 +186,44 @@ class VenueUpdate(BaseModel):
     operating_hours: Optional[Dict[str, Dict[str, str]]] = None
 
 class VenueBookingCreate(BaseModel):
-    """Model for creating a venue booking"""
-    event_id: str
-    event_name: str
-    start_datetime: datetime
-    end_datetime: datetime
-    notes: Optional[str] = None
-    
-    @field_validator('end_datetime')
-    @classmethod
-    def validate_end_datetime(cls, v, info):
-        if 'start_datetime' in info.data and v <= info.data['start_datetime']:
-            raise ValueError('End datetime must be after start datetime')
-        return v
+    """Model for creating a new venue booking"""
+    event_id: str = Field(..., description="Associated event ID")
+    event_name: str = Field(..., description="Name of the event")
+    booked_by: str = Field(..., description="User ID who booked the venue")
+    booked_by_name: str = Field(..., description="Name of the person who booked")
+    start_datetime: str = Field(..., description="Booking start time (ISO format)")
+    end_datetime: str = Field(..., description="Booking end time (ISO format)")
+    notes: Optional[str] = Field(None, description="Additional booking notes")
 
 class VenueBookingUpdate(BaseModel):
-    """Model for updating venue booking"""
-    start_datetime: Optional[datetime] = None
-    end_datetime: Optional[datetime] = None
-    status: Optional[BookingStatus] = None
-    notes: Optional[str] = None
+    """Model for updating a venue booking"""
+    event_name: Optional[str] = Field(None, description="Name of the event")
+    start_datetime: Optional[str] = Field(None, description="Booking start time (ISO format)")
+    end_datetime: Optional[str] = Field(None, description="Booking end time (ISO format)")
+    status: Optional[BookingStatus] = Field(None, description="Booking status")
+    notes: Optional[str] = Field(None, description="Additional booking notes")
 
 class VenueResponse(BaseModel):
-    """Response model for venue"""
+    """Response model for individual venue"""
     venue_id: str
     venue_name: str
     venue_type: str
     location: str
-    building: Optional[str]
-    floor: Optional[str]
-    room_number: Optional[str]
-    description: Optional[str]
-    facilities: VenueFacilities
-    contact_person: VenueContact
+    building: Optional[str] = None
+    floor: Optional[str] = None
+    room_number: Optional[str] = None
+    description: Optional[str] = None
+    facilities: Dict[str, Any]
+    contact_person: Dict[str, Any]
     is_active: bool
     status: str
-    operating_hours: Dict[str, Dict[str, str]]
-    bookings: List[VenueBooking]
-    created_at: datetime
-    updated_at: Optional[datetime]
+    operating_hours: Optional[Dict[str, Dict[str, str]]] = None
+    bookings: List[Dict[str, Any]] = []
+    created_at: str
+    updated_at: Optional[str] = None
 
 class VenueListResponse(BaseModel):
-    """Response model for venue list"""
+    """Response model for venue listing"""
     venue_id: str
     venue_name: str
     venue_type: str
@@ -213,24 +232,16 @@ class VenueListResponse(BaseModel):
     is_active: bool
     status: str
     current_bookings_count: int
-    next_booking: Optional[VenueBooking]
+    next_booking: Optional[Dict[str, Any]] = None
 
 class VenueAvailabilityRequest(BaseModel):
     """Request model for checking venue availability"""
-    start_datetime: datetime
-    end_datetime: datetime
-    
-    @field_validator('end_datetime')
-    @classmethod
-    def validate_end_datetime(cls, v, info):
-        if 'start_datetime' in info.data and v <= info.data['start_datetime']:
-            raise ValueError('End datetime must be after start datetime')
-        return v
+    start_datetime: str = Field(..., description="Start time (ISO format)")
+    end_datetime: str = Field(..., description="End time (ISO format)")
+    exclude_booking_id: Optional[str] = Field(None, description="Booking ID to exclude from check")
 
 class VenueAvailabilityResponse(BaseModel):
-    """Response model for venue availability"""
-    venue_id: str
-    venue_name: str
-    is_available: bool
-    conflicts: List[VenueBooking]
-    suggested_slots: List[Dict[str, datetime]]
+    """Response model for venue availability check"""
+    is_available: bool = Field(..., description="Whether venue is available")
+    conflicting_bookings: List[Dict[str, Any]] = Field(default=[], description="List of conflicting bookings")
+    message: str = Field(..., description="Human readable message")

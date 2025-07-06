@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
+import { adminAPI, venueApi } from '../../api/axios';
 
 function Venue() {
   const [venues, setVenues] = useState([]);
@@ -22,22 +23,20 @@ function Venue() {
     floor: '',
     room_number: '',
     description: '',
-    facilities: {
-      capacity: '',
-      has_projector: false,
-      has_audio_system: false,
-      has_microphone: false,
-      has_whiteboard: false,
-      has_air_conditioning: false,
-      has_wifi: false,
-      has_parking: false,
-      additional_facilities: []
-    },
-    contact_person: {
-      name: '',
-      email: '',
-      phone: ''
-    }
+    capacity: '',
+    has_projector: false,
+    has_audio_system: false,
+    has_microphone: false,
+    has_whiteboard: false,
+    has_air_conditioning: false,
+    has_wifi: false,
+    has_parking: false,
+    additional_facilities: [],
+    contact_name: '',
+    contact_designation: 'Venue Manager',
+    contact_email: '',
+    contact_phone: '',
+    contact_department: ''
   });
 
   // Booking form state
@@ -62,19 +61,16 @@ function Venue() {
     try {
       setLoading(true);
       setError(''); // Clear previous errors
-      const response = await fetch('/api/v1/admin/venues');
+      const response = await venueApi.list();
       
-      if (response.ok) {
-        const data = await response.json();
-        setVenues(data.venues || []);
+      if (response.data) {
+        setVenues(Array.isArray(response.data) ? response.data : response.data.venues || []);
       } else {
-        const errorText = await response.text();
-        console.error('API Response:', response.status, errorText);
-        setError(`Failed to load venues (${response.status}): ${errorText.substring(0, 100)}`);
+        setError('No data received from server');
       }
     } catch (err) {
       console.error('Error loading venues:', err);
-      setError(`Network error loading venues: ${err.message}`);
+      setError(`Network error loading venues: ${err.response?.data?.detail || err.message}`);
     } finally {
       setLoading(false);
     }
@@ -82,12 +78,17 @@ function Venue() {
 
   const loadStatistics = async () => {
     try {
-      const response = await fetch('/api/v1/admin/venues/statistics');
-      if (response.ok) {
-        const data = await response.json();
-        setStatistics(data);
+      const response = await venueApi.getStatistics();
+      if (response.data) {
+        const data = response.data;
+        setStatistics({
+          totalVenues: data.total_venues,
+          activeVenues: data.active_venues,
+          totalBookings: data.total_bookings,
+          utilizationRate: Math.round((data.active_bookings / Math.max(data.total_venues, 1)) * 100)
+        });
       } else {
-        console.error('Failed to load statistics:', response.status);
+        console.error('Failed to load statistics: No data received');
       }
     } catch (err) {
       console.error('Error loading statistics:', err);
@@ -108,15 +109,9 @@ function Venue() {
   const handleAddVenue = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/v1/admin/venues', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newVenue),
-      });
+      const response = await venueApi.create(newVenue);
 
-      if (response.ok) {
+      if (response.data) {
         await loadVenues();
         await loadStatistics();
         setShowAddModal(false);
@@ -128,30 +123,26 @@ function Venue() {
           floor: '',
           room_number: '',
           description: '',
-          facilities: {
-            capacity: '',
-            has_projector: false,
-            has_audio_system: false,
-            has_microphone: false,
-            has_whiteboard: false,
-            has_air_conditioning: false,
-            has_wifi: false,
-            has_parking: false,
-            additional_facilities: []
-          },
-          contact_person: {
-            name: '',
-            email: '',
-            phone: ''
-          }
+          capacity: '',
+          has_projector: false,
+          has_audio_system: false,
+          has_microphone: false,
+          has_whiteboard: false,
+          has_air_conditioning: false,
+          has_wifi: false,
+          has_parking: false,
+          additional_facilities: [],
+          contact_name: '',
+          contact_designation: 'Venue Manager',
+          contact_email: '',
+          contact_phone: '',
+          contact_department: ''
         });
         setError('');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to add venue');
       }
     } catch (err) {
-      setError('Error adding venue');
+      const errorMessage = err.response?.data?.detail || 'Failed to add venue';
+      setError(errorMessage);
       console.error('Error adding venue:', err);
     }
   };
@@ -159,7 +150,7 @@ function Venue() {
   const handleBookVenue = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/v1/admin/venues/${selectedVenue.id}/book`, {
+      const response = await fetch(`/api/v1/admin/venues/${selectedVenue.venue_id}/book`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,15 +186,9 @@ function Venue() {
   const toggleVenueStatus = async (venueId, currentStatus) => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      const response = await fetch(`/api/v1/admin/venues/${venueId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await venueApi.update(venueId, { status: newStatus });
 
-      if (response.ok) {
+      if (response.data) {
         await loadVenues();
         await loadStatistics();
       } else {
@@ -353,7 +338,7 @@ function Venue() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredVenues.map((venue) => (
-                <div key={venue.id} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+                <div key={venue.venue_id} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow duration-200">
                   {/* Venue Image */}
                   <div className="h-48 bg-gradient-to-br from-teal-400 to-cyan-500 relative">
                     {venue.images && venue.images.length > 0 ? (
@@ -458,7 +443,7 @@ function Venue() {
                       </button>
                       
                       <button
-                        onClick={() => toggleVenueStatus(venue.id, venue.status)}
+                        onClick={() => toggleVenueStatus(venue.venue_id, venue.status)}
                         className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
                           venue.status === 'active' 
                             ? 'bg-red-100 hover:bg-red-200 text-red-700' 
@@ -576,10 +561,10 @@ function Venue() {
                     <input
                       type="number"
                       required
-                      value={newVenue.facilities.capacity}
+                      value={newVenue.capacity}
                       onChange={(e) => setNewVenue({
                         ...newVenue, 
-                        facilities: {...newVenue.facilities, capacity: parseInt(e.target.value) || 0}
+                        capacity: parseInt(e.target.value) || 0
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
@@ -604,10 +589,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_projector}
+                        checked={newVenue.has_projector}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_projector: e.target.checked}
+                          has_projector: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -617,10 +602,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_audio_system}
+                        checked={newVenue.has_audio_system}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_audio_system: e.target.checked}
+                          has_audio_system: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -630,10 +615,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_microphone}
+                        checked={newVenue.has_microphone}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_microphone: e.target.checked}
+                          has_microphone: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -643,10 +628,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_whiteboard}
+                        checked={newVenue.has_whiteboard}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_whiteboard: e.target.checked}
+                          has_whiteboard: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -656,10 +641,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_air_conditioning}
+                        checked={newVenue.has_air_conditioning}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_air_conditioning: e.target.checked}
+                          has_air_conditioning: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -669,10 +654,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_wifi}
+                        checked={newVenue.has_wifi}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_wifi: e.target.checked}
+                          has_wifi: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -682,10 +667,10 @@ function Venue() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newVenue.facilities.has_parking}
+                        checked={newVenue.has_parking}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          facilities: {...newVenue.facilities, has_parking: e.target.checked}
+                          has_parking: e.target.checked
                         })}
                         className="mr-2"
                       />
@@ -697,30 +682,46 @@ function Venue() {
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Person</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                       <input
                         type="text"
                         required
-                        value={newVenue.contact_person.name}
+                        value={newVenue.contact_name}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          contact_person: {...newVenue.contact_person, name: e.target.value}
+                          contact_name: e.target.value
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       />
                     </div>
                     
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                      <input
+                        type="text"
+                        required
+                        value={newVenue.contact_designation}
+                        onChange={(e) => setNewVenue({
+                          ...newVenue,
+                          contact_designation: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                       <input
                         type="email"
                         required
-                        value={newVenue.contact_person.email}
+                        value={newVenue.contact_email}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          contact_person: {...newVenue.contact_person, email: e.target.value}
+                          contact_email: e.target.value
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       />
@@ -731,10 +732,23 @@ function Venue() {
                       <input
                         type="tel"
                         required
-                        value={newVenue.contact_person.phone}
+                        value={newVenue.contact_phone}
                         onChange={(e) => setNewVenue({
                           ...newVenue,
-                          contact_person: {...newVenue.contact_person, phone: e.target.value}
+                          contact_phone: e.target.value
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Department (Optional)</label>
+                      <input
+                        type="text"
+                        value={newVenue.contact_department || ''}
+                        onChange={(e) => setNewVenue({
+                          ...newVenue,
+                          contact_department: e.target.value
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       />

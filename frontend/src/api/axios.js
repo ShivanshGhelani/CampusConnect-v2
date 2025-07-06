@@ -72,6 +72,17 @@ import axios from 'axios';
  *   - PUT  /api/v1/admin/profile/update-password    - Update admin password
  *   - PUT  /api/v1/admin/profile/update-settings    - Update admin settings
  * 
+ * Venues:
+ *   - GET    /api/v1/admin/venues                   - List all venues
+ *   - GET    /api/v1/admin/venues/{id}              - Get venue details
+ *   - POST   /api/v1/admin/venues                   - Create new venue
+ *   - PUT    /api/v1/admin/venues/{id}              - Update venue
+ *   - DELETE /api/v1/admin/venues/{id}              - Delete venue
+ *   - GET    /api/v1/admin/venues/stats/overview    - Venue statistics
+ *   - GET    /api/v1/admin/venues/{id}/bookings     - Get venue bookings
+ *   - POST   /api/v1/admin/venues/{id}/book         - Book venue
+ *   - GET    /api/v1/admin/venues/{id}/availability - Check availability
+ * 
  * CLIENT API (/api/v1/client/):
  * 
  * Events:
@@ -349,6 +360,21 @@ export const adminAPI = {
   getAssetStatistics: () => api.get('/api/v1/admin/assets/statistics'),
   deleteAsset: (assetId, assetPath) => api.delete(`/api/v1/admin/assets/${assetId}`, { data: { asset_path: assetPath } }),
   uploadAsset: (formData, config) => api.post('/api/v1/admin/assets/upload', formData, config),
+  
+  // Venue Management
+  getVenues: (filters) => api.get('/api/v1/admin/venues', { params: filters }),
+  getVenue: (venueId) => api.get(`/api/v1/admin/venues/${venueId}`),
+  createVenue: (venueData) => api.post('/api/v1/admin/venues', venueData),
+  updateVenue: (venueId, venueData) => api.put(`/api/v1/admin/venues/${venueId}`, venueData),
+  deleteVenue: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}`),
+  getVenueStatistics: () => api.get('/api/v1/admin/venues/stats/overview'),
+  getVenueBookings: (venueId, filters) => api.get(`/api/v1/admin/venues/${venueId}/bookings`, { params: filters }),
+  bookVenue: (venueId, bookingData) => api.post(`/api/v1/admin/venues/${venueId}/book`, bookingData),
+  checkVenueAvailability: (venueId, startDateTime, endDateTime, excludeBookingId) => {
+    const params = { start_datetime: startDateTime, end_datetime: endDateTime };
+    if (excludeBookingId) params.exclude_booking_id = excludeBookingId;
+    return api.get(`/api/v1/admin/venues/${venueId}/availability`, { params });
+  },
 };
 
 // Dedicated asset API object for easier use
@@ -362,6 +388,38 @@ export const assetApi = {
   stats: () => api.get('/admin/assets/statistics'),
   upload: (formData, config) => api.post('/admin/assets/upload', formData, config),
   delete: (filename) => api.delete(`/admin/assets/delete/${filename}`)
+};
+
+// Dedicated venue API object for easier use
+export const venueApi = {
+  // Basic CRUD operations
+  list: (filters = {}) => api.get('/api/v1/admin/venues', { params: filters }),
+  get: (venueId) => api.get(`/api/v1/admin/venues/${venueId}`),
+  create: (venueData) => api.post('/api/v1/admin/venues', venueData),
+  update: (venueId, venueData) => api.put(`/api/v1/admin/venues/${venueId}`, venueData),
+  delete: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}`),
+  
+  // Statistics and analytics
+  getStatistics: () => api.get('/api/v1/admin/venues/stats/overview'),
+  
+  // Booking operations
+  getBookings: (venueId, filters = {}) => api.get(`/api/v1/admin/venues/${venueId}/bookings`, { params: filters }),
+  book: (venueId, bookingData) => api.post(`/api/v1/admin/venues/${venueId}/book`, bookingData),
+  checkAvailability: (venueId, startDateTime, endDateTime, excludeBookingId = null) => {
+    const params = { 
+      start_datetime: startDateTime, 
+      end_datetime: endDateTime 
+    };
+    if (excludeBookingId) {
+      params.exclude_booking_id = excludeBookingId;
+    }
+    return api.get(`/api/v1/admin/venues/${venueId}/availability`, { params });
+  },
+  
+  // Utility methods
+  searchByType: (venueType) => api.get('/api/v1/admin/venues', { params: { venue_type: venueType } }),
+  getActive: () => api.get('/api/v1/admin/venues', { params: { is_active: true } }),
+  getByStatus: (status) => api.get('/api/v1/admin/venues', { params: { status } })
 };
 
 export default api;
