@@ -2,7 +2,7 @@
 Statistics utilities for CampusConnect
 Fetches real data from the database for dashboard statistics
 """
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from config.database import Database
 from typing import Dict, Any, Optional
 import logging

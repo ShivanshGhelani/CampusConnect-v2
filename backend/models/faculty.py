@@ -36,7 +36,7 @@ class Faculty(BaseModel):
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
     
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
@@ -101,7 +101,7 @@ class FacultyResponse(BaseModel):
     last_login: Optional[datetime]
     
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str, datetime: lambda v: v.isoformat() if v else None}
 

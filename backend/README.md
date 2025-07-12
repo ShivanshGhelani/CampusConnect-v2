@@ -1,23 +1,64 @@
-# UCG v2 Admin System
+# CampusConnect Backend
 
-This is the administration system for UCG v2, providing functionality for event management, student registration, and administrative tasks.
+This is the backend system for CampusConnect, providing comprehensive functionality for campus event management, student registration, administrative tasks, and email services.
 
 ## Features
 
-- Event Management
-- Student Registration
-- Email Integration
-- Certificate Generation
-- Admin User Management
-- Dynamic Event Scheduling
-- Comprehensive Feedback System
+- **Event Management**: Complete event lifecycle management with dynamic scheduling
+- **Student Registration**: Secure student registration and management system
+- **Email Integration**: Advanced email services with SMTP pooling and queue processing
+- **Certificate Generation**: Automated certificate creation and delivery
+- **Admin User Management**: Role-based access control with hierarchical permissions
+- **Database Operations**: Optimized MongoDB operations with connection pooling
+- **Core Utilities**: Essential system utilities and monitoring tools
+- **Comprehensive API**: RESTful API with FastAPI framework
 
-## Project Structure
+## Architecture Overview
+
+The backend follows a **layered architecture** with clear separation of concerns:
+
+- **API Layer**: FastAPI endpoints in `api/` and `routes/`
+- **Service Layer**: Business logic in `services/`
+- **Database Layer**: Data access in `database/`
+- **Core Layer**: System utilities in `core/`
+- **Utils Layer**: Application utilities in `utils/`
+
+## Updated Project Structure
 
 ```
-├── admin/          # Virtual environment
-├── config/         # Configuration files
-├── data/           # Data files and templates
+├── api/                    # API endpoints (v1, v2)
+├── config/                 # Configuration files and settings
+├── core/                   # Core system utilities and infrastructure
+│   ├── logger.py           # Centralized logging
+│   ├── id_generator.py     # Unique ID generation
+│   ├── permissions.py      # Role-based access control
+│   └── ...                 # Other core utilities
+├── database/               # Database operations and utilities
+│   ├── operations.py       # Main database operations
+│   ├── backup.py          # Backup utilities
+│   ├── migration.py       # Data migration tools
+│   └── statistics.py      # Database statistics
+├── dependencies/           # FastAPI dependencies
+├── logs/                   # Application logs
+├── models/                 # Pydantic data models
+├── routes/                 # FastAPI route handlers
+├── scripts/                # Administrative and utility scripts
+├── services/               # Business logic layer
+│   ├── venue_service.py    # Venue management service
+│   └── email/              # Email services
+│       ├── service.py      # Email service
+│       ├── optimized_service.py  # High-performance email
+│       ├── smtp_pool.py    # SMTP connection pooling
+│       └── queue.py        # Background email queue
+├── static/                 # Static files and assets
+├── templates/              # Jinja2 templates
+├── utils/                  # Application utilities
+│   ├── event_scheduler.py  # Dynamic event scheduling
+│   ├── event_status.py     # Event status management
+│   ├── event_lifecycle.py  # Event lifecycle operations
+│   └── ...                 # Other utilities
+└── main.py                 # FastAPI application entry point
+```
 ├── dependencies/   # Core dependencies and middlewares
 ├── docs/           # Documentation
 ├── logs/           # Application logs

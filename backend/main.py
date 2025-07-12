@@ -278,7 +278,7 @@ async def startup_db_client():
     await Database.connect_db()
     
     # Initialize SMTP connection pool
-    from utils.smtp_pool import smtp_pool
+    from services.email.smtp_pool import smtp_pool
     logger.info("SMTP Connection Pool initialized for high-performance email delivery")
     
     # Initialize dynamic event scheduler with background task
@@ -286,7 +286,7 @@ async def startup_db_client():
     print("Started Dynamic Event Scheduler - updates triggered by event timing")
     
     # Start certificate email queue
-    from utils.email_queue import certificate_email_queue
+    from services.email.queue import certificate_email_queue
     await certificate_email_queue.start()
     print("Started Certificate Email Queue - background processing for email delivery")
     
@@ -326,12 +326,12 @@ async def shutdown_db_client():
     await stop_dynamic_scheduler()
     
     # Stop certificate email queue
-    from utils.email_queue import certificate_email_queue
+    from services.email.queue import certificate_email_queue
     await certificate_email_queue.stop()
     print("Stopped Certificate Email Queue")
     
     # Shutdown SMTP connection pool
-    from utils.smtp_pool import smtp_pool
+    from services.email.smtp_pool import smtp_pool
     smtp_pool.shutdown()
     print("Stopped SMTP Connection Pool")
     
