@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from config.database import Database
 from utils.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
-from utils.json_encoder import CustomJSONEncoder
-from utils.logger import setup_logger
+from core.json_encoder import CustomJSONEncoder
+from core.logger import setup_logger
 
 # Suppress bcrypt version warning globally
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
