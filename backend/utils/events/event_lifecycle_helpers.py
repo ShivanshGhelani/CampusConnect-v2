@@ -6,8 +6,8 @@ These functions will be used by attendance, feedback, and certificate modules
 
 import asyncio
 from typing import Dict, Optional, List
-from utils.db_operations import DatabaseOperations
-from utils.id_generator import generate_attendance_id, generate_feedback_id, generate_certificate_id
+from database.operations import DatabaseOperations
+from core.id_generator import generate_attendance_id, generate_feedback_id, generate_certificate_id
 from datetime import datetime, timezone
 
 async def mark_attendance(enrollment_no: str, event_id: str, present: bool = True):
@@ -246,7 +246,7 @@ async def generate_certificate(enrollment_no: str, event_id: str):
         
         # Send certificate notification email
         try:
-            from utils.email_service import EmailService
+            from services.email.service import EmailService
             email_service = EmailService()
             
             # Get event details for email

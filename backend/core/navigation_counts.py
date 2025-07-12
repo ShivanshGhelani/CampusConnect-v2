@@ -4,7 +4,7 @@ Provides consistent navigation count calculations across all admin pages
 """
 from typing import Dict
 from database.operations import DatabaseOperations
-from utils.event_status import EventStatusManager
+from utils.events.event_status import EventStatusManager
 import logging
 
 logger = logging.getLogger(__name__)

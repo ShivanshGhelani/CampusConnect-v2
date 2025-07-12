@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from utils.event_lifecycle_helpers import submit_feedback
 
 logger = logging.getLogger(__name__)

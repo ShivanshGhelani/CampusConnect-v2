@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login
 from models.student import Student, StudentUpdate
 from models.faculty import Faculty, FacultyUpdate
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from typing import Union
 
 logger = logging.getLogger(__name__)

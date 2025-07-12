@@ -6,7 +6,7 @@ accessible from any template in the project.
 """
 
 from config.paths import assets, static_url, css_url, js_url, image_url, upload_url
-from utils.certificate_assets import get_certificate_asset_context
+from .certificate_assets import get_certificate_asset_context
 
 def asset_context():
     """

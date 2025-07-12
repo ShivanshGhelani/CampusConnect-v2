@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from dependencies.auth import get_current_student_optional, get_current_faculty_optional, get_current_user, require_student_login
 from models.student import Student
 from models.faculty import Faculty
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from utils.event_status_manager import EventStatusManager
 from bson import ObjectId
 from datetime import datetime

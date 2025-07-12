@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

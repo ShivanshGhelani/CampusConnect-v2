@@ -8,7 +8,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from config.database import Database
 from models.venue import VenueCreate, VenueUpdate, VenueBookingCreate, VenueBookingUpdate
-from utils.id_generator import generate_venue_id, generate_booking_id
+from core.id_generator import generate_venue_id, generate_booking_id
 import logging
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import logging
 from database.operations import DatabaseOperations
-from utils.event_scheduler import dynamic_scheduler
+from utils.dynamic_event_scheduler import dynamic_scheduler
 
 logger = logging.getLogger(__name__)
 
