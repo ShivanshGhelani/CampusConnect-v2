@@ -5,7 +5,7 @@ Provides utilities to access and run tests from anywhere in the project.
 Import this module to get access to testing functions.
 
 Usage:
-    from utils.testing_utils import run_test, list_tests, get_test_path
+    from core.testing_utils import run_test, list_tests, get_test_path
     
     # List all available tests
     tests = list_tests()
@@ -227,7 +227,7 @@ def print_test_menu():
     total_tests = sum(len(tests) for tests in categories.values())
     print(f"\n📊 Total: {total_tests} test files available")
     print("\nUsage examples:")
-    print("  from utils.testing_utils import run_test")
+    print("  from core.testing_utils import run_test")
     print("  run_test('quick_email_test.py')")
     print("  python run_test.py quick_email_test.py")
 
