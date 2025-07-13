@@ -8,14 +8,15 @@ from dependencies.auth import get_current_student_optional, get_current_faculty_
 from models.student import Student
 from models.faculty import Faculty
 from database.operations import DatabaseOperations
-from utils.event_status_manager import EventStatusManager
+from utils.events.event_status_manager import EventStatusManager
 from bson import ObjectId
 from datetime import datetime
 from typing import Union, Optional
 
 # Import Redis cache with fallback
 try:
-    from utils.redis_cache import event_cache
+    from utils.redis_cache import EventCache
+    event_cache = EventCache()
     REDIS_CACHE_AVAILABLE = True
 except ImportError:
     REDIS_CACHE_AVAILABLE = False

@@ -1,6 +1,6 @@
 """Event status update task."""
 from datetime import datetime
-from utils.event_status_manager import EventStatusManager
+from .events.event_status_manager import EventStatusManager
 
 
 async def update_event_statuses():

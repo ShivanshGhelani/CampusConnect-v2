@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from config.database import Database
-from utils.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
+from utils.events.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
 from core.json_encoder import CustomJSONEncoder
 from core.logger import setup_logger
 
@@ -292,17 +292,17 @@ async def startup_db_client():
     
     # Create a background task to keep scheduler alive
     import asyncio
-    from utils.dynamic_event_scheduler import dynamic_scheduler
+    from utils.events.dynamic_event_scheduler import dynamic_scheduler
     scheduler_task = asyncio.create_task(keep_scheduler_alive())
       # Verify scheduler is running
-    from utils.dynamic_event_scheduler import get_scheduler_status
+    from utils.events.dynamic_event_scheduler import get_scheduler_status
     status = await get_scheduler_status()
     print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
 
 async def keep_scheduler_alive():
     """Background task to monitor and restart scheduler if needed"""
     import asyncio
-    from utils.dynamic_event_scheduler import dynamic_scheduler, get_scheduler_status
+    from utils.events.dynamic_event_scheduler import dynamic_scheduler, get_scheduler_status
     
     while True:
         try:
@@ -393,7 +393,7 @@ async def event_categories():
 @app.get("/health/scheduler")
 async def scheduler_health():
     """Check the health of the dynamic event scheduler"""
-    from utils.dynamic_event_scheduler import get_scheduler_status
+    from utils.events.dynamic_event_scheduler import get_scheduler_status
     status = await get_scheduler_status()
     return status
 
