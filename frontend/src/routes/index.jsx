@@ -28,6 +28,7 @@ import EventDetail from '../pages/admin/EventDetail';
 import ExportData from '../pages/admin/ExportData';
 import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
+import Editor from '../pages/admin/Editor';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -254,6 +255,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <SettingsProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/editor"
+          element={
+            <ProtectedRoute userType="admin">
+              <Editor />
             </ProtectedRoute>
           }
         />

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elegant Certificate Template</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .certificate {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            background: linear-gradient(45deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 20px solid #6c757d;
+            position: relative;
+            font-family: 'Georgia', serif;
+            color: #495057;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .border-design {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 2px solid #28a745;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 10px,
+                rgba(40, 167, 69, 0.1) 10px,
+                rgba(40, 167, 69, 0.1) 12px
+            );
+        }
+        
+        .logo {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            background: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 3;
+        }
+        
+        .header {
+            z-index: 2;
+            margin-bottom: 30px;
+            margin-top: 40px;
+        }
+        
+        .title {
+            font-size: 44px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #28a745;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .content {
+            z-index: 2;
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+        
+        .awarded-to {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+        
+        .name {
+            font-size: 38px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #212529;
+            text-decoration: underline;
+            text-decoration-color: #28a745;
+        }
+        
+        .achievement {
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        
+        .details {
+            font-size: 14px;
+            margin: 15px 0;
+            color: #6c757d;
+        }
+        
+        .footer {
+            z-index: 2;
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .date-signature {
+            display: flex;
+            justify-content: space-between;
+            width: 500px;
+            margin-top: 20px;
+        }
+        
+        .date-block, .signature-block {
+            text-align: center;
+        }
+        
+        .underline {
+            width: 120px;
+            height: 1px;
+            background: #495057;
+            margin: 5px 0;
+        }
+        
+        .label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="border-design"></div>
+        <div class="logo">★</div>
+        
+        <div class="header">
+            <div class="title" data-editable="title" data-style="font-size:44px;color:#28a745;">Certificate of Completion</div>
+            <div class="subtitle" data-editable="subtitle" data-style="font-size:16px;color:#6c757d;">Professional Achievement Award</div>
+        </div>
+        
+        <div class="content">
+            <div class="awarded-to" data-editable="awarded_to" data-style="font-size:18px;color:#495057;">This certificate is awarded to</div>
+            <div class="name" data-editable="name" data-style="font-size:38px;color:#212529;">{{Participant Name}}</div>
+            <div class="achievement" data-editable="achievement" data-style="font-size:18px;color:#495057;">For successfully completing the requirements of {{Program/Course Name}} and demonstrating proficiency in the subject matter.</div>
+            <div class="details" data-editable="details" data-style="font-size:14px;color:#6c757d;">Duration: {{Duration}} | Score: {{Score}}</div>
+        </div>
+        
+        <div class="footer">
+            <div class="date-signature">
+                <div class="date-block">
+                    <div data-editable="date" data-style="font-size:14px;color:#495057;">{{Date}}</div>
+                    <div class="underline"></div>
+                    <div class="label">Date</div>
+                </div>
+                <div class="signature-block">
+                    <div data-editable="authority" data-style="font-size:14px;color:#495057;">{{Authority Name}}</div>
+                    <div class="underline"></div>
+                    <div class="label">Authorized Signature</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

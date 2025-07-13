@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Certificate Template</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .certificate {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            border: 15px solid #2c3e50;
+            position: relative;
+            font-family: 'Times New Roman', serif;
+            color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            border: 3px solid #34495e;
+        }
+        
+        .ornament {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 20px;
+            background: #e74c3c;
+            z-index: 1;
+        }
+        
+        .header {
+            z-index: 2;
+            margin-bottom: 40px;
+        }
+        
+        .title {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #e74c3c;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            font-style: italic;
+        }
+        
+        .content {
+            z-index: 2;
+            margin-bottom: 50px;
+        }
+        
+        .presents {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .name {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 25px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+        }
+        
+        .description {
+            font-size: 16px;
+            margin: 20px 0;
+            max-width: 500px;
+        }
+        
+        .date {
+            font-size: 14px;
+            margin-top: 30px;
+        }
+        
+        .footer {
+            z-index: 2;
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+        }
+        
+        .signature-block {
+            text-align: center;
+        }
+        
+        .signature-line {
+            width: 150px;
+            height: 1px;
+            background: #2c3e50;
+            margin: 10px 0;
+        }
+        
+        .signature-text {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="ornament"></div>
+        
+        <div class="header">
+            <div class="title" data-editable="title" data-style="font-size:42px;color:#e74c3c;">Certificate of Excellence</div>
+            <div class="subtitle" data-editable="subtitle" data-style="font-size:16px;color:#2c3e50;">Award of Recognition</div>
+        </div>
+        
+        <div class="content">
+            <div class="presents" data-editable="presents" data-style="font-size:18px;color:#2c3e50;">This certificate is proudly presented to</div>
+            <div class="name" data-editable="name" data-style="font-size:32px;color:#2c3e50;">{{Recipient Name}}</div>
+            <div class="description" data-editable="description" data-style="font-size:16px;color:#2c3e50;">For outstanding performance and dedication in {{Event/Course Name}} and demonstrating exceptional skills and commitment.</div>
+            <div class="date" data-editable="date" data-style="font-size:14px;color:#2c3e50;">Awarded on {{Date}}</div>
+        </div>
+        
+        <div class="footer">
+            <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="signature-text" data-editable="signature1" data-style="font-size:12px;color:#2c3e50;">Director</div>
+            </div>
+            <div class="signature-block">
+                <div class="signature-line"></div>
+                <div class="signature-text" data-editable="signature2" data-style="font-size:12px;color:#2c3e50;">Coordinator</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

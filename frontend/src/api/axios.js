@@ -422,4 +422,67 @@ export const venueApi = {
   getByStatus: (status) => api.get('/api/v1/admin/venues', { params: { status } })
 };
 
+// Certificate Templates API functions
+export const listCertificateTemplates = async () => {
+  try {
+    const response = await api.get('/api/v1/admin/certificate-templates/dashboard');
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error listing certificate templates:', error);
+    throw error;
+  }
+};
+
+export const getCertificateTemplateStatistics = async () => {
+  try {
+    const response = await api.get('/api/v1/admin/certificate-templates/statistics');
+    return response.data.data || {};
+  } catch (error) {
+    console.error('Error getting certificate template statistics:', error);
+    throw error;
+  }
+};
+
+export const uploadCertificateTemplate = async (file, templateName, description = '') => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('template_name', templateName);
+    if (description) {
+      formData.append('description', description);
+    }
+
+    const response = await api.post('/api/v1/admin/certificate-templates/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data.data;
+  } catch (error) {
+    console.error('Error uploading certificate template:', error);
+    throw error;
+  }
+};
+
+export const deleteCertificateTemplate = async (templateName) => {
+  try {
+    const response = await api.delete(`/api/v1/admin/certificate-templates/${templateName}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting certificate template:', error);
+    throw error;
+  }
+};
+
+export const previewCertificateTemplate = async (templateName) => {
+  try {
+    const response = await api.get(`/api/v1/admin/certificate-templates/${templateName}/preview`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error previewing certificate template:', error);
+    throw error;
+  }
+};
+
 export default api;

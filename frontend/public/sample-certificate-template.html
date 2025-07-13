@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Template</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            width: 800px;
+            max-width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        }
+        
+        .certificate::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .institution-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .institution-subtitle {
+            color: #718096;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .certificate-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: #2d3748;
+            text-align: center;
+            margin: 40px 0 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .content {
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .awarded-text {
+            font-size: 18px;
+            color: #4a5568;
+            margin-bottom: 20px;
+        }
+        
+        .recipient-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 700;
+            color: #2d3748;
+            margin: 20px 0;
+            padding: 0 20px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+        
+        .achievement-text {
+            font-size: 16px;
+            color: #4a5568;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 30px auto;
+        }
+        
+        .event-name {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            margin-top: 60px;
+            padding-top: 30px;
+        }
+        
+        .signature-section {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .signature-line {
+            width: 200px;
+            height: 2px;
+            background: #e2e8f0;
+            margin: 0 auto 10px;
+        }
+        
+        .signature-title {
+            font-size: 14px;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .date-section {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .date-label {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .date-value {
+            font-size: 16px;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        .decorative-border {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 2px solid #f7fafc;
+            border-radius: 15px;
+            pointer-events: none;
+        }
+        
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            color: rgba(102, 126, 234, 0.05);
+            font-weight: bold;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .certificate {
+                box-shadow: none;
+                border: 1px solid #e2e8f0;
+            }
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .certificate {
+                padding: 40px 30px;
+            }
+            
+            .certificate-title {
+                font-size: 28px;
+            }
+            
+            .recipient-name {
+                font-size: 32px;
+            }
+            
+            .footer {
+                flex-direction: column;
+                gap: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="decorative-border"></div>
+        <div class="watermark">CERTIFICATE</div>
+        
+        <div class="header">
+            <div class="logo">CC</div>
+            <h1 class="institution-name">[Institution Name]</h1>
+            <p class="institution-subtitle">Excellence in Education & Innovation</p>
+        </div>
+        
+        <h2 class="certificate-title">Certificate of Achievement</h2>
+        
+        <div class="content">
+            <p class="awarded-text">This certificate is proudly awarded to</p>
+            
+            <h3 class="recipient-name">[Student Name]</h3>
+            
+            <p class="achievement-text">
+                for successfully participating in <span class="event-name">[Event Name]</span> 
+                and demonstrating exceptional skills, dedication, and commitment to excellence. 
+                This achievement reflects outstanding performance and contribution to the academic community.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="signature-section">
+                <div class="signature-line"></div>
+                <p class="signature-title">Director</p>
+            </div>
+            
+            <div class="date-section">
+                <p class="date-label">Date Awarded</p>
+                <p class="date-value">[Date]</p>
+            </div>
+            
+            <div class="signature-section">
+                <div class="signature-line"></div>
+                <p class="signature-title">Event Coordinator</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
