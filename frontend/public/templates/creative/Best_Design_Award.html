@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Best Design Award</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            background: white;
+            width: 900px;
+            height: 700px;
+            padding: 80px;
+            border-radius: 30px;
+            box-shadow: 0 0 100px rgba(0,0,0,0.3);
+            position: relative;
+            text-align: center;
+            overflow: hidden;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, #ff006e, #8338ec, #3a86ff, #06ffa5, #ffbe0b, #ff006e);
+            animation: rotate 10s linear infinite;
+            z-index: -2;
+        }
+        
+        .certificate::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            background: white;
+            border-radius: 20px;
+            z-index: -1;
+        }
+        
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .header {
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .design-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .title {
+            font-size: 44px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            font-size: 22px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .content {
+            margin: 50px 0;
+            line-height: 2.0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .recipient {
+            font-size: 38px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff006e, #8338ec);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            border-bottom: 4px solid;
+            border-image: linear-gradient(45deg, #ff006e, #8338ec) 1;
+            display: inline-block;
+            margin: 30px 0;
+            padding-bottom: 10px;
+            min-width: 400px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .award-category {
+            font-size: 28px;
+            background: linear-gradient(45deg, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            margin: 30px 0;
+            min-width: 450px;
+            display: inline-block;
+            border-bottom: 2px solid #8338ec;
+            padding-bottom: 10px;
+        }
+        
+        .description {
+            font-size: 20px;
+            color: #555;
+            margin: 30px 0;
+            line-height: 1.6;
+        }
+        
+        .design-criteria {
+            background: linear-gradient(135deg, rgba(255,0,110,0.1), rgba(131,56,236,0.1));
+            padding: 30px;
+            border-radius: 20px;
+            margin: 30px 0;
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff) 1;
+        }
+        
+        .criteria-title {
+            background: linear-gradient(45deg, #ff006e, #8338ec);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 22px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .criteria-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            text-align: left;
+        }
+        
+        .criteria-item {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 12px;
+            color: #555;
+            font-size: 16px;
+            border-left: 4px solid #8338ec;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .date {
+            font-size: 20px;
+            color: #666;
+            margin: 40px 0;
+            font-weight: bold;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            align-items: end;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 250px;
+        }
+        
+        .signature-line {
+            border-bottom: 4px solid;
+            border-image: linear-gradient(45deg, #ff006e, #8338ec) 1;
+            margin-bottom: 10px;
+            height: 50px;
+        }
+        
+        .signature-title {
+            font-size: 18px;
+            color: #666;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .design-seal {
+            position: absolute;
+            bottom: 60px;
+            left: 60px;
+            width: 140px;
+            height: 140px;
+            border: 5px solid;
+            border-image: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff) 1;
+            border-radius: 50%;
+            background: linear-gradient(45deg, rgba(255,0,110,0.9), rgba(131,56,236,0.9));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 0 30px rgba(131,56,236,0.4);
+            z-index: 1;
+        }
+        
+        .floating-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+        
+        .shape {
+            position: absolute;
+            opacity: 0.1;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .shape:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            width: 60px;
+            height: 60px;
+            background: #ff006e;
+            border-radius: 50%;
+            animation-delay: 0s;
+        }
+        
+        .shape:nth-child(2) {
+            top: 20%;
+            right: 15%;
+            width: 40px;
+            height: 40px;
+            background: #8338ec;
+            border-radius: 50%;
+            animation-delay: 2s;
+        }
+        
+        .shape:nth-child(3) {
+            bottom: 20%;
+            left: 20%;
+            width: 50px;
+            height: 50px;
+            background: #3a86ff;
+            border-radius: 50%;
+            animation-delay: 4s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="floating-shapes">
+            <div class="shape"></div>
+            <div class="shape"></div>
+            <div class="shape"></div>
+        </div>
+        
+        <div class="header">
+            <div class="design-icon">🎨</div>
+            <div class="title">BEST DESIGN AWARD</div>
+            <div class="subtitle">Excellence in Creative Innovation</div>
+        </div>
+        
+        <div class="content">
+            <div class="description">This prestigious award is presented to</div>
+            
+            <div class="recipient" data-editable="designer-name">[Designer Name]</div>
+            
+            <div class="description">for outstanding creative excellence in</div>
+            
+            <div class="award-category" data-editable="design-category">[Design Category]</div>
+            
+            <div class="design-criteria">
+                <div class="criteria-title">Judging Criteria Excellence:</div>
+                <div class="criteria-list" data-editable="design-criteria">
+                    <div class="criteria-item">✦ Creative Innovation</div>
+                    <div class="criteria-item">✦ Visual Impact</div>
+                    <div class="criteria-item">✦ Technical Execution</div>
+                    <div class="criteria-item">✦ Originality</div>
+                    <div class="criteria-item">✦ User Experience</div>
+                    <div class="criteria-item">✦ Aesthetic Appeal</div>
+                </div>
+            </div>
+            
+            <div class="description">
+                This award recognizes exceptional talent, creativity, and innovative design thinking
+                that sets new standards in the field of design.
+            </div>
+            
+            <div class="date">
+                Awarded on: <span data-editable="award-date">[Date]</span>
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">DESIGN DIRECTOR</div>
+            </div>
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">CREATIVE HEAD</div>
+            </div>
+        </div>
+        
+        <div class="design-seal">BEST<br>DESIGN<br>AWARD</div>
+    </div>
+</body>
+</html>

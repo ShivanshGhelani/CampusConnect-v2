@@ -4,6 +4,36 @@ import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/axios';
 
 function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
+ // Load initial state from localStorage or use defaults
+  const [cssFramework, setCssFramework] = useState(() => {
+    return localStorage.getItem('htmlEditor_cssFramework') || 'tailwind'
+  })
+  const [pageOrientation, setPageOrientation] = useState(() => {
+    return localStorage.getItem('htmlEditor_pageOrientation') || 'portrait'
+  })
+  const [currentView, setCurrentView] = useState(() => {
+    return localStorage.getItem('htmlEditor_currentView') || 'editor'
+  })
+  const [htmlCode, setHtmlCode] = useState(() => {
+    return localStorage.getItem('htmlEditor_htmlCode') || ''
+  })
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem('htmlEditor_cssFramework', cssFramework)
+  }, [cssFramework])
+
+  useEffect(() => {
+    localStorage.setItem('htmlEditor_pageOrientation', pageOrientation)
+  }, [pageOrientation])
+
+  useEffect(() => {
+    localStorage.setItem('htmlEditor_currentView', currentView)
+  }, [currentView])
+
+  useEffect(() => {
+    localStorage.setItem('htmlEditor_htmlCode', htmlCode)
+  }, [htmlCode])
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -374,29 +404,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                             </div>
                         )}
 
-                        {/* Manage Certificates */}
-                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
-                            <div className="mb-1">
-                                <div className="mx-2 space-y-1">
-                                    <Link
-                                        to="/admin/certificates"
-                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/certificates') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25 hover:text-white' : ''
-                                            }`}
-                                        onClick={closeMobileMenu}
-                                    >
-                                        <div className="w-5 h-5 flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                            </svg>
-                                        </div>
-                                        <span className="font-semibold text-sm">Certificates</span>
-                                        {isActive('/admin/certificates') && (
-                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
-                                        )}
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
+
 
                         {/* Venue */}
                         {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
@@ -446,7 +454,52 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                             </div>
                         )}
-
+                        {/* Manage Certificates */}
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/certificates"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/certificates') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25 hover:text-white' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Certificates</span>
+                                        {isActive('/admin/certificates') && (
+                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+                        {/* New Template */}
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/new-template"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/new-template') ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25 hover:text-white' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">New Template</span>
+                                        {isActive('/admin/new-template') && (
+                                            <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                         {/* Editor */}
                         {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
                             <div className="mb-1">

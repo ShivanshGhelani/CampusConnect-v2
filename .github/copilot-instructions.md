@@ -1,229 +1,150 @@
 # CampusConnect - GitHub Copilot Instructions
 
 ## Project Overview
-CampusConnect is a comprehensive campus management system with FastAPI backend and modern frontend. Handle student registrations, event management, venue booking, certificate generation, and administrative functions.
+CampusConnect is a comprehensive university event management platform with FastAPI backend and React frontend. Features include student event registration, certificate generation with HTML templates, venue management, analytics, and role-based admin system.
 
-## Development Environment
-- **Backend**: FastAPI server running on port 8000 (external terminal)
-- **Frontend**: Running on port 3000 (external terminal)
-- **Shell**: PowerShell (use PowerShell syntax for commands)
-- **Database**: MongoDB with Motor async driver
-- **Authentication**: Session-based with role-based permissions
-
-## Important Development Notes
-
-### Testing & Server Management
-- **Servers Running**: Backend (port 8000) and Frontend (port 3000) run in external terminals
-- **Authentication Required**: ALL admin endpoints are protected and require credentials
-- **Testing**: Cannot test endpoints directly via web requests - they require authentication
-- **PowerShell**: Use PowerShell syntax for all terminal commands
-- **Server Restart**: Required when adding new methods to service classes (Python module caching)
-
-### API Endpoint Access
-- **Protected**: All `/api/v1/admin/*` endpoints require admin authentication
-- **Testing Method**: Use browser admin panel or authenticated tools like Postman
-- **Direct Testing**: Not possible via curl/Invoke-WebRequest without auth session
-
-## Key Architecture Patterns
-
-### 1. File Structure & Conventions
-```
-backend/
-├── services/           # Business logic (async MongoDB operations)
-├── routes/admin/      # Admin panel HTML routes
-├── api/v1/admin/     # Admin REST API endpoints
-├── models/           # Pydantic validation models
-├── dependencies/     # FastAPI dependencies (auth, etc.)
-└── utils/            # Helper utilities
-```
-
-### 2. Authentication System
-- **Protected Endpoints**: ALL admin endpoints require authentication
-- **Available Dependencies**:
-  - `require_admin()` - Basic admin authentication
-  - `require_super_admin_access()` - Super admin only
-  - `require_executive_admin_or_higher()` - Executive+ access
-  - `get_current_student()` - Student authentication
-- **Admin Model**: `AdminUser` with `.username` field (NOT user_id)
-
-### 3. Service Pattern
-- **Location**: `services/{feature}_service.py`
-- **Pattern**: Async methods, MongoDB operations
-- **Database**: Always check `if db is None` before operations
-- **Collections**: Use string names like "venues", "venue_bookings"
-- **Singleton**: Create instance at bottom: `feature_service = FeatureService()`
-
-### 4. Route Organization
-- **Admin HTML**: `routes/admin/{feature}.py` - Returns HTML templates
-- **Admin API**: `api/v1/admin/{feature}/__init__.py` - Returns JSON
-- **Client API**: `api/v1/client/{feature}/__init__.py` - Student-facing APIs
-
-## Database Schema (MongoDB Collections)
-
-### Core Collections:
-- **venues** - Venue information and details
-- **venue_bookings** - Venue booking records
-- **events** - Event data and metadata
-- **students** - Student information
-- **registrations** - Event registrations
-- **admin_users** - Administrative users
-
-### DateTime Handling:
-- **Storage**: Use ISO string format for consistency
-- **Comparison**: Always compare ISO strings, not datetime objects
-- **Pattern**: `datetime.utcnow().isoformat()` for current time
-
-## Testing & Development Commands
-
-### PowerShell Testing (Remember: Endpoints are PROTECTED)
-```powershell
-# Cannot test directly via Invoke-WebRequest - endpoints require authentication
-# Instead, test through browser at http://localhost:8000/admin/ after login
-# Or use authenticated sessions in testing tools like Postman
-
-# Server status check (unprotected)
-Invoke-WebRequest -Uri "http://127.0.0.1:8000/docs" -Headers @{"accept"="text/html"}
-
-# Test imports without running server
-python -c "import main; print('Backend imports successful')"
-```
-
-### Server Management
-```powershell
-# Backend already running on port 8000 (external terminal)
-# Frontend already running on port 3000 (external terminal)
-
-# Check if servers are running
-netstat -an | Select-String "8000"
-netstat -an | Select-String "3000"
-```
-
-## Recent Implementation Status
-
-### ✅ Venue Management System (July 6, 2025)
-- **Service**: `services/venue_service.py` ✅
-- **Admin Routes**: `routes/admin/venues.py` ✅  
-- **API Routes**: `api/v1/admin/venues/__init__.py` ✅
-- **Models**: `models/venue.py` ✅
-- **Features**:
-  - CRUD operations ✅
-  - Delete functionality ✅
-  - Flexible updates ✅
-  - Statistics endpoint ✅
-  - Booking system ✅
-
-### 🔄 Current Known Issues
-- Stats endpoint requires server restart to load new `get_statistics()` method
-- All endpoints require proper authentication - cannot test via direct web requests
-
-## Code Patterns & Standards
-
-### 1. Service Methods Pattern
-```python
-async def method_name(self, params) -> ReturnType:
-    try:
-        db = await self.get_database()
-        if db is None:
-            raise Exception("Database connection failed")
-        
-        # MongoDB operations here
-        result = await db[collection].operation()
-        return formatted_result
-        
-    except Exception as e:
-        logger.error(f"Error in method: {e}")
-        raise
-```
-
-### 2. Route Handler Pattern
-```python
-@router.get("/endpoint", response_model=ResponseModel)
-async def handler_name(
-    params: Type,
-    current_admin: AdminUser = Depends(require_admin)
-):
-    try:
-        result = await service.method(params)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-```
-
-### 3. Model Organization
-- **Create Models**: For POST requests (required fields)
-- **Update Models**: For PUT/PATCH (optional fields)
-- **Response Models**: For API responses (all fields)
-- **List Response**: Simplified for list endpoints
-
-### 4. Frontend Modal Background Pattern
-**IMPORTANT**: Always use transparent backdrop blur effect for modal backgrounds:
-```jsx
-// ✅ CORRECT - Modern transparent backdrop
-<div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
-
-// ❌ INCORRECT - Old solid background
-<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-```
-
-**Modal Background Standards:**
-- Use `backdrop-blur-sm bg-black/30` for transparent effect
-- Include `z-[99999]` for proper layering
-- Add `animate-in fade-in duration-200` for smooth transitions
-- Apply to ALL modals across the application (Venue, Students, Faculty, Events, etc.)
-
-## Common Fixes & Solutions
-
-### Import Errors
-- ❌ `get_current_admin_user` → ✅ `require_admin`
-- ❌ `current_admin["user_id"]` → ✅ `current_admin.username`
-
-### DateTime Issues
-- ❌ Store datetime objects → ✅ Store ISO strings
-- ❌ Compare mixed types → ✅ Compare ISO strings
-
-### Service Method Additions
-- When adding new methods to services, server restart required
-- Python modules are cached until restart
+## Technology Stack
+- **Backend**: FastAPI + MongoDB (Motor async driver) + Python 3.8+
+- **Frontend**: React 19 + Vite + Tailwind CSS 4 + Axios
+- **Database**: MongoDB (async operations via Motor)
+- **Authentication**: Session-based with role hierarchies (Student, Admin, Super Admin)
+- **Development**: PowerShell environment, virtual environment (`backend/campusconnect/`)
 
 ## Development Workflow
 
-### 1. Adding New Features
-1. Create/update model in `models/{feature}.py`
-2. Implement service in `services/{feature}_service.py`
-3. Add admin routes in `routes/admin/{feature}.py`
-4. Add API endpoints in `api/v1/admin/{feature}/__init__.py`
-5. Update admin router includes in `routes/admin/__init__.py`
-6. Test through browser (admin panel) or authenticated requests
+### Server Management
+- **Start**: Use `startApp.bat` (launches both frontend:3000 and backend:8000)
+- **Backend**: `uvicorn main:app --reload` in activated venv
+- **Frontend**: `npm start` via Vite dev server
+- **Testing**: All admin endpoints require authentication - use browser admin panel
+- **Server Restart**: Required when adding new service methods (Python module caching)
+
+## Core Architecture Patterns
+
+### 1. Service Layer (MongoDB Async)
+```python
+# services/{feature}_service.py
+class FeatureService:
+    async def get_database(self) -> AsyncIOMotorDatabase:
+        return await Database.get_database("CampusConnect")
+    
+    async def create_item(self, data: CreateModel) -> Dict[str, Any]:
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            # Use string collection names: "venues", "events", "students"
+            result = await db["collection_name"].insert_one(document)
+            return formatted_result
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            raise
+
+# Singleton pattern - create instance at bottom
+feature_service = FeatureService()
+```
+
+### 2. API Route Structure
+- **Admin HTML**: `routes/admin/{feature}.py` → Jinja2 templates
+- **Admin API**: `api/v1/admin/{feature}/__init__.py` → JSON responses
+- **Client API**: `api/v1/client/{feature}/__init__.py` → Student-facing
+- **Dependencies**: All admin routes use `Depends(require_admin)` or role-specific variants
+
+### 3. Frontend Certificate System
+```jsx
+// Certificate editor with HTML template manipulation
+// Uses data-editable attributes for dynamic fields
+// Export via html2canvas → PNG/PDF
+import { extractEditableElements } from '../utils/domUtils';
+import { exportFromIframe } from '../utils/exportUtils';
+
+// Modal backdrop standard (ALL modals must use):
+<div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
+```
+
+### 4. Authentication Hierarchy
+```python
+# dependencies/auth.py - Available functions:
+require_admin()                    # Basic admin access
+require_super_admin_access()       # Super admin only  
+require_executive_admin_or_higher() # Executive+ roles
+get_current_student()              # Student session
+get_current_admin()                # Admin session
+
+# Admin object has .username field (NOT user_id)
+current_admin.username  # ✅ Correct
+current_admin.user_id   # ❌ Wrong
+```
+
+## Key Project-Specific Patterns
+
+### 1. Certificate Management
+- **Templates**: HTML files with `data-editable` attributes for dynamic content
+- **Storage**: `frontend/public/templates/` (accessible via `/templates/filename`)
+- **Editor**: React component with iframe-based preview + live editing
+- **Export**: html2canvas → PNG/PDF download via `utils/exportUtils.js`
+- **API**: `certificate_templates.py` handles file upload/management
 
 ### 2. Database Operations
-- Always use async/await with Motor
-- Check database connection before operations
-- Use proper error handling and logging
-- Format responses for API consistency
+```python
+# DateTime handling - ALWAYS use ISO strings, never datetime objects
+created_at = datetime.utcnow().isoformat()  # ✅ Store as string
+comparison = booking_time > "2025-01-01T00:00:00"  # ✅ Compare strings
 
-### 3. Authentication Requirements
-- All admin endpoints must use auth dependencies
-- Student endpoints use different auth methods
-- Cannot bypass auth for testing - use proper login flow
+# MongoDB collections (string names):
+await db["venues"].find_one()           # Venue data
+await db["venue_bookings"].find()       # Booking records  
+await db["events"].insert_one()         # Event management
+await db["students"].update_one()       # Student profiles
+await db["admin_users"].find()          # Admin accounts
+```
 
-## URLs & Access Points
-- **Backend API**: http://127.0.0.1:8000
-- **Frontend**: http://127.0.0.1:3000  
-- **Admin Panel**: http://127.0.0.1:8000/admin/ (requires login)
-- **API Docs**: http://127.0.0.1:8000/docs (Swagger UI)
-- **API Base**: http://127.0.0.1:8000/api/v1/
+### 3. Testing & Debugging
+```powershell
+# Backend testing (auth required for all admin endpoints)
+python -c "import main; print('Imports successful')"
 
-## Current Focus Areas
-- Venue management system (recently implemented)
-- Authentication and permissions
-- Event management enhancement
-- Student registration workflows
-- Certificate generation system
+# Cannot test admin endpoints directly - they require session auth
+# Use browser: http://localhost:8000/admin/ after login
+# API docs: http://localhost:8000/docs (but endpoints still need auth)
+
+# Check server status
+netstat -an | Select-String "8000|3000"
+```
+
+### 4. Common Issues & Solutions
+- **Import Errors**: `get_current_admin_user` → use `require_admin` instead
+- **Admin Field**: Use `current_admin.username`, not `user_id`  
+- **Service Methods**: Server restart needed when adding new methods
+- **Modal Styling**: All modals MUST use `backdrop-blur-sm bg-black/30` background
+- **DateTime**: Store/compare ISO strings, not datetime objects
+
+## Critical File Locations
+
+### Backend Structure
+- **Entry Point**: `main.py` (FastAPI app with CORS, sessions, route includes)
+- **Database**: `config/database.py` (MongoDB Motor client singleton)
+- **Services**: `services/{feature}_service.py` (business logic, async MongoDB ops)
+- **Auth**: `dependencies/auth.py` (session-based auth dependencies)
+- **Models**: `models/{feature}.py` (Pydantic validation models)
+- **API**: `api/v1/admin/{feature}/__init__.py` (REST endpoints)
+- **HTML Routes**: `routes/admin/{feature}.py` (Jinja2 template rendering)
+
+### Frontend Structure  
+- **API Client**: `src/api/axios.js` (complete endpoint documentation + functions)
+- **Components**: `src/components/` (reusable UI components)
+- **Pages**: `src/pages/admin/` (admin dashboard pages)
+- **Utils**: `src/utils/domUtils.js` (certificate editor DOM manipulation)
+- **Export**: `src/utils/exportUtils.js` (html2canvas + jsPDF certificate export)
+- **Config**: `vite.config.js` (proxy setup, ngrok tunneling)
+
+### Key Examples
+- **Service Pattern**: `services/venue_service.py` (complete CRUD with MongoDB)
+- **API Pattern**: `api/v1/admin/venues/__init__.py` (protected endpoints)
+- **Certificate Editor**: `pages/admin/Editor.jsx` (HTML template editing)
+- **Certificate Management**: `pages/admin/ManageCertificates.jsx` (file upload/management)
 
 ---
 
-*Instructions for GitHub Copilot working on CampusConnect codebase*
-*Last Updated: July 6, 2025*
+*Updated for CampusConnect v2 - July 15, 2025*
+*Focus: Event management, certificate generation, venue booking*

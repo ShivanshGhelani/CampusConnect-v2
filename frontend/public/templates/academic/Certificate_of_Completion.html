@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate of Completion</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            background: white;
+            width: 800px;
+            height: 600px;
+            padding: 60px;
+            border: 15px solid #1e3c72;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+            position: relative;
+            text-align: center;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            right: 25px;
+            bottom: 25px;
+            border: 3px solid #ffd700;
+            border-radius: 10px;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+        }
+        
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .content {
+            margin: 40px 0;
+            line-height: 1.8;
+        }
+        
+        .recipient {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e3c72;
+            border-bottom: 2px solid #1e3c72;
+            display: inline-block;
+            margin: 20px 0;
+            padding-bottom: 5px;
+            min-width: 300px;
+        }
+        
+        .course {
+            font-size: 24px;
+            color: #2c5aa0;
+            font-weight: bold;
+            margin: 20px 0;
+            min-width: 400px;
+            display: inline-block;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        
+        .description {
+            font-size: 16px;
+            color: #555;
+            margin: 20px 0;
+        }
+        
+        .date {
+            font-size: 18px;
+            color: #666;
+            margin: 30px 0;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            align-items: end;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 200px;
+        }
+        
+        .signature-line {
+            border-bottom: 2px solid #1e3c72;
+            margin-bottom: 5px;
+            height: 40px;
+        }
+        
+        .signature-title {
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .seal {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 80px;
+            height: 80px;
+            border: 3px solid #ffd700;
+            border-radius: 50%;
+            background: #1e3c72;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="header">
+            <div class="title">CERTIFICATE OF COMPLETION</div>
+            <div class="subtitle">This is to certify that</div>
+        </div>
+        
+        <div class="content">
+            <div class="recipient" data-editable="recipient-name">[Student Name]</div>
+            
+            <div class="description">
+                has successfully completed the course
+            </div>
+            
+            <div class="course" data-editable="course-name">[Course Name]</div>
+            
+            <div class="description">
+                with dedication and has demonstrated proficiency in the subject matter.
+                This achievement reflects commitment to learning and academic excellence.
+            </div>
+            
+            <div class="date">
+                Completed on: <span data-editable="completion-date">[Date]</span>
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">INSTRUCTOR</div>
+            </div>
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">DIRECTOR</div>
+            </div>
+        </div>
+        
+        <div class="seal">OFFICIAL<br>SEAL</div>
+    </div>
+</body>
+</html>

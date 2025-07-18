@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate of Excellence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Palatino', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #8B0000 0%, #DC143C 50%, #FFD700 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            background: white;
+            width: 900px;
+            height: 700px;
+            padding: 80px;
+            border: 25px solid #8B0000;
+            border-radius: 30px;
+            box-shadow: 0 0 80px rgba(0,0,0,0.5);
+            position: relative;
+            text-align: center;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            right: 35px;
+            bottom: 35px;
+            border: 5px solid #FFD700;
+            border-radius: 20px;
+        }
+        
+        .certificate::after {
+            content: '';
+            position: absolute;
+            top: 45px;
+            left: 45px;
+            right: 45px;
+            bottom: 45px;
+            border: 2px solid #DC143C;
+            border-radius: 15px;
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        .excellence-crown {
+            font-size: 60px;
+            color: #FFD700;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .title {
+            font-size: 44px;
+            font-weight: bold;
+            color: #8B0000;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 3px;
+        }
+        
+        .subtitle {
+            font-size: 22px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .content {
+            margin: 50px 0;
+            line-height: 2.0;
+        }
+        
+        .recipient {
+            font-size: 40px;
+            font-weight: bold;
+            color: #8B0000;
+            border-bottom: 4px solid #8B0000;
+            display: inline-block;
+            margin: 30px 0;
+            padding-bottom: 10px;
+            min-width: 400px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .excellence-area {
+            font-size: 28px;
+            color: #DC143C;
+            font-weight: bold;
+            margin: 30px 0;
+            min-width: 500px;
+            display: inline-block;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 10px;
+        }
+        
+        .description {
+            font-size: 20px;
+            color: #555;
+            margin: 30px 0;
+            font-style: italic;
+            line-height: 1.6;
+        }
+        
+        .date {
+            font-size: 22px;
+            color: #666;
+            margin: 40px 0;
+            font-weight: bold;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 70px;
+            align-items: end;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 250px;
+        }
+        
+        .signature-line {
+            border-bottom: 4px solid #8B0000;
+            margin-bottom: 10px;
+            height: 50px;
+        }
+        
+        .signature-title {
+            font-size: 18px;
+            color: #666;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .excellence-seal {
+            position: absolute;
+            bottom: 60px;
+            left: 60px;
+            width: 120px;
+            height: 120px;
+            border: 5px solid #FFD700;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #8B0000, #DC143C);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        
+        .decorative-border {
+            position: absolute;
+            top: 55px;
+            left: 55px;
+            right: 55px;
+            bottom: 55px;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="%23FFD700" opacity="0.3"/></svg>') repeat;
+            background-size: 30px 30px;
+            pointer-events: none;
+            opacity: 0.1;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="decorative-border"></div>
+        
+        <div class="header">
+            <div class="excellence-crown">👑</div>
+            <div class="title">CERTIFICATE OF EXCELLENCE</div>
+            <div class="subtitle">Awarded for exceptional performance and dedication</div>
+        </div>
+        
+        <div class="content">
+            <div class="subtitle">This prestigious certificate is presented to</div>
+            
+            <div class="recipient" data-editable="recipient-name">[Student Name]</div>
+            
+            <div class="description">
+                in recognition of excellence and outstanding performance in
+            </div>
+            
+            <div class="excellence-area" data-editable="excellence-field">[Field of Excellence]</div>
+            
+            <div class="description">
+                This award represents the highest level of achievement and serves as recognition
+                of exceptional talent, dedication, and commitment to excellence.
+            </div>
+            
+            <div class="date">
+                Presented on: <span data-editable="presentation-date">[Date]</span>
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">CHANCELLOR</div>
+            </div>
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">VICE CHANCELLOR</div>
+            </div>
+        </div>
+        
+        <div class="excellence-seal">SUPREME<br>EXCELLENCE</div>
+    </div>
+</body>
+</html>

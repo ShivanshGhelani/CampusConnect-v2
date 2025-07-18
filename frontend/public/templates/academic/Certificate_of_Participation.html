@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate of Participation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(120deg, #4169E1 0%, #87CEEB 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            background: white;
+            width: 800px;
+            height: 600px;
+            padding: 60px;
+            border: 12px solid #4169E1;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.3);
+            position: relative;
+            text-align: center;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 2px solid #87CEEB;
+            border-radius: 10px;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+        }
+        
+        .participation-icon {
+            font-size: 40px;
+            color: #4169E1;
+            margin-bottom: 15px;
+        }
+        
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4169E1;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .content {
+            margin: 35px 0;
+            line-height: 1.7;
+        }
+        
+        .recipient {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4169E1;
+            border-bottom: 2px solid #4169E1;
+            display: inline-block;
+            margin: 20px 0;
+            padding-bottom: 5px;
+            min-width: 300px;
+        }
+        
+        .event {
+            font-size: 22px;
+            color: #2F4F4F;
+            font-weight: bold;
+            margin: 20px 0;
+            min-width: 400px;
+            display: inline-block;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        
+        .description {
+            font-size: 16px;
+            color: #555;
+            margin: 20px 0;
+        }
+        
+        .date-location {
+            font-size: 16px;
+            color: #666;
+            margin: 25px 0;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: center;
+            margin-top: 50px;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 200px;
+        }
+        
+        .signature-line {
+            border-bottom: 2px solid #4169E1;
+            margin-bottom: 5px;
+            height: 35px;
+        }
+        
+        .signature-title {
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .participation-seal {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            border: 3px solid #87CEEB;
+            border-radius: 50%;
+            background: #4169E1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="header">
+            <div class="participation-icon">🤝</div>
+            <div class="title">CERTIFICATE OF PARTICIPATION</div>
+            <div class="subtitle">Acknowledging active involvement and engagement</div>
+        </div>
+        
+        <div class="content">
+            <div class="description">This is to certify that</div>
+            
+            <div class="recipient" data-editable="participant-name">[Participant Name]</div>
+            
+            <div class="description">
+                has actively participated in
+            </div>
+            
+            <div class="event" data-editable="event-name">[Event/Program Name]</div>
+            
+            <div class="description">
+                Their participation demonstrates commitment to learning and
+                contributes to the success of the program.
+            </div>
+            
+            <div class="date-location">
+                <div>Date: <span data-editable="event-date">[Event Date]</span></div>
+                <div>Venue: <span data-editable="event-venue">[Event Venue]</span></div>
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">ORGANIZER</div>
+            </div>
+        </div>
+        
+        <div class="participation-seal">ACTIVE<br>PARTICIPANT</div>
+    </div>
+</body>
+</html>

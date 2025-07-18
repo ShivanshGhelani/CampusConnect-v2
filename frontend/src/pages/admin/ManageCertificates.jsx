@@ -8,11 +8,83 @@ import {
   previewCertificateTemplate 
 } from '../../api/axios';
 
+// Certificate categories configuration
+const CERTIFICATE_CATEGORIES = {
+  'academic': {
+    name: 'Academic / Educational',
+    icon: '🎓',
+    color: 'blue',
+    templates: [
+      'Certificate of Completion',
+      'Certificate of Achievement', 
+      'Certificate of Excellence',
+      'Certificate of Participation',
+      'Certificate of Merit',
+      'Certificate of Appreciation for Teachers',
+      'Internship Completion Certificate',
+      'Workshop/Seminar Attendance Certificate'
+    ]
+  },
+  'corporate': {
+    name: 'Corporate / Professional',
+    icon: '🏢',
+    color: 'indigo',
+    templates: [
+      'Employee of the Month Certificate',
+      'Certificate of Recognition',
+      'Team Contribution Certificate',
+      'Client Appreciation Certificate',
+      'Sales Performance Award',
+      'Leadership Excellence Certificate',
+      'Training Completion Certificate'
+    ]
+  },
+  'skill-based': {
+    name: 'Skill-based / Talent Programs',
+    icon: '🧠',
+    color: 'purple',
+    templates: [
+      'Coding Bootcamp Certificate',
+      'Language Course Certificate',
+      'Design/Art Contest Participation',
+      'Hackathon Winner/Participant Certificate',
+      'Startup Pitch Recognition'
+    ]
+  },
+  'creative': {
+    name: 'Creative / Custom',
+    icon: '🎨',
+    color: 'pink',
+    templates: [
+      'Best Design Award',
+      'Innovation Award',
+      'Volunteer Service Certificate',
+      'Student Council Membership',
+      'Club Membership / Role Certificates'
+    ]
+  },
+  'event-competition': {
+    name: 'Event / Competition Based',
+    icon: '🏆',
+    color: 'yellow',
+    templates: [
+      '1st / 2nd / 3rd Place Certificate',
+      'Sports Event Certificate',
+      'Quiz / Olympiad Participation',
+      'Debate / Elocution Certificate',
+      'Science/Tech Fest Participation'
+    ]
+  }
+};
+
 function ManageCertificates() {
   // State for template management
   const [templates, setTemplates] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [templateName, setTemplateName] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('academic');
+  const [selectedTemplateType, setSelectedTemplateType] = useState('');
+  const [customTemplateName, setCustomTemplateName] = useState('');
   const [description, setDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -20,6 +92,8 @@ function ManageCertificates() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [statistics, setStatistics] = useState(null);
+  const [activeTab, setActiveTab] = useState('upload');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
 
   // Effects
   useEffect(() => {
@@ -98,7 +172,12 @@ function ManageCertificates() {
     }
 
     if (!templateName.trim()) {
-      setError('Please enter a template name.');
+      setError('Please enter a template name or select a template type.');
+      return;
+    }
+
+    if (!selectedCategory) {
+      setError('Please select a category.');
       return;
     }
 
@@ -109,10 +188,11 @@ function ManageCertificates() {
       const uploadedTemplate = await uploadCertificateTemplate(
         selectedFile,
         templateName.trim(),
-        description.trim()
+        description.trim(),
+        selectedCategory
       );
 
-      setSuccess('Certificate template uploaded successfully!');
+      setSuccess(`Template "${templateName}" uploaded successfully to ${CERTIFICATE_CATEGORIES[selectedCategory].name}!`);
       resetForm();
       loadTemplates();
       loadStatistics();
@@ -149,6 +229,9 @@ function ManageCertificates() {
   const resetForm = () => {
     setSelectedFile(null);
     setTemplateName('');
+    setSelectedCategory('academic');
+    setSelectedTemplateType('');
+    setCustomTemplateName('');
     setDescription('');
   };
 
@@ -214,40 +297,46 @@ function ManageCertificates() {
   };
   return (
     <AdminLayout pageTitle="Certificate Templates">
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <i className="fas fa-file-code text-white text-2xl"></i>
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                <i className="fas fa-file-certificate text-white"></i>
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                  Certificate Templates
-                </h1>
-                <p className="text-gray-600 mt-1 text-lg">Upload and manage HTML certificate templates</p>
+                <h1 className="text-2xl font-bold text-gray-900">Certificate Templates</h1>
+                <p className="text-sm text-gray-600">Manage and organize certificate templates by category</p>
+              </div>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{statistics?.total_templates || 0}</div>
+                <div className="text-gray-500">Templates</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{statistics?.total_size || '0 MB'}</div>
+                <div className="text-gray-500">Storage</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto p-6">
           {/* Alert Messages */}
           {success && (
             <div className="fixed top-4 right-4 z-[99999] animate-in slide-in-from-right duration-300">
-              <div className="bg-white border border-green-200 rounded-xl shadow-xl p-4 flex items-center space-x-3 max-w-sm">
+              <div className="bg-white border border-green-200 rounded-lg shadow-lg p-4 flex items-center space-x-3 max-w-sm">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                   <i className="fas fa-check text-green-600 text-sm"></i>
                 </div>
                 <div className="flex-1">
                   <p className="text-green-800 font-medium text-sm">{success}</p>
                 </div>
-                <button
-                  onClick={() => setSuccess('')}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                >
+                <button onClick={() => setSuccess('')} className="text-gray-400 hover:text-gray-600">
                   <i className="fas fa-times text-sm"></i>
                 </button>
               </div>
@@ -256,350 +345,340 @@ function ManageCertificates() {
 
           {error && (
             <div className="fixed top-4 right-4 z-[99999] animate-in slide-in-from-right duration-300">
-              <div className="bg-white border border-red-200 rounded-xl shadow-xl p-4 flex items-center space-x-3 max-w-sm">
+              <div className="bg-white border border-red-200 rounded-lg shadow-lg p-4 flex items-center space-x-3 max-w-sm">
                 <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
                   <i className="fas fa-exclamation-triangle text-red-600 text-sm"></i>
                 </div>
                 <div className="flex-1">
                   <p className="text-red-800 font-medium text-sm">{error}</p>
                 </div>
-                <button
-                  onClick={() => setError('')}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                >
+                <button onClick={() => setError('')} className="text-gray-400 hover:text-gray-600">
                   <i className="fas fa-times text-sm"></i>
                 </button>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="p-8">
-              {/* Template Statistics Cards */}
-              <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-blue-100 text-sm font-medium">Total Templates</p>
-                      <p className="text-3xl font-bold">{statistics?.total_templates || 0}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <i className="fas fa-file-code text-xl"></i>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-emerald-100 text-sm font-medium">Storage Used</p>
-                      <p className="text-3xl font-bold">{statistics?.total_size || '0 MB'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <i className="fas fa-hdd text-xl"></i>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-6 text-white">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-purple-100 text-sm font-medium">Active Templates</p>
-                      <p className="text-3xl font-bold">{templates.length}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <i className="fas fa-check-circle text-xl"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Upload Section */}
-              <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                {/* Upload Form */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <i className="fas fa-cloud-upload-alt text-blue-600 me-3"></i>
-                    Upload New Template
-                  </h3>
+          {/* Tabs */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 px-6">
+                <button
+                  onClick={() => setActiveTab('upload')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'upload'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <i className="fas fa-upload mr-2"></i>
+                  Upload Template
+                </button>
+                <button
+                  onClick={() => setActiveTab('browse')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'browse'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <i className="fas fa-folder-open mr-2"></i>
+                  Browse Templates
+                </button>
+              </nav>
+            </div>
 
-                  <form onSubmit={handleUpload} className="space-y-6">
-                    {/* Template Name */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Template Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={templateName}
-                        onChange={(e) => setTemplateName(e.target.value)}
-                        placeholder="e.g., Event Participation Certificate"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        This name will be used for the file. Special characters will be replaced.
-                      </p>
-                    </div>
+            {/* Tab Content */}
+            <div className="p-6">
+              {activeTab === 'upload' && (
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Upload Form */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload New Template</h3>
+                    
+                    <form onSubmit={handleUpload} className="space-y-4">
+                      {/* Category Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Category <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={selectedCategory}
+                          onChange={(e) => {
+                            setSelectedCategory(e.target.value);
+                            setSelectedTemplateType('');
+                            setCustomTemplateName('');
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          required
+                        >
+                          {Object.entries(CERTIFICATE_CATEGORIES).map(([key, category]) => (
+                            <option key={key} value={key}>
+                              {category.icon} {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Optional description for this template..."
-                        rows="3"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 resize-none"
-                      />
-                    </div>
+                      {/* Template Type Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Template Type <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={selectedTemplateType}
+                          onChange={(e) => {
+                            setSelectedTemplateType(e.target.value);
+                            if (e.target.value !== 'custom') {
+                              setTemplateName(e.target.value);
+                              setCustomTemplateName('');
+                            } else {
+                              setTemplateName('');
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          required
+                        >
+                          <option value="">Select template type...</option>
+                          {CERTIFICATE_CATEGORIES[selectedCategory]?.templates.map((template, index) => (
+                            <option key={index} value={template}>
+                              {template}
+                            </option>
+                          ))}
+                          <option value="custom">Custom Template Name</option>
+                        </select>
+                      </div>
 
-                    {/* File Upload */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        HTML Template File <span className="text-red-500">*</span>
-                      </label>
-                      <div
-                        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
-                          selectedFile 
-                            ? 'border-green-300 bg-green-50' 
-                            : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+                      {/* Custom Template Name */}
+                      {selectedTemplateType === 'custom' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Custom Template Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={customTemplateName}
+                            onChange={(e) => {
+                              setCustomTemplateName(e.target.value);
+                              setTemplateName(e.target.value);
+                            }}
+                            placeholder="Enter custom template name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Optional description..."
+                          rows="2"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                        />
+                      </div>
+
+                      {/* File Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          HTML File <span className="text-red-500">*</span>
+                        </label>
+                        <div
+                          className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
+                            selectedFile 
+                              ? 'border-green-300 bg-green-50' 
+                              : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+                          }`}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          onClick={() => document.getElementById('fileInput').click()}
+                        >
+                          {selectedFile ? (
+                            <div className="text-green-600">
+                              <i className="fas fa-check-circle text-2xl mb-2"></i>
+                              <p className="font-medium">{selectedFile.name}</p>
+                              <p className="text-sm text-green-500">
+                                {formatFileSize(selectedFile.size)}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedFile(null);
+                                }}
+                                className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                              >
+                                Remove file
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">
+                              <i className="fas fa-cloud-upload-alt text-3xl mb-2 text-gray-400"></i>
+                              <p className="font-medium">Drop HTML file here or click to browse</p>
+                              <p className="text-sm text-gray-400">HTML files only, max 10MB</p>
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          id="fileInput"
+                          accept=".html,.htm"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={isUploading || !selectedFile || !templateName.trim()}
+                        className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                          isUploading || !selectedFile || !templateName.trim()
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg'
                         }`}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onClick={() => document.getElementById('fileInput').click()}
                       >
-                        {selectedFile ? (
-                          <div className="text-green-600">
-                            <i className="fas fa-check-circle text-3xl mb-3"></i>
-                            <p className="font-semibold text-lg mb-2">File Selected!</p>
-                            <p className="text-sm mb-2">{selectedFile.name}</p>
-                            <p className="text-xs text-green-500">
-                              Size: {formatFileSize(selectedFile.size)}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFile(null);
-                              }}
-                              className="mt-3 text-xs text-red-600 hover:text-red-800 underline"
-                            >
-                              Remove file
-                            </button>
-                          </div>
+                        {isUploading ? (
+                          <>
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                            Uploading...
+                          </>
                         ) : (
-                          <div className="text-gray-500">
-                            <i className="fas fa-cloud-upload-alt text-4xl mb-4 text-gray-400"></i>
-                            <p className="text-lg font-semibold mb-2">Drag & drop your HTML file here</p>
-                            <p className="text-sm mb-4">or click to browse</p>
-                            <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
-                              <i className="fas fa-file-code me-2"></i>
-                              HTML files only (.html, .htm)
+                          <>
+                            <i className="fas fa-upload mr-2"></i>
+                            Upload Template
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Category Guide */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Categories Guide</h3>
+                    <div className="space-y-3">
+                      {Object.entries(CERTIFICATE_CATEGORIES).map(([key, category]) => (
+                        <div 
+                          key={key}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                            selectedCategory === key 
+                              ? `border-${category.color}-200 bg-${category.color}-50` 
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => {
+                            setSelectedCategory(key);
+                            setSelectedTemplateType('');
+                            setCustomTemplateName('');
+                          }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <span className="text-2xl">{category.icon}</span>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{category.name}</h4>
+                              <p className="text-sm text-gray-600">{category.templates.length} template types</p>
                             </div>
                           </div>
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        id="fileInput"
-                        accept=".html,.htm"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
+                        </div>
+                      ))}
                     </div>
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={isUploading || !selectedFile || !templateName.trim()}
-                      className={`w-full py-3 px-6 rounded-xl font-semibold text-white transition-all duration-200 ${
-                        isUploading || !selectedFile || !templateName.trim()
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 shadow-lg hover:shadow-xl'
-                      }`}
-                    >
-                      {isUploading ? (
-                        <>
-                          <i className="fas fa-spinner fa-spin me-2"></i>
-                          Uploading Template...
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-upload me-2"></i>
-                          Upload Template
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-
-                {/* Quick Tips */}
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl border border-purple-200 p-6">
-                  <h3 className="text-xl font-bold text-purple-900 mb-6 flex items-center">
-                    <i className="fas fa-lightbulb text-yellow-500 me-3"></i>
-                    Template Guidelines
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 me-3 flex-shrink-0"></div>
-                      <div>
-                        <p className="font-semibold text-purple-900 text-sm">Use placeholders</p>
-                        <p className="text-purple-700 text-xs">
-                          Use [Student Name], [Event Name], [Date] etc. for dynamic content
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 me-3 flex-shrink-0"></div>
-                      <div>
-                        <p className="font-semibold text-purple-900 text-sm">Responsive design</p>
-                        <p className="text-purple-700 text-xs">
-                          Ensure your template works on different screen sizes
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 me-3 flex-shrink-0"></div>
-                      <div>
-                        <p className="font-semibold text-purple-900 text-sm">Print-friendly</p>
-                        <p className="text-purple-700 text-xs">
-                          Use CSS print styles for better print output
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 me-3 flex-shrink-0"></div>
-                      <div>
-                        <p className="font-semibold text-purple-900 text-sm">File size limit</p>
-                        <p className="text-purple-700 text-xs">
-                          Maximum 10MB per template file
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 bg-white/50 rounded-xl p-4">
-                    <p className="text-sm font-semibold text-purple-900 mb-2">
-                      <i className="fas fa-download me-2"></i>
-                      Sample Template
-                    </p>
-                    <p className="text-xs text-purple-700 mb-3">
-                      Download our sample template to get started quickly
-                    </p>
-                    <a
-                      href="/sample-certificate-template.html"
-                      download
-                      className="inline-flex items-center px-3 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors duration-200"
-                    >
-                      <i className="fas fa-download me-2"></i>
-                      Download Sample
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              {/* Templates List */}
-              {templates.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <i className="fas fa-list text-gray-600 me-3"></i>
-                      Uploaded Templates ({templates.length})
-                    </h3>
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Template
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Size
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Uploaded
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {templates.map((template, index) => (
-                          <tr key={template._id} className="hover:bg-gray-50 transition-colors duration-150">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center">
-                                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center me-3">
-                                  <i className="fas fa-file-code text-white text-sm"></i>
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-gray-900">{template.name}</p>
-                                  <p className="text-sm text-gray-500">{template.filename}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-700">
-                              {template.formatted_size}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                              {formatDate(template.uploaded_at)}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center space-x-3">
-                                <button
-                                  onClick={() => handlePreview(template)}
-                                  className="text-blue-600 hover:text-blue-800 transition-colors duration-150"
-                                  title="Preview"
-                                >
-                                  <i className="fas fa-eye"></i>
-                                </button>
-                                <button
-                                  onClick={() => copyTemplateUrl(template)}
-                                  className="text-green-600 hover:text-green-800 transition-colors duration-150"
-                                  title="Copy URL"
-                                >
-                                  <i className="fas fa-copy"></i>
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(template.name)}
-                                  className="text-red-600 hover:text-red-800 transition-colors duration-150"
-                                  title="Delete"
-                                >
-                                  <i className="fas fa-trash"></i>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               )}
 
-              {/* Empty State */}
-              {templates.length === 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fas fa-file-code text-2xl text-gray-400"></i>
+              {activeTab === 'browse' && (
+                <div>
+                  {/* Category Filter */}
+                  <div className="flex items-center space-x-4 mb-6">
+                    <label className="text-sm font-medium text-gray-700">Filter by category:</label>
+                    <select
+                      value={selectedCategoryFilter}
+                      onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="all">All Categories</option>
+                      {Object.entries(CERTIFICATE_CATEGORIES).map(([key, category]) => (
+                        <option key={key} value={key}>
+                          {category.icon} {category.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No templates yet</h3>
-                  <p className="text-gray-500 mb-6">Upload your first HTML certificate template to get started.</p>
-                  <button
-                    onClick={() => document.getElementById('fileInput').click()}
-                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200"
-                  >
-                    <i className="fas fa-plus me-2"></i>
-                    Upload Your First Template
-                  </button>
+
+                  {/* Templates List */}
+                  {templates.length > 0 ? (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {templates
+                        .filter(template => 
+                          selectedCategoryFilter === 'all' || 
+                          template.category === selectedCategoryFilter
+                        )
+                        .map((template, index) => (
+                        <div key={template._id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-lg">
+                                {CERTIFICATE_CATEGORIES[template.category || 'academic']?.icon || '📄'}
+                              </span>
+                              <div>
+                                <h4 className="font-medium text-gray-900 text-sm">{template.name}</h4>
+                                <p className="text-xs text-gray-500">{template.category || 'academic'}</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-gray-500 mb-3">
+                            <div>Size: {template.formatted_size}</div>
+                            <div>Added: {formatDate(template.uploaded_at)}</div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handlePreview(template)}
+                              className="flex-1 py-1.5 px-2 bg-blue-50 text-blue-600 text-xs font-medium rounded hover:bg-blue-100 transition-colors duration-150"
+                              title="Preview"
+                            >
+                              <i className="fas fa-eye mr-1"></i>
+                              Preview
+                            </button>
+                            <button
+                              onClick={() => copyTemplateUrl(template)}
+                              className="py-1.5 px-2 bg-green-50 text-green-600 text-xs font-medium rounded hover:bg-green-100 transition-colors duration-150"
+                              title="Copy URL"
+                            >
+                              <i className="fas fa-copy"></i>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(template.name)}
+                              className="py-1.5 px-2 bg-red-50 text-red-600 text-xs font-medium rounded hover:bg-red-100 transition-colors duration-150"
+                              title="Delete"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fas fa-file-certificate text-2xl text-gray-400"></i>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No templates yet</h3>
+                      <p className="text-gray-500 mb-4">Upload your first certificate template to get started.</p>
+                      <button
+                        onClick={() => setActiveTab('upload')}
+                        className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                      >
+                        <i className="fas fa-plus mr-2"></i>
+                        Upload Template
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -609,23 +688,23 @@ function ManageCertificates() {
         {/* Preview Modal */}
         {previewModalOpen && previewTemplate && (
           <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full h-full max-w-7xl max-h-[90vh] m-4 overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                  <i className="fas fa-eye text-blue-600 me-3"></i>
-                  Preview: {previewTemplate.name}
+            <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-6xl max-h-[90vh] m-4 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <i className="fas fa-eye text-blue-600 mr-2"></i>
+                  {previewTemplate.name}
                 </h3>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={() => copyTemplateUrl(previewTemplate)}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors duration-200"
                   >
-                    <i className="fas fa-copy me-2"></i>
+                    <i className="fas fa-copy mr-1"></i>
                     Copy URL
                   </button>
                   <button
                     onClick={() => setPreviewModalOpen(false)}
-                    className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors duration-200"
                   >
                     <i className="fas fa-times"></i>
                   </button>

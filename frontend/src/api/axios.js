@@ -144,6 +144,25 @@ const getApiBaseUrl = () => {
   const currentHost = window.location.hostname;
   const currentProtocol = window.location.protocol;
   
+  if (!currentHost) {
+    console.warn('No hostname found. Defaulting to localhost.');
+  }
+  if (!currentProtocol) {
+    console.warn('No protocol found. Defaulting to http://');
+    return 'http://localhost:8000';
+  }
+
+
+  // If accessing via NGROX, use NGROX  URL
+  if (currentHost === 'jaguar-giving-awfully.ngrok-free.app' || currentHost === 'jaguar-giving-awfully.ngrok-free.com') {
+    return 'http://jaguar-giving-awfully.ngrok-free.app';
+  }
+
+  // If accessing via NGROX, use NGROX  URL
+  if (currentHost === 'dominant-patient-zebra.ngrok-free.app' || currentHost === 'dominant-patient-zebra.ngrok-free.com') {
+    return 'http://dominant-patient-zebra.ngrok-free.app';
+  }
+
   // If accessing via localhost, use localhost
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
     return 'http://localhost:8000';
@@ -443,11 +462,12 @@ export const getCertificateTemplateStatistics = async () => {
   }
 };
 
-export const uploadCertificateTemplate = async (file, templateName, description = '') => {
+export const uploadCertificateTemplate = async (file, templateName, description = '', category = 'academic') => {
   try {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('template_name', templateName);
+    formData.append('category', category);
     if (description) {
       formData.append('description', description);
     }

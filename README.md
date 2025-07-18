@@ -34,15 +34,15 @@ CampusConnect is a modern, full-stack web application designed to streamline cam
 - **Font Awesome** - Icon library for beautiful UI elements
 
 ### Backend
-- **Python Flask** - Lightweight and flexible web framework
-- **SQLAlchemy** - Object-relational mapping library
-- **Flask-CORS** - Cross-origin resource sharing support
-- **Werkzeug** - WSGI utility library for Python
-- **Jinja2** - Template engine for Python
+- **FastAPI** - Modern, high-performance web framework for Python
+- **Motor** - Async MongoDB driver for Python
+- **Pydantic** - Data validation and settings management using Python type annotations
+- **Uvicorn** - Lightning-fast ASGI server implementation
+- **Jinja2** - Template engine for dynamic HTML rendering
 
 ### Database
-- **SQLite** - Lightweight, serverless database (development)
-- **PostgreSQL** - Production-ready relational database (production)
+- **MongoDB** - NoSQL document database for flexible data storage
+- **Motor** - Async MongoDB driver for high-performance operations
 
 ## 🚀 Getting Started
 
@@ -62,10 +62,11 @@ CampusConnect is a modern, full-stack web application designed to streamline cam
 2. **Backend Setup**
    ```bash
    cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv campusconnect
+   campusconnect\Scripts\activate  # On Windows
+   # source campusconnect/bin/activate  # On Linux/Mac
    pip install -r requirements.txt
-   python main.py
+   uvicorn main:app --reload
    ```
 
 3. **Frontend Setup**
@@ -77,20 +78,23 @@ CampusConnect is a modern, full-stack web application designed to streamline cam
 
 4. **Access the Application**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs (Swagger UI)
 
 ## 📁 Project Structure
 
 ```
 CampusConnect/
-├── backend/                 # Flask backend application
+├── backend/                 # FastAPI backend application
 │   ├── main.py             # Application entry point
 │   ├── config/             # Configuration files
-│   ├── models/             # Database models
-│   ├── routes/             # API routes
-│   ├── services/           # Business logic
+│   ├── models/             # Pydantic data models
+│   ├── routes/             # HTML route handlers
+│   ├── api/                # RESTful API endpoints
+│   ├── services/           # Business logic layer
+│   ├── dependencies/       # FastAPI dependencies (auth, etc.)
 │   ├── utils/              # Utility functions
-│   ├── templates/          # Email and certificate templates
+│   ├── templates/          # Jinja2 templates
 │   ├── static/             # Static files (CSS, JS, images)
 │   └── requirements.txt    # Python dependencies
 │
@@ -138,31 +142,51 @@ Create `.env` files in both backend and frontend directories:
 
 **Backend (.env)**
 ```
-FLASK_ENV=development
-SECRET_KEY=your-secret-key
-DATABASE_URL=sqlite:///campus_connect.db
+ENVIRONMENT=development
+MONGODB_URL=mongodb://localhost:27017
+SECRET_KEY=your-secret-key-here
 SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
 EMAIL_USERNAME=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
+CORS_ORIGINS=http://localhost:3000
 ```
 
 **Frontend (.env)**
 ```
-REACT_APP_API_BASE_URL=http://localhost:5000
+REACT_APP_API_BASE_URL=http://localhost:8000
 REACT_APP_UNSPLASH_ACCESS_KEY=your-unsplash-key
 ```
 
 ## 📚 API Documentation
 
-The backend provides RESTful APIs for:
-- User authentication and management
-- Event CRUD operations
-- Registration management
-- Certificate generation
-- Admin operations
+The backend provides RESTful APIs built with FastAPI for:
+- User authentication and session management
+- Event CRUD operations with advanced filtering
+- Student and faculty management
+- Registration workflow automation
+- Certificate generation and template management
+- Venue booking and management
+- Admin operations with role-based access control
 
-API endpoints are documented and can be tested using tools like Postman or curl.
+API endpoints are automatically documented and can be explored using:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+## 🏗️ Architecture Highlights
+
+### Modern Backend Stack
+- **FastAPI**: High-performance, automatic API documentation
+- **MongoDB**: Flexible document storage with async operations
+- **Motor**: Async MongoDB driver for optimal performance
+- **Pydantic**: Type-safe data validation and serialization
+
+### Advanced Features
+- **Session-based Authentication**: Secure user session management
+- **Role-based Permissions**: Student, Admin, Super Admin hierarchies
+- **Certificate Templates**: HTML-based dynamic certificate generation
+- **Real-time Analytics**: Event and registration analytics dashboard
+- **Email Automation**: Automated notifications and reminders
 
 ## 🤝 Contributing
 
@@ -194,9 +218,11 @@ For support and questions:
 
 ## 🎉 Acknowledgments
 
+- [FastAPI](https://fastapi.tiangolo.com/) - For the modern, high-performance web framework
 - [React.js](https://reactjs.org/) - For the amazing frontend framework
-- [Flask](https://flask.palletsprojects.com/) - For the lightweight backend framework
+- [MongoDB](https://www.mongodb.com/) - For the flexible document database
 - [Tailwind CSS](https://tailwindcss.com/) - For the beautiful utility-first CSS
+- [Motor](https://motor.readthedocs.io/) - For the async MongoDB driver
 - [Unsplash](https://unsplash.com/) - For the stunning background images
 - [Font Awesome](https://fontawesome.com/) - For the comprehensive icon library
 

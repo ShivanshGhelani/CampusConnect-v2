@@ -13,11 +13,12 @@ export default defineConfig({
     host: true,
     allowedHosts: [
       'localhost',
-      'jaguar-giving-awfully.ngrok-free.app'
+      'jaguar-giving-awfully.ngrok-free.app',
+      'dominant-patient-zebra.ngrok-free.app',
     ],
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8000','dominant-patient-zebra.ngrok-free.app':'jaguar-giving-awfully.ngrok-free.app',
         changeOrigin: true,
         secure: false,
       }

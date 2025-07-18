@@ -29,6 +29,7 @@ import ExportData from '../pages/admin/ExportData';
 import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import Editor from '../pages/admin/Editor';
+import NewTemplate from '../pages/admin/NewTemplate';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -199,6 +200,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <ManageCertificates />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/new-template"
+          element={
+            <ProtectedRoute userType="admin">
+              <NewTemplate />
             </ProtectedRoute>
           }
         />

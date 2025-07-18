@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coding Bootcamp Certificate</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: linear-gradient(135deg, #0F0F23 0%, #1E1E3F 50%, #2D1B69 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .certificate {
+            background: #1A1A2E;
+            color: #EAEAEA;
+            width: 900px;
+            height: 700px;
+            padding: 80px;
+            border: 20px solid #16213E;
+            border-radius: 30px;
+            box-shadow: 0 0 80px rgba(0,255,0,0.3);
+            position: relative;
+            text-align: center;
+        }
+        
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            bottom: 30px;
+            border: 3px solid #00FF41;
+            border-radius: 20px;
+            box-shadow: inset 0 0 30px rgba(0,255,65,0.2);
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        .code-icon {
+            font-size: 50px;
+            color: #00FF41;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0,255,65,0.5);
+        }
+        
+        .title {
+            font-size: 40px;
+            font-weight: bold;
+            color: #00FF41;
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(0,255,65,0.5);
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #CCCCCC;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .bootcamp-info {
+            background: #0E4B99;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border: 2px solid #00FF41;
+        }
+        
+        .content {
+            margin: 50px 0;
+            line-height: 2.0;
+        }
+        
+        .recipient {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00FF41;
+            border-bottom: 3px solid #00FF41;
+            display: inline-block;
+            margin: 30px 0;
+            padding-bottom: 10px;
+            min-width: 400px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0,255,65,0.3);
+        }
+        
+        .program {
+            font-size: 26px;
+            color: #4A9EFF;
+            font-weight: bold;
+            margin: 25px 0;
+            min-width: 450px;
+            display: inline-block;
+            border-bottom: 2px solid #4A9EFF;
+            padding-bottom: 8px;
+        }
+        
+        .description {
+            font-size: 18px;
+            color: #CCCCCC;
+            margin: 25px 0;
+            line-height: 1.6;
+        }
+        
+        .skills-section {
+            background: #16213E;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border: 2px solid #4A9EFF;
+        }
+        
+        .skills-title {
+            color: #00FF41;
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            text-align: left;
+        }
+        
+        .skill-item {
+            background: #0E4B99;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #EAEAEA;
+            font-size: 14px;
+            border: 1px solid #00FF41;
+        }
+        
+        .duration {
+            font-size: 18px;
+            color: #4A9EFF;
+            margin: 30px 0;
+            font-weight: bold;
+        }
+        
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            align-items: end;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 220px;
+        }
+        
+        .signature-line {
+            border-bottom: 3px solid #00FF41;
+            margin-bottom: 10px;
+            height: 45px;
+        }
+        
+        .signature-title {
+            font-size: 16px;
+            color: #CCCCCC;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .coding-seal {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            width: 120px;
+            height: 120px;
+            border: 4px solid #00FF41;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #0E4B99, #16213E);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00FF41;
+            font-weight: bold;
+            font-size: 16px;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 0 25px rgba(0,255,65,0.4);
+        }
+        
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.05;
+            background-image: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                #00FF41 2px,
+                #00FF41 4px
+            );
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <div class="matrix-bg"></div>
+        
+        <div class="header">
+            <div class="code-icon">💻</div>
+            <div class="title">&lt;CODING BOOTCAMP/&gt;</div>
+            <div class="subtitle">Certificate of Completion</div>
+        </div>
+        
+        <div class="bootcamp-info">
+            <div style="font-size: 18px; font-weight: bold; color: #00FF41;">INTENSIVE PROGRAMMING BOOTCAMP</div>
+            <div style="font-size: 14px; color: #CCCCCC; margin-top: 5px;">Full-Stack Development Program</div>
+        </div>
+        
+        <div class="content">
+            <div class="description">console.log("This certifies that");</div>
+            
+            <div class="recipient" data-editable="developer-name">[Developer Name]</div>
+            
+            <div class="description">has successfully completed the intensive</div>
+            
+            <div class="program" data-editable="bootcamp-program">[Bootcamp Program]</div>
+            
+            <div class="skills-section">
+                <div class="skills-title">Technical Skills Mastered:</div>
+                <div class="skills-grid" data-editable="skills-mastered">
+                    <div class="skill-item">JavaScript ES6+</div>
+                    <div class="skill-item">React.js</div>
+                    <div class="skill-item">Node.js</div>
+                    <div class="skill-item">MongoDB</div>
+                    <div class="skill-item">Express.js</div>
+                    <div class="skill-item">Git & GitHub</div>
+                    <div class="skill-item">RESTful APIs</div>
+                    <div class="skill-item">Responsive Design</div>
+                    <div class="skill-item">Testing & Debugging</div>
+                </div>
+            </div>
+            
+            <div class="duration">
+                Duration: <span data-editable="program-duration">[Program Duration]</span> | 
+                Hours: <span data-editable="total-hours">[Total Hours]</span>
+            </div>
+            
+            <div class="description">
+                Successfully completed all coding challenges, projects, and assessments.
+                Ready to contribute as a full-stack developer.
+            </div>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">LEAD INSTRUCTOR</div>
+            </div>
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-title">PROGRAM DIRECTOR</div>
+            </div>
+        </div>
+        
+        <div class="coding-seal">CERTIFIED<br>DEVELOPER</div>
+    </div>
+</body>
+</html>
