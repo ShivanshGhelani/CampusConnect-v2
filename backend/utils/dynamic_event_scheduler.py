@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import logging
 from config.database import Database
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 
 # Configure logging
 logging.basicConfig(

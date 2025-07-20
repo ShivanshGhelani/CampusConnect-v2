@@ -3,7 +3,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from models.admin_user import AdminUser, AdminRole
 from datetime import datetime
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from passlib.context import CryptContext
 from typing import Union
 import logging

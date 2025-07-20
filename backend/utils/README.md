@@ -146,7 +146,7 @@ utils/
 
 ### **Before (Current)**
 ```python
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from services.email.service import EmailService
 from utils.event_lifecycle_helpers import mark_attendance
 from utils.certificate_assets import cert_logo_url

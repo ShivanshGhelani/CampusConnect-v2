@@ -5,7 +5,7 @@ according to the new team-based and individual event requirements.
 
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 
 
 class EventDataManager:

@@ -10,7 +10,7 @@ from models.student import Student
 from models.faculty import Faculty, FacultyCreate
 from routes.auth import get_current_admin, authenticate_admin
 from dependencies.auth import get_current_student_optional, get_current_student
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from datetime import datetime
 from typing import Union
 import logging

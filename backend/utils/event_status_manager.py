@@ -9,7 +9,7 @@ status updates.
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import logging
-from utils.db_operations import DatabaseOperations
+from database.operations import DatabaseOperations
 from utils.dynamic_event_scheduler import dynamic_scheduler
 
 logger = logging.getLogger(__name__)
