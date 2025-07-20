@@ -23,6 +23,7 @@ import ManageCertificates from '../pages/admin/ManageCertificates';
 import Assets from '../pages/admin/Assets';
 import Venue from '../pages/admin/Venue';
 import CreateEvent from '../pages/admin/CreateEvent';
+import EventCreatedSuccess from '../pages/admin/EventCreatedSuccess';
 import EditEvent from '../pages/admin/EditEvent';
 import EventDetail from '../pages/admin/EventDetail';
 import ExportData from '../pages/admin/ExportData';
@@ -222,6 +223,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/created-success"
+          element={
+            <ProtectedRoute userType="admin">
+              <EventCreatedSuccess />
             </ProtectedRoute>
           }
         />

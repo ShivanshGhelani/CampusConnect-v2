@@ -10,14 +10,15 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    host: true,
+    host: '127.0.0.1', // Force Vite to use 127.0.0.1 instead of localhost
     allowedHosts: [
       'localhost',
+      '127.0.0.1',
       'jaguar-giving-awfully.ngrok-free.app'
     ],
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000', // Use 127.0.0.1 for consistency
         changeOrigin: true,
         secure: false,
       }

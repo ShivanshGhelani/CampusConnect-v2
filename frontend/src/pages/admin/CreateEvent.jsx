@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DateRangePicker from '../../components/common/DateRangePicker';
+import { useAuth } from '../../context/AuthContext';
+import { venueApi } from '../../api/axios';
+import { adminAPI } from '../../api/axios';
 
 // Helper for step progress
 const steps = [
@@ -16,6 +20,8 @@ const steps = [
 ];
 
 function CreateEvent() {
+  const navigate = useNavigate();
+  const { user, userType, isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = steps.length;
   const [venues, setVenues] = useState([]);
@@ -66,47 +72,148 @@ function CreateEvent() {
     assets: [],
   });
   const [errors, setErrors] = useState({});
+  const [existingEventIds, setExistingEventIds] = useState([]);
+  const [checkingEventId, setCheckingEventId] = useState(false);
 
-  // Load venues on component mount
+  // Load venues on component mount, but only after authentication is checked
   useEffect(() => {
-    loadVenues();
-  }, []);
+    if (isAuthenticated && userType === 'admin') {
+      loadVenues();
+      loadExistingEventIds();
+    }
+  }, [isAuthenticated, userType]);
 
-  const loadVenues = async () => {
+  const loadExistingEventIds = async () => {
     try {
-      const response = await fetch('/api/v1/admin/venues');
-      if (response.ok) {
-        const data = await response.json();
-        setVenues(data.venues || []);
+      const response = await adminAPI.getEvents();
+      if (response.data && response.data.events) {
+        const eventIds = response.data.events.map(event => event.event_id);
+        setExistingEventIds(eventIds);
       }
     } catch (err) {
-      console.error('Error loading venues:', err);
+      console.error('Error loading existing event IDs:', err);
     }
   };
 
-  // Check venue availability when venue or date changes
-  useEffect(() => {
-    if (selectedVenueId && form.start_date) {
-      checkVenueAvailability();
+  const loadVenues = async () => {
+    try {
+      console.log('Loading venues from API...');
+      console.log('Auth status:', { isAuthenticated, userType, user: user?.username });
+      
+      if (!isAuthenticated || userType !== 'admin') {
+        console.error('Not authenticated as admin');
+        alert('Please log in as an admin to access this feature.');
+        return;
+      }
+      
+      const response = await venueApi.list();
+      console.log('Venues API response:', response);
+      
+      if (response.data) {
+        // The venueApi.list() returns response.data which contains the venues array
+        const venueArray = Array.isArray(response.data) ? response.data : [];
+        setVenues(venueArray);
+        console.log(`Loaded ${venueArray.length} venues`);
+      } else {
+        console.error('No data received from venues API');
+      }
+    } catch (err) {
+      console.error('Error loading venues:', err);
+      
+      if (err.response?.status === 401) {
+        alert('Authentication required. Please log in as admin first.');
+      } else {
+        console.error('Venues API error:', err.message);
+      }
     }
-  }, [selectedVenueId, form.start_date]);
+  };
+
+  // Check for duplicate event ID
+  const checkEventIdAvailability = async (eventId) => {
+    if (!eventId || eventId.length < 3) return;
+    
+    setCheckingEventId(true);
+    try {
+      // Check against existing event IDs
+      const isDuplicate = existingEventIds.includes(eventId);
+      if (isDuplicate) {
+        setErrors(prev => ({
+          ...prev,
+          event_id: 'This Event ID already exists. Please choose a different one.'
+        }));
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.event_id;
+          return newErrors;
+        });
+      }
+    } catch (err) {
+      console.error('Error checking event ID:', err);
+    } finally {
+      setCheckingEventId(false);
+    }
+  };
+
+  // Debounced event ID checking
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (form.event_id && form.event_id.length >= 3) {
+        checkEventIdAvailability(form.event_id);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [form.event_id, existingEventIds]);
+
+  // Helper function to generate suggested event ID
+  const generateSuggestedEventId = (originalId) => {
+    const currentYear = new Date().getFullYear();
+    const baseId = originalId.replace(/\d+$/, ''); // Remove trailing numbers
+    
+    // Try with current year
+    const withYear = `${baseId}${currentYear}`;
+    if (!existingEventIds.includes(withYear)) {
+      return withYear;
+    }
+    
+    // Try with incremental numbers
+    for (let i = 1; i <= 99; i++) {
+      const numbered = `${baseId}${i}`;
+      if (!existingEventIds.includes(numbered)) {
+        return numbered;
+      }
+    }
+    
+    // Try with year and number
+    for (let i = 1; i <= 99; i++) {
+      const yearNumbered = `${baseId}${currentYear}_${i}`;
+      if (!existingEventIds.includes(yearNumbered)) {
+        return yearNumbered;
+      }
+    }
+    
+    return `${baseId}${Date.now()}`;
+  };
 
   const checkVenueAvailability = async () => {
     if (!selectedVenueId || selectedVenueId === 'custom') return;
     
     try {
       setCheckingAvailability(true);
-      const response = await fetch(`/api/v1/admin/venues/${selectedVenueId}/bookings`);
-      if (response.ok) {
-        const data = await response.json();
-        setVenueBookings(data.bookings || []);
+      const response = await venueApi.getBookings(selectedVenueId);
+      console.log('Venue bookings response:', response);
+      
+      if (response.data) {
+        const bookings = response.data.bookings || response.data || [];
+        setVenueBookings(bookings);
         
         // Convert bookings to date ranges for the date picker
-        const bookedRanges = data.bookings?.map(booking => ({
+        const bookedRanges = bookings.map(booking => ({
           start: booking.start_datetime.split('T')[0],
           end: booking.end_datetime.split('T')[0],
           eventName: booking.event_name
-        })) || [];
+        }));
         
         setVenueAvailability(bookedRanges);
       }
@@ -210,6 +317,9 @@ function CreateEvent() {
     let stepErrors = {};
     if (step === 1) {
       if (!form.event_id) stepErrors.event_id = 'Event ID is required';
+      if (form.event_id && existingEventIds.includes(form.event_id)) {
+        stepErrors.event_id = 'This Event ID already exists. Please choose a different one.';
+      }
       if (!form.event_name) stepErrors.event_name = 'Event Title is required';
       if (!form.event_type) stepErrors.event_type = 'Event Type is required';
       if (!form.target_audience) stepErrors.target_audience = 'Target Audience is required';
@@ -323,6 +433,12 @@ function CreateEvent() {
     e.preventDefault();
     if (!validateStep(currentStep)) return;
     
+    // Check authentication before submitting
+    if (!isAuthenticated || userType !== 'admin') {
+      alert('Authentication required. Please log in as admin first.');
+      return;
+    }
+    
     try {
       // Prepare form data for submission
       const eventData = {
@@ -364,40 +480,61 @@ function CreateEvent() {
 
       console.log('Submitting event data:', eventData);
 
-      const response = await fetch('/api/v1/admin/events/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important for session-based auth
-        body: JSON.stringify(eventData)
-      });
+      const response = await adminAPI.createEvent(eventData);
+      console.log('Response:', response);
 
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response data:', result);
-
-      if (response.ok && result.success) {
-        alert(`Event "${form.event_name}" created successfully! Event ID: ${result.event_id}`);
-        // Reset form or redirect
-        window.location.href = '/admin/events';
+      if (response.data && response.data.success) {
+        // Navigate to success page with event data
+        navigate('/admin/events/created-success', {
+          state: { eventData: eventData }
+        });
       } else {
-        // More detailed error reporting
-        if (response.status === 401) {
-          alert('Authentication required. Please log in as admin first.');
-          window.location.href = '/auth/login?mode=admin';
-        } else if (response.status === 403) {
-          alert('Access denied. You do not have permission to create events.');
-        } else if (response.status === 422) {
-          alert(`Validation error: ${result.detail || 'Please check your form data'}`);
-          console.error('Validation errors:', result.detail);
-        } else {
-          alert(`Error creating event: ${result.message || result.detail || 'Unknown error'}`);
-        }
+        alert(`Error creating event: ${response.data?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Network error creating event. Please check your connection and try again.');
+      
+      // Handle axios error responses
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 401) {
+          alert('Authentication required. Please log in as admin first.');
+          window.location.href = '/auth/login?mode=admin';
+        } else if (status === 403) {
+          alert('Access denied. You do not have permission to create events.');
+        } else if (status === 400 && data.detail && data.detail.includes('Event with this ID already exists')) {
+          // Handle duplicate event ID specifically
+          const suggestedId = generateSuggestedEventId(form.event_id);
+          const message = `❌ Event ID "${form.event_id}" already exists!\n\n` +
+                         `Existing Event IDs: ${existingEventIds.join(', ')}\n\n` +
+                         `💡 Suggested alternative: "${suggestedId}"\n\n` +
+                         `Please go back and choose a unique Event ID.`;
+          alert(message);
+          
+          // Set the error in the form
+          setErrors(prev => ({
+            ...prev,
+            event_id: `This Event ID already exists. Try: ${suggestedId}`
+          }));
+          
+          // Go back to step 1
+          setCurrentStep(1);
+        } else if (status === 422) {
+          alert(`Validation error: ${data.detail || 'Please check your form data'}`);
+          console.error('Validation errors:', data.detail);
+        } else {
+          alert(`Error creating event: ${data.message || data.detail || 'Unknown error'}`);
+        }
+      } else if (error.request) {
+        // Network error
+        alert('Network connection error. Please check if the backend server is running and accessible.');
+      } else {
+        // Other error
+        alert(`Unexpected error: ${error.message}. Please check the browser console for details.`);
+      }
     }
   };
 
@@ -413,8 +550,44 @@ function CreateEvent() {
                 <label className="block text-sm font-semibold text-gray-700">
                   Event ID<span className="text-red-500">*</span>
                 </label>
-                <input type="text" name="event_id" value={form.event_id} onChange={handleChange} required pattern="[A-Za-z0-9_]+" title="No spaces allowed. Use letters, numbers and underscores only." placeholder="e.g., PYWS2025" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.event_id ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
-                <p className="helper-text text-xs text-gray-500 mt-1">Unique identifier for the event. No spaces allowed, use underscores instead.</p>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    name="event_id" 
+                    value={form.event_id} 
+                    onChange={handleChange} 
+                    required 
+                    pattern="[A-Za-z0-9_]+" 
+                    title="No spaces allowed. Use letters, numbers and underscores only." 
+                    placeholder="e.g., PYWS2025" 
+                    className={`mt-1 px-4 py-2 w-full rounded-lg border ${
+                      errors.event_id ? 'border-red-500' : 
+                      form.event_id && !checkingEventId && !errors.event_id ? 'border-green-500' : 
+                      'border-gray-300'
+                    } focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} 
+                  />
+                  {checkingEventId && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                  {form.event_id && !checkingEventId && !errors.event_id && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <p className="helper-text text-xs text-gray-500 mt-1">
+                  Unique identifier for the event. No spaces allowed, use underscores instead.
+                  {existingEventIds.length > 0 && (
+                    <span className="block mt-1 text-blue-600">
+                      Existing IDs: {existingEventIds.slice(0, 3).join(', ')}
+                      {existingEventIds.length > 3 && ` (+${existingEventIds.length - 3} more)`}
+                    </span>
+                  )}
+                </p>
                 {errors.event_id && <p className="text-xs text-red-500">{errors.event_id}</p>}
               </div>
               <div>
@@ -652,7 +825,7 @@ function CreateEvent() {
                       <option value="">Select a venue...</option>
                       {venues.filter(v => v.is_active).map((venue) => (
                         <option key={venue.venue_id} value={venue.venue_id}>
-                          {venue.venue_name} - {venue.location} (Capacity: {venue.facilities?.capacity || 'N/A'})
+                          {venue.venue_name} - {venue.location} (Capacity: {venue.capacity || 'N/A'})
                         </option>
                       ))}
                     </select>
@@ -670,7 +843,7 @@ function CreateEvent() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
                               <div>
                                 <p><strong>Location:</strong> {selectedVenue.location}</p>
-                                <p><strong>Capacity:</strong> {selectedVenue.facilities?.capacity || 'N/A'} people</p>
+                                <p><strong>Capacity:</strong> {selectedVenue.capacity || 'N/A'} people</p>
                                 {selectedVenue.contact_person?.name && (
                                   <p><strong>Contact:</strong> {selectedVenue.contact_person.name}</p>
                                 )}
@@ -977,6 +1150,13 @@ function CreateEvent() {
 
   return (
     <AdminLayout pageTitle="Create Event">
+      {/* Debug auth status */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+          <strong>Debug Info:</strong> Auth: {isAuthenticated ? 'Yes' : 'No'}, Type: {userType || 'None'}, User: {user?.username || 'None'}
+        </div>
+      )}
+      
       <div className="max-w-4xl mx-auto py-8 px-2">
         {/* Progress Steps */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">

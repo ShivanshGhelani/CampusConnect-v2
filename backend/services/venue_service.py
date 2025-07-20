@@ -107,8 +107,8 @@ class VenueService:
                     "description": created_venue.get("description"),
                     "facilities": created_venue["facilities"],
                     "contact_person": created_venue["contact_person"],
-                    "is_active": created_venue["is_active"],
-                    "status": created_venue["status"],
+                    "is_active": created_venue.get("is_active", True),
+                    "status": created_venue.get("status", "available"),
                     "operating_hours": created_venue.get("operating_hours"),
                     "bookings": [],  # No bookings for newly created venue
                     "created_at": created_venue["created_at"].isoformat() if isinstance(created_venue["created_at"], datetime) else created_venue["created_at"],
@@ -181,8 +181,8 @@ class VenueService:
                     "venue_type": venue["venue_type"],
                     "location": venue["location"],
                     "capacity": venue.get("facilities", {}).get("capacity", 0),
-                    "is_active": venue["is_active"],
-                    "status": venue["status"],
+                    "is_active": venue.get("is_active", True),
+                    "status": venue.get("status", "available"),
                     "current_bookings_count": booking_count,
                     "next_booking": formatted_next_booking
                 }
@@ -236,8 +236,8 @@ class VenueService:
                     "description": venue.get("description"),
                     "facilities": venue["facilities"],
                     "contact_person": venue["contact_person"],
-                    "is_active": venue["is_active"],
-                    "status": venue["status"],
+                    "is_active": venue.get("is_active", True),
+                    "status": venue.get("status", "available"),
                     "operating_hours": venue.get("operating_hours"),
                     "bookings": formatted_bookings,
                     "created_at": venue["created_at"].isoformat() if isinstance(venue["created_at"], datetime) else venue["created_at"],

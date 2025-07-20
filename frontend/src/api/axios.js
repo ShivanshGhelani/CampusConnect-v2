@@ -140,13 +140,13 @@ const getApiBaseUrl = () => {
     return envApiUrl;
   }
   
-  // If no env var, derive from current location for external access
+  // Get current location details
   const currentHost = window.location.hostname;
   const currentProtocol = window.location.protocol;
   
-  // If accessing via localhost, use localhost
+  // For local development, always use 127.0.0.1 for consistency with backend CORS
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return 'http://localhost:8000';
+    return 'http://127.0.0.1:8000';
   }
   
   // For external hosts (ngrok, --host, etc.), assume API is on port 8000
