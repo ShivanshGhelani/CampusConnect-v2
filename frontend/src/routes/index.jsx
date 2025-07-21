@@ -14,6 +14,14 @@ import ProfilePage from '../pages/client/ProfilePage';
 import EditProfile from '../pages/client/EditProfile';
 import FacultyProfilePage from '../pages/client/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/FacultyProfileEdit';
+import EventRegistration from '../pages/client/EventRegistration';
+import MarkAttendance from '../pages/client/MarkAttendance';
+import RegistrationSuccess from '../pages/client/RegistrationSuccess';
+import AttendanceSuccess from '../pages/client/AttendanceSuccess';
+import AttendanceConfirmation from '../pages/client/AttendanceConfirmation';
+import TeamManagement from '../pages/client/TeamManagement';
+import NotRegistered from '../pages/client/NotRegistered';
+import TestIndex from '../pages/test/TestIndex';
 
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
@@ -66,6 +74,21 @@ function AppRoutes() {
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
         
+        {/* Development/Test Routes - Public (remove in production) */}
+        <Route path="/dev" element={<TestIndex />} />
+        <Route path="/dev/event-registration/:eventId" element={<EventRegistration />} />
+        <Route path="/dev/event-registration" element={<EventRegistration />} />
+        <Route path="/dev/event-registration-team" element={<EventRegistration />} />
+        <Route path="/dev/mark-attendance/:eventId" element={<MarkAttendance />} />
+        <Route path="/dev/mark-attendance" element={<MarkAttendance />} />
+        <Route path="/dev/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/dev/attendance-success" element={<AttendanceSuccess />} />
+        <Route path="/dev/attendance-confirmation" element={<AttendanceConfirmation />} />
+        <Route path="/dev/team-management" element={<TeamManagement />} />
+        <Route path="/dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
+        <Route path="/dev/not-registered" element={<NotRegistered />} />
+        <Route path="/dev/not-registered/:eventId" element={<NotRegistered />} />
+        
         {/* Protected Client Routes */}
         <Route
           path="/client/dashboard"
@@ -104,6 +127,40 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="student">
               <EditProfile />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Test route for EventRegistration */}
+        <Route
+          path="/test/event-registration/:eventId"
+          element={
+            <ProtectedRoute userType="student">
+              <EventRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test/event-registration"
+          element={
+            <ProtectedRoute userType="student">
+              <EventRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test/mark-attendance/:eventId"
+          element={
+            <ProtectedRoute userType="student">
+              <MarkAttendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test/mark-attendance"
+          element={
+            <ProtectedRoute userType="student">
+              <MarkAttendance />
             </ProtectedRoute>
           }
         />
