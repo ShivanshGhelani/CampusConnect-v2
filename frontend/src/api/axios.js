@@ -132,7 +132,7 @@ import axios from 'axios';
  * LAST UPDATED: June 29, 2025
  */
 
-// Function to get the API base URL
+// Function to get the API base URL - FIXED FOR CONSISTENCY
 const getApiBaseUrl = () => {
   // Check for environment variable first
   const envApiUrl = import.meta.env.VITE_API_BASE_URL;
@@ -140,23 +140,15 @@ const getApiBaseUrl = () => {
     return envApiUrl;
   }
   
-  // Get current location details
-  const currentHost = window.location.hostname;
-  const currentProtocol = window.location.protocol;
-  
-  // For local development, always use 127.0.0.1 for consistency with backend CORS
-  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return 'http://127.0.0.1:8000';
-  }
-  
-  // For external hosts (ngrok, --host, etc.), assume API is on port 8000
-  return `${currentProtocol}//${currentHost}:8000`;
+  // Always use localhost for development to maintain cookie consistency
+  // This prevents 127.0.0.1 vs localhost cookie domain issues
+  return 'http://localhost:8000';
 };
 
-// Create axios instance with base configuration
+// Create axios instance with base configuration - FIXED FOR CREDENTIALS
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  withCredentials: true,
+  withCredentials: true,  // Required for session cookies
   headers: {
     'Content-Type': 'application/json',
   },
@@ -168,11 +160,9 @@ console.log('API Base URL:', getApiBaseUrl());
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add auth token if available
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // No need to add Authorization headers - we use session cookies
+    // Ensure credentials are always sent for session-based auth
+    config.withCredentials = true;
     return config;
   },
   (error) => {
@@ -189,8 +179,9 @@ api.interceptors.response.use(
     // Handle common errors
     if (error.response?.status === 401) {
       // Unauthorized - clear auth data and redirect to login
-      localStorage.removeItem('auth_token');
+      // For session-based auth, clear localStorage but don't manually clear cookies
       localStorage.removeItem('user_data');
+      localStorage.removeItem('user_type');
       
       // Only redirect if not already on login page
       if (!window.location.pathname.includes('/login')) {

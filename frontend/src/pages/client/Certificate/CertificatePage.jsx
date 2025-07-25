@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ClientLayout from '../../components/client/Layout';
-import { clientAPI } from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import ClientLayout from '../../../components/client/Layout';
+import { clientAPI } from '../../../api/axios';
+import { useAuth } from '../../../context/AuthContext';
 
 function CertificatePage() {
   const { eventId } = useParams();

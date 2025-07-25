@@ -188,6 +188,7 @@ async def admin_login_api(request: Request):
                 admin_data[key] = value.isoformat()
         
         admin_data["login_time"] = current_time.isoformat()
+        
         request.session["admin"] = admin_data
         
         # Determine redirect URL based on role

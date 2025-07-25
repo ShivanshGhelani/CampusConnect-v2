@@ -21,157 +21,49 @@ logger = setup_logger(logging.INFO)
 # Create FastAPI app
 app = FastAPI()
 
-# Configure CORS for frontend communication
+# Configure CORS for frontend communication - FIXED FOR CREDENTIALS
 import os
-import re
 
-# Environment-aware configuration
-def get_environment():
-    """Get current environment (development/production)"""
-    return os.getenv("ENVIRONMENT", "development").lower()
+# CORS configuration - Allow specific origins when using credentials
+print("Development mode: Allowing localhost origins for credentials support")
 
-def is_production():
-    """Check if running in production"""
-    return get_environment() == "production"
+# Define allowed origins for development (cannot use "*" with credentials)
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",    # Frontend is using 127.0.0.1
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080", 
+    "http://127.0.0.1:8080",
+]
 
-def get_cors_origins():
-    """Get CORS origins based on environment"""
-    if is_production():
-        # Production: Use environment variable for allowed origins
-        cors_origins = os.getenv("CORS_ORIGINS", "")
-        if cors_origins:
-            return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
-        else:
-            # Fallback: Add your production domains here when ready
-            return [
-                # "https://yourapp.vercel.app",  # Your frontend domain
-                # "https://your-custom-domain.com",  # Custom domain if any
-            ]
-    else:
-        # Development: Include local and testing origins
-        dev_origins = [
-            "http://localhost:3000",  # React development server
-            "http://localhost:5173",  # Vite development server
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "http://localhost:8080",  # Alternative development ports
-            "http://127.0.0.1:8080",
-            "https://jaguar-giving-awfully.ngrok-free.app",
-            "http://192.168.29.221:5173", 
-        ]
-        
-        # Add any additional development origins from environment
-        additional_origins = os.environ.get("ADDITIONAL_CORS_ORIGINS", "").split(",")
-        dev_origins.extend([origin.strip() for origin in additional_origins if origin.strip()])
-        
-        return dev_origins
+print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 
-# Custom CORS middleware to handle dynamic origins (for development)
-class DynamicCORSMiddleware:
-    def __init__(self, app, allowed_origins=None, **kwargs):
-        self.app = app
-        self.allowed_origins = allowed_origins or []
-        self.kwargs = kwargs
-        
-    def is_origin_allowed(self, origin):
-        if not origin:
-            return False
-            
-        # Check exact matches
-        if origin in self.allowed_origins:
-            return True
-            
-        # For development only: Check for ngrok and local network patterns
-        if not is_production():
-            # Check for ngrok patterns
-            if re.match(r'https://.*\.ngrok-free\.app$', origin):
-                return True
-            if re.match(r'https://.*\.ngrok\.io$', origin):
-                return True
-                
-            # Check for local network access patterns (192.168.x.x, 10.x.x.x, etc.)
-            if re.match(r'https?://(?:192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.|127\.0\.0\.1|localhost).*', origin):
-                return True
-            
-        return False
-
-# Get allowed origins based on environment
-ALLOWED_ORIGINS = get_cors_origins()
-
-# Log configuration for debugging
-print(f"Environment: {get_environment()}")
-print(f"CORS Origins: {ALLOWED_ORIGINS}")
-if is_production():
-    print("Production mode: Strict CORS policy")
-else:
-    print("Development mode: Flexible CORS policy for testing")
-
-# Use custom CORS check for development
-cors_middleware = DynamicCORSMiddleware(app, ALLOWED_ORIGINS)
-
-# Configure CORS middleware based on environment
-if is_production():
-    # Production: Strict CORS policy
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS,  # Only specified origins
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["*"],
-    )
-else:
-    # Development: Flexible CORS policy for testing with --host and ngrok
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.io|https?://(?:192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.|127\.0\.0\.1|localhost).*",
-        allow_origins=ALLOWED_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["*"],
-    )
+# Add CORS middleware with specific origins (required for credentials)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,  # Specific origins (not "*") for credentials
+    allow_credentials=True,         # This requires specific origins
+    allow_methods=["*"],            # Allow all methods
+    allow_headers=["*"],            # Allow all headers
+)
 
 # Configure JSON encoder for the entire application
 json._default_encoder = CustomJSONEncoder()
 
-# Add session middleware for student authentication
-# Configure session settings based on environment
-def get_session_config():
-    """Get session configuration based on environment"""
-    if is_production():
-        return {
-            "secret_key": os.getenv("SESSION_SECRET_KEY", "CHANGE-THIS-IN-PRODUCTION"),
-            "max_age": 3600,
-            "same_site": "none",  # For cross-site cookies in production
-            "https_only": True,   # HTTPS required in production
-            "domain": os.getenv("COOKIE_DOMAIN"),  # e.g., ".yourdomain.com"
-        }
-    else:
-        # Development: Check if external access is needed
-        external_access = os.getenv("ENABLE_EXTERNAL_ACCESS", "false").lower() == "true"
-        
-        if external_access:
-            # For --host or ngrok usage
-            return {
-                "secret_key": os.getenv("SESSION_SECRET_KEY", "development-secret-key"),
-                "max_age": 3600,
-                "same_site": "none",  # Required for external access
-                "https_only": False,  # HTTP allowed in development
-            }
-        else:
-            # For localhost development (default)
-            return {
-                "secret_key": os.getenv("SESSION_SECRET_KEY", "development-secret-key"),
-                "max_age": 3600,
-                "same_site": "lax",   # Secure for localhost
-                "https_only": False,  # HTTP allowed in development
-            }
+# Add session middleware for student authentication - FIXING COOKIE ISSUE
+print("Configuring session middleware with fixed cookie settings...")
 
-session_config = get_session_config()
-print(f"Session config: HTTPS={session_config['https_only']}, SameSite={session_config['same_site']}")
+# Try different session configuration - same_site="none" might be the issue
+session_secret = os.getenv("SESSION_SECRET_KEY", "development-secret-key-for-cors-debugging")
+print(f"Using session secret (first 10 chars): {session_secret[:10]}...")
 
 app.add_middleware(
     SessionMiddleware, 
-    **session_config
+    secret_key=session_secret,
+    max_age=3600,            # 1 hour
+    same_site="lax",         # Changed from "none" - try "lax" for localhost
+    https_only=False,        # Allow HTTP in development
 )
 
 # Mount static files
@@ -351,6 +243,45 @@ async def health_check(request: Request):
         "cors_configured": True
     }
 
+# Debug endpoint to check session state
+@app.get("/api/debug/session")
+async def debug_session(request: Request):
+    """Debug endpoint to check session state"""
+    session_data = dict(request.session)
+    return {
+        "session_keys": list(session_data.keys()),
+        "has_admin": "admin" in session_data,
+        "has_student": "student" in session_data,
+        "has_faculty": "faculty" in session_data,
+        "cookies": dict(request.cookies),
+        "headers": dict(request.headers)
+    }
+
+# Test endpoint to manually set session
+@app.post("/api/debug/set-session")
+async def set_test_session(request: Request):
+    """Test endpoint to manually set session data"""
+    from datetime import datetime
+    
+    request.session["test_key"] = "test_value"
+    request.session["timestamp"] = datetime.utcnow().isoformat()
+    
+    return {
+        "success": True,
+        "message": "Test session data set",
+        "session_keys": list(request.session.keys())
+    }
+
+# Test endpoint to read session
+@app.get("/api/debug/get-session")
+async def get_test_session(request: Request):
+    """Test endpoint to read session data"""
+    session_data = dict(request.session)
+    return {
+        "session_data": session_data,
+        "cookies": dict(request.cookies)
+    }
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Redirect root to React frontend"""
@@ -410,4 +341,4 @@ async def serve_signature(path: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)

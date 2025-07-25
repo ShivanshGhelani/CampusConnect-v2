@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import ClientLayout from '../../components/client/Layout';
+import ClientLayout from '../../../components/client/Layout';
 
 function FeedbackPage() {
   const { eventId } = useParams();

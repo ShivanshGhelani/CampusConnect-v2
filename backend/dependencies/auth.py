@@ -10,17 +10,12 @@ from typing import Optional, Union
 
 async def get_current_student(request: Request) -> Student:
     """Get currently logged in student from session"""
-    # print(f"[DEBUG] get_current_student called. Session keys: {list(request.session.keys())}")
-    
     student_data = request.session.get("student")
     if not student_data:
-        # print("[DEBUG] No student data found in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Student not logged in"
         )
-    
-    # print(f"[DEBUG] Student data found in session. Keys: {list(student_data.keys())}")
     
     # Convert ISO datetime strings back to datetime objects
     for key, value in student_data.items():

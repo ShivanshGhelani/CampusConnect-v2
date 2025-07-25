@@ -119,6 +119,7 @@ async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_lo
             "gender": faculty_data.get('gender', ''),
             "date_of_birth": faculty_data.get('date_of_birth', ''),
             "date_of_joining": faculty_data.get('date_of_joining', ''),
+            "avatar_url": faculty_data.get('avatar_url'),  # Include avatar URL
             "profile_created_at": faculty_data.get('created_at', ''),
             "last_updated": faculty_data.get('updated_at', ''),
             "is_active": faculty_data.get('is_active', True),
@@ -148,14 +149,37 @@ async def update_faculty_profile(request: Request, faculty: Faculty = Depends(ge
         updatable_fields = [
             'full_name', 'email', 'contact_no', 'department', 'designation',
             'qualification', 'specialization', 'experience_years', 'seating',
-            'gender', 'date_of_birth', 'date_of_joining'
+            'gender', 'date_of_birth', 'date_of_joining', 'avatar_url'
         ]
         
         # Build update data with only allowed fields
         update_data = {}
         for field in updatable_fields:
-            if field in data and data[field] is not None:
-                update_data[field] = data[field]
+            if field in data:
+                # Allow null values for avatar_url (to remove avatar)
+                if field == 'avatar_url' or data[field] is not None:
+                    update_data[field] = data[field]
+        
+        # Handle password change if provided
+        if 'new_password' in data and data['new_password']:
+            from passlib.context import CryptContext
+            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            
+            # Verify current password first
+            if 'current_password' not in data:
+                return {"success": False, "message": "Current password is required to change password"}
+            
+            # Get current faculty data to verify password
+            faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
+            if not faculty_data:
+                return {"success": False, "message": "Faculty not found"}
+            
+            # Verify current password
+            if not pwd_context.verify(data['current_password'], faculty_data.get('password', '')):
+                return {"success": False, "message": "Current password is incorrect"}
+            
+            # Update password
+            update_data['password'] = pwd_context.hash(data['new_password'])
         
         if not update_data:
             return {"success": False, "message": "No valid fields provided for update"}

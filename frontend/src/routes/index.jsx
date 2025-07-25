@@ -8,20 +8,25 @@ import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
-import FeedbackPage from '../pages/client/FeedbackPage';
-import CertificatePage from '../pages/client/CertificatePage';
+import FeedbackPage from '../pages/client/Feedback/FeedbackPage';
+import CertificatePage from '../pages/client/Certificate/CertificatePage';
 import ProfilePage from '../pages/client/ProfilePage';
 import EditProfile from '../pages/client/EditProfile';
 import FacultyProfilePage from '../pages/client/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/FacultyProfileEdit';
-import EventRegistration from '../pages/client/EventRegistration';
-import MarkAttendance from '../pages/client/MarkAttendance';
-import RegistrationSuccess from '../pages/client/RegistrationSuccess';
-import AttendanceSuccess from '../pages/client/AttendanceSuccess';
-import AttendanceConfirmation from '../pages/client/AttendanceConfirmation';
+import EventRegistration from '../pages/client/Registration/EventRegistration';
+import StudentIndividualRegistration from '../pages/client/Registration/StudentIndividualRegistration';
+import MarkAttendance from '../pages/client/Attendance/MarkAttendance';
+import RegistrationSuccess from '../pages/client/Registration/RegistrationSuccess';
+import AttendanceSuccess from '../pages/client/Attendance/AttendanceSuccess';
+import AttendanceConfirmation from '../pages/client/Attendance/AttendanceConfirmation';
 import TeamManagement from '../pages/client/TeamManagement';
 import NotRegistered from '../pages/client/NotRegistered';
 import TestIndex from '../pages/test/TestIndex';
+
+// Faculty Registration Components
+import FacultyIndividualRegistration from '../pages/client/Registration/IndividualRegistration';
+import FacultyTeamRegistration from '../pages/client/Registration/TeamRegistration';
 
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
@@ -40,6 +45,7 @@ import SettingsProfile from '../pages/admin/SettingsProfile';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
+import ScrollToTop from '../components/common/ScrollToTop';
 
 function AppRoutes() {
   const { isLoading } = useAuth();
@@ -53,7 +59,8 @@ function AppRoutes() {
   }
 
   return (
-    <Router>      
+    <Router>
+      <ScrollToTop />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Homepage />} />        
@@ -76,8 +83,8 @@ function AppRoutes() {
         
         {/* Development/Test Routes - Public (remove in production) */}
         <Route path="/dev" element={<TestIndex />} />
-        <Route path="/dev/event-registration/:eventId" element={<EventRegistration />} />
-        <Route path="/dev/event-registration" element={<EventRegistration />} />
+        <Route path="/dev/event-registration/:eventId" element={<StudentIndividualRegistration />} />
+        <Route path="/dev/event-registration" element={<StudentIndividualRegistration />} />
         <Route path="/dev/event-registration-team" element={<EventRegistration />} />
         <Route path="/dev/mark-attendance/:eventId" element={<MarkAttendance />} />
         <Route path="/dev/mark-attendance" element={<MarkAttendance />} />
@@ -195,6 +202,24 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="faculty">
               <EventDetailPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Faculty Registration Routes */}
+        <Route
+          path="/faculty/events/:eventId/register"
+          element={
+            <ProtectedRoute userType="faculty">
+              <FacultyIndividualRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/events/:eventId/register-team"
+          element={
+            <ProtectedRoute userType="faculty">
+              <FacultyTeamRegistration />
             </ProtectedRoute>
           }
         />

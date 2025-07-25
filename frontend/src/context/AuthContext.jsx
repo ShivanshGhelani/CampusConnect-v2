@@ -131,7 +131,6 @@ export function AuthProvider({ children }) {
       // Clear any invalid session data
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
-      localStorage.removeItem('auth_token');
       dispatch({ type: authActions.LOGOUT });
     }
   };
@@ -154,14 +153,11 @@ export function AuthProvider({ children }) {
       
       if (response.data.success) {
         console.log('Login successful, storing user data:', response.data.user);
-        // Store user data
+        // Store user data locally for UI state (session is handled by cookies)
         localStorage.setItem('user_data', JSON.stringify(response.data.user));
         localStorage.setItem('user_type', userType);
         
-        // Store token if provided
-        if (response.data.token) {
-          localStorage.setItem('auth_token', response.data.token);
-        }
+        // No need to store tokens - backend uses session cookies
         
         dispatch({
           type: authActions.LOGIN_SUCCESS,

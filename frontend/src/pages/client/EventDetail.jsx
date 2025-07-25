@@ -121,12 +121,54 @@ function EventDetail() {
         };
     }
   };
+  // Calculate time remaining until a specific date
+  const getTimeRemaining = (targetDate) => {
+    if (!targetDate) return null;
+    
+    const now = new Date();
+    const target = new Date(targetDate);
+    const diff = target - now;
+    
+    if (diff <= 0) return null;
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
   const handleRegister = () => {
     if (!isAuthenticated) {
       navigate(`/auth/login?returnTo=/client/events/${eventId}`);
       return;
     }
-    navigate(`/client/events/${eventId}/register`);
+    
+    // Determine if it's faculty or student based on user context
+    const userType = user?.role || user?.userType || 'student'; // Adjust based on your auth structure
+    const isTeamEvent = event?.event_type === 'team' || event?.registration_type === 'team';
+    
+    if (userType === 'faculty') {
+      // Faculty registration routes
+      if (isTeamEvent) {
+        navigate(`/faculty/events/${eventId}/register-team`);
+      } else {
+        navigate(`/faculty/events/${eventId}/register`);
+      }
+    } else {
+      // Student registration routes (dev for now, will be moved to proper routes)
+      if (isTeamEvent) {
+        navigate(`/dev/event-registration-team?eventId=${eventId}`);
+      } else {
+        navigate(`/dev/event-registration?eventId=${eventId}`);
+      }
+    }
   };
 
   const handleFeedback = () => {
@@ -436,38 +478,112 @@ function EventDetail() {
                 </div>
               </div>                
               {/* Action Panel */}
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl mt-5 p-5 w-70 border border-white/20 shadow-xl">{event.sub_status === 'registration_open' && (
+              <div className="bg-gradient-to-br from-white/15 via-white/10 to-white/5 backdrop-blur-lg rounded-2xl mt-4 p-5 max-w-xs border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-300">                {event.sub_status === 'registration_open' && (
                   <div className="text-center space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-white">Ready to Join?</h3>
-                      <p className="text-blue-100 text-sm">Secure your spot today!</p>
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-bold text-white drop-shadow-lg">Ready to Join?</h3>
+                      <p className="text-green-100 text-sm drop-shadow">Secure your spot today!</p>
                     </div>
 
-                    {/* Registration time remaining - will add this feature if needed */}
+                    {/* Registration time remaining */}
                     {registrationEnd && (
-                      <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                        <span className="text-xs text-blue-200 block">Registration closes in:</span>
-                        <span className="text-lg font-bold text-yellow-300">
-                          {registrationEnd.dayWithSuffix} {registrationEnd.time}
+                      <div className="bg-gradient-to-r from-orange-400/20 to-red-400/20 backdrop-blur-sm rounded-xl p-3 border border-orange-300/30 shadow-inner">
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="w-4 h-4 text-orange-300" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs text-orange-200 font-medium">Registration closes in:</span>
+                        </div>
+                        <span className="text-lg font-bold text-yellow-300 drop-shadow block mt-1">
+                          {getTimeRemaining(event.registration_end_date) || registrationEnd.dayWithSuffix}
                         </span>
                       </div>
-                    )}                    <button
+                    )}
+
+                    <button
                       onClick={handleRegister}
-                      className="group relative w-full bg-gradient-to-r from-white via-blue-50 to-blue-100 hover:from-blue-50 hover:via-blue-100 hover:to-white text-blue-700 hover:text-blue-800 font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border border-blue-200/50"
+                      className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-600 hover:via-green-600 hover:to-teal-600 text-white font-bold py-4 px-5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg overflow-hidden border border-emerald-400/50"
                     >
-                      {/* Shine effect */}
-                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                      {/* Animated background */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
                       
-                      <div className="relative flex items-center justify-center">
-                        <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                      
+                      <div className="relative flex items-center justify-center space-x-2">
+                        <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM8 15a1 1 0 112 0v1H8v-1zm2-3a1 1 0 10-2 0v1h2v-1z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-lg font-extrabold tracking-wide">Register Now</span>
+                        <span className="text-base font-extrabold tracking-wide">Register Now</span>
                       </div>
                       
                       {/* Glow effect */}
-                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-300 to-blue-500 opacity-0 group-hover:opacity-15 transition-opacity duration-300 blur-xl"></div>
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-300 to-teal-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-lg"></div>
                     </button>
+                  </div>
+                )}
+
+                {event.sub_status === 'registration_not_started' && (
+                  <div className="text-center space-y-4">
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-bold text-white drop-shadow-lg">Coming Soon</h3>
+                      <p className="text-yellow-100 text-sm drop-shadow">Get ready to register</p>
+                    </div>
+                    {registrationStart && (
+                      <div className="bg-gradient-to-r from-blue-400/20 to-purple-400/20 backdrop-blur-sm rounded-xl p-3 border border-blue-300/30 shadow-inner">
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="w-4 h-4 text-blue-300" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs text-blue-200 font-medium">Registration opens in:</span>
+                        </div>
+                        <span className="text-lg font-bold text-cyan-300 drop-shadow block mt-1">
+                          {getTimeRemaining(event.registration_start_date) || registrationStart.dayWithSuffix}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="w-full bg-gradient-to-r from-gray-500 via-gray-400 to-gray-500 text-white font-bold py-4 px-5 rounded-xl cursor-not-allowed opacity-70 shadow-lg">
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-base font-extrabold tracking-wide">Registration Locked</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {event.sub_status === 'registration_closed' && (
+                  <div className="text-center space-y-4">
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-bold text-white drop-shadow-lg">Registration Closed</h3>
+                      <p className="text-red-100 text-sm drop-shadow">Registration period has ended</p>
+                    </div>
+                    
+                    <div className="w-full bg-gradient-to-r from-red-500 via-red-400 to-red-500 text-white font-bold py-4 px-5 rounded-xl cursor-not-allowed opacity-70 shadow-lg">
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-base font-extrabold tracking-wide">Registration Closed</span>
+                      </div>
+                    </div>
                   </div>
                 )}{event.sub_status === 'event_started' && (
                   <div className="text-center space-y-4">

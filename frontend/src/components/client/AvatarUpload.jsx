@@ -103,9 +103,17 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
       
       // Update profile in backend with the PUBLIC URL, not the path
       console.log('Updating backend profile...');
-      const response = await api.put('/api/v1/client/profile/update', {
+      
+      // Use different endpoint based on user type
+      const endpoint = user?.user_type === 'faculty' 
+        ? '/api/v1/client/profile/faculty/update' 
+        : '/api/v1/client/profile/update';
+      
+      const response = await api.put(endpoint, {
         avatar_url: avatarPublicUrl  // Store the full public URL
-      });console.log('Backend response:', response.data);      if (response.data.success) {
+      });
+      
+      console.log('Backend response:', response.data);      if (response.data.success) {
         console.log('Backend update successful');
         onAvatarUpdate(avatarPublicUrl);  // Use the same URL we stored
         setShowModal(false);
@@ -137,7 +145,11 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
       }
 
       // Update the database to set avatar_url to null
-      const response = await api.put('/api/v1/client/profile/update', {
+      const endpoint = user?.user_type === 'faculty' 
+        ? '/api/v1/client/profile/faculty/update' 
+        : '/api/v1/client/profile/update';
+        
+      const response = await api.put(endpoint, {
         avatar_url: null
       });      if (response.data.success) {
         // Clear any cached avatar state

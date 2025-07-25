@@ -61,13 +61,15 @@ async def get_current_admin(request: Request) -> AdminUser:
         current_time = datetime.utcnow()
         
         # Check if session is older than 1 hour
-        if (current_time - login_time).total_seconds() > 3600:  # 3600 seconds = 1 hour
+        session_age = (current_time - login_time).total_seconds()
+        
+        if session_age > 3600:  # 3600 seconds = 1 hour
             request.session.clear()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Session expired"
             )
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
         # Invalid login_time format, expire session
         request.session.clear()
         raise HTTPException(

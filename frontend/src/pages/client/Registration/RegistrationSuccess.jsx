@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import ClientLayout from '../../components/client/Layout';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { useAuth } from '../../../context/AuthContext';
+import ClientLayout from '../../../components/client/Layout';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const RegistrationSuccess = () => {
   const { eventId } = useParams();
