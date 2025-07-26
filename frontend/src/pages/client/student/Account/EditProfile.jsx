@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import ClientLayout from '../../components/client/Layout';
-import api from '../../api/axios';
+import { useAuth } from '../../../../context/AuthContext';
+import ClientLayout from '../../../../components/client/Layout';
+import api from '../../../../api/axios';
 
 function EditProfile() {
   const { user } = useAuth();

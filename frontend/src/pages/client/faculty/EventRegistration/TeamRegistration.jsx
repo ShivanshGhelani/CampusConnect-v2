@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { clientAPI } from '../../../api/axios';
-import ClientLayout from '../../../components/client/Layout';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import { useAuth } from '../../../../context/AuthContext';
+import { clientAPI } from '../../../../api/axios';
+import ClientLayout from '../../../../components/client/Layout';
+import LoadingSpinner from '../../../../components/LoadingSpinner';
 
 const FacultyTeamRegistration = () => {
   const { eventId } = useParams();
@@ -75,7 +75,7 @@ const FacultyTeamRegistration = () => {
       if (user) {
         setTeamData(prev => ({
           ...prev,
-          team_leader_id: user.faculty_id || user.id || '',
+          team_leader_id: user.faculty_id || user.employee_id || user.id || '',
           team_leader_name: user.name || user.faculty_name || '',
           team_leader_email: user.email || '',
           team_leader_department: user.department || ''
@@ -181,16 +181,19 @@ const FacultyTeamRegistration = () => {
         timestamp: new Date().toISOString()
       };
 
-      // Submit registration (replace with actual API call)
-      console.log('Faculty Team Registration Data:', registrationData);
+      // Submit registration
+      const response = await clientAPI.registerForEvent(registrationData);
       
-      // For now, just simulate success
-      setSuccess('Team registration submitted successfully!');
-      
-      // Navigate to success page after a delay
-      setTimeout(() => {
-        navigate(`/faculty/events/${eventId}/registration-success`);
-      }, 2000);
+      if (response.data.success) {
+        setSuccess('Team registration submitted successfully!');
+        
+        // Navigate to success page
+        setTimeout(() => {
+          navigate(`/faculty/events/${eventId}/registration-success`);
+        }, 2000);
+      } else {
+        setError(response.data.message || 'Registration failed. Please try again.');
+      }
 
     } catch (error) {
       console.error('Registration error:', error);

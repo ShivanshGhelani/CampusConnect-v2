@@ -11,6 +11,7 @@
     "preview": "vite preview --host localhost"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.50.0",
     "@tailwindcss/vite": "^4.1.10",
     "axios": "^1.10.0",

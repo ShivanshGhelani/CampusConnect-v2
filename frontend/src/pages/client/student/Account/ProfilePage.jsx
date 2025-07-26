@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useAvatar } from '../../hooks/useAvatar';
-import ClientLayout from '../../components/client/Layout';
-import ProfileEventCard from '../../components/client/ProfileEventCard';
-import AvatarUpload from '../../components/client/AvatarUpload';
-import api from '../../api/axios';
+import { useAuth } from '../../../../context/AuthContext';
+import { useAvatar } from '../../../../hooks/useAvatar';
+import ClientLayout from '../../../../components/client/Layout';
+import ProfileEventCard from '../../../../components/client/ProfileEventCard';
+import AvatarUpload from '../../../../components/client/AvatarUpload';
+import api from '../../../../api/axios';
 
 function ProfilePage() {
   const { user } = useAuth();

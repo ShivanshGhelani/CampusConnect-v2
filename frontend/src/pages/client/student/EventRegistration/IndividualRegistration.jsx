@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { clientAPI } from '../../../api/axios';
-import ClientLayout from '../../../components/client/Layout';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import { useAuth } from '../../../../context/AuthContext';
+import { clientAPI } from '../../../../api/axios';
+import ClientLayout from '../../../../components/client/Layout';
+import LoadingSpinner from '../../../../components/LoadingSpinner';
 
-const FacultyIndividualRegistration = () => {
+const StudentIndividualRegistration = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,22 +13,23 @@ const FacultyIndividualRegistration = () => {
 
   // State management
   const [event, setEvent] = useState(null);
-  const [faculty, setFaculty] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [registrationBlocked, setRegistrationBlocked] = useState(false);
-  const [formData, setFormData] = useState({
-    faculty_id: '',
-    faculty_name: '',
-    faculty_email: '',
+  
+  // Student data state
+  const [studentData, setStudentData] = useState({
+    enrollment_no: '',
+    full_name: '',
+    email: '',
+    mobile_no: '',
     department: '',
-    designation: '',
-    experience_years: '',
-    phone_number: '',
-    research_interests: '',
-    linkedin_profile: '',
-    additional_notes: ''
+    semester: '',
+    year_of_study: '',
+    emergency_contact: '',
+    dietary_requirements: '',
+    special_accommodations: ''
   });
 
   useEffect(() => {
@@ -47,30 +48,34 @@ const FacultyIndividualRegistration = () => {
       // Fetch event details
       const eventResponse = await clientAPI.getEventDetails(eventId);
       if (eventResponse.data.success) {
-        setEvent(eventResponse.data.event);
+        const eventData = eventResponse.data.event;
+        setEvent(eventData);
         
-        // Verify this is a faculty event
-        if (eventResponse.data.event.target_audience !== 'faculty' && eventResponse.data.event.target_audience !== 'both') {
-          setError('This event is not available for faculty registration.');
+        // Verify this is a student event
+        if (eventData.target_audience !== 'students' && eventData.target_audience !== 'both') {
+          setError('This event is not available for student registration.');
+          setRegistrationBlocked(true);
+          return;
+        }
+
+        // Verify this supports individual registration
+        if (eventData.registration_type === 'team' && eventData.event_type === 'team') {
+          setError('This event only supports team registration.');
           setRegistrationBlocked(true);
           return;
         }
       }
 
-      // Fetch faculty profile
+      // Pre-populate student data if available
       if (user) {
-        // Pre-populate form with faculty data
-        setFormData(prev => ({
+        setStudentData(prev => ({
           ...prev,
-          faculty_id: user.faculty_id || user.id || '',
-          faculty_name: user.name || user.faculty_name || '',
-          faculty_email: user.email || '',
+          enrollment_no: user.enrollment_no || '',
+          full_name: user.full_name || user.name || '',
+          email: user.email || '',
+          mobile_no: user.mobile_no || '',
           department: user.department || '',
-          designation: user.designation || '',
-          experience_years: user.experience_years || '',
-          phone_number: user.phone_number || '',
-          research_interests: user.research_interests || '',
-          linkedin_profile: user.linkedin_profile || ''
+          semester: user.semester || ''
         }));
       }
 
@@ -84,42 +89,54 @@ const FacultyIndividualRegistration = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setStudentData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
+  const validateForm = () => {
+    const required = ['enrollment_no', 'full_name', 'email', 'mobile_no', 'department', 'semester'];
+    for (let field of required) {
+      if (!studentData[field]) {
+        setError(`Please fill in the ${field.replace('_', ' ')} field.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
     
     try {
       setIsLoading(true);
       setError('');
-      
-      // Validate required fields
-      if (!formData.faculty_name || !formData.faculty_email || !formData.department) {
-        setError('Please fill in all required fields.');
-        return;
-      }
 
       const registrationData = {
         event_id: eventId,
         registration_type: 'individual',
-        faculty_data: formData,
+        student_data: studentData,
         timestamp: new Date().toISOString()
       };
 
-      // Submit registration (replace with actual API call)
-      console.log('Faculty Registration Data:', registrationData);
+      // Submit registration
+      const response = await clientAPI.registerForEvent(registrationData);
       
-      // For now, just simulate success
-      setSuccess('Registration submitted successfully!');
-      
-      // Navigate to success page after a delay
-      setTimeout(() => {
-        navigate(`/faculty/events/${eventId}/registration-success`);
-      }, 2000);
+      if (response.data.success) {
+        setSuccess('Registration submitted successfully!');
+        
+        // Navigate to success page
+        setTimeout(() => {
+          navigate(`/student/events/${eventId}/registration-success`);
+        }, 2000);
+      } else {
+        setError(response.data.message || 'Registration failed. Please try again.');
+      }
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -149,7 +166,7 @@ const FacultyIndividualRegistration = () => {
               <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Not Available</h2>
               <p className="text-gray-600">{error}</p>
               <button
-                onClick={() => navigate('/faculty/events')}
+                onClick={() => navigate('/student/events')}
                 className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
               >
                 Back to Events
@@ -168,7 +185,7 @@ const FacultyIndividualRegistration = () => {
           <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-              <h1 className="text-2xl font-bold mb-2">Faculty Registration</h1>
+              <h1 className="text-2xl font-bold mb-2">Student Individual Registration</h1>
               {event && (
                 <p className="text-blue-100">
                   Registering for: <span className="font-semibold">{event.title}</span>
@@ -191,19 +208,19 @@ const FacultyIndividualRegistration = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Information */}
+                {/* Personal Information */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personal Information</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Faculty Name *
+                        Enrollment Number *
                       </label>
                       <input
                         type="text"
-                        name="faculty_name"
-                        value={formData.faculty_name}
+                        name="enrollment_no"
+                        value={studentData.enrollment_no}
                         onChange={handleInputChange}
                         required
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -212,12 +229,40 @@ const FacultyIndividualRegistration = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email Address *
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="full_name"
+                        value={studentData.full_name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Email *
                       </label>
                       <input
                         type="email"
-                        name="faculty_email"
-                        value={formData.faculty_email}
+                        name="email"
+                        value={studentData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mobile Number *
+                      </label>
+                      <input
+                        type="tel"
+                        name="mobile_no"
+                        value={studentData.mobile_no}
                         onChange={handleInputChange}
                         required
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -231,7 +276,7 @@ const FacultyIndividualRegistration = () => {
                       <input
                         type="text"
                         name="department"
-                        value={formData.department}
+                        value={studentData.department}
                         onChange={handleInputChange}
                         required
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -240,89 +285,78 @@ const FacultyIndividualRegistration = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Designation
+                        Semester *
                       </label>
-                      <input
-                        type="text"
-                        name="designation"
-                        value={formData.designation}
+                      <select
+                        name="semester"
+                        value={studentData.semester}
                         onChange={handleInputChange}
-                        placeholder="e.g., Assistant Professor, Professor"
+                        required
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
+                      >
+                        <option value="">Select Semester</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                          <option key={sem} value={sem}>{sem}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Experience (Years)
+                        Year of Study
                       </label>
-                      <input
-                        type="number"
-                        name="experience_years"
-                        value={formData.experience_years}
+                      <select
+                        name="year_of_study"
+                        value={studentData.year_of_study}
                         onChange={handleInputChange}
-                        min="0"
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
+                      >
+                        <option value="">Select Year</option>
+                        <option value="1">First Year</option>
+                        <option value="2">Second Year</option>
+                        <option value="3">Third Year</option>
+                        <option value="4">Fourth Year</option>
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number
+                        Emergency Contact
                       </label>
                       <input
                         type="tel"
-                        name="phone_number"
-                        value={formData.phone_number}
+                        name="emergency_contact"
+                        value={studentData.emergency_contact}
                         onChange={handleInputChange}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
-                </div>
 
-                {/* Professional Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Professional Information</h3>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Research Interests
+                      Dietary Requirements
                     </label>
                     <textarea
-                      name="research_interests"
-                      value={formData.research_interests}
+                      name="dietary_requirements"
+                      value={studentData.dietary_requirements}
                       onChange={handleInputChange}
-                      rows="3"
-                      placeholder="Brief description of your research interests..."
+                      rows="2"
+                      placeholder="Any dietary restrictions or preferences..."
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      LinkedIn Profile
-                    </label>
-                    <input
-                      type="url"
-                      name="linkedin_profile"
-                      value={formData.linkedin_profile}
-                      onChange={handleInputChange}
-                      placeholder="https://linkedin.com/in/your-profile"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Additional Notes
+                      Special Accommodations
                     </label>
                     <textarea
-                      name="additional_notes"
-                      value={formData.additional_notes}
+                      name="special_accommodations"
+                      value={studentData.special_accommodations}
                       onChange={handleInputChange}
-                      rows="3"
-                      placeholder="Any additional information or special requirements..."
+                      rows="2"
+                      placeholder="Any special accommodations needed..."
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -338,7 +372,7 @@ const FacultyIndividualRegistration = () => {
                     {isLoading ? (
                       <span className="flex items-center justify-center">
                         <LoadingSpinner size="sm" />
-                        <span className="ml-2">Submitting...</span>
+                        <span className="ml-2">Submitting Registration...</span>
                       </span>
                     ) : (
                       'Submit Registration'
@@ -354,4 +388,4 @@ const FacultyIndividualRegistration = () => {
   );
 };
 
-export default FacultyIndividualRegistration;
+export default StudentIndividualRegistration;

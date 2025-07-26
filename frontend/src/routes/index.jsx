@@ -8,25 +8,25 @@ import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
-import FeedbackPage from '../pages/client/Feedback/FeedbackPage';
-import CertificatePage from '../pages/client/Certificate/CertificatePage';
-import ProfilePage from '../pages/client/ProfilePage';
-import EditProfile from '../pages/client/EditProfile';
-import FacultyProfilePage from '../pages/client/FacultyProfilePage';
-import FacultyProfileEdit from '../pages/client/FacultyProfileEdit';
-import EventRegistration from '../pages/client/Registration/EventRegistration';
-import StudentIndividualRegistration from '../pages/client/Registration/StudentIndividualRegistration';
-import MarkAttendance from '../pages/client/Attendance/MarkAttendance';
-import RegistrationSuccess from '../pages/client/Registration/RegistrationSuccess';
-import AttendanceSuccess from '../pages/client/Attendance/AttendanceSuccess';
-import AttendanceConfirmation from '../pages/client/Attendance/AttendanceConfirmation';
-import TeamManagement from '../pages/client/TeamManagement';
-import NotRegistered from '../pages/client/NotRegistered';
-import TestIndex from '../pages/test/TestIndex';
 
-// Faculty Registration Components
-import FacultyIndividualRegistration from '../pages/client/Registration/IndividualRegistration';
-import FacultyTeamRegistration from '../pages/client/Registration/TeamRegistration';
+// Student components - new organized structure
+import ProfilePage from '../pages/client/student/Account/ProfilePage';
+import EditProfile from '../pages/client/student/Account/EditProfile';
+import TeamManagement from '../pages/client/student/Account/TeamManagement';
+import StudentIndividualRegistration from '../pages/client/student/EventRegistration/IndividualRegistration';
+import StudentTeamRegistration from '../pages/client/student/EventRegistration/TeamRegistration';
+import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
+import AlreadyRegistered from '../pages/client/student/EventRegistration/AlreadyRegistered';
+import NotRegistered from '../pages/client/student/EventRegistration/NotRegistered';
+
+// Faculty components - new organized structure
+import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
+import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
+import FacultyIndividualRegistration from '../pages/client/faculty/EventRegistration/IndividualRegistration';
+import FacultyTeamRegistration from '../pages/client/faculty/EventRegistration/TeamRegistration';
+
+// Test components
+import TestIndex from '../pages/test/TestIndex';
 
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
@@ -85,39 +85,19 @@ function AppRoutes() {
         <Route path="/dev" element={<TestIndex />} />
         <Route path="/dev/event-registration/:eventId" element={<StudentIndividualRegistration />} />
         <Route path="/dev/event-registration" element={<StudentIndividualRegistration />} />
-        <Route path="/dev/event-registration-team" element={<EventRegistration />} />
-        <Route path="/dev/mark-attendance/:eventId" element={<MarkAttendance />} />
-        <Route path="/dev/mark-attendance" element={<MarkAttendance />} />
+        <Route path="/dev/event-registration-team" element={<StudentTeamRegistration />} />
         <Route path="/dev/registration-success" element={<RegistrationSuccess />} />
-        <Route path="/dev/attendance-success" element={<AttendanceSuccess />} />
-        <Route path="/dev/attendance-confirmation" element={<AttendanceConfirmation />} />
         <Route path="/dev/team-management" element={<TeamManagement />} />
         <Route path="/dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
         <Route path="/dev/not-registered" element={<NotRegistered />} />
         <Route path="/dev/not-registered/:eventId" element={<NotRegistered />} />
         
-        {/* Protected Client Routes */}
+        {/* Protected Client/Student Routes */}
         <Route
           path="/client/dashboard"
           element={
             <ProtectedRoute userType="student">
               <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId/feedback"
-          element={
-            <ProtectedRoute userType="student">
-              <FeedbackPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId/certificate"
-          element={
-            <ProtectedRoute userType="student">
-              <CertificatePage />
             </ProtectedRoute>
           }
         />
@@ -137,41 +117,55 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/student/profile"
+          element={
+            <ProtectedRoute userType="student">
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/profile/edit"
+          element={
+            <ProtectedRoute userType="student">
+              <EditProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/team-management"
+          element={
+            <ProtectedRoute userType="student">
+              <TeamManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/events/:eventId/register"
+          element={
+            <ProtectedRoute userType="student">
+              <StudentIndividualRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/events/:eventId/register-team"
+          element={
+            <ProtectedRoute userType="student">
+              <StudentTeamRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/events/:eventId/registration-success"
+          element={
+            <ProtectedRoute userType="student">
+              <RegistrationSuccess />
+            </ProtectedRoute>
+          }
+        />
         
-        {/* Test route for EventRegistration */}
-        <Route
-          path="/test/event-registration/:eventId"
-          element={
-            <ProtectedRoute userType="student">
-              <EventRegistration />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/test/event-registration"
-          element={
-            <ProtectedRoute userType="student">
-              <EventRegistration />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/test/mark-attendance/:eventId"
-          element={
-            <ProtectedRoute userType="student">
-              <MarkAttendance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/test/mark-attendance"
-          element={
-            <ProtectedRoute userType="student">
-              <MarkAttendance />
-            </ProtectedRoute>
-          }
-        />
-
         {/* Faculty Routes */}
         <Route
           path="/faculty/profile"
