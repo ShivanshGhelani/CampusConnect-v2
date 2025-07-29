@@ -47,6 +47,22 @@ const StatusBadge = ({ status }) => {
 
 // Main ProfileEventCard component
 const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => {
+  // Registration data available for debugging if needed
+  // reg.event_id, reg.event?.event_name, reg.registration?.registration_type, etc.
+  
+  // Debug: Check event status for cancel button visibility
+  const shouldShowCancelButtons = (reg.event.status === "upcoming" || reg.event.status === "open") && 
+                                  (reg.event.sub_status === "registration_open" || reg.event.sub_status === "open" || !reg.event.sub_status);
+  
+  console.log('ProfileEventCard - Event Status Debug:', {
+    event_name: reg.event?.event_name,
+    status: reg.event?.status,
+    sub_status: reg.event?.sub_status,
+    registration_type: reg.registration?.registration_type,
+    shouldShowCancelButtons: shouldShowCancelButtons,
+    hasOnCancelFunction: !!onCancelRegistration
+  });
+
   return (
     <div className="group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 hover:border-blue-300">
       {/* Compact Header */}
@@ -109,13 +125,13 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
           <div className="flex items-center gap-2">
             {reg.registration?.registration_type && (
               <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
-                reg.registration.registration_type === 'team_leader' 
+                (reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team')
                   ? 'bg-purple-50 text-purple-700 border border-purple-200' 
                   : reg.registration.registration_type === 'individual'
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
                   : 'bg-orange-50 text-orange-700 border border-orange-200'
               }`}>
-                {reg.registration.registration_type === 'team_leader' && (
+                {(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team') && (
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
@@ -130,7 +146,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 )}
-                {reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {reg.registration.registration_type === 'team' ? 'Team Leader' : reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </span>
             )}
           </div>
@@ -148,29 +164,33 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                 View
               </Link>
 
-              {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
+              {/* Team Management Button - Always show for team leaders */}
+              {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
+                <Link
+                  to={`/client/events/${reg.event_id}/manage-team`}
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Manage Team
+                </Link>
+              )}
+
+              {/* Registration Management Buttons - Show for events where registration can be canceled */}
+              {(reg.event.status === "upcoming" || reg.event.status === "open") && 
+               (reg.event.sub_status === "registration_open" || reg.event.sub_status === "open" || !reg.event.sub_status) && (
                 <>
-                  {reg.registration?.registration_type === "team_leader" && (
-                    <>
-                      <Link
-                        to={`/client/events/${reg.event_id}/manage-team`}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Team
-                      </Link>
-                      <button
-                        onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Cancel
-                      </button>
-                    </>
+                  {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
+                    <button
+                      onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Cancel Team
+                    </button>
                   )}
 
                   {reg.registration?.registration_type === "individual" && (
@@ -181,7 +201,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      Cancel
+                      Cancel Registration
                     </button>
                   )}
 

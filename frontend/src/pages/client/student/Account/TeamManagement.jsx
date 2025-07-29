@@ -6,7 +6,7 @@ import ClientLayout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 
 const TeamManagement = () => {
-  const { eventId, teamId } = useParams();
+  const { eventId } = useParams(); // Only get eventId from URL
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
@@ -22,6 +22,7 @@ const TeamManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   // Form states
@@ -41,7 +42,7 @@ const TeamManagement = () => {
     }
     
     fetchTeamData();
-  }, [eventId, teamId, isAuthenticated, location]);
+  }, [eventId, isAuthenticated, location]);
 
   const fetchTeamData = async () => {
     try {
@@ -104,14 +105,53 @@ const TeamManagement = () => {
         return;
       }
       
-      // In production, fetch actual data
-      const response = await clientAPI.getTeamDetails(eventId, teamId);
+      // In production, fetch actual data using only eventId
+      const response = await clientAPI.getTeamDetails(eventId);
       
-      if (response.data.success) {
-        setEvent(response.data.event);
-        setTeamInfo(response.data.team);
+      if (response.data.success && response.data.registered) {
+        const registrationData = response.data.registration_data;
+        
+        // Create event object from the response (if available) or mock data
+        const eventData = {
+          event_name: registrationData.event_name || `Event ${eventId}`,
+          event_id: eventId,
+          team_size_min: 2, // Default values - you might want to get these from event details
+          team_size_max: 5
+        };
+        
+        // Create team info object from registration data
+        const teamData = {
+          team_name: registrationData.team_name,
+          team_id: registrationData.team_registration_id || registrationData.registration_id,
+          participant_count: 1 + (registrationData.team_members?.length || 0), // Leader + members
+          departments_count: 1, // Can be calculated from team members if needed
+          registration_date: registrationData.registration_datetime ? 
+            new Date(registrationData.registration_datetime).toLocaleDateString() : new Date().toLocaleDateString(),
+          team_leader: {
+            name: registrationData.full_name,
+            enrollment: registrationData.enrollment_no,
+            email: registrationData.email,
+            mobile: registrationData.mobile_no,
+            department: registrationData.department,
+            semester: registrationData.semester,
+            year: Math.ceil(parseInt(registrationData.semester || '1') / 2).toString()
+          },
+          participants: registrationData.team_members?.map((member, index) => ({
+            id: `p${index + 1}`,
+            name: member.name || member.full_name,
+            enrollment: member.enrollment_no,
+            email: member.email,
+            mobile: member.mobile_no,
+            department: member.department,
+            semester: member.semester,
+            year: Math.ceil(parseInt(member.semester || '1') / 2).toString()
+          })) || []
+        };
+        
+        setEvent(eventData);
+        setTeamInfo(teamData);
       } else {
-        setError('Failed to load team details');
+        setError('Failed to load team details or not registered for team events');
       }
     } catch (error) {
       console.error('Team fetch error:', error);
@@ -172,10 +212,12 @@ const TeamManagement = () => {
         return;
       }
       
-      const response = await clientAPI.validateParticipant(enrollment, eventId, teamId);
+      const response = await clientAPI.validateParticipant(enrollment, eventId, teamInfo?.team_id);
       
       if (response.data.success) {
-        setStudentDetails(response.data.student);
+        // The API returns student_data, not student
+        const studentData = response.data.student_data || response.data.student;
+        setStudentDetails(studentData);
         setShowAddModal(false);
         setShowConfirmModal(true);
       } else {
@@ -215,7 +257,7 @@ const TeamManagement = () => {
         return;
       }
       
-      const response = await clientAPI.addTeamParticipant(eventId, teamId, studentDetails.enrollment);
+      const response = await clientAPI.addTeamParticipant(eventId, teamInfo?.team_id, studentDetails.enrollment_no);
       
       if (response.data.success) {
         showNotification('Participant added successfully!', 'success');
@@ -254,7 +296,7 @@ const TeamManagement = () => {
         return;
       }
       
-      const response = await clientAPI.removeTeamParticipant(eventId, teamId, removeTarget.enrollment);
+      const response = await clientAPI.removeTeamParticipant(eventId, teamInfo?.team_id, removeTarget.enrollment);
       
       if (response.data.success) {
         showNotification('Participant removed successfully!', 'success');
@@ -267,6 +309,44 @@ const TeamManagement = () => {
     } catch (error) {
       console.error('Remove participant error:', error);
       setError('Failed to remove participant. Please try again.');
+    }
+  };
+
+  const cancelRegistration = async () => {
+    try {
+      const isDevelopmentMode = location.pathname.startsWith('/dev/');
+      
+      if (isDevelopmentMode) {
+        // Mock cancel registration
+        showNotification('Registration cancelled successfully!', 'success');
+        setShowCancelModal(false);
+        
+        // Navigate back to dashboard
+        setTimeout(() => {
+          navigate('/client/dashboard');
+        }, 1500);
+        
+        return;
+      }
+      
+      const response = await clientAPI.cancelRegistration(eventId);
+      
+      if (response.data.success) {
+        showNotification('Registration cancelled successfully!', 'success');
+        setShowCancelModal(false);
+        
+        // Navigate back to dashboard after showing success message
+        setTimeout(() => {
+          navigate('/client/dashboard');
+        }, 1500);
+      } else {
+        setError(response.data.message || 'Failed to cancel registration');
+        setShowCancelModal(false);
+      }
+    } catch (error) {
+      console.error('Cancel registration error:', error);
+      setError('Failed to cancel registration. Please try again.');
+      setShowCancelModal(false);
     }
   };
 
@@ -502,6 +582,10 @@ const TeamManagement = () => {
     setRemoveTarget(null);
   };
 
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
+  };
+
   const handleEnrollmentChange = (e) => {
     const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     setParticipantEnrollment(value);
@@ -673,6 +757,14 @@ const TeamManagement = () => {
                 </div>
               )}
             </div>
+
+            <button 
+              onClick={() => setShowCancelModal(true)}
+              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              <i className="fas fa-times mr-2"></i>
+              Cancel Registration
+            </button>
           </div>
 
           {/* Team Members */}
@@ -854,11 +946,11 @@ const TeamManagement = () => {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{studentDetails.name}</span>
+                    <span className="font-medium">{studentDetails.full_name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Enrollment:</span>
-                    <span className="font-mono">{studentDetails.enrollment}</span>
+                    <span className="font-mono">{studentDetails.enrollment_no}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
@@ -866,7 +958,7 @@ const TeamManagement = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mobile:</span>
-                    <span>{studentDetails.mobile}</span>
+                    <span>{studentDetails.mobile_no}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Department:</span>
@@ -932,6 +1024,63 @@ const TeamManagement = () => {
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
               >
                 Remove Member
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Registration Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+            <div className="bg-red-500 px-6 py-4 rounded-t-lg">
+              <h3 className="text-lg font-semibold text-white">Cancel Registration</h3>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <i className="fas fa-exclamation-triangle text-red-600"></i>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Cancel Team Registration</h4>
+                  <p className="text-gray-600">{event?.event_name}</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-700 mb-3">
+                  Are you sure you want to cancel your team registration for this event?
+                </p>
+                <div className="text-xs text-gray-600">
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    This will remove the entire team registration
+                  </div>
+                  <div className="flex items-center mb-1">
+                    <i className="fas fa-users mr-2"></i>
+                    All team members will be unregistered
+                  </div>
+                  <div className="flex items-center">
+                    <i className="fas fa-warning mr-2"></i>
+                    This action cannot be undone
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
+              <button 
+                onClick={handleCancelModalClose}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Keep Registration
+              </button>
+              <button 
+                onClick={cancelRegistration}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+              >
+                Cancel Registration
               </button>
             </div>
           </div>

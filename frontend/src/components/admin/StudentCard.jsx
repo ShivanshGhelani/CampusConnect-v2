@@ -22,7 +22,9 @@ function StudentCard({ student, isOpen, onClose }) {
         try {
           const response = await adminAPI.getStudentDetails(student.enrollment_no);
           if (response.data.success) {
-            setStudentDetails(response.data.student);
+            // Handle different possible response structures
+            const studentData = response.data.student || response.data.student_data || response.data.data;
+            setStudentDetails(studentData);
           } else {
             // Fallback to the student data passed in
             setStudentDetails(student);

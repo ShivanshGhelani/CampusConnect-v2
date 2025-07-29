@@ -119,7 +119,11 @@ async def student_auth_status(request: Request):
                 "enrollment_no": student.enrollment_no,
                 "full_name": student.full_name,
                 "email": student.email,
+                "mobile_no": student.mobile_no,
                 "department": student.department,
+                "semester": student.semester,
+                "gender": student.gender,
+                "date_of_birth": student.date_of_birth.isoformat() if student.date_of_birth else None,
                 "user_type": "student"
             },
             "redirect_url": "/client/dashboard"
@@ -139,9 +143,15 @@ async def faculty_auth_status(request: Request):
                 "authenticated": True,
                 "user": {
                     "employee_id": faculty_data.get("employee_id"),
+                    "faculty_id": faculty_data.get("employee_id"),  # Alias for consistency
                     "full_name": faculty_data.get("full_name"),
                     "email": faculty_data.get("email"),
+                    "mobile_no": faculty_data.get("contact_no"),
+                    "phone_number": faculty_data.get("contact_no"),  # Alias for consistency
                     "department": faculty_data.get("department"),
+                    "designation": faculty_data.get("designation"),
+                    "gender": faculty_data.get("gender"),
+                    "date_of_birth": faculty_data.get("date_of_birth"),
                     "user_type": "faculty"
                 },
                 "redirect_url": "/faculty/profile"

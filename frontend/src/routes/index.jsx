@@ -13,17 +13,13 @@ import EventDetailPage from '../pages/client/EventDetail';
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
 import EditProfile from '../pages/client/student/Account/EditProfile';
 import TeamManagement from '../pages/client/student/Account/TeamManagement';
-import StudentIndividualRegistration from '../pages/client/student/EventRegistration/IndividualRegistration';
-import StudentTeamRegistration from '../pages/client/student/EventRegistration/TeamRegistration';
-import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
+import RegistrationRouter from '../components/common/RegistrationRouter';
 import AlreadyRegistered from '../pages/client/student/EventRegistration/AlreadyRegistered';
-import NotRegistered from '../pages/client/student/EventRegistration/NotRegistered';
+import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
 
 // Faculty components - new organized structure
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
-import FacultyIndividualRegistration from '../pages/client/faculty/EventRegistration/IndividualRegistration';
-import FacultyTeamRegistration from '../pages/client/faculty/EventRegistration/TeamRegistration';
 
 // Test components
 import TestIndex from '../pages/test/TestIndex';
@@ -80,17 +76,17 @@ function AppRoutes() {
         {/* Client/Student Routes - Public */}
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
+        <Route path="/client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
+        
+        {/* Team Management Route - Public (accessible by team leaders) */}
+        <Route path="/client/events/:eventId/manage-team" element={<TeamManagement />} />
         
         {/* Development/Test Routes - Public (remove in production) */}
         <Route path="/dev" element={<TestIndex />} />
-        <Route path="/dev/event-registration/:eventId" element={<StudentIndividualRegistration />} />
-        <Route path="/dev/event-registration" element={<StudentIndividualRegistration />} />
-        <Route path="/dev/event-registration-team" element={<StudentTeamRegistration />} />
-        <Route path="/dev/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/dev/event-registration/:eventId" element={<RegistrationRouter />} />
+        <Route path="/dev/event-registration" element={<RegistrationRouter />} />
         <Route path="/dev/team-management" element={<TeamManagement />} />
         <Route path="/dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
-        <Route path="/dev/not-registered" element={<NotRegistered />} />
-        <Route path="/dev/not-registered/:eventId" element={<NotRegistered />} />
         
         {/* Protected Client/Student Routes */}
         <Route
@@ -145,7 +141,7 @@ function AppRoutes() {
           path="/student/events/:eventId/register"
           element={
             <ProtectedRoute userType="student">
-              <StudentIndividualRegistration />
+              <RegistrationRouter />
             </ProtectedRoute>
           }
         />
@@ -153,7 +149,15 @@ function AppRoutes() {
           path="/student/events/:eventId/register-team"
           element={
             <ProtectedRoute userType="student">
-              <StudentTeamRegistration />
+              <RegistrationRouter forceTeamMode={true} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/events/:eventId/already-registered"
+          element={
+            <ProtectedRoute userType="student">
+              <AlreadyRegistered />
             </ProtectedRoute>
           }
         />
@@ -199,13 +203,11 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
-        {/* Faculty Registration Routes */}
         <Route
           path="/faculty/events/:eventId/register"
           element={
             <ProtectedRoute userType="faculty">
-              <FacultyIndividualRegistration />
+              <RegistrationRouter />
             </ProtectedRoute>
           }
         />
@@ -213,7 +215,15 @@ function AppRoutes() {
           path="/faculty/events/:eventId/register-team"
           element={
             <ProtectedRoute userType="faculty">
-              <FacultyTeamRegistration />
+              <RegistrationRouter forceTeamMode={true} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/events/:eventId/registration-success"
+          element={
+            <ProtectedRoute userType="faculty">
+              <RegistrationSuccess />
             </ProtectedRoute>
           }
         />

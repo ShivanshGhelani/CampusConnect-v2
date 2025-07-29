@@ -279,10 +279,22 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
             stats["recent_activities"].extend(activities)
         
         # Sort recent activities by timestamp (most recent first)
-        stats["recent_activities"].sort(
-            key=lambda x: x.get('timestamp', datetime.min), 
-            reverse=True
-        )
+        def get_activity_sort_key(x):
+            timestamp = x.get('timestamp', datetime.min)
+            if isinstance(timestamp, str):
+                try:
+                    if timestamp:
+                        return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    else:
+                        return datetime.min
+                except:
+                    return datetime.min
+            elif hasattr(timestamp, 'year'):  # datetime object
+                return timestamp
+            else:
+                return datetime.min
+        
+        stats["recent_activities"].sort(key=get_activity_sort_key, reverse=True)
         
         # Limit to last 10 activities
         stats["recent_activities"] = stats["recent_activities"][:10]
@@ -362,10 +374,23 @@ async def get_event_history(student: Student = Depends(require_student_login)):
                 event_history.append(history_item)
         
         # Sort by event date (most recent first)
-        event_history.sort(
-            key=lambda x: x.get('event_date', ''), 
-            reverse=True
-        )
+        def get_sort_key(x):
+            date_val = x.get('event_date', '')
+            if isinstance(date_val, str):
+                try:
+                    from datetime import datetime
+                    if date_val:
+                        return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    else:
+                        return datetime.min
+                except:
+                    return datetime.min
+            elif hasattr(date_val, 'year'):  # datetime object
+                return date_val
+            else:
+                return datetime.min
+        
+        event_history.sort(key=get_sort_key, reverse=True)
         
         return {
             "success": True,

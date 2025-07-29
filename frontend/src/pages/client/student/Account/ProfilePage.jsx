@@ -22,6 +22,7 @@ function ProfilePage() {
   const [showEventsModal, setShowEventsModal] = useState(false);  const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentEventId, setCurrentEventId] = useState(null);
   const [currentEventName, setCurrentEventName] = useState('');
+  const [cancellingRegistration, setCancellingRegistration] = useState(false);
 
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
@@ -137,6 +138,39 @@ function ProfilePage() {
     setShowCancelModal(false);
     setCurrentEventId(null);
     setCurrentEventName('');
+    setCancellingRegistration(false);
+  };
+
+  const handleCancelRegistration = async () => {
+    try {
+      setCancellingRegistration(true);
+      const response = await api.post(`/api/v1/client/registration/cancel/${currentEventId}`);
+      
+      if (response.data.success) {
+        // Remove the cancelled event from the local state
+        setEventHistory(prev => prev.filter(event => event.event_id !== currentEventId));
+        
+        // Update dashboard stats
+        setDashboardStats(prev => ({
+          ...prev,
+          total_registrations: Math.max(0, (prev.total_registrations || 0) - 1)
+        }));
+        
+        // Close the modal
+        closeCancelModal();
+        
+        // Show success message (you might want to add a toast notification here)
+        console.log('Registration cancelled successfully');
+      } else {
+        console.error('Failed to cancel registration:', response.data.message);
+        alert('Failed to cancel registration: ' + (response.data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error cancelling registration:', error);
+      alert('Error cancelling registration. Please try again.');
+    } finally {
+      setCancellingRegistration(false);
+    }
   };  const handleAvatarUpdate = (newAvatarUrl) => {
     updateAvatar(newAvatarUrl);
   };
@@ -465,18 +499,17 @@ function ProfilePage() {
                 <div className="flex gap-4">
                   <button
                     onClick={closeCancelModal}
-                    className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
+                    disabled={cancellingRegistration}
+                    className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Keep Registration
                   </button>
                   <button
-                    onClick={() => {
-                      // Handle cancel registration logic here
-                      closeCancelModal();
-                    }}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl"
+                    onClick={handleCancelRegistration}
+                    disabled={cancellingRegistration}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Yes, Cancel
+                    {cancellingRegistration ? 'Cancelling...' : 'Yes, Cancel'}
                   </button>              </div>
               </div>          </div>
           </div>

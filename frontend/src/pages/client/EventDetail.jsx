@@ -146,27 +146,27 @@ function EventDetail() {
 
   const handleRegister = () => {
     if (!isAuthenticated) {
-      navigate(`/auth/login?returnTo=/client/events/${eventId}`);
+      navigate(`/auth/login?redirect=${encodeURIComponent(`/client/events/${eventId}`)}`);
       return;
     }
     
     // Determine if it's faculty or student based on user context
-    const userType = user?.role || user?.userType || 'student'; // Adjust based on your auth structure
+    const userType = user?.role || user?.userType || 'student';
     const isTeamEvent = event?.event_type === 'team' || event?.registration_type === 'team';
     
     if (userType === 'faculty') {
-      // Faculty registration routes
+      // Faculty registration routes (future implementation)
       if (isTeamEvent) {
         navigate(`/faculty/events/${eventId}/register-team`);
       } else {
         navigate(`/faculty/events/${eventId}/register`);
       }
     } else {
-      // Student registration routes (dev for now, will be moved to proper routes)
+      // Student registration routes - use new comprehensive router
       if (isTeamEvent) {
-        navigate(`/dev/event-registration-team?eventId=${eventId}`);
+        navigate(`/student/events/${eventId}/register-team`);
       } else {
-        navigate(`/dev/event-registration?eventId=${eventId}`);
+        navigate(`/student/events/${eventId}/register`);
       }
     }
   };

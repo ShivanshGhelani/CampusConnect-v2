@@ -234,10 +234,16 @@ export const clientAPI = {
   // Registration
   registerForEvent: (eventId, registrationData) => api.post(`/api/v1/client/registration/register/${eventId}`, registrationData),
   getRegistrationStatus: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
+  getTeamDetails: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
   validateRegistration: (filters) => api.get('/api/v1/client/registration/validate', { params: filters }),
-  validateParticipant: (enrollmentNo) => api.get(`/api/v1/client/registration/validate-participant?enrollment_no=${enrollmentNo}`),
+  validateParticipant: (enrollmentNo, eventId, teamId) => api.get(`/api/v1/client/registration/validate-participant?enrollment_no=${enrollmentNo}&event_id=${eventId}&team_id=${teamId}`),
+  validateFacultyParticipant: (facultyId) => api.get(`/api/v1/client/registration/validate-faculty-participant?faculty_id=${facultyId}`),
   checkRegistrationConflicts: (conflictData) => api.post('/api/v1/client/registration/check-conflicts', conflictData),
   cancelRegistration: (eventId) => api.post(`/api/v1/client/registration/cancel/${eventId}`),
+  
+  // Team Management (Note: These endpoints may need to be implemented in backend)
+  addTeamParticipant: (eventId, teamId, enrollmentNo) => api.post(`/api/v1/client/registration/add-team-member`, { event_id: eventId, team_id: teamId, enrollment_no: enrollmentNo }),
+  removeTeamParticipant: (eventId, teamId, enrollmentNo) => api.post(`/api/v1/client/registration/remove-team-member`, { event_id: eventId, team_id: teamId, enrollment_no: enrollmentNo }),
   
   // Attendance
   markAttendance: (eventId, attendanceData) => api.post(`/api/v1/client/attendance/mark/${eventId}`, attendanceData),
