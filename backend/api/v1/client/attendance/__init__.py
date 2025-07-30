@@ -69,6 +69,11 @@ async def mark_attendance_api(event_id: str, request: Request, student: Student 
         if student.enrollment_no != enrollment_no:
             return {"success": False, "message": "Enrollment number mismatch"}
         
+        # Get event details
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            return {"success": False, "message": "Event not found"}
+        
         # Get student data
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
@@ -91,16 +96,53 @@ async def mark_attendance_api(event_id: str, request: Request, student: Student 
         
         # Check if attendance already marked
         if participation.get('attendance_id'):
-            return {"success": False, "message": "Attendance already marked for this event"}
+            return {
+                "success": False, 
+                "message": "Attendance already marked for this event",
+                "already_marked": True,
+                "attendance": {
+                    "attendance_id": participation.get('attendance_id'),
+                    "attendance_marked_at": participation.get('attendance_marked_at')
+                },
+                "registration": {
+                    "registrar_id": participation.get('registration_id'),
+                    "full_name": student_data.get('full_name'),
+                    "enrollment_no": student_data.get('enrollment_no'),
+                    "department": student_data.get('department'),
+                    "email": student_data.get('email'),
+                    "mobile_no": student_data.get('mobile_no'),
+                    "semester": student_data.get('semester'),
+                    "registration_type": participation.get('registration_type', 'individual')
+                }
+            }
         
         # Mark attendance using the event lifecycle helper
         success, attendance_id, message = await mark_attendance(student.enrollment_no, event_id, present=True)
         
         if success:
+            # Get updated participation data
+            updated_student = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+            updated_participation = updated_student.get('event_participations', {}).get(event_id, {})
+            
             return {
                 "success": True,
                 "message": "Attendance marked successfully",
-                "attendance_id": attendance_id
+                "attendance": {
+                    "attendance_id": attendance_id,
+                    "attendance_marked_at": updated_participation.get('attendance_marked_at'),
+                    "marked_at": updated_participation.get('attendance_marked_at')
+                },
+                "registration": {
+                    "registrar_id": participation.get('registration_id'),
+                    "registration_id": participation.get('registration_id'),
+                    "full_name": student_data.get('full_name'),
+                    "enrollment_no": student_data.get('enrollment_no'),
+                    "department": student_data.get('department'),
+                    "email": student_data.get('email'),
+                    "mobile_no": student_data.get('mobile_no'),
+                    "semester": student_data.get('semester'),
+                    "registration_type": participation.get('registration_type', 'individual')
+                }
             }
         else:
             return {"success": False, "message": message}

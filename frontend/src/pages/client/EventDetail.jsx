@@ -189,11 +189,100 @@ function EventDetail() {
 
   const handleAttendance = () => {
     if (!isAuthenticated) {
-      navigate(`/auth/login?returnTo=/client/events/${eventId}/attendance`);
+      navigate(`/auth/login?redirect=${encodeURIComponent(`/client/events/${eventId}/mark-attendance`)}`);
       return;
     }
+    
+    // Check if user is a student
+    if (userType !== 'student') {
+      alert('Only students can mark attendance for events');
+      return;
+    }
+    
     navigate(`/client/events/${eventId}/mark-attendance`);
   };
+
+  // Timeline status helper function
+  const getCurrentTimelineStatus = (phase) => {
+    const now = new Date();
+    
+    switch (phase) {
+      case 'registration_start':
+        if (!event.registration_start_date) return 'upcoming';
+        const regStart = new Date(event.registration_start_date);
+        return now >= regStart ? 'completed' : 'upcoming';
+        
+      case 'registration_end':
+        if (!event.registration_end_date) return 'upcoming';
+        const regEnd = new Date(event.registration_end_date);
+        const regStart2 = new Date(event.registration_start_date);
+        if (now >= regEnd) return 'completed';
+        if (now >= regStart2) return 'current';
+        return 'upcoming';
+        
+      case 'event_start':
+        if (!event.start_date) return 'upcoming';
+        const eventStart = new Date(event.start_date);
+        return now >= eventStart ? 'completed' : 'upcoming';
+        
+      case 'event_end':
+        if (!event.end_date) return 'upcoming';
+        const eventEnd = new Date(event.end_date);
+        const eventStart2 = new Date(event.start_date);
+        if (now >= eventEnd) return 'completed';
+        if (now >= eventStart2) return 'current';
+        return 'upcoming';
+        
+      case 'certificate':
+        if (!event.end_date) return 'upcoming';
+        const eventEnd2 = new Date(event.end_date);
+        if (now >= eventEnd2) return 'current';
+        return 'upcoming';
+        
+      default:
+        return 'upcoming';
+    }
+  };
+
+  // Get dynamic timeline message based on current phase
+  const getDynamicTimelineMessage = () => {
+    const now = new Date();
+    
+    // Registration not started
+    if (event.registration_start_date && now < new Date(event.registration_start_date)) {
+      const timeLeft = getTimeRemaining(event.registration_start_date);
+      return timeLeft ? `Registration opens in ${timeLeft}` : 'Registration opening soon';
+    }
+    
+    // Registration open
+    if (event.registration_start_date && now >= new Date(event.registration_start_date) && 
+        event.registration_end_date && now < new Date(event.registration_end_date)) {
+      const timeLeft = getTimeRemaining(event.registration_end_date);
+      return timeLeft ? `Registration closes in ${timeLeft}` : 'Registration closing soon';
+    }
+    
+    // Registration closed, event not started
+    if (event.registration_end_date && now >= new Date(event.registration_end_date) &&
+        event.start_date && now < new Date(event.start_date)) {
+      const timeLeft = getTimeRemaining(event.start_date);
+      return timeLeft ? `Event starts in ${timeLeft}` : 'Event starting soon';
+    }
+    
+    // Event started, not ended
+    if (event.start_date && now >= new Date(event.start_date) &&
+        event.end_date && now < new Date(event.end_date)) {
+      const timeLeft = getTimeRemaining(event.end_date);
+      return timeLeft ? `Event ends in ${timeLeft}` : 'Event ending soon';
+    }
+    
+    // Event ended
+    if (event.end_date && now >= new Date(event.end_date)) {
+      return 'Certificate available';
+    }
+    
+    return 'Timeline unavailable';
+  };
+
   // Smart content formatter component - exact replica of HTML template
   const SmartContent = ({ content, color = 'blue', wordLimit = 40 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -219,7 +308,8 @@ function EventDetail() {
       }
     });
 
-    const renderContent = () => {
+    // Function to convert any content into bullet points
+    const convertToBullets = (content) => {
       if (hasStructuredBullets) {
         return contentLines.map((line, index) => {
           if (!line.trim()) return null;
@@ -243,72 +333,74 @@ function EventDetail() {
           }
           
           if (isBullet) {
-            return (
-              <div key={index} className="flex items-start space-x-3 mb-2">
-                <div className={`w-5 h-5 bg-${color}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1`}>
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="text-gray-700 leading-relaxed flex-1">
-                  {bulletContent}
-                </div>
-              </div>
-            );
+            return {
+              type: 'bullet',
+              content: bulletContent,
+              index: index
+            };
           }
           
-          return (
-            <div key={index} className="text-gray-700 leading-relaxed mb-2">
-              {stripped}
-            </div>
-          );
-        }).filter(Boolean);
+          return {
+            type: 'text',
+            content: stripped,
+            index: index
+          };
+        }).filter(item => item && item.content);
       } else {
         // Auto-bullet creation for paragraph content
         if (contentLines.length === 1) {
           const singleContent = contentLines[0].trim();
           if (singleContent.includes('. ') && singleContent.split('. ').length > 2) {
             const sentences = singleContent.split('. ').filter(s => s.trim());
-            return sentences.map((sentence, index) => (
-              <div key={index} className="flex items-start space-x-3 mb-3">
-                <div className={`w-5 h-5 bg-${color}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1`}>
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="text-gray-700 leading-relaxed flex-1">
-                  {sentence.trim()}{!sentence.trim().endsWith('.') ? '.' : ''}
-                </div>
-              </div>
-            ));
+            return sentences.map((sentence, index) => ({
+              type: 'bullet',
+              content: sentence.trim() + (!sentence.trim().endsWith('.') ? '.' : ''),
+              index: index
+            }));
           }
         }
         
+        // Convert each line to a bullet point
         return contentLines.map((line, index) => (
-          line.trim() ? (
-            <div key={index} className="text-gray-700 leading-relaxed mb-2">
-              {line.trim()}
-            </div>
-          ) : null
+          line.trim() ? {
+            type: 'bullet',
+            content: line.trim(),
+            index: index
+          } : null
         )).filter(Boolean);
       }
     };
 
+    const renderBulletPoints = (bulletData, maxItems = null) => {
+      const itemsToShow = maxItems ? bulletData.slice(0, maxItems) : bulletData;
+      
+      return itemsToShow.map((item) => (
+        <div key={item.index} className="flex items-start space-x-3 mb-2">
+          <div className={`w-5 h-5 bg-${color}-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1`}>
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="text-gray-700 leading-relaxed flex-1">
+            {item.content}
+          </div>
+        </div>
+      ));
+    };
+
+    // Convert content to bullet points
+    const bulletData = convertToBullets(content);
+    const maxItemsToShow = isExpanded ? bulletData.length : Math.min(Math.ceil(wordLimit / 10), bulletData.length);
+
     return (
       <div className="read-more-wrapper" data-word-limit={wordLimit}>
-        <div className={`read-more-content bg-${color}-50 p-4 rounded-lg border border-${color}-200 ${!isExpanded && shouldTruncate ? 'max-h-48 overflow-hidden relative' : ''}`}>
-          {!isExpanded && shouldTruncate ? (
-            <>
-              <div className="truncated-content">
-                {words.slice(0, wordLimit).join(' ')}...
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
-            </>
-          ) : (
-            renderContent()
+        <div className={`read-more-content bg-${color}-50 p-4 rounded-lg border border-${color}-200 ${!isExpanded && shouldTruncate ? 'relative' : ''}`}>
+          {renderBulletPoints(bulletData, maxItemsToShow)}
+          {!isExpanded && shouldTruncate && maxItemsToShow < bulletData.length && (
+            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
           )}
         </div>
-        {shouldTruncate && (
+        {shouldTruncate && bulletData.length > Math.ceil(wordLimit / 10) && (
           <span 
             className={`read-more-link text-${color}-500 hover:text-${color}-600 text-xs font-medium cursor-pointer transition-all duration-200 inline-flex items-center gap-1 mt-2`}
             onClick={() => setIsExpanded(!isExpanded)}
@@ -381,9 +473,58 @@ function EventDetail() {
           @keyframes title-glow {
             0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.5), 0 0 60px rgba(59, 130, 246, 0.3); }
           }
+          @keyframes sparkle {
+            0%, 100% { 
+              opacity: 0; 
+              transform: scale(0.8) rotate(0deg); 
+            }
+            50% { 
+              opacity: 1; 
+              transform: scale(1.2) rotate(180deg); 
+            }
+          }
+          
+          @keyframes gentle-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+          }
+          
+          @keyframes pulse-glow {
+            0%, 100% { 
+              box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+              transform: scale(1);
+            }
+            50% { 
+              box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+              transform: scale(1.05);
+            }
+          }
+          
+          @keyframes icon-bounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-4px) rotate(3deg); }
+            50% { transform: translateY(-8px) rotate(0deg); }
+            75% { transform: translateY(-4px) rotate(-3deg); }
+          }
+          
+          @keyframes time-bounce {
+            0%, 100% { 
+              transform: translateY(0) scale(1);
+              text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+            }
+            50% { 
+              transform: translateY(-4px) scale(1.05);
+              text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+            }
+          }
           .animate-float { animation: float 6s ease-in-out infinite; }
           .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
           .animate-title-glow { animation: title-glow 3s ease-in-out infinite; }
+          .animate-sparkle { animation: sparkle 2s ease-in-out infinite; }
+          .animate-gentle-bounce { animation: gentle-bounce 2s ease-in-out infinite; }
+          .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+          .animate-icon-bounce { animation: icon-bounce 2.5s ease-in-out infinite; }
+          .animate-time-bounce { animation: time-bounce 1.5s ease-in-out infinite; }
         `}
         </style>
         
@@ -477,22 +618,25 @@ function EventDetail() {
                   )}
                 </div>
               </div>                
-              {/* Action Panel */}
-              <div className="bg-gradient-to-br from-white/15 via-white/10 to-white/5 backdrop-blur-lg rounded-2xl mt-4 p-5 max-w-xs border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-300">                {event.sub_status === 'registration_open' && (
-                  <div className="text-center space-y-4">
+              {/* Enhanced Action Panel */}
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 min-w-80 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] relative overflow-hidden">
+                {/* Floating background elements */}
+                <div className="absolute top-2 right-2 w-16 h-16 bg-white/5 rounded-full blur-2xl animate-pulse"></div>
+                <div className="absolute bottom-2 left-2 w-12 h-12 bg-blue-300/10 rounded-full blur-xl animate-float-slow"></div>                {event.sub_status === 'registration_open' && (
+                  <div className="text-center space-y-4 relative z-10">
                     <div className="space-y-2">
-                      <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                      <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse-glow">
                         <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-bold text-white drop-shadow-lg">Ready to Join?</h3>
+                      <h3 className="text-lg font-bold text-white drop-shadow-lg animate-title-glow">Ready to Join?</h3>
                       <p className="text-green-100 text-sm drop-shadow">Secure your spot today!</p>
                     </div>
 
                     {/* Registration time remaining */}
                     {registrationEnd && (
-                      <div className="bg-gradient-to-r from-orange-400/20 to-red-400/20 backdrop-blur-sm rounded-xl p-3 border border-orange-300/30 shadow-inner">
+                      <div className="bg-gradient-to-r from-orange-400/20 to-red-400/20 backdrop-blur-sm rounded-xl p-3 border border-orange-300/30 shadow-inner hover:shadow-lg transition-all duration-300">
                         <div className="flex items-center justify-center space-x-2">
                           <svg className="w-4 h-4 text-orange-300" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
@@ -507,7 +651,7 @@ function EventDetail() {
 
                     <button
                       onClick={handleRegister}
-                      className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-600 hover:via-green-600 hover:to-teal-600 text-white font-bold py-4 px-5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg overflow-hidden border border-emerald-400/50"
+                      className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-600 hover:via-green-600 hover:to-teal-600 text-white font-bold py-4 px-5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg overflow-hidden border border-emerald-400/50 hover:border-emerald-300/70"
                     >
                       {/* Animated background */}
                       <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
@@ -515,9 +659,15 @@ function EventDetail() {
                       {/* Shine effect */}
                       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                       
+                      {/* Sparkle effect */}
+                      <div className="absolute top-1 right-1 w-2 h-2 bg-white/60 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle"></div>
+                      <div className="absolute bottom-2 left-3 w-1 h-1 bg-white/40 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle" style={{animationDelay: '0.3s'}}></div>
+                      
                       <div className="relative flex items-center justify-center space-x-2">
-                        <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 2L3 7v11a2 2 0 002 2h10a2 2 0 002-2V7l-7-5zM8 15a1 1 0 112 0v1H8v-1zm2-3a1 1 0 10-2 0v1h2v-1z" clipRule="evenodd" />
+                        <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/>
+                          <path d="M9 3h6a2 2 0 0 1 2 2v1H7V5a2 2 0 0 1 2-2z"/>
+                          <path d="M9 14l2 2l4-4"/>
                         </svg>
                         <span className="text-base font-extrabold tracking-wide">Register Now</span>
                       </div>
@@ -531,9 +681,9 @@ function EventDetail() {
                 {event.sub_status === 'registration_not_started' && (
                   <div className="text-center space-y-4">
                     <div className="space-y-2">
-                      <div className="w-12 h-12 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      <div className="w-12 h-12 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse-glow">
+                        <svg className="w-6 h-6 text-white animate-icon-bounce" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                         </svg>
                       </div>
                       <h3 className="text-lg font-bold text-white drop-shadow-lg">Coming Soon</h3>
@@ -567,9 +717,9 @@ function EventDetail() {
                 {event.sub_status === 'registration_closed' && (
                   <div className="text-center space-y-4">
                     <div className="space-y-2">
-                      <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse">
+                        <svg className="w-6 h-6 text-white animate-icon-bounce" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                         </svg>
                       </div>
                       <h3 className="text-lg font-bold text-white drop-shadow-lg">Registration Closed</h3>
@@ -579,27 +729,43 @@ function EventDetail() {
                     <div className="w-full bg-gradient-to-r from-red-500 via-red-400 to-red-500 text-white font-bold py-4 px-5 rounded-xl cursor-not-allowed opacity-70 shadow-lg">
                       <div className="flex items-center justify-center space-x-2">
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
                         </svg>
                         <span className="text-base font-extrabold tracking-wide">Registration Closed</span>
                       </div>
                     </div>
                   </div>
-                )}{event.sub_status === 'event_started' && (
-                  <div className="text-center space-y-4">
+                )}                {(event.sub_status === 'event_started' || event.sub_status === 'ongoing') && (
+                  <div className="text-center space-y-4 relative z-10">
                     <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-white">Event Active</h3>
+                      <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse-glow">
+                        <svg className="w-6 h-6 text-white animate-icon-bounce" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-white animate-title-glow">Event Active</h3>
                       <p className="text-orange-100 text-sm">Mark your attendance now</p>
-                    </div>                    <button
+                    </div>
+
+                    <button
                       onClick={handleAttendance}
-                      className="group relative w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
+                      className="group relative w-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border border-orange-400/50 hover:border-orange-300/70"
                     >
+                      {/* Animated background */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-orange-400 via-red-400 to-pink-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
+                      
                       {/* Shine effect */}
                       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                       
+                      {/* Sparkle effect */}
+                      <div className="absolute top-1 right-2 w-2 h-2 bg-white/60 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle"></div>
+                      <div className="absolute bottom-2 left-4 w-1 h-1 bg-white/40 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle" style={{animationDelay: '0.4s'}}></div>
+                      
                       <div className="relative flex items-center justify-center">
-                        <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                          <circle cx="9" cy="7" r="4"/>
+                          <path d="M16 11l2 2l4-4"/>
                         </svg>
                         <span className="text-lg font-extrabold tracking-wide">Mark Attendance</span>
                       </div>
@@ -610,22 +776,36 @@ function EventDetail() {
                   </div>
                 )}                
                 {event.sub_status === 'certificate_available' && (
-                  <div className="text-center space-y-4">
+                  <div className="text-center space-y-4 relative z-10">
                     <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-white">Congratulations!</h3>
+                      <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse-glow">
+                        <svg className="w-6 h-6 text-white animate-icon-bounce" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732L14.146 12.8l-1.179 4.456a1 1 0 01-1.934 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732L9.854 7.2l1.179-4.456A1 1 0 0112 2z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-white animate-title-glow">Congratulations!</h3>
                       <p className="text-purple-100 text-sm">Your certificate is ready</p>
-                    </div>                    <div className="space-y-3">
+                    </div>
+
+                    <div className="space-y-3">
                       {/* Submit Feedback Button */}
                       <button
                         onClick={handleFeedback}
-                        className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
+                        className="group relative w-full bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border border-emerald-400/50 hover:border-emerald-300/70"
                       >
+                        {/* Animated background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
+                        
                         {/* Shine effect */}
                         <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                         
+                        {/* Sparkle effect */}
+                        <div className="absolute top-1 right-2 w-2 h-2 bg-white/60 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle"></div>
+                        
                         <div className="relative flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4 8.5 8.5 0 0 1-6.6 3.1 8.38 8.38 0 0 1-5.4-1.9L3 21l1.9-4.1a8.38 8.38 0 0 1-1.9-5.4 8.5 8.5 0 0 1 3.1-6.6 8.38 8.38 0 0 1 5.4-1.9h.5"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L14 13l-4 1 1-4 7.5-7.5z"/>
                           </svg>
                           <span className="text-lg font-extrabold tracking-wide">Submit Feedback</span>
                         </div>
@@ -637,14 +817,22 @@ function EventDetail() {
                       {/* Collect Certificate Button */}
                       <button
                         onClick={handleCertificate}
-                        className="group relative w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 hover:from-violet-700 hover:via-purple-700 hover:to-indigo-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden"
+                        className="group relative w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 hover:from-violet-700 hover:via-purple-700 hover:to-indigo-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border border-violet-400/50 hover:border-violet-300/70"
                       >
+                        {/* Animated background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-600 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
+                        
                         {/* Shine effect */}
                         <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                         
+                        {/* Sparkle effect */}
+                        <div className="absolute top-1 right-3 w-2 h-2 bg-white/60 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle"></div>
+                        <div className="absolute bottom-2 left-4 w-1 h-1 bg-white/40 rounded-full opacity-0 group-hover:opacity-100 animate-sparkle" style={{animationDelay: '0.5s'}}></div>
+                        
                         <div className="relative flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          <svg className="w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                            <circle cx="12" cy="8" r="7"/>
+                            <path d="M8.5 14l-2.5 7l6-3l6 3l-2.5-7"/>
                           </svg>
                           <span className="text-lg font-extrabold tracking-wide">Collect Certificate</span>
                         </div>
@@ -654,156 +842,341 @@ function EventDetail() {
                       </button>
                     </div>
                   </div>
-                )}                {event.sub_status === 'registration_not_started' && (
-                  <div className="text-center space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-white">Coming Soon</h3>
-                      <p className="text-yellow-100 text-sm">Get ready to register</p>
-                    </div>
-                    {registrationStart && (
-                      <div className="bg-white/10 rounded-xl p-3 border border-white/20">
-                        <span className="text-xs text-blue-200 block">Registration opens:</span>
-                        <span className="font-bold text-yellow-300 text-sm">{registrationStart.full}</span>
-                      </div>
-                    )}                    <button className="w-full bg-gray-400/50 text-gray-200 px-6 py-3 rounded-xl font-bold cursor-not-allowed" disabled>
-                      Not Available Yet
-                    </button>
-                  </div>
                 )}
 
                 {/* Fallback for other statuses */}
-                {!['registration_open', 'event_started', 'certificate_available', 'registration_not_started'].includes(event.sub_status) && (
-                  <div className="text-center space-y-4">
-                    <div className="space-y-1">
-                      <h3 className="text-xl font-bold text-white">Registration Closed</h3>
-                      <p className="text-red-100 text-sm">This event is no longer accepting registrations</p>
-                    </div>                    <button className="w-full bg-gray-400/50 text-gray-200 px-6 py-3 rounded-xl font-bold cursor-not-allowed" disabled>
-                      Registration Unavailable
-                    </button>
+                {!['registration_open', 'event_started', 'ongoing', 'certificate_available', 'registration_not_started'].includes(event.sub_status) && (
+                  <div className="text-center space-y-4 relative z-10">
+                    <div className="space-y-2">
+                      <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-bold text-white drop-shadow-lg">Registration Closed</h3>
+                      <p className="text-red-100 text-sm drop-shadow">This event is no longer accepting registrations</p>
+                    </div>
+
+                    <div className="w-full bg-gradient-to-r from-red-500 via-red-400 to-red-500 text-white font-bold py-4 px-6 rounded-xl cursor-not-allowed opacity-70 shadow-lg border border-red-400/30">
+                      <div className="flex items-center justify-center space-x-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-base font-extrabold tracking-wide">Registration Unavailable</span>
+                      </div>
+                    </div>
                   </div>                
                 )}
               </div>
             </div>
           </div>
         </div>        
-        {/* Event Timeline */}
+        {/* Compact Event Timeline */}
         <div className="container mx-auto max-w-5xl px-4 py-4 mt-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white/80 rounded-2xl shadow border border-blue-100 py-6 px-2">
-            <div className="flex w-full justify-between items-center relative">              {/* Registration Opens */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 10.793a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden">
+            {/* Timeline Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-3 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12,6 12,12 16,14"/>
                   </svg>
-                </div>
-                <div className="mt-2 text-xs font-semibold text-gray-700 text-center whitespace-nowrap">
-                  Registration Opens
-                </div>
-                <div className="mt-1 text-xs text-gray-500 text-center">
-                  {registrationStart ? (
-                    <>
-                      {registrationStart.dayWithSuffix}
-                      {event.registration_start_time && <br />}-  
-                      {event.registration_start_time || registrationStart.time}
-                    </>
-                  ) : 'TBA'}
+                  Event Timeline
+                </h2>
+                <div className="text-sm font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full animate-pulse">
+                  {getDynamicTimelineMessage()}
                 </div>
               </div>
+            </div>
 
-              {/* Connecting line */}
-              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+            {/* Timeline Content */}
+            <div className="p-6">
+              <div className="relative">
+                {/* Timeline Steps */}
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-2">
+                  
+                  {/* Registration Opens */}
+                  <div className={`flex flex-col items-center group transition-all duration-300 ${
+                    getCurrentTimelineStatus('registration_start') === 'completed' 
+                      ? 'scale-105' 
+                      : getCurrentTimelineStatus('registration_start') === 'current' 
+                        ? 'scale-110' 
+                        : 'scale-100'
+                  }`}>
+                    <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                      getCurrentTimelineStatus('registration_start') === 'completed'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                        : getCurrentTimelineStatus('registration_start') === 'current'
+                          ? 'bg-gradient-to-br from-yellow-400 to-orange-500 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-300 to-gray-400'
+                    }`}>
+                      {getCurrentTimelineStatus('registration_start') === 'completed' ? (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/>
+                          <path d="M9 3h6a2 2 0 0 1 2 2v1H7V5a2 2 0 0 1 2-2z"/>
+                          <path d="M9 14l2 2l4-4"/>
+                        </svg>
+                      )}
+                      {getCurrentTimelineStatus('registration_start') === 'current' && (
+                        <div className="absolute inset-0 rounded-full bg-yellow-400 opacity-30 animate-ping"></div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
+                        Registration Opens
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {registrationStart ? (
+                          <>
+                            <div className="font-medium">{registrationStart.dayWithSuffix}</div>
+                            {event.registration_start_time && (
+                              <div className="text-gray-500 text-xs">{event.registration_start_time || registrationStart.time}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">TBA</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Registration Closes */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 bg-gradient-to-r from-red-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="mt-2 text-xs font-semibold text-gray-700 text-center whitespace-nowrap">
-                  Registration Closes
-                </div>
-                <div className="mt-1 text-xs text-gray-500 text-center">
-                  {registrationEnd ? (
-                    <>
-                      {registrationEnd.dayWithSuffix}
-                      {event.registration_end_time && <br />}-
-                      {event.registration_end_time || registrationEnd.time}
-                    </>
-                  ) : 'TBA'}
-                </div>
-              </div>
+                  {/* Connecting Line 1 */}
+                  <div className="hidden lg:flex flex-1 items-center justify-center px-2">
+                    <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${
+                      getCurrentTimelineStatus('registration_start') === 'completed'
+                        ? 'bg-gradient-to-r from-green-400 to-yellow-400'
+                        : 'bg-gradient-to-r from-gray-200 to-gray-300'
+                    }`}></div>
+                  </div>
 
-              {/* Connecting line */}
-              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+                  {/* Registration Closes */}
+                  <div className={`flex flex-col items-center group transition-all duration-300 ${
+                    getCurrentTimelineStatus('registration_end') === 'completed' 
+                      ? 'scale-105' 
+                      : getCurrentTimelineStatus('registration_end') === 'current' 
+                        ? 'scale-110' 
+                        : 'scale-100'
+                  }`}>
+                    <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                      getCurrentTimelineStatus('registration_end') === 'completed'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                        : getCurrentTimelineStatus('registration_end') === 'current'
+                          ? 'bg-gradient-to-br from-red-400 to-pink-500 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-300 to-gray-400'
+                    }`}>
+                      {getCurrentTimelineStatus('registration_end') === 'completed' ? (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                      )}
+                      {getCurrentTimelineStatus('registration_end') === 'current' && (
+                        <div className="absolute inset-0 rounded-full bg-red-400 opacity-30 animate-ping"></div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
+                        Registration Closes
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {registrationEnd ? (
+                          <>
+                            <div className="font-medium">{registrationEnd.dayWithSuffix}</div>
+                            {event.registration_end_time && (
+                              <div className="text-gray-500 text-xs">{event.registration_end_time || registrationEnd.time}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">TBA</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Event Starts */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="mt-2 text-xs font-semibold text-gray-700 text-center whitespace-nowrap">
-                  Event Starts
-                </div>
-                <div className="mt-1 text-xs text-gray-500 text-center">
-                  {startDate ? (
-                    <>
-                      {startDate.dayWithSuffix}
-                      {event.start_time && <br />}-
-                      {event.start_time || startDate.time}
-                    </>
-                  ) : 'TBA'}
-                </div>
-              </div>
+                  {/* Connecting Line 2 */}
+                  <div className="hidden lg:flex flex-1 items-center justify-center px-2">
+                    <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${
+                      getCurrentTimelineStatus('registration_end') === 'completed'
+                        ? 'bg-gradient-to-r from-red-400 to-green-400'
+                        : 'bg-gradient-to-r from-gray-200 to-gray-300'
+                    }`}></div>
+                  </div>
 
-              {/* Connecting line */}
-              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+                  {/* Event Starts */}
+                  <div className={`flex flex-col items-center group transition-all duration-300 ${
+                    getCurrentTimelineStatus('event_start') === 'completed' 
+                      ? 'scale-105' 
+                      : getCurrentTimelineStatus('event_start') === 'current' 
+                        ? 'scale-110' 
+                        : 'scale-100'
+                  }`}>
+                    <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                      getCurrentTimelineStatus('event_start') === 'completed'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                        : getCurrentTimelineStatus('event_start') === 'current'
+                          ? 'bg-gradient-to-br from-orange-400 to-red-500 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-300 to-gray-400'
+                    }`}>
+                      {getCurrentTimelineStatus('event_start') === 'completed' ? (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      )}
+                      {getCurrentTimelineStatus('event_start') === 'current' && (
+                        <div className="absolute inset-0 rounded-full bg-orange-400 opacity-30 animate-ping"></div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
+                        Event Starts
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {startDate ? (
+                          <>
+                            <div className="font-medium">{startDate.dayWithSuffix}</div>
+                            {event.start_time && (
+                              <div className="text-gray-500 text-xs">{event.start_time || startDate.time}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">TBA</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Event Ends */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="mt-2 text-xs font-semibold text-gray-700 text-center whitespace-nowrap">
-                  Event Ends
-                </div>
-                <div className="mt-1 text-xs text-gray-500 text-center">
-                  {endDate ? (
-                    <>
-                      {endDate.dayWithSuffix}
-                      {event.end_time && <br />}-
-                      {event.end_time || endDate.time}
-                    </>
-                  ) : 'TBA'}
-                </div>
-              </div>
+                  {/* Connecting Line 3 */}
+                  <div className="hidden lg:flex flex-1 items-center justify-center px-2">
+                    <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${
+                      getCurrentTimelineStatus('event_start') === 'completed'
+                        ? 'bg-gradient-to-r from-orange-400 to-blue-400'
+                        : 'bg-gradient-to-r from-gray-200 to-gray-300'
+                    }`}></div>
+                  </div>
 
-              {/* Connecting line */}
-              <div className="hidden md:block h-1 w-15 bg-gradient-to-r from-gray-200 to-gray-300 mx-1"></div>
+                  {/* Event Ends */}
+                  <div className={`flex flex-col items-center group transition-all duration-300 ${
+                    getCurrentTimelineStatus('event_end') === 'completed' 
+                      ? 'scale-105' 
+                      : getCurrentTimelineStatus('event_end') === 'current' 
+                        ? 'scale-110' 
+                        : 'scale-100'
+                  }`}>
+                    <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                      getCurrentTimelineStatus('event_end') === 'completed'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                        : getCurrentTimelineStatus('event_end') === 'current'
+                          ? 'bg-gradient-to-br from-blue-400 to-indigo-500 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-300 to-gray-400'
+                    }`}>
+                      {getCurrentTimelineStatus('event_end') === 'completed' ? (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                      )}
+                      {getCurrentTimelineStatus('event_end') === 'current' && (
+                        <div className="absolute inset-0 rounded-full bg-blue-400 opacity-30 animate-ping"></div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
+                        Event Ends
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {endDate ? (
+                          <>
+                            <div className="font-medium">{endDate.dayWithSuffix}</div>
+                            {event.end_time && (
+                              <div className="text-gray-500 text-xs">{event.end_time || endDate.time}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">TBA</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Certificate Available */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
+                  {/* Connecting Line 4 */}
+                  <div className="hidden lg:flex flex-1 items-center justify-center px-2">
+                    <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${
+                      getCurrentTimelineStatus('event_end') === 'completed'
+                        ? 'bg-gradient-to-r from-blue-400 to-purple-400'
+                        : 'bg-gradient-to-r from-gray-200 to-gray-300'
+                    }`}></div>
+                  </div>
+
+                  {/* Certificate Available */}
+                  <div className={`flex flex-col items-center group transition-all duration-300 ${
+                    getCurrentTimelineStatus('certificate') === 'completed' 
+                      ? 'scale-105' 
+                      : getCurrentTimelineStatus('certificate') === 'current' 
+                        ? 'scale-110' 
+                        : 'scale-100'
+                  }`}>
+                    <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
+                      getCurrentTimelineStatus('certificate') === 'completed'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                        : getCurrentTimelineStatus('certificate') === 'current'
+                          ? 'bg-gradient-to-br from-purple-400 to-indigo-500 animate-pulse'
+                          : 'bg-gradient-to-br from-gray-300 to-gray-400'
+                    }`}>
+                      {getCurrentTimelineStatus('certificate') === 'completed' ? (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20,6 9,17 4,12"/>
+                        </svg>
+                      ) : (
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <circle cx="12" cy="8" r="7"/>
+                          <path d="M8.5 14l-2.5 7l6-3l6 3l-2.5-7"/>
+                        </svg>
+                      )}
+                      {getCurrentTimelineStatus('certificate') === 'current' && (
+                        <div className="absolute inset-0 rounded-full bg-purple-400 opacity-30 animate-ping"></div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
+                        Certificate Available
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">
+                        {event.certificate_end_date ? (
+                          <>
+                            <div className="font-medium">{formatDate(event.certificate_end_date)?.dayWithSuffix}</div>
+                            {event.certificate_available_time && (
+                              <div className="text-gray-500 text-xs">{event.certificate_available_time}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-400">After event</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-2 text-xs font-semibold text-gray-700 text-center whitespace-nowrap">
-                  Certificate Available
-                </div>
-                <div className="mt-1 text-xs text-gray-500 text-center">
-                  {event.certificate_end_date ? (
-                    <>
-                      {formatDate(event.certificate_end_date)?.dayWithSuffix}
-                      {event.certificate_available_time && <br />}
-                      {event.certificate_available_time}
-                    </>
-                  ) : 'After event'}
-                </div>
+
+                {/* Mobile Timeline Connector */}
+                <div className="lg:hidden absolute left-6 top-16 bottom-16 w-0.5 bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200"></div>
               </div>
             </div>
           </div>

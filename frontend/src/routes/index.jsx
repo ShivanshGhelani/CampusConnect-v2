@@ -17,6 +17,11 @@ import RegistrationRouter from '../components/common/RegistrationRouter';
 import AlreadyRegistered from '../pages/client/student/EventRegistration/AlreadyRegistered';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
 
+// Attendance components
+import MarkAttendance from '../pages/client/student/Attendance/MarkAttendance';
+import AttendanceSuccess from '../pages/client/student/Attendance/AttendanceSuccess';
+import AttendanceConfirm from '../pages/client/student/Attendance/AttendanceConfirm';
+
 // Faculty components - new organized structure
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
@@ -77,6 +82,32 @@ function AppRoutes() {
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
         <Route path="/client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
+        
+        {/* Attendance Routes - Protected (student only) */}
+        <Route
+          path="/client/events/:eventId/mark-attendance"
+          element={
+            <ProtectedRoute userType="student">
+              <MarkAttendance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/events/:eventId/attendance-success"
+          element={
+            <ProtectedRoute userType="student">
+              <AttendanceSuccess />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/events/:eventId/attendance-confirmation"
+          element={
+            <ProtectedRoute userType="student">
+              <AttendanceConfirm />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Team Management Route - Public (accessible by team leaders) */}
         <Route path="/client/events/:eventId/manage-team" element={<TeamManagement />} />
