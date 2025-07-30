@@ -53,7 +53,19 @@ function EventDetail() {
       }
 
       if (recentRegsResponse.data.success) {
-        setRecentRegistrations(recentRegsResponse.data.registrations || []);
+        // Handle different possible data structures
+        let registrations = [];
+        if (recentRegsResponse.data.registrations) {
+          registrations = Array.isArray(recentRegsResponse.data.registrations) 
+            ? recentRegsResponse.data.registrations 
+            : [recentRegsResponse.data.registrations];
+        } else if (recentRegsResponse.data.data && Array.isArray(recentRegsResponse.data.data)) {
+          registrations = recentRegsResponse.data.data;
+        }
+        
+        setRecentRegistrations(registrations);
+      } else {
+        setRecentRegistrations([]);
       }
     } catch (error) {
       console.error('Error fetching event details:', error);
@@ -93,8 +105,12 @@ function EventDetail() {
     try {
       setModalLoading(true);
       const response = await adminAPI.getEventRegistrations(eventId);
+      
       if (response.data.success) {
-        setAllRegistrations(response.data.registrations || []);
+        const registrations = response.data.registrations || [];
+        setAllRegistrations(registrations);
+      } else {
+        setAllRegistrations([]);
       }
     } catch (error) {
       console.error('Error fetching all registrations:', error);
@@ -176,14 +192,15 @@ function EventDetail() {
 
   const filteredRegistrations = allRegistrations.filter(reg => {
     const searchMatch = !searchTerm || 
+      (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.name && reg.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.email && reg.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.enrollment_no && reg.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.team_name && reg.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const statusMatch = statusFilter === 'all' || 
-      (statusFilter === 'attended' && reg.attended) ||
-      (statusFilter === 'not-attended' && !reg.attended);
+      (statusFilter === 'attended' && (reg.attended || reg.attendance_status === 'attended')) ||
+      (statusFilter === 'not-attended' && (!reg.attended && reg.attendance_status !== 'attended'));
     
     return searchMatch && statusMatch;
   });
@@ -518,7 +535,8 @@ function EventDetail() {
             
             {/* Registration Cards */}
             <div className="space-y-4">
-              {recentRegistrations.length > 0 ? (
+              {console.log('Rendering registrations, count:', recentRegistrations.length, 'data:', recentRegistrations)}
+              {recentRegistrations && recentRegistrations.length > 0 ? (
                 eventStats?.is_team_based ? (
                   // Team Registrations Display
                   recentRegistrations.map((reg, index) => (
@@ -553,19 +571,37 @@ function EventDetail() {
                       {expandedTeams.has(`recent-${index}`) && reg.team_members && (
                         <div className="p-4 bg-gray-50">
                           <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             {reg.team_members.map((member, memberIndex) => (
-                              <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
-                                <div className="col-span-2 font-medium text-gray-900">
-                                  {member.full_name}
-                                  {member.registration_type === "team_leader" && (
-                                    <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
-                                  )}
+                              <div key={memberIndex} className="grid grid-cols-12 gap-2 py-2 px-3 border-b border-gray-200 last:border-0 hover:bg-white rounded transition-colors">
+                                <div className="col-span-3 font-medium text-gray-900 text-sm min-w-0 pr-1">
+                                  <div className="break-words leading-tight whitespace-normal" title={member.full_name}>
+                                    {member.full_name}
+                                    {member.registration_type === "team_leader" && (
+                                      <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
-                                <div className="col-span-1 text-gray-700">{member.department}</div>
-                                <div className="col-span-1 text-gray-700">{formatOrdinalNumber(member.semester)}</div>
-                                <div className="col-span-1 text-gray-700 truncate">{member.email}</div>
+                                <div className="col-span-2 text-gray-700 text-sm font-mono min-w-0 pr-1">
+                                  <div className="break-words leading-tight whitespace-normal" title={member.enrollment_no}>
+                                    {member.enrollment_no}
+                                  </div>
+                                </div>
+                                <div className="col-span-3 text-gray-700 text-sm min-w-0 pr-1">
+                                  <div className="break-words leading-tight whitespace-normal" title={member.department}>
+                                    {member.department}
+                                  </div>
+                                </div>
+                                <div className="col-span-1 text-gray-700 text-xs text-center font-medium min-w-0">
+                                  <div className="break-words leading-tight whitespace-normal">
+                                    {formatOrdinalNumber(member.semester)}
+                                  </div>
+                                </div>
+                                <div className="col-span-3 text-gray-700 text-sm min-w-0 pr-1">
+                                  <div className="break-words leading-tight whitespace-normal" title={member.email}>
+                                    {(member.email || '').trim()}
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -577,37 +613,67 @@ function EventDetail() {
                   // Individual Registrations Display
                   <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                     {/* Table Headers */}
-                    <div className="grid grid-cols-6 gap-4 py-3 px-4 border-b-2 border-gray-200 bg-gray-50 font-semibold text-gray-700">
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-user text-gray-500"></i>Name
+                    <div className="grid grid-cols-12 gap-1 py-4 px-4 border-b-2 border-gray-200 bg-gray-50 font-semibold text-gray-700">
+                      <div className="col-span-2 flex items-center gap-2 min-w-0">
+                        <i className="fas fa-user text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-sm truncate">Name</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-id-card text-gray-500"></i>Enrollment
+                      <div className="col-span-2 flex items-center gap-2 min-w-0">
+                        <i className="fas fa-id-card text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-sm truncate">Enrollment</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-building text-gray-500"></i>Department
+                      <div className="col-span-2 flex items-center gap-2 min-w-0">
+                        <i className="fas fa-building text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-sm truncate">Department</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-layer-group text-gray-500"></i>Semester
+                      <div className="col-span-2 flex items-center justify-center gap-1 min-w-0">
+                        <i className="fas fa-layer-group text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-xs">Semester</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-envelope text-gray-500"></i>Email
+                      <div className="col-span-2 flex items-center gap-2 min-w-0">
+                        <i className="fas fa-envelope text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-sm truncate">Email</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <i className="fas fa-calendar text-gray-500"></i>Registration Date
+                      <div className="col-span-1 flex items-center gap-1 min-w-0">
+                        <i className="fas fa-calendar text-gray-500 text-xs flex-shrink-0"></i>
+                        <span className="text-xs">Date</span>
                       </div>
                     </div>
                     
                     {/* Registration Rows */}
                     <div className="bg-white">
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
-                        <div key={index} className="grid grid-cols-6 gap-4 py-4 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
-                          <div className="font-medium text-gray-900">{reg.full_name}</div>
-                          <div className="text-gray-700">{reg.enrollment_no}</div>
-                          <div className="text-gray-700 text-nowrap">{reg.department}</div>
-                          <div className="text-gray-700">{formatOrdinalNumber(reg.semester)}</div>
-                          <div className="text-gray-700 truncate" title={reg.email}>{reg.email}</div>
-                          <div className="text-gray-700">{formatDateTime(reg.registration_date)}</div>
+                        <div key={index} className="grid grid-cols-12 gap-1 py-3 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
+                          <div className="col-span-2 font-medium text-gray-900 text-sm min-w-0 pr-2">
+                            <div className="break-words leading-tight" title={reg.full_name || reg.name}>
+                              {reg.full_name || reg.name || 'N/A'}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-gray-700 text-sm font-mono min-w-0 pr-2">
+                            <div className="break-words leading-tight" title={reg.enrollment_no}>
+                              {reg.enrollment_no || 'N/A'}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-gray-700 text-sm min-w-0 pr-2">
+                            <div className="break-words leading-tight" title={reg.department}>
+                              {reg.department || 'N/A'}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-gray-700 text-xs text-center font-medium min-w-0">
+                            <div className="break-words leading-tight whitespace-normal">
+                              {formatOrdinalNumber(reg.semester) || 'N/A'}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-gray-700 text-sm min-w-0 pr-2">
+                            <div className="break-words leading-tight whitespace-normal" title={reg.email}>
+                              {(reg.email || 'N/A').trim()}
+                            </div>
+                          </div>
+                          <div className="col-span-1 text-gray-700 text-xs  font-medium min-w-0">
+                            <div className="text-nowrap text-right leading-tight" title={formatDateTime(reg.registration_date)}>
+                              {formatDateTime(reg.registration_date) || 'N/A'}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -618,8 +684,29 @@ function EventDetail() {
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
                     <i className="fas fa-users text-2xl text-gray-400"></i>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Registrations Yet</h3>
-                  <p className="text-gray-500">No registrations have been found for this event.</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Recent Registrations</h3>
+                  <p className="text-gray-600 mb-4">
+                    {eventStats?.registrations_count > 0 
+                      ? `There are ${eventStats.registrations_count} total registrations, but none showing in recent list.`
+                      : 'No one has registered for this event yet.'
+                    }
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() => fetchEventDetails()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <i className="fas fa-sync mr-2"></i>Refresh Data
+                    </button>
+                    {eventStats?.registrations_count > 0 && (
+                      <button
+                        onClick={handleViewAllRegistrations}
+                        className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                      >
+                        <i className="fas fa-list mr-2"></i>View All Registrations
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1008,32 +1095,80 @@ function EventDetail() {
                         </div>
                       ) : (
                         // Individual Registrations in Modal
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredRegistrations.map((reg, index) => (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="font-medium text-gray-900">{reg.full_name || reg.name}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.enrollment_no}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{reg.department}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatOrdinalNumber(reg.semester)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 truncate max-w-[200px]" title={reg.email}>{reg.email}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatDateTime(reg.registration_date)}</td>
+                        <div className="overflow-hidden">
+                          <table className="w-full table-fixed border-collapse">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="w-[20%] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <i className="fas fa-user text-xs"></i>Name
+                                  </div>
+                                </th>
+                                <th className="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <i className="fas fa-id-card text-xs"></i>Enrollment
+                                  </div>
+                                </th>
+                                <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <i className="fas fa-building text-xs"></i>Department
+                                  </div>
+                                </th>
+                                <th className="w-[15%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center  gap-1">
+                                    <i className="fas fa-layer-group text-xs"></i>Semester
+                                  </div>
+                                </th>
+                                <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <i className="fas fa-envelope text-xs"></i>Email
+                                  </div>
+                                </th>
+                                <th className="w-[18%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <div className="flex items-center  gap-1">
+                                    <i className="fas fa-calendar text-xs"></i>Date
+                                  </div>
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {filteredRegistrations.map((reg, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="w-[20%] px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-100">
+                                    <div className="break-words leading-tight whitespace-normal" title={reg.full_name || reg.name}>
+                                      {reg.full_name || reg.name}
+                                    </div>
+                                  </td>
+                                  <td className="w-[15%] px-3 py-3 text-sm text-gray-700 font-mono border-r border-gray-100">
+                                    <div className="break-words leading-tight whitespace-normal" title={reg.enrollment_no}>
+                                      {reg.enrollment_no}
+                                    </div>
+                                  </td>
+                                  <td className="w-[18%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
+                                    <div className="break-words leading-tight whitespace-normal" title={reg.department}>
+                                      {reg.department}
+                                    </div>
+                                  </td>
+                                  <td className="w-[8%] px-2 py-3 text-xs text-gray-700  font-medium border-r border-gray-100">
+                                    <div className="break-words leading-tight whitespace-normal">
+                                      {formatOrdinalNumber(reg.semester)}
+                                    </div>
+                                  </td>
+                                  <td className="w-[28%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
+                                    <div className="break-words leading-tight whitespace-normal" title={reg.email}>
+                                      {(reg.email || '').trim()}
+                                    </div>
+                                  </td>
+                                  <td className="w-[11%] px-2 py-3 text-xs text-gray-700">
+                                    <div className="leading-tight" title={formatDateTime(reg.registration_date)}>
+                                      {formatDateTime(reg.registration_date)}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )
                     ) : (
                       <div className="text-center py-8">
