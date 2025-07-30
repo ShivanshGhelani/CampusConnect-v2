@@ -66,14 +66,23 @@ function MarkAttendance() {
       }
 
       // Try to get registration status and auto-fill if registered
+      let registrationData = null;
       try {
         const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
-        if (registrationResponse.data.success && registrationResponse.data.registration) {
-          const regData = registrationResponse.data.registration;
+        console.log('Registration response:', registrationResponse.data);
+        
+        if (registrationResponse.data.success && registrationResponse.data.registered) {
+          const regData = registrationResponse.data.registration_data;
+          registrationData = regData;
           setRegistration(regData);
           setAutoFilled(true);
           setFormData({
-            registration_id: regData.registrar_id || '',
+            registration_id: regData.registrar_id || regData.registration_id || '',
+            student_name: regData.full_name || '',
+            enrollment_no: regData.enrollment_no || ''
+          });
+          console.log('Auto-filled form data:', {
+            registration_id: regData.registrar_id || regData.registration_id || '',
             student_name: regData.full_name || '',
             enrollment_no: regData.enrollment_no || ''
           });
@@ -81,6 +90,30 @@ function MarkAttendance() {
       } catch (regError) {
         // Registration not found - user must enter details manually
         console.log('No registration found, manual entry required');
+      }
+
+      // Check if attendance is already marked
+      try {
+        const attendanceResponse = await clientAPI.getAttendanceStatus(eventId);
+        console.log('Attendance status response:', attendanceResponse.data);
+        
+        if (attendanceResponse.data.success && attendanceResponse.data.attendance_marked) {
+          // Attendance already marked - redirect to confirmation page
+          navigate(`/client/events/${eventId}/attendance-confirmation`, {
+            state: {
+              event: eventData,
+              registration: registrationData || {
+                full_name: user?.full_name || 'N/A',
+                enrollment_no: user?.enrollment_no || 'N/A',
+                registration_id: 'N/A'
+              },
+              attendance: attendanceResponse.data.attendance_data
+            }
+          });
+          return;
+        }
+      } catch (attError) {
+        console.log('Could not check attendance status, proceeding with form');
       }
 
     } catch (error) {
@@ -99,13 +132,13 @@ function MarkAttendance() {
       });
 
       if (response.data.success) {
-        const student = response.data.student;
-        setRegistration(student);
+        const studentData = response.data.student_data;
+        setRegistration(studentData);
         setAutoFilled(true);
         setFormData({
-          registration_id: student.registrar_id,
-          student_name: student.full_name,
-          enrollment_no: student.enrollment_no
+          registration_id: studentData.registration_id || registrationId,
+          student_name: studentData.full_name,
+          enrollment_no: studentData.enrollment_no
         });
         setError('');
         return true;

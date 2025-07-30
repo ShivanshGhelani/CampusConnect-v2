@@ -194,7 +194,7 @@ function EventDetail() {
     }
     
     // Check if user is a student
-    if (userType !== 'student') {
+    if (user?.user_type !== 'student') {
       alert('Only students can mark attendance for events');
       return;
     }
@@ -221,21 +221,25 @@ function EventDetail() {
         return 'upcoming';
         
       case 'event_start':
-        if (!event.start_date) return 'upcoming';
-        const eventStart = new Date(event.start_date);
+        const eventStartField = event.start_date || event.start_datetime;
+        if (!eventStartField) return 'upcoming';
+        const eventStart = new Date(eventStartField);
         return now >= eventStart ? 'completed' : 'upcoming';
         
       case 'event_end':
-        if (!event.end_date) return 'upcoming';
-        const eventEnd = new Date(event.end_date);
-        const eventStart2 = new Date(event.start_date);
+        const eventEndField = event.end_date || event.end_datetime;
+        const eventStartField2 = event.start_date || event.start_datetime;
+        if (!eventEndField) return 'upcoming';
+        const eventEnd = new Date(eventEndField);
+        const eventStart2 = new Date(eventStartField2);
         if (now >= eventEnd) return 'completed';
         if (now >= eventStart2) return 'current';
         return 'upcoming';
         
       case 'certificate':
-        if (!event.end_date) return 'upcoming';
-        const eventEnd2 = new Date(event.end_date);
+        const eventEndField2 = event.end_date || event.end_datetime;
+        if (!eventEndField2) return 'upcoming';
+        const eventEnd2 = new Date(eventEndField2);
         if (now >= eventEnd2) return 'current';
         return 'upcoming';
         
@@ -262,21 +266,25 @@ function EventDetail() {
     }
     
     // Registration closed, event not started
+    const eventStartField = event.start_date || event.start_datetime;
     if (event.registration_end_date && now >= new Date(event.registration_end_date) &&
-        event.start_date && now < new Date(event.start_date)) {
-      const timeLeft = getTimeRemaining(event.start_date);
+        eventStartField && now < new Date(eventStartField)) {
+      const timeLeft = getTimeRemaining(eventStartField);
       return timeLeft ? `Event starts in ${timeLeft}` : 'Event starting soon';
     }
     
     // Event started, not ended
-    if (event.start_date && now >= new Date(event.start_date) &&
-        event.end_date && now < new Date(event.end_date)) {
-      const timeLeft = getTimeRemaining(event.end_date);
+    const eventStartField2 = event.start_date || event.start_datetime;
+    const eventEndField = event.end_date || event.end_datetime;
+    if (eventStartField2 && now >= new Date(eventStartField2) &&
+        eventEndField && now < new Date(eventEndField)) {
+      const timeLeft = getTimeRemaining(eventEndField);
       return timeLeft ? `Event ends in ${timeLeft}` : 'Event ending soon';
     }
     
     // Event ended
-    if (event.end_date && now >= new Date(event.end_date)) {
+    const eventEndField2 = event.end_date || event.end_datetime;
+    if (eventEndField2 && now >= new Date(eventEndField2)) {
       return 'Certificate available';
     }
     
@@ -712,30 +720,8 @@ function EventDetail() {
                       </div>
                     </div>
                   </div>
-                )}
-
-                {event.sub_status === 'registration_closed' && (
-                  <div className="text-center space-y-4">
-                    <div className="space-y-2">
-                      <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse">
-                        <svg className="w-6 h-6 text-white animate-icon-bounce" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-bold text-white drop-shadow-lg">Registration Closed</h3>
-                      <p className="text-red-100 text-sm drop-shadow">Registration period has ended</p>
-                    </div>
-                    
-                    <div className="w-full bg-gradient-to-r from-red-500 via-red-400 to-red-500 text-white font-bold py-4 px-5 rounded-xl cursor-not-allowed opacity-70 shadow-lg">
-                      <div className="flex items-center justify-center space-x-2">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-base font-extrabold tracking-wide">Registration Closed</span>
-                      </div>
-                    </div>
-                  </div>
-                )}                {(event.sub_status === 'event_started' || event.sub_status === 'ongoing') && (
+                )}               
+                {(event.sub_status === 'event_started' || event.sub_status === 'ongoing') && (
                   <div className="text-center space-y-4 relative z-10">
                     <div className="space-y-1">
                       <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg animate-pulse-glow">
@@ -862,7 +848,7 @@ function EventDetail() {
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-base font-extrabold tracking-wide">Registration Unavailable</span>
+                        <span className="text-base font-extrabold tracking-wide text-white">Registration Unavailable</span>
                       </div>
                     </div>
                   </div>                

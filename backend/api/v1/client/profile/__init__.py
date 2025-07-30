@@ -353,6 +353,7 @@ async def get_event_history(student: Student = Depends(require_student_login)):
                     "venue": event.get('venue', ''),
                     "category": event.get('category', ''),
                     "status": event.get('status', ''),
+                    "sub_status": event.get('sub_status', ''),
                     "registration_data": {
                         "registration_id": participation.get('registration_id'),
                         "registration_type": participation.get('registration_type', 'individual'),

@@ -51,8 +51,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
   // reg.event_id, reg.event?.event_name, reg.registration?.registration_type, etc.
   
   // Debug: Check event status for cancel button visibility
-  const shouldShowCancelButtons = (reg.event.status === "upcoming" || reg.event.status === "open") && 
-                                  (reg.event.sub_status === "registration_open" || reg.event.sub_status === "open" || !reg.event.sub_status);
+  const shouldShowCancelButtons = reg.event.status === "upcoming" && reg.event.sub_status === "registration_open";
   
   console.log('ProfileEventCard - Event Status Debug:', {
     event_name: reg.event?.event_name,
@@ -187,9 +186,8 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                 </Link>
               )}
 
-              {/* Registration Management Buttons - Show for events where registration can be canceled */}
-              {(reg.event.status === "upcoming" || reg.event.status === "open") && 
-               (reg.event.sub_status === "registration_open" || reg.event.sub_status === "open" || !reg.event.sub_status) && (
+              {/* Registration Management Buttons - Show only when registration is open */}
+              {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
                 <>
                   {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
                     <button

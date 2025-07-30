@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ClientLayout from '../../../../components/client/Layout';
 
 function AttendanceConfirm() {
@@ -10,8 +10,8 @@ function AttendanceConfirm() {
   // Get data from navigation state
   const { event, registration, attendance } = location.state || {};
 
-  // If no data provided, redirect back to event
-  if (!event || !registration) {
+  // If no event data provided, redirect back to event
+  if (!event) {
     React.useEffect(() => {
       navigate(`/client/events/${eventId}`);
     }, [eventId, navigate]);
@@ -71,12 +71,11 @@ function AttendanceConfirm() {
             </div>
             
             <div className="px-6 py-4">
-              <div className="bg-orange-50 border border-orange-200 rounded-md p-4">
+              <div className="bg-green-50 border border-green-200 rounded-md p-4">
                 <div className="flex items-start space-x-3">
-                  <i className="fas fa-info-circle text-orange-600 mt-0.5"></i>
-                  <div className="text-sm text-orange-800">
-                    <strong>Note:</strong> You have already marked your attendance for this event. 
-                    Duplicate attendance records are not permitted to maintain accurate event records.
+                  <i className="fas fa-check-circle text-green-600 mt-0.5"></i>
+                  <div className="text-sm text-green-800">
+                    <strong>Attendance Confirmed!</strong> Your attendance for this event has been successfully recorded.
                   </div>
                 </div>
               </div>
@@ -102,12 +101,12 @@ function AttendanceConfirm() {
                   
                   <div className="bg-gray-50 p-3 rounded-md">
                     <dt className="text-sm font-medium text-gray-600">Student Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-medium">{registration.full_name}</dd>
+                    <dd className="mt-1 text-sm text-gray-900 font-medium">{registration?.full_name || 'N/A'}</dd>
                   </div>
                   
                   <div className="bg-gray-50 p-3 rounded-md">
                     <dt className="text-sm font-medium text-gray-600">Registration ID</dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-mono">{registration.registrar_id || registration.registration_id}</dd>
+                    <dd className="mt-1 text-sm text-gray-900 font-mono">{registration?.registrar_id || registration?.registration_id || attendance?.registration_id || 'N/A'}</dd>
                   </div>
                 </div>
                 

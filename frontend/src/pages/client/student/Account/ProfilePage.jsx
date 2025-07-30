@@ -68,6 +68,7 @@ function ProfilePage() {
       start_datetime: item.event_date,
       venue: item.venue,
       status: item.status,
+      sub_status: item.sub_status,
       category: item.category
     },
     registration: item.registration_data,

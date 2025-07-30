@@ -91,6 +91,33 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         
         setEvent(eventData);
         
+        // Check registration deadline and block if necessary
+        const now = new Date();
+        const registrationStart = eventData.registration_start_date ? new Date(eventData.registration_start_date) : null;
+        const registrationEnd = eventData.registration_end_date ? new Date(eventData.registration_end_date) : null;
+        
+        let shouldBlockRegistration = false;
+        
+        // Check if registration is not yet open
+        if (registrationStart && now < registrationStart) {
+          shouldBlockRegistration = true;
+          setError(`Registration opens on ${registrationStart.toLocaleDateString()} at ${registrationStart.toLocaleTimeString()}`);
+        }
+        
+        // Check if registration has closed
+        if (registrationEnd && now > registrationEnd) {
+          shouldBlockRegistration = true;
+          setError(`Registration closed on ${registrationEnd.toLocaleDateString()} at ${registrationEnd.toLocaleTimeString()}`);
+        }
+        
+        // Check event status
+        if (eventData.status !== 'upcoming' || eventData.sub_status !== 'registration_open') {
+          shouldBlockRegistration = true;
+          setError('Registration is currently not available for this event');
+        }
+        
+        setRegistrationBlocked(shouldBlockRegistration);
+        
         // Check if URL indicates team registration or use event setting
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';

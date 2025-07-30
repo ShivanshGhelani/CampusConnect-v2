@@ -177,6 +177,21 @@ function EventDetail() {
     }
   };
 
+  const formatCompactDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
+    try {
+      const date = new Date(dateTimeString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
   const formatOrdinalNumber = (number) => {
     if (!number || isNaN(number)) return 'N/A';
     const num = parseInt(number);
@@ -1225,16 +1240,16 @@ function EventDetail() {
                   ) : attendeesList.length > 0 ? (
                     <div className="space-y-4">
                       {/* Attendees Table */}
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-purple-50">
                             <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider min-w-[200px]">Name</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Enrollment</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Department</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider max-w-[180px]">Department</th>
                               <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Semester</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Email</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider">Attendance Time</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider max-w-[150px]">Email</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-purple-700 uppercase tracking-wider min-w-[120px]">Time</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -1249,11 +1264,11 @@ function EventDetail() {
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{attendee.enrollment_no}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">{attendee.department}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 max-w-[180px] truncate" title={attendee.department}>{attendee.department}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">{formatOrdinalNumber(attendee.semester)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 max-w-[200px] truncate" title={attendee.email}>{attendee.email}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                                  {attendee.attendance_time ? formatDateTime(attendee.attendance_time) : 'Present'}
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 max-w-[150px] truncate" title={attendee.email}>{attendee.email}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-700 min-w-[120px] text-sm" title={attendee.attendance_date ? formatDateTime(attendee.attendance_date) : 'N/A'}>
+                                  {attendee.attendance_date ? formatCompactDateTime(attendee.attendance_date) : 'N/A'}
                                 </td>
                               </tr>
                             ))}

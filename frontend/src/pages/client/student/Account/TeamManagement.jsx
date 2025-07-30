@@ -111,13 +111,31 @@ const TeamManagement = () => {
       if (response.data.success && response.data.registered) {
         const registrationData = response.data.registration_data;
         
-        // Create event object from the response (if available) or mock data
-        const eventData = {
-          event_name: registrationData.event_name || `Event ${eventId}`,
-          event_id: eventId,
-          team_size_min: 2, // Default values - you might want to get these from event details
-          team_size_max: 5
-        };
+        // Fetch full event details to get status and substatus information
+        let eventData;
+        try {
+          const eventResponse = await clientAPI.getEventDetails(eventId);
+          eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
+          // Add the missing fields if not available
+          eventData = {
+            ...eventData,
+            event_name: eventData.event_name || registrationData.event_name || `Event ${eventId}`,
+            event_id: eventId,
+            team_size_min: eventData.team_size_min || 2,
+            team_size_max: eventData.team_size_max || 5
+          };
+        } catch (eventError) {
+          console.error('Error fetching event details:', eventError);
+          // Fallback to minimal event data if full details fetch fails
+          eventData = {
+            event_name: registrationData.event_name || `Event ${eventId}`,
+            event_id: eventId,
+            team_size_min: 2,
+            team_size_max: 5,
+            status: 'upcoming', // Default assumption
+            sub_status: 'registration_open' // Default assumption for fallback
+          };
+        }
         
         // Create team info object from registration data
         const teamData = {
@@ -758,13 +776,16 @@ const TeamManagement = () => {
               )}
             </div>
 
-            <button 
-              onClick={() => setShowCancelModal(true)}
-              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-            >
-              <i className="fas fa-times mr-2"></i>
-              Cancel Registration
-            </button>
+            {/* Cancel Registration Button - Only show when registration is open */}
+            {event?.status === 'upcoming' && event?.sub_status === 'registration_open' && (
+              <button 
+                onClick={() => setShowCancelModal(true)}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                <i className="fas fa-times mr-2"></i>
+                Cancel Registration
+              </button>
+            )}
           </div>
 
           {/* Team Members */}

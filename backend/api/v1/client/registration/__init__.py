@@ -9,6 +9,7 @@ from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
 from database.operations import DatabaseOperations
 from core.id_generator import generate_registration_id, generate_team_registration_id
+from utils.timezone_helper import get_current_ist, ist_to_utc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,7 +53,9 @@ async def register_for_event(
         
         # Prepare registration data
         registration_type = data.get('registration_type', 'individual')
-        registration_datetime = datetime.utcnow().isoformat()
+        # Get current IST time and convert to UTC for storage
+        current_ist = get_current_ist()
+        registration_datetime = ist_to_utc(current_ist).isoformat()
         
         # Base participation data
         participation_data = {
