@@ -79,6 +79,45 @@ def generate_attendance_id(enrollment_no: str, event_id: str) -> str:
     return f"ATT{hash_hex}"
 
 
+def generate_virtual_attendance_id(enrollment_no: str, event_id: str) -> str:
+    """
+    Generate a unique virtual attendance ID for dual-layer attendance system
+    
+    Args:
+        enrollment_no: Student enrollment number
+        event_id: Event ID
+    
+    Returns:
+        Unique virtual attendance ID (VATT{8digits})
+    """
+    # Create a hash from the combination to ensure uniqueness
+    combined = f"{enrollment_no}_{event_id}_virtual_attendance_{datetime.now().isoformat()}"
+    hash_object = hashlib.md5(combined.encode())
+    hash_hex = hash_object.hexdigest()[:8].upper()
+    
+    return f"VATT{hash_hex}"
+
+
+def generate_physical_attendance_id(enrollment_no: str, event_id: str, marked_by: str = "admin") -> str:
+    """
+    Generate a unique physical attendance ID for dual-layer attendance system
+    
+    Args:
+        enrollment_no: Student enrollment number
+        event_id: Event ID
+        marked_by: Admin who marked the attendance
+    
+    Returns:
+        Unique physical attendance ID (PATT{8digits})
+    """
+    # Create a hash from the combination to ensure uniqueness
+    combined = f"{enrollment_no}_{event_id}_physical_attendance_{marked_by}_{datetime.now().isoformat()}"
+    hash_object = hashlib.md5(combined.encode())
+    hash_hex = hash_object.hexdigest()[:8].upper()
+    
+    return f"PATT{hash_hex}"
+
+
 def generate_feedback_id(enrollment_no: str, event_id: str) -> str:
     """
     Generate a unique feedback ID
@@ -246,6 +285,8 @@ def get_id_type(id_value: str) -> Optional[str]:
         "REG": "registration",
         "TEAM": "team_registration", 
         "ATT": "attendance",
+        "VATT": "virtual_attendance",
+        "PATT": "physical_attendance",
         "FDB": "feedback",
         "CERT": "certificate",
         "EVT": "event",
@@ -269,6 +310,16 @@ def is_valid_certificate_id(id_value: str) -> bool:
 def is_valid_attendance_id(id_value: str) -> bool:
     """Check if the ID is a valid attendance ID"""
     return validate_id_format(id_value, "ATT")
+
+
+def is_valid_virtual_attendance_id(id_value: str) -> bool:
+    """Check if the ID is a valid virtual attendance ID"""
+    return validate_id_format(id_value, "VATT")
+
+
+def is_valid_physical_attendance_id(id_value: str) -> bool:
+    """Check if the ID is a valid physical attendance ID"""
+    return validate_id_format(id_value, "PATT")
 
 
 def is_valid_feedback_id(id_value: str) -> bool:

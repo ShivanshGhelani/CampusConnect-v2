@@ -45,6 +45,7 @@ import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import MaintenanceDashboard from '../components/admin/maintenance/MaintenanceDashboard';
 import { MessageInbox, MessageThreadView } from '../components/admin/messages';
+import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -358,6 +359,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <MessageThreadView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/:eventId/attendance"
+          element={
+            <ProtectedRoute userType="admin">
+              <PhysicalAttendancePortal />
             </ProtectedRoute>
           }
         />
