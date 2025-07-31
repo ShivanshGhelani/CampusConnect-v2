@@ -43,6 +43,8 @@ import EventDetail from '../pages/admin/EventDetail';
 import ExportData from '../pages/admin/ExportData';
 import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
+import MaintenanceDashboard from '../components/admin/maintenance/MaintenanceDashboard';
+import { MessageInbox, MessageThreadView } from '../components/admin/messages';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -332,6 +334,30 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <Venue />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/maintenance"
+          element={
+            <ProtectedRoute userType="admin">
+              <MaintenanceDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/messages"
+          element={
+            <ProtectedRoute userType="admin">
+              <MessageInbox />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/messages/thread/:threadId"
+          element={
+            <ProtectedRoute userType="admin">
+              <MessageThreadView />
             </ProtectedRoute>
           }
         />

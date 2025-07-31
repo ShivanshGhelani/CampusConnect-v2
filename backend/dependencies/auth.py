@@ -117,6 +117,26 @@ async def require_executive_admin_or_higher(request: Request):
         )
     return admin
 
+async def require_organizer_admin_access(request: Request):
+    """Dependency to require organizer admin authentication"""
+    admin = await require_admin(request)
+    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organizer admin access required"
+        )
+    return admin
+
+async def require_venue_admin_access(request: Request):
+    """Dependency to require venue admin authentication"""
+    admin = await require_admin(request)
+    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.VENUE_ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Venue admin access required"
+        )
+    return admin
+
 async def require_content_admin_or_higher(request: Request):
     """Dependency to require content admin, executive admin, or super admin authentication"""
     admin = await require_admin(request)
@@ -131,8 +151,8 @@ async def require_event_admin_access(request: Request, event_id: Optional[str] =
     """Dependency for event admin access with event assignment check"""
     admin = await require_admin(request)
     
-    # For Event Admins, refresh session to get latest assigned events
-    if admin.role == AdminRole.EVENT_ADMIN:
+    # For Event Admins and Organizer Admins, refresh session to get latest assigned events
+    if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
         admin = await refresh_admin_session(request)
     
     # Super admins have access to everything
@@ -147,9 +167,9 @@ async def require_event_admin_access(request: Request, event_id: Optional[str] =
     if admin.role == AdminRole.CONTENT_ADMIN:
         return admin
     
-    # Event admins can only access assigned events
-    if admin.role == AdminRole.EVENT_ADMIN:
-        if event_id and event_id not in admin.assigned_events:
+    # Event admins and Organizer admins can only access assigned events
+    if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+        if event_id and event_id not in (admin.assigned_events or []):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not authorized to access this event"

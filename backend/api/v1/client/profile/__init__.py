@@ -3,7 +3,7 @@ Client Profile API
 Handles student and faculty profile-related API endpoints
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login
 from models.student import Student, StudentUpdate
@@ -22,7 +22,7 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return {"success": False, "message": "Student profile not found"}
-          # Remove sensitive information
+          # Remove sensitive information and ensure all fields are JSON serializable
         profile_data = {
             "enrollment_no": student_data.get('enrollment_no', ''),
             "full_name": student_data.get('full_name', ''),
@@ -36,8 +36,8 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
             "address": student_data.get('address', ''),
             "parent_mobile": student_data.get('parent_mobile', ''),
             "emergency_contact": student_data.get('emergency_contact', ''),
-            "profile_created_at": student_data.get('created_at', ''),
-            "last_updated": student_data.get('updated_at', ''),
+            "profile_created_at": student_data.get('created_at', '').isoformat() if hasattr(student_data.get('created_at', ''), 'isoformat') else student_data.get('created_at', ''),
+            "last_updated": student_data.get('updated_at', '').isoformat() if hasattr(student_data.get('updated_at', ''), 'isoformat') else student_data.get('updated_at', ''),
             "is_active": student_data.get('is_active', True),
             "avatar_url": student_data.get('avatar_url', None)
         }
@@ -120,8 +120,8 @@ async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_lo
             "date_of_birth": faculty_data.get('date_of_birth', ''),
             "date_of_joining": faculty_data.get('date_of_joining', ''),
             "avatar_url": faculty_data.get('avatar_url'),  # Include avatar URL
-            "profile_created_at": faculty_data.get('created_at', ''),
-            "last_updated": faculty_data.get('updated_at', ''),
+            "profile_created_at": faculty_data.get('created_at', '').isoformat() if hasattr(faculty_data.get('created_at', ''), 'isoformat') else faculty_data.get('created_at', ''),
+            "last_updated": faculty_data.get('updated_at', '').isoformat() if hasattr(faculty_data.get('updated_at', ''), 'isoformat') else faculty_data.get('updated_at', ''),
             "is_active": faculty_data.get('is_active', True),
             "event_participation": faculty_data.get('event_participation', [])
         }
@@ -284,15 +284,24 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
             if isinstance(timestamp, str):
                 try:
                     if timestamp:
-                        return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        # Parse ISO string and make it timezone-aware (UTC)
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            # If somehow still naive, assume UTC
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
                     else:
-                        return datetime.min
+                        # Return timezone-aware datetime.min
+                        return datetime.min.replace(tzinfo=timezone.utc)
                 except:
-                    return datetime.min
+                    return datetime.min.replace(tzinfo=timezone.utc)
             elif hasattr(timestamp, 'year'):  # datetime object
+                # Ensure it's timezone-aware
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
                 return timestamp
             else:
-                return datetime.min
+                return datetime.min.replace(tzinfo=timezone.utc)
         
         stats["recent_activities"].sort(key=get_activity_sort_key, reverse=True)
         
@@ -379,17 +388,24 @@ async def get_event_history(student: Student = Depends(require_student_login)):
             date_val = x.get('event_date', '')
             if isinstance(date_val, str):
                 try:
-                    from datetime import datetime
                     if date_val:
-                        return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        # Parse ISO string and make it timezone-aware (UTC)
+                        dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            # If somehow still naive, assume UTC
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
                     else:
-                        return datetime.min
+                        return datetime.min.replace(tzinfo=timezone.utc)
                 except:
-                    return datetime.min
+                    return datetime.min.replace(tzinfo=timezone.utc)
             elif hasattr(date_val, 'year'):  # datetime object
+                # Ensure it's timezone-aware
+                if date_val.tzinfo is None:
+                    date_val = date_val.replace(tzinfo=timezone.utc)
                 return date_val
             else:
-                return datetime.min
+                return datetime.min.replace(tzinfo=timezone.utc)
         
         event_history.sort(key=get_sort_key, reverse=True)
         

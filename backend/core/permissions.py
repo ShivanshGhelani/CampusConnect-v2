@@ -23,20 +23,54 @@ class PermissionManager:
             "admin.students.read",
             "admin.students.update",
             "admin.students.delete",
+            "admin.venues.create",
+            "admin.venues.read",
+            "admin.venues.update",
+            "admin.venues.delete",
+            "admin.venue_bookings.approve",
+            "admin.venue_bookings.reject",
+            "admin.venue_bookings.view_all",
             "admin.dashboard.view",
             "admin.analytics.view",
             "admin.settings.manage",
             "admin.logs.view",
+            "admin.audit_logs.view",
+            "admin.notifications.manage",
             "admin.system.manage"
         ],
         AdminRole.EXECUTIVE_ADMIN: [
             "admin.events.create",
             "admin.events.read",
             "admin.events.update",
+            "admin.certificates.create",
+            "admin.certificates.read",
+            "admin.certificates.templates.manage",
             "admin.students.read",
-            "admin.dashboard.view",
-            "admin.analytics.view"
+            "admin.dashboard.view.limited",
+            "admin.notifications.view"
         ],
+        AdminRole.ORGANIZER_ADMIN: [
+            "admin.events.read.assigned",
+            "admin.events.update.assigned",
+            "admin.events.delete.request",  # Can request deletion, not delete directly
+            "admin.venue_bookings.create",
+            "admin.venue_bookings.view.own",
+            "admin.students.read",
+            "admin.notifications.view",
+            "admin.dashboard.view.assigned_events"
+        ],
+        AdminRole.VENUE_ADMIN: [
+            "admin.venues.read",
+            "admin.venues.update",
+            "admin.venues.maintenance.schedule",
+            "admin.venue_bookings.view_all",
+            "admin.venue_bookings.approve",
+            "admin.venue_bookings.reject",
+            "admin.venue_bookings.manage",
+            "admin.notifications.view",
+            "admin.dashboard.view.venue_stats"
+        ],
+        # Legacy roles for backward compatibility
         AdminRole.EVENT_ADMIN: [
             "admin.events.read",
             "admin.events.update", 
@@ -53,7 +87,7 @@ class PermissionManager:
     }
     
     @classmethod
-    def has_permission(cls, admin: AdminUser, permission: str, event_id: Optional[str] = None) -> bool:
+    def has_permission(cls, admin: AdminUser, permission: str, event_id: Optional[str] = None, venue_id: Optional[str] = None) -> bool:
         """Check if admin has a specific permission"""
         if not admin.is_active:
             return False
@@ -66,11 +100,60 @@ class PermissionManager:
         role_permissions = cls.ROLE_PERMISSIONS.get(admin.role, [])
         
         # For event-specific permissions, check if admin has access to the event
-        if event_id and admin.role == AdminRole.EVENT_ADMIN:
+        if event_id and admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
             if event_id not in (admin.assigned_events or []):
                 return False
+        
+        # Handle permission variants for organizer admins
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
+            if permission == "admin.events.read" and "admin.events.read.assigned" in role_permissions:
+                return True
+            if permission == "admin.events.update" and "admin.events.update.assigned" in role_permissions:
+                return True
                 
         return permission in role_permissions
+    
+    @classmethod
+    def can_access_event(cls, admin: AdminUser, event_id: str) -> bool:
+        """Check if admin can access a specific event"""
+        if admin.role == AdminRole.SUPER_ADMIN:
+            return True
+        
+        if admin.role == AdminRole.EXECUTIVE_ADMIN:
+            return True  # Executive admins can access all events
+            
+        if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+            return event_id in (admin.assigned_events or [])
+            
+        return False
+    
+    @classmethod
+    def can_approve_venue_booking(cls, admin: AdminUser) -> bool:
+        """Check if admin can approve venue bookings"""
+        return admin.role in [AdminRole.SUPER_ADMIN, AdminRole.VENUE_ADMIN]
+    
+    @classmethod
+    def can_request_event_deletion(cls, admin: AdminUser, event_id: str) -> bool:
+        """Check if admin can request event deletion"""
+        if admin.role == AdminRole.SUPER_ADMIN:
+            return True  # Super admin can delete directly
+            
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
+            return event_id in (admin.assigned_events or [])
+            
+        return False
+    
+    @classmethod
+    def get_accessible_events(cls, admin: AdminUser, all_events: List[Dict]) -> List[Dict]:
+        """Get events that admin can access"""
+        if admin.role in [AdminRole.SUPER_ADMIN, AdminRole.EXECUTIVE_ADMIN]:
+            return all_events
+            
+        if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+            assigned_event_ids = admin.assigned_events or []
+            return [event for event in all_events if event.get("event_id") in assigned_event_ids]
+            
+        return []
     
     @classmethod
     def get_user_permissions(cls, admin: AdminUser) -> List[str]:

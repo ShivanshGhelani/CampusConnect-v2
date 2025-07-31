@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
+import { useAuth } from '../../context/AuthContext';
 import { adminAPI, venueApi } from '../../api/axios';
+import VenueAdminDashboard from '../../components/admin/venues/VenueAdminDashboard';
 
 function Venue() {
+  const { user } = useAuth();
+  
+  // If user is a venue admin, show the specialized dashboard
+  if (user && user.role === 'venue_admin') {
+    return (
+      <AdminLayout pageTitle="Venue Management Dashboard">
+        <VenueAdminDashboard />
+      </AdminLayout>
+    );
+  }
+
+  // Otherwise, show the regular venue management interface for other admin roles
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

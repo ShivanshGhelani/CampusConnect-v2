@@ -599,5 +599,293 @@ class VenueService:
             logger.error(f"Error getting statistics: {e}")
             raise
 
+    async def approve_venue_booking(
+        self,
+        venue_id: str,
+        booking_id: str,
+        approved_by: str,
+        admin_notes: Optional[str] = None
+    ) -> bool:
+        """Approve a venue booking"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            current_time = datetime.utcnow()
+            
+            # Update booking status to approved
+            result = await db[self.bookings_collection].update_one(
+                {"booking_id": booking_id, "venue_id": venue_id},
+                {
+                    "$set": {
+                        "status": "approved",
+                        "approved_by": approved_by,
+                        "approved_at": current_time,
+                        "admin_notes": admin_notes
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Booking {booking_id} approved by {approved_by}")
+                return True
+            else:
+                logger.warning(f"Booking {booking_id} not found for approval")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error approving booking {booking_id}: {e}")
+            raise
+
+    async def reject_venue_booking(
+        self,
+        venue_id: str,
+        booking_id: str,
+        rejected_by: str,
+        rejection_reason: Optional[str] = None
+    ) -> bool:
+        """Reject a venue booking"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            current_time = datetime.utcnow()
+            
+            # Update booking status to rejected
+            result = await db[self.bookings_collection].update_one(
+                {"booking_id": booking_id, "venue_id": venue_id},
+                {
+                    "$set": {
+                        "status": "rejected",
+                        "rejected_by": rejected_by,
+                        "rejected_at": current_time,
+                        "rejection_reason": rejection_reason
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Booking {booking_id} rejected by {rejected_by}")
+                return True
+            else:
+                logger.warning(f"Booking {booking_id} not found for rejection")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error rejecting booking {booking_id}: {e}")
+            raise
+
+    async def update_booking_status(
+        self,
+        venue_id: str,
+        booking_id: str,
+        update_data: Dict[str, Any]
+    ) -> bool:
+        """Update booking status and related fields"""
+        try:
+            db = await self.get_database()
+            if db is None:
+                raise Exception("Database connection failed")
+            
+            current_time = datetime.utcnow()
+            update_data["updated_at"] = current_time
+            
+            # Update booking
+            result = await db[self.bookings_collection].update_one(
+                {"booking_id": booking_id, "venue_id": venue_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Booking {booking_id} updated successfully")
+                return True
+            else:
+                logger.warning(f"Booking {booking_id} not found for update")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error updating booking {booking_id}: {e}")
+            raise
+
+    async def get_bookings_for_bulk_action(
+        self, 
+        booking_ids: Optional[List[str]] = None,
+        venue_id: Optional[str] = None,
+        status: str = "pending",
+        admin_username: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get bookings eligible for bulk actions"""
+        try:
+            db = await self.get_database()
+            
+            # Build filter query
+            filter_query = {}
+            
+            if booking_ids:
+                filter_query["id"] = {"$in": booking_ids}
+            
+            if venue_id:
+                filter_query["venue_id"] = venue_id
+                
+            if status:
+                filter_query["status"] = status
+            
+            # Get bookings
+            cursor = db[self.bookings_collection].find(filter_query)
+            bookings = await cursor.to_list(length=None)
+            
+            # Add venue information
+            for booking in bookings:
+                venue = await db[self.venues_collection].find_one({"id": booking.get("venue_id")})
+                if venue:
+                    booking["venue_name"] = venue.get("venue_name", "Unknown")
+            
+            logger.info(f"Retrieved {len(bookings)} bookings for bulk action")
+            return bookings
+            
+        except Exception as e:
+            logger.error(f"Error getting bookings for bulk action: {e}")
+            return []
+
+    async def bulk_approve_bookings(
+        self,
+        booking_ids: List[str],
+        approved_by: str,
+        common_notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Bulk approve multiple venue bookings"""
+        try:
+            db = await self.get_database()
+            current_time = datetime.utcnow().isoformat()
+            
+            # Update multiple bookings
+            result = await db[self.bookings_collection].update_many(
+                {
+                    "id": {"$in": booking_ids},
+                    "status": "pending"
+                },
+                {
+                    "$set": {
+                        "status": "approved",
+                        "approved_by": approved_by,
+                        "approved_at": current_time,
+                        "admin_notes": common_notes or "Bulk approved",
+                        "updated_at": current_time
+                    }
+                }
+            )
+            
+            logger.info(f"Bulk approved {result.modified_count} bookings")
+            return {
+                "success": True,
+                "modified_count": result.modified_count,
+                "message": f"Successfully approved {result.modified_count} bookings"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in bulk approve bookings: {e}")
+            return {"success": False, "message": str(e)}
+
+    async def bulk_reject_bookings(
+        self,
+        booking_ids: List[str],
+        rejected_by: str,
+        common_reason: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Bulk reject multiple venue bookings"""
+        try:
+            db = await self.get_database()
+            current_time = datetime.utcnow().isoformat()
+            
+            # Update multiple bookings
+            result = await db[self.bookings_collection].update_many(
+                {
+                    "id": {"$in": booking_ids},
+                    "status": "pending"
+                },
+                {
+                    "$set": {
+                        "status": "rejected",
+                        "rejected_by": rejected_by,
+                        "rejected_at": current_time,
+                        "rejection_reason": common_reason or "Bulk rejected",
+                        "updated_at": current_time
+                    }
+                }
+            )
+            
+            logger.info(f"Bulk rejected {result.modified_count} bookings")
+            return {
+                "success": True,
+                "modified_count": result.modified_count,
+                "message": f"Successfully rejected {result.modified_count} bookings"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in bulk reject bookings: {e}")
+            return {"success": False, "message": str(e)}
+    
+    async def check_venue_maintenance_conflicts(
+        self,
+        venue_id: str,
+        start_datetime: str,
+        end_datetime: str
+    ) -> Dict[str, Any]:
+        """Check if venue booking conflicts with scheduled maintenance"""
+        try:
+            # Import here to avoid circular imports
+            from services.maintenance_service import maintenance_service
+            
+            # Convert string dates to datetime objects
+            start_dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end_datetime.replace('Z', '+00:00'))
+            
+            # Check venue availability
+            is_available = await maintenance_service.check_venue_availability(
+                venue_id=venue_id,
+                start_time=start_dt,
+                end_time=end_dt
+            )
+            
+            if not is_available:
+                # Get specific maintenance windows that conflict
+                maintenance_windows = await maintenance_service.get_maintenance_windows(
+                    venue_id=venue_id,
+                    include_past=False
+                )
+                
+                conflicts = []
+                for maintenance in maintenance_windows.maintenance_windows:
+                    if (maintenance.start_time < end_dt and maintenance.end_time > start_dt):
+                        conflicts.append({
+                            "maintenance_id": maintenance.id,
+                            "start_time": maintenance.start_time.isoformat(),
+                            "end_time": maintenance.end_time.isoformat(),
+                            "reason": maintenance.reason,
+                            "status": maintenance.status
+                        })
+                
+                return {
+                    "available": False,
+                    "conflicts": conflicts,
+                    "message": f"Venue has {len(conflicts)} scheduled maintenance window(s) during this period"
+                }
+            
+            return {
+                "available": True,
+                "conflicts": [],
+                "message": "Venue is available for booking"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking maintenance conflicts: {e}")
+            return {
+                "available": True,  # Default to available on error
+                "conflicts": [],
+                "message": "Unable to check maintenance conflicts"
+            }
+
 # Create singleton instance
 venue_service = VenueService()

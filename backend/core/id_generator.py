@@ -320,3 +320,23 @@ def generate_booking_id() -> str:
         Unique booking ID in format BKG{8-digit-code}
     """
     return generate_base_id("BKG", 8)
+
+
+def generate_notification_id() -> str:
+    """
+    Generate a unique notification ID
+    
+    Returns:
+        Unique notification ID in format NOT{8-digit-code}
+    """
+    return generate_base_id("NOT", 8)
+
+
+def generate_audit_id() -> str:
+    """
+    Generate a unique audit log ID
+    
+    Returns:
+        Unique audit log ID in format AUD{8-digit-code}
+    """
+    return generate_base_id("AUD", 8)

@@ -372,6 +372,47 @@ export const adminAPI = {
     if (excludeBookingId) params.exclude_booking_id = excludeBookingId;
     return api.get(`/api/v1/admin/venues/${venueId}/availability`, { params });
   },
+
+  // Phase 2 APIs - Notification Management
+  getNotifications: (filters) => api.get('/api/v1/admin/notifications/', { params: filters }),
+  createNotification: (notificationData) => api.post('/api/v1/admin/notifications/create', notificationData),
+  markNotificationAsRead: (notificationId, isRead) => api.patch(`/api/v1/admin/notifications/${notificationId}/read`, { is_read: isRead }),
+  handleNotificationAction: (notificationId, actionData) => api.post(`/api/v1/admin/notifications/${notificationId}/action`, actionData),
+  archiveNotification: (notificationId) => api.delete(`/api/v1/admin/notifications/${notificationId}/archive`),
+  getNotificationStats: () => api.get('/api/v1/admin/notifications/stats'),
+
+  // Phase 2 APIs - Venue Booking Management
+  getVenueBookingRequests: (filters) => api.get('/api/v1/admin/venue-bookings/', { params: filters }),
+  createVenueBookingRequest: (bookingData) => api.post('/api/v1/admin/venue-bookings/request', bookingData),
+  approveVenueBooking: (bookingId, approvalData) => api.patch(`/api/v1/admin/venue-bookings/${bookingId}/approve`, approvalData),
+  rejectVenueBooking: (bookingId, rejectionData) => api.patch(`/api/v1/admin/venue-bookings/${bookingId}/reject`, rejectionData),
+  updateVenueBookingStatus: (bookingId, statusData) => api.patch(`/api/v1/admin/venue-bookings/${bookingId}/status`, statusData),
+  getVenueBookingHistory: (bookingId) => api.get(`/api/v1/admin/venue-bookings/${bookingId}/history`),
+  getVenueBookingStats: () => api.get('/api/v1/admin/venue-bookings/stats'),
+
+  // Phase 3.3.2 APIs - Bulk Booking Actions
+  bulkBookingAction: (actionData) => api.post('/api/v1/admin/venue-bookings/bulk/bulk-action', actionData),
+  getBulkEligibleBookings: (filters) => api.get('/api/v1/admin/venue-bookings/bulk/bulk-eligible', { params: filters }),
+
+  // Phase 2 APIs - Audit Log Management
+  createAuditLog: (auditData) => api.post('/api/v1/admin/audit-logs/', auditData),
+  getAuditLogs: (filters) => api.get('/api/v1/admin/audit-logs/', { params: filters }),
+  getAuditActionTypes: () => api.get('/api/v1/admin/audit-logs/actions/types'),
+  getAuditStatsOverview: () => api.get('/api/v1/admin/audit-logs/stats/overview'),
+  getAuditStatsByAdmin: (filters) => api.get('/api/v1/admin/audit-logs/stats/by-admin', { params: filters }),
+  getAuditStatsByAction: (filters) => api.get('/api/v1/admin/audit-logs/stats/by-action', { params: filters }),
+  getRecentAuditActivity: (filters) => api.get('/api/v1/admin/audit-logs/recent-activity', { params: filters }),
+  cleanupAuditLogs: (cleanupData) => api.post('/api/v1/admin/audit-logs/cleanup', cleanupData),
+  exportAuditLogs: (filters) => api.get('/api/v1/admin/audit-logs/export', { params: filters }),
+
+  // Phase 2 APIs - Admin Management
+  getAllAdminUsers: (filters) => api.get('/api/v1/admin/admin-users/', { params: filters }),
+  createAdminUser: (adminData) => api.post('/api/v1/admin/admin-users/create', adminData),
+  updateAdminRole: (username, roleData) => api.patch(`/api/v1/admin/admin-users/${username}/role`, roleData),
+  getCurrentAdminProfile: () => api.get('/api/v1/admin/admin-users/me'),
+  assignEventsToAdminUser: (username, eventIds) => api.post(`/api/v1/admin/admin-users/${username}/assign-events`, eventIds),
+  getAvailableAdminRoles: () => api.get('/api/v1/admin/admin-users/roles/available'),
+  getAdminManagementStats: () => api.get('/api/v1/admin/admin-users/stats/overview'),
 };
 
 // Dedicated asset API object for easier use
@@ -417,6 +458,39 @@ export const venueApi = {
   searchByType: (venueType) => api.get('/api/v1/admin/venues', { params: { venue_type: venueType } }),
   getActive: () => api.get('/api/v1/admin/venues', { params: { is_active: true } }),
   getByStatus: (status) => api.get('/api/v1/admin/venues', { params: { status } })
+};
+
+// Maintenance API
+export const maintenanceAPI = {
+  // Schedule new maintenance
+  scheduleMaintenance: (data) => api.post('/api/v1/admin/maintenance/schedule', data),
+  
+  // Get maintenance windows
+  getMaintenanceWindows: (params = {}) => api.get('/api/v1/admin/maintenance/', { params }),
+  
+  // Get maintenance for specific venue
+  getVenueMaintenance: (venueId, includePast = false) => 
+    api.get(`/api/v1/admin/maintenance/venue/${venueId}`, { params: { include_past: includePast } }),
+  
+  // Update maintenance window
+  updateMaintenance: (maintenanceId, data) => 
+    api.put(`/api/v1/admin/maintenance/${maintenanceId}`, data),
+  
+  // Cancel maintenance window
+  cancelMaintenance: (maintenanceId, reason = null) => 
+    api.delete(`/api/v1/admin/maintenance/${maintenanceId}`, { params: { reason } }),
+  
+  // Validate maintenance window
+  validateMaintenance: (data) => api.post('/api/v1/admin/maintenance/validate', data),
+  
+  // Check venue availability
+  checkVenueAvailability: (venueId, startTime, endTime) => 
+    api.get(`/api/v1/admin/maintenance/check-availability/${venueId}`, {
+      params: { 
+        start_time: startTime,
+        end_time: endTime
+      }
+    })
 };
 
 export default api;

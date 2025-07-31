@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Any
 from datetime import datetime, time
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 class VenueType(Enum):
     """Types of venues available"""
@@ -26,9 +26,20 @@ class VenueStatus(Enum):
 class BookingStatus(Enum):
     """Booking confirmation status"""
     PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     COMPLETED = "completed"
+
+class BookingStatusChange(BaseModel):
+    """Status change history for bookings"""
+    status: BookingStatus = Field(..., description="Status value")
+    changed_by: str = Field(..., description="Username who changed the status")
+    changed_by_role: str = Field(..., description="Role of the person who changed status")
+    changed_at: datetime = Field(default_factory=datetime.utcnow, description="When status was changed")
+    reason: Optional[str] = Field(None, description="Reason for status change")
+    notes: Optional[str] = Field(None, description="Additional notes")
 
 class VenueBooking(BaseModel):
     """Individual venue booking details"""
@@ -37,13 +48,30 @@ class VenueBooking(BaseModel):
     event_name: str = Field(..., description="Name of the event")
     booked_by: str = Field(..., description="User ID who booked the venue")
     booked_by_name: str = Field(..., description="Name of the person who booked")
+    booked_by_role: str = Field(default="organizer_admin", description="Role of the person who booked")
     booking_date: datetime = Field(default_factory=datetime.utcnow, description="When the booking was made")
     start_datetime: datetime = Field(..., description="Booking start time")
     end_datetime: datetime = Field(..., description="Booking end time")
-    status: BookingStatus = Field(default=BookingStatus.PENDING, description="Booking status")
+    status: BookingStatus = Field(default=BookingStatus.PENDING, description="Current booking status")
+    
+    # Enhanced tracking
+    booking_status_history: List[BookingStatusChange] = Field(default=[], description="Complete status change history")
+    priority: Optional[str] = Field(default="medium", description="Booking priority (low, medium, high, urgent)")
+    requires_approval: bool = Field(default=True, description="Whether booking requires venue admin approval")
+    
+    # Approval workflow
+    approved_by: Optional[str] = Field(None, description="Venue admin who approved the booking")
+    approved_at: Optional[datetime] = Field(None, description="When the booking was approved")
+    rejection_reason: Optional[str] = Field(None, description="Reason for rejection if applicable")
+    
+    # Notes and communication
     notes: Optional[str] = Field(None, description="Additional booking notes")
-    confirmed_by: Optional[str] = Field(None, description="Admin who confirmed the booking")
-    confirmed_at: Optional[datetime] = Field(None, description="When the booking was confirmed")
+    admin_notes: Optional[str] = Field(None, description="Internal admin notes")
+    special_requirements: Optional[str] = Field(None, description="Special requirements for the booking")
+    
+    # Legacy fields for backward compatibility
+    confirmed_by: Optional[str] = Field(None, description="Admin who confirmed the booking (legacy)")
+    confirmed_at: Optional[datetime] = Field(None, description="When the booking was confirmed (legacy)")
 
 class VenueContact(BaseModel):
     """Contact information for venue booking"""
@@ -278,3 +306,44 @@ class VenueAvailabilityResponse(BaseModel):
     is_available: bool = Field(..., description="Whether venue is available")
     conflicting_bookings: List[Dict[str, Any]] = Field(default=[], description="List of conflicting bookings")
     message: str = Field(..., description="Human readable message")
+
+class BulkBookingItem(BaseModel):
+    """Individual booking item for bulk operations"""
+    booking_id: str = Field(..., description="Booking ID to process")
+    reason: Optional[str] = Field(None, description="Individual reason for this booking (overrides common reason)")
+
+class BulkActionResult(BaseModel):
+    """Result of a bulk action on a single booking"""
+    booking_id: str = Field(..., description="Booking ID that was processed")
+    status: str = Field(..., description="Result status: 'approved', 'rejected', or 'failed'")
+    venue_name: Optional[str] = Field(None, description="Name of the venue")
+    event_name: Optional[str] = Field(None, description="Name of the event")
+    reason: Optional[str] = Field(None, description="Reason for the action")
+    error: Optional[str] = Field(None, description="Error message if action failed")
+
+class VenueBookingBulkActionRequest(BaseModel):
+    """Request model for bulk venue booking actions"""
+    action: str = Field(..., description="Action to perform: 'approve' or 'reject'")
+    booking_ids: List[str] = Field(..., min_length=1, description="List of booking IDs to process")
+    admin_notes: Optional[str] = Field(None, description="Admin notes for approval")
+    rejection_reason: Optional[str] = Field(None, description="Reason for rejection (required if action is reject)")
+    
+    @field_validator('action')
+    @classmethod
+    def validate_action(cls, v):
+        if v not in ['approve', 'reject']:
+            raise ValueError('Action must be "approve" or "reject"')
+        return v
+    
+    @model_validator(mode='after')
+    def validate_rejection_reason(self):
+        if self.action == 'reject' and not self.rejection_reason:
+            raise ValueError('rejection_reason is required when action is "reject"')
+        return self
+
+class VenueBookingBulkActionResponse(BaseModel):
+    """Response model for bulk venue booking actions"""
+    success: bool = Field(..., description="Overall success status")
+    message: str = Field(..., description="Summary message")
+    results: List[BulkActionResult] = Field(default_factory=list, description="Individual booking results")
+    summary: Dict[str, int] = Field(default_factory=dict, description="Action summary statistics")
