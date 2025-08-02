@@ -265,6 +265,7 @@ export const clientAPI = {
   
   // Feedback
   submitFeedback: (eventId, feedbackData) => api.post(`/api/v1/client/feedback/submit/${eventId}`, feedbackData),
+  submitEventFeedback: (eventId, feedbackData) => api.post(`/api/v1/client/feedback/submit/${eventId}`, feedbackData),
   getFeedbackStatus: (eventId) => api.get(`/api/v1/client/feedback/status/${eventId}`),
   getFeedbackFormData: (eventId) => api.get(`/api/v1/client/feedback/form-data/${eventId}`),
   getFeedbackHistory: (filters) => api.get('/api/v1/client/feedback/history', { params: filters }),

@@ -6,8 +6,8 @@ function ClientLayout({ children, noPadding = false }) {
   return (
     <div className="min-h-screen">
       <TopBanner />
-      <div className="pt-8"> {/* Add padding to account for fixed top banner */}
-        <ClientNavigation />
+      <ClientNavigation />
+      <div className="pt-28"> {/* Increased padding to account for fixed top banner + fixed navigation */}
         <main>
           {children}
         </main>

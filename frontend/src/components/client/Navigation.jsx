@@ -73,7 +73,7 @@ function ClientNavigation() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg sticky top-8 z-40">
+      <nav className="bg-white shadow-lg fixed top-8 left-0 right-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-18">
             {/* Logo */}

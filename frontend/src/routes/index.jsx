@@ -10,6 +10,8 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
+import FeedbackForm from '../pages/client/FeedbackForm';
+import CertificateDownload from '../pages/client/CertificateDownload';
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -90,6 +92,8 @@ function AppRoutes() {
         {/* Client/Student Routes - Public */}
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
+        <Route path="/client/events/:eventId/feedback" element={<FeedbackForm />} />
+        <Route path="/client/events/:eventId/certificate" element={<CertificateDownload />} />
         <Route path="/client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
         
         {/* Attendance Routes - Protected (student only) */}

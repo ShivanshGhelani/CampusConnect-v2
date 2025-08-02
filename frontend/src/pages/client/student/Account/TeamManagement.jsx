@@ -14,6 +14,7 @@ const TeamManagement = () => {
   // State management
   const [event, setEvent] = useState(null);
   const [teamInfo, setTeamInfo] = useState(null);
+  const [teamParticipationStatus, setTeamParticipationStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -24,6 +25,7 @@ const TeamManagement = () => {
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showTeamStatusModal, setShowTeamStatusModal] = useState(false);
 
   // Form states
   const [participantEnrollment, setParticipantEnrollment] = useState('');
@@ -33,10 +35,7 @@ const TeamManagement = () => {
   const [removeTarget, setRemoveTarget] = useState(null);
 
   useEffect(() => {
-    // Check if we're in development mode and accessing via /dev/ route
-    const isDevelopmentMode = location.pathname.startsWith('/dev/');
-    
-    if (!isAuthenticated && !isDevelopmentMode) {
+    if (!isAuthenticated) {
       navigate('/auth/login', { state: { from: location } });
       return;
     }
@@ -48,64 +47,7 @@ const TeamManagement = () => {
     try {
       setIsLoading(true);
       
-      // Check if we're in development mode
-      const isDevelopmentMode = location.pathname.startsWith('/dev/');
-      
-      if (isDevelopmentMode) {
-        // Provide mock data for development testing
-        const mockEventData = {
-          event_name: 'Mock Event: Hackathon 2025',
-          event_id: 'mock-event-team-001',
-          team_size_min: 2,
-          team_size_max: 5
-        };
-        
-        const mockTeamData = {
-          team_name: 'Code Warriors',
-          team_id: 'team-001',
-          participant_count: 3,
-          departments_count: 2,
-          registration_date: '2025-07-15',
-          team_leader: {
-            name: 'Alice Johnson',
-            enrollment: '21BECE40001',
-            email: 'alice.johnson@example.com',
-            mobile: '9876543210',
-            department: 'Computer Engineering',
-            semester: '6',
-            year: '3'
-          },
-          participants: [
-            {
-              id: 'p1',
-              name: 'Bob Smith',
-              enrollment: '21BECE40002',
-              email: 'bob.smith@example.com',
-              mobile: '9876543211',
-              department: 'Computer Engineering',
-              semester: '6',
-              year: '3'
-            },
-            {
-              id: 'p2',
-              name: 'Carol Davis',
-              enrollment: '21BMEC40003',
-              email: 'carol.davis@example.com',
-              mobile: '9876543212',
-              department: 'Mechanical Engineering',
-              semester: '4',
-              year: '2'
-            }
-          ]
-        };
-        
-        setEvent(mockEventData);
-        setTeamInfo(mockTeamData);
-        setIsLoading(false);
-        return;
-      }
-      
-      // In production, fetch actual data using only eventId
+      // Fetch actual data using only eventId
       const response = await clientAPI.getTeamDetails(eventId);
       
       if (response.data.success && response.data.registered) {
@@ -152,7 +94,11 @@ const TeamManagement = () => {
             mobile: registrationData.mobile_no,
             department: registrationData.department,
             semester: registrationData.semester,
-            year: Math.ceil(parseInt(registrationData.semester || '1') / 2).toString()
+            year: Math.ceil(parseInt(registrationData.semester || '1') / 2).toString(),
+            // TODO: Fetch actual participation status from API
+            attendance: { marked: false, attendance_id: null },
+            feedback: { submitted: false, feedback_id: null },
+            certificate: { earned: false, certificate_id: null }
           },
           participants: registrationData.team_members?.map((member, index) => ({
             id: `p${index + 1}`,
@@ -162,12 +108,43 @@ const TeamManagement = () => {
             mobile: member.mobile_no,
             department: member.department,
             semester: member.semester,
-            year: Math.ceil(parseInt(member.semester || '1') / 2).toString()
+            year: Math.ceil(parseInt(member.semester || '1') / 2).toString(),
+            // TODO: Fetch actual participation status from API
+            attendance: { marked: false, attendance_id: null },
+            feedback: { submitted: false, feedback_id: null },
+            certificate: { earned: false, certificate_id: null }
           })) || []
+        };
+        
+        // TODO: Fetch actual team participation status from dedicated API
+        const participationStatus = {
+          event_status: eventData.status,
+          attendance_open: eventData.status === 'ongoing',
+          feedback_open: eventData.status === 'ongoing' || eventData.status === 'completed',
+          certificates_available: eventData.status === 'completed',
+          team_attendance_summary: {
+            total_members: teamData.participant_count,
+            attended: 0,
+            pending: teamData.participant_count,
+            attendance_rate: 0
+          },
+          team_feedback_summary: {
+            total_members: teamData.participant_count,
+            submitted: 0,
+            pending: teamData.participant_count,
+            feedback_rate: 0
+          },
+          team_certificate_summary: {
+            total_members: teamData.participant_count,
+            earned: 0,
+            pending: teamData.participant_count,
+            certificate_rate: 0
+          }
         };
         
         setEvent(eventData);
         setTeamInfo(teamData);
+        setTeamParticipationStatus(participationStatus);
       } else {
         setError('Failed to load team details or not registered for team events');
       }
@@ -206,30 +183,6 @@ const TeamManagement = () => {
       setValidatingStudent(true);
       setEnrollmentError('');
       
-      // Check if we're in development mode
-      const isDevelopmentMode = location.pathname.startsWith('/dev/');
-      
-      if (isDevelopmentMode) {
-        // Mock validation response
-        setTimeout(() => {
-          const mockStudent = {
-            name: 'David Wilson',
-            enrollment: enrollment,
-            email: 'david.wilson@example.com',
-            mobile: '9876543213',
-            department: 'Information Technology',
-            semester: '4',
-            year: '2'
-          };
-          
-          setStudentDetails(mockStudent);
-          setValidatingStudent(false);
-          setShowAddModal(false);
-          setShowConfirmModal(true);
-        }, 1000);
-        return;
-      }
-      
       const response = await clientAPI.validateParticipant(enrollment, eventId, teamInfo?.team_id);
       
       if (response.data.success) {
@@ -251,30 +204,6 @@ const TeamManagement = () => {
 
   const addParticipant = async () => {
     try {
-      const isDevelopmentMode = location.pathname.startsWith('/dev/');
-      
-      if (isDevelopmentMode) {
-        // Mock add participant
-        showNotification('Participant added successfully!', 'success');
-        setShowConfirmModal(false);
-        setParticipantEnrollment('');
-        setStudentDetails(null);
-        
-        // Update mock team data
-        const newParticipant = {
-          ...studentDetails,
-          id: `p${teamInfo.participants.length + 1}`
-        };
-        
-        setTeamInfo(prev => ({
-          ...prev,
-          participants: [...prev.participants, newParticipant],
-          participant_count: prev.participant_count + 1
-        }));
-        
-        return;
-      }
-      
       const response = await clientAPI.addTeamParticipant(eventId, teamInfo?.team_id, studentDetails.enrollment_no);
       
       if (response.data.success) {
@@ -296,24 +225,6 @@ const TeamManagement = () => {
     if (!removeTarget) return;
 
     try {
-      const isDevelopmentMode = location.pathname.startsWith('/dev/');
-      
-      if (isDevelopmentMode) {
-        // Mock remove participant
-        showNotification('Participant removed successfully!', 'success');
-        setShowRemoveModal(false);
-        setRemoveTarget(null);
-        
-        // Update mock team data
-        setTeamInfo(prev => ({
-          ...prev,
-          participants: prev.participants.filter(p => p.enrollment !== removeTarget.enrollment),
-          participant_count: prev.participant_count - 1
-        }));
-        
-        return;
-      }
-      
       const response = await clientAPI.removeTeamParticipant(eventId, teamInfo?.team_id, removeTarget.enrollment);
       
       if (response.data.success) {
@@ -332,21 +243,6 @@ const TeamManagement = () => {
 
   const cancelRegistration = async () => {
     try {
-      const isDevelopmentMode = location.pathname.startsWith('/dev/');
-      
-      if (isDevelopmentMode) {
-        // Mock cancel registration
-        showNotification('Registration cancelled successfully!', 'success');
-        setShowCancelModal(false);
-        
-        // Navigate back to dashboard
-        setTimeout(() => {
-          navigate('/client/dashboard');
-        }, 1500);
-        
-        return;
-      }
-      
       const response = await clientAPI.cancelRegistration(eventId);
       
       if (response.data.success) {
@@ -694,7 +590,7 @@ const TeamManagement = () => {
           )}
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-5 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg border text-center">
               <div className="text-xl font-bold text-green-600">{teamInfo.participant_count}</div>
               <div className="text-xs text-gray-600">Current</div>
@@ -704,12 +600,22 @@ const TeamManagement = () => {
               <div className="text-xs text-gray-600">Available</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-purple-600">{teamInfo.departments_count || 1}</div>
-              <div className="text-xs text-gray-600">Departments</div>
+              <div className="text-xl font-bold text-emerald-600">
+                {teamParticipationStatus ? teamParticipationStatus.team_attendance_summary.attended : '-'}
+              </div>
+              <div className="text-xs text-gray-600">Attended</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-sm font-bold text-gray-700">{teamInfo.registration_date}</div>
-              <div className="text-xs text-gray-600">Registered</div>
+              <div className="text-xl font-bold text-purple-600">
+                {teamParticipationStatus ? teamParticipationStatus.team_feedback_summary.submitted : '-'}
+              </div>
+              <div className="text-xs text-gray-600">Feedback</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border text-center">
+              <div className="text-xl font-bold text-orange-600">
+                {teamParticipationStatus ? teamParticipationStatus.team_certificate_summary.earned : '-'}
+              </div>
+              <div className="text-xs text-gray-600">Certificates</div>
             </div>
           </div>
 
@@ -729,6 +635,14 @@ const TeamManagement = () => {
                 Team Full ({maxMembers}/{maxMembers})
               </div>
             )}
+
+            <button 
+              onClick={() => setShowTeamStatusModal(true)}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              <i className="fas fa-chart-line mr-2"></i>
+              Team Status
+            </button>
 
             <div className="relative">
               <button 
@@ -803,9 +717,44 @@ const TeamManagement = () => {
                     <div className="text-xs text-gray-500">{teamInfo.team_leader.department}</div>
                   </div>
                 </div>
-                <div className="text-right text-sm text-gray-600">
-                  <div>{teamInfo.team_leader.email}</div>
-                  <div>{teamInfo.team_leader.mobile}</div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-600 mb-2">
+                    <div>{teamInfo.team_leader.email}</div>
+                    <div>{teamInfo.team_leader.mobile}</div>
+                  </div>
+                  {/* Participation Status Icons */}
+                  <div className="flex items-center space-x-2">
+                    {/* Attendance Status */}
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                      teamInfo.team_leader.attendance?.marked 
+                        ? 'bg-green-100 text-green-600' 
+                        : event?.status === 'ongoing' 
+                        ? 'bg-orange-100 text-orange-600'
+                        : 'bg-gray-100 text-gray-400'
+                    }`} title={`Attendance: ${teamInfo.team_leader.attendance?.marked ? 'Marked' : 'Pending'}`}>
+                      <i className="fas fa-check text-xs"></i>
+                    </div>
+                    {/* Feedback Status */}
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                      teamInfo.team_leader.feedback?.submitted 
+                        ? 'bg-purple-100 text-purple-600' 
+                        : (event?.status === 'ongoing' || event?.status === 'completed')
+                        ? 'bg-orange-100 text-orange-600'
+                        : 'bg-gray-100 text-gray-400'
+                    }`} title={`Feedback: ${teamInfo.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
+                      <i className="fas fa-comment text-xs"></i>
+                    </div>
+                    {/* Certificate Status */}
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                      teamInfo.team_leader.certificate?.earned 
+                        ? 'bg-orange-100 text-orange-600' 
+                        : event?.status === 'completed'
+                        ? 'bg-orange-100 text-orange-600'
+                        : 'bg-gray-100 text-gray-400'
+                    }`} title={`Certificate: ${teamInfo.team_leader.certificate?.earned ? 'Available' : 'Pending'}`}>
+                      <i className="fas fa-certificate text-xs"></i>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -828,6 +777,39 @@ const TeamManagement = () => {
                     <div className="text-right text-sm text-gray-600">
                       <div>{participant.email}</div>
                       <div>{participant.mobile}</div>
+                    </div>
+                    {/* Participation Status Icons */}
+                    <div className="flex items-center space-x-2">
+                      {/* Attendance Status */}
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                        participant.attendance?.marked 
+                          ? 'bg-green-100 text-green-600' 
+                          : event?.status === 'ongoing' 
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                      }`} title={`Attendance: ${participant.attendance?.marked ? 'Marked' : 'Pending'}`}>
+                        <i className="fas fa-check text-xs"></i>
+                      </div>
+                      {/* Feedback Status */}
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                        participant.feedback?.submitted 
+                          ? 'bg-purple-100 text-purple-600' 
+                          : (event?.status === 'ongoing' || event?.status === 'completed')
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                      }`} title={`Feedback: ${participant.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
+                        <i className="fas fa-comment text-xs"></i>
+                      </div>
+                      {/* Certificate Status */}
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                        participant.certificate?.earned 
+                          ? 'bg-orange-100 text-orange-600' 
+                          : event?.status === 'completed'
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                      }`} title={`Certificate: ${participant.certificate?.earned ? 'Available' : 'Pending'}`}>
+                        <i className="fas fa-certificate text-xs"></i>
+                      </div>
                     </div>
                     <button
                       onClick={() => {
@@ -886,6 +868,88 @@ const TeamManagement = () => {
                 <div className="text-gray-600">
                   {teamInfo.departments_count || 1} different departments<br />
                   Cross-departmental teams encouraged
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Participation Status Indicators */}
+          <div className="mt-8 bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Participation Status Guide</h3>
+            <div className="grid grid-cols-3 gap-6 text-sm">
+              <div>
+                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <i className="fas fa-check text-green-600"></i>
+                  Attendance Indicators
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-check text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Attendance marked</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-check text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Available to mark</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
+                      <i className="fas fa-check text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Not yet available</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <i className="fas fa-comment text-purple-600"></i>
+                  Feedback Indicators
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-comment text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Feedback submitted</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-comment text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Feedback available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
+                      <i className="fas fa-comment text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Not yet available</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <i className="fas fa-certificate text-orange-600"></i>
+                  Certificate Indicators
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
+                      <i className="fas fa-certificate text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Certificate available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
+                      <i className="fas fa-certificate text-xs"></i>
+                    </div>
+                    <span className="text-gray-600">Processing/Pending</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Note: Certificates require attendance completion
+                  </div>
                 </div>
               </div>
             </div>
@@ -1103,6 +1167,382 @@ const TeamManagement = () => {
               >
                 Cancel Registration
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Team Status Modal */}
+      {showTeamStatusModal && teamParticipationStatus && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
+            {/* Modal Header */}
+            <div className="px-8 py-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <i className="fas fa-chart-line text-white"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Team Participation Status</h3>
+                    <span className="text-sm text-slate-500 font-medium">{event?.event_name} • {teamInfo.team_name}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowTeamStatusModal(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
+                >
+                  <i className="fas fa-times group-hover:rotate-90 transition-transform duration-200"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                {/* Team Overview Stats */}
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i className="fas fa-users text-purple-600"></i>
+                    Team Overview
+                  </h4>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Attendance Summary */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="fas fa-check text-green-600"></i>
+                        <span className="text-sm font-medium text-slate-600">Attendance</span>
+                      </div>
+                      <div className="text-2xl font-bold text-green-600 mb-1">
+                        {teamParticipationStatus.team_attendance_summary.attended}/{teamParticipationStatus.team_attendance_summary.total_members}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {teamParticipationStatus.team_attendance_summary.attendance_rate.toFixed(1)}% attendance rate
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${teamParticipationStatus.team_attendance_summary.attendance_rate}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Feedback Summary */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="fas fa-comment text-purple-600"></i>
+                        <span className="text-sm font-medium text-slate-600">Feedback</span>
+                      </div>
+                      <div className="text-2xl font-bold text-purple-600 mb-1">
+                        {teamParticipationStatus.team_feedback_summary.submitted}/{teamParticipationStatus.team_feedback_summary.total_members}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {teamParticipationStatus.team_feedback_summary.feedback_rate.toFixed(1)}% feedback rate
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${teamParticipationStatus.team_feedback_summary.feedback_rate}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Certificate Summary */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="fas fa-certificate text-orange-600"></i>
+                        <span className="text-sm font-medium text-slate-600">Certificates</span>
+                      </div>
+                      <div className="text-2xl font-bold text-orange-600 mb-1">
+                        {teamParticipationStatus.team_certificate_summary.earned}/{teamParticipationStatus.team_certificate_summary.total_members}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {teamParticipationStatus.team_certificate_summary.certificate_rate.toFixed(1)}% certificate rate
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-orange-500 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${teamParticipationStatus.team_certificate_summary.certificate_rate}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Member Status */}
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i className="fas fa-list-check text-emerald-600"></i>
+                    Individual Member Status
+                  </h4>
+
+                  <div className="space-y-4">
+                    {/* Team Leader Status */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-crown text-blue-600"></i>
+                          </div>
+                          <div>
+                            <h5 className="text-sm font-semibold text-slate-900">{teamInfo.team_leader.name}</h5>
+                            <p className="text-xs text-slate-600">{teamInfo.team_leader.enrollment} • Team Leader</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-medium">
+                          <i className="fas fa-crown"></i>
+                          Leader
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Attendance Status */}
+                        <div className={`p-3 rounded-lg border ${
+                          teamInfo.team_leader.attendance?.marked 
+                            ? 'bg-green-50 border-green-200' 
+                            : 'bg-orange-50 border-orange-200'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-check text-xs ${
+                              teamInfo.team_leader.attendance?.marked ? 'text-green-600' : 'text-orange-600'
+                            }`}></i>
+                            <span className={`text-xs font-medium ${
+                              teamInfo.team_leader.attendance?.marked ? 'text-green-800' : 'text-orange-800'
+                            }`}>Attendance</span>
+                          </div>
+                          <div className={`text-xs ${
+                            teamInfo.team_leader.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                          }`}>
+                            {teamInfo.team_leader.attendance?.marked 
+                              ? `✓ Marked (${teamInfo.team_leader.attendance.type || 'physical'})` 
+                              : 'Pending'}
+                          </div>
+                          {teamInfo.team_leader.attendance?.attendance_id && (
+                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                              ID: {teamInfo.team_leader.attendance.attendance_id}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Feedback Status */}
+                        <div className={`p-3 rounded-lg border ${
+                          teamInfo.team_leader.feedback?.submitted 
+                            ? 'bg-purple-50 border-purple-200' 
+                            : 'bg-orange-50 border-orange-200'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-comment text-xs ${
+                              teamInfo.team_leader.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
+                            }`}></i>
+                            <span className={`text-xs font-medium ${
+                              teamInfo.team_leader.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
+                            }`}>Feedback</span>
+                          </div>
+                          <div className={`text-xs ${
+                            teamInfo.team_leader.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                          }`}>
+                            {teamInfo.team_leader.feedback?.submitted ? '✓ Submitted' : 'Pending'}
+                          </div>
+                          {teamInfo.team_leader.feedback?.feedback_id && (
+                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                              ID: {teamInfo.team_leader.feedback.feedback_id}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Certificate Status */}
+                        <div className={`p-3 rounded-lg border ${
+                          teamInfo.team_leader.certificate?.earned 
+                            ? 'bg-orange-50 border-orange-200' 
+                            : 'bg-gray-50 border-gray-200'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-certificate text-xs ${
+                              teamInfo.team_leader.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
+                            }`}></i>
+                            <span className={`text-xs font-medium ${
+                              teamInfo.team_leader.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
+                            }`}>Certificate</span>
+                          </div>
+                          <div className={`text-xs ${
+                            teamInfo.team_leader.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                          }`}>
+                            {teamInfo.team_leader.certificate?.earned ? '✓ Available' : 'Pending'}
+                          </div>
+                          {teamInfo.team_leader.certificate?.certificate_id && (
+                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                              ID: {teamInfo.team_leader.certificate.certificate_id}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Team Members Status */}
+                    {teamInfo.participants && teamInfo.participants.map((participant, index) => (
+                      <div key={participant.id || index} className="bg-white rounded-xl p-4 border border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <i className="fas fa-user text-gray-600"></i>
+                            </div>
+                            <div>
+                              <h5 className="text-sm font-semibold text-slate-900">{participant.name}</h5>
+                              <p className="text-xs text-slate-600">{participant.enrollment} • Member</p>
+                            </div>
+                          </div>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 rounded-lg text-xs font-medium">
+                            <i className="fas fa-user"></i>
+                            Member
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3">
+                          {/* Attendance Status */}
+                          <div className={`p-3 rounded-lg border ${
+                            participant.attendance?.marked 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-orange-50 border-orange-200'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-check text-xs ${
+                                participant.attendance?.marked ? 'text-green-600' : 'text-orange-600'
+                              }`}></i>
+                              <span className={`text-xs font-medium ${
+                                participant.attendance?.marked ? 'text-green-800' : 'text-orange-800'
+                              }`}>Attendance</span>
+                            </div>
+                            <div className={`text-xs ${
+                              participant.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                            }`}>
+                              {participant.attendance?.marked 
+                                ? `✓ Marked (${participant.attendance.type || 'physical'})` 
+                                : 'Pending'}
+                            </div>
+                            {participant.attendance?.attendance_id && (
+                              <div className="text-xs text-slate-500 mt-1 font-mono">
+                                ID: {participant.attendance.attendance_id}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Feedback Status */}
+                          <div className={`p-3 rounded-lg border ${
+                            participant.feedback?.submitted 
+                              ? 'bg-purple-50 border-purple-200' 
+                              : 'bg-orange-50 border-orange-200'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-comment text-xs ${
+                                participant.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
+                              }`}></i>
+                              <span className={`text-xs font-medium ${
+                                participant.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
+                              }`}>Feedback</span>
+                            </div>
+                            <div className={`text-xs ${
+                              participant.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                            }`}>
+                              {participant.feedback?.submitted ? '✓ Submitted' : 'Pending'}
+                            </div>
+                            {participant.feedback?.feedback_id && (
+                              <div className="text-xs text-slate-500 mt-1 font-mono">
+                                ID: {participant.feedback.feedback_id}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Certificate Status */}
+                          <div className={`p-3 rounded-lg border ${
+                            participant.certificate?.earned 
+                              ? 'bg-orange-50 border-orange-200' 
+                              : 'bg-gray-50 border-gray-200'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-certificate text-xs ${
+                                participant.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
+                              }`}></i>
+                              <span className={`text-xs font-medium ${
+                                participant.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
+                              }`}>Certificate</span>
+                            </div>
+                            <div className={`text-xs ${
+                              participant.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                            }`}>
+                              {participant.certificate?.earned ? '✓ Available' : 'Pending'}
+                            </div>
+                            {participant.certificate?.certificate_id && (
+                              <div className="text-xs text-slate-500 mt-1 font-mono">
+                                ID: {participant.certificate.certificate_id}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Status Legend */}
+                <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i className="fas fa-info-circle text-blue-600"></i>
+                    Status Legend
+                  </h4>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <h5 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                        <i className="fas fa-check text-green-600"></i>
+                        Attendance Tracking
+                      </h5>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <div>• <span className="text-green-600">Green:</span> Attendance marked</div>
+                        <div>• <span className="text-orange-600">Orange:</span> Available to mark</div>
+                        <div>• <span className="text-gray-600">Gray:</span> Not yet available</div>
+                        <div className="mt-2 text-slate-500">Both physical and virtual attendance tracked with unique IDs</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <h5 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                        <i className="fas fa-comment text-purple-600"></i>
+                        Feedback System
+                      </h5>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <div>• <span className="text-purple-600">Purple:</span> Feedback submitted</div>
+                        <div>• <span className="text-orange-600">Orange:</span> Feedback available</div>
+                        <div>• <span className="text-gray-600">Gray:</span> Not yet available</div>
+                        <div className="mt-2 text-slate-500">Feedback tracked with submission timestamps and IDs</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <h5 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                        <i className="fas fa-certificate text-orange-600"></i>
+                        Certificate Issuance
+                      </h5>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <div>• <span className="text-orange-600">Orange:</span> Certificate available</div>
+                        <div>• <span className="text-gray-600">Gray:</span> Processing/Pending</div>
+                        <div>• Requires attendance completion</div>
+                        <div className="mt-2 text-slate-500">Certificates issued post-event with unique IDs</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4 border-t border-slate-200">
+                  <button
+                    onClick={() => setShowTeamStatusModal(false)}
+                    className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
