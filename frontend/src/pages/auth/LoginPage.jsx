@@ -10,12 +10,15 @@ function LoginPage() {
     // Student form data
     enrollment_no: '',
     password: '',
+    remember_me: false,
     // Admin form data
     username: '',
     admin_password: '',
+    admin_remember_me: false,
     // Faculty form data
     employee_id: '',
     faculty_password: '',
+    faculty_remember_me: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const { login, error, clearError, isAuthenticated } = useAuth();
@@ -52,18 +55,21 @@ function LoginPage() {
     setFormData({
       enrollment_no: '',
       password: '',
+      remember_me: false,
       username: '',
       admin_password: '',
+      admin_remember_me: false,
       employee_id: '',
       faculty_password: '',
+      faculty_remember_me: false,
     });
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'enrollment_no' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') : value
+      [name]: type === 'checkbox' ? checked : (name === 'enrollment_no' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') : value)
     }));
     clearError();
   };
@@ -81,16 +87,19 @@ function LoginPage() {
       loginData = {
         enrollment_no: formData.enrollment_no,
         password: formData.password,
+        remember_me: formData.remember_me,
       };
     } else if (activeTab === 'faculty') {
       loginData = {
         employee_id: formData.employee_id,
         password: formData.faculty_password,
+        remember_me: formData.faculty_remember_me,
       };
     } else {
       loginData = {
         username: formData.username,
         password: formData.admin_password,
+        remember_me: formData.admin_remember_me,
       };
     }
 
@@ -374,12 +383,21 @@ function LoginPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
-                  id="remember-me"
-                  name="remember-me"
+                  id={`remember-me-${activeTab}`}
+                  name={activeTab === 'student' ? 'remember_me' : activeTab === 'faculty' ? 'faculty_remember_me' : 'admin_remember_me'}
                   type="checkbox"
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  checked={activeTab === 'student' ? formData.remember_me : activeTab === 'faculty' ? formData.faculty_remember_me : formData.admin_remember_me}
+                  onChange={handleChange}
+                  className={`h-4 w-4 border-gray-300 rounded focus:ring-2 focus:ring-offset-2 transition-colors ${
+                    activeTab === 'admin'
+                      ? 'text-purple-600 focus:ring-purple-500'
+                      : activeTab === 'faculty'
+                      ? 'text-blue-600 focus:ring-blue-500'
+                      : 'text-green-600 focus:ring-green-500'
+                  }`}
+                  disabled={isLoading}
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                <label htmlFor={`remember-me-${activeTab}`} className="ml-2 block text-sm text-gray-700">
                   Remember me
                 </label>
               </div>

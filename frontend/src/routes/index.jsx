@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import Homepage from '../pages/client/Homepage';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 
@@ -21,6 +23,7 @@ import RegistrationSuccess from '../pages/client/student/EventRegistration/Regis
 import MarkAttendance from '../pages/client/student/Attendance/MarkAttendance';
 import AttendanceSuccess from '../pages/client/student/Attendance/AttendanceSuccess';
 import AttendanceConfirm from '../pages/client/student/Attendance/AttendanceConfirm';
+import NotRegistered from '../pages/client/student/NotRegistered';
 
 // Faculty components - new organized structure
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
@@ -71,6 +74,9 @@ function AppRoutes() {
         {/* Auth Routes */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset-password/:token" element={<ResetPasswordPage />} />
         
         {/* Legacy redirects for backward compatibility */}
         <Route path="/login" element={<Navigate to="/auth/login" replace />} />
@@ -108,6 +114,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="student">
               <AttendanceConfirm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/client/events/:eventId/not-registered"
+          element={
+            <ProtectedRoute userType="student">
+              <NotRegistered />
             </ProtectedRoute>
           }
         />

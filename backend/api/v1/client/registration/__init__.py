@@ -353,6 +353,273 @@ async def check_registration_conflicts(request: Request):
         logger.error(f"Error checking registration conflicts: {str(e)}")
         return {"success": False, "message": f"Error checking conflicts: {str(e)}"}
 
+@router.post("/check-enhanced-conflicts")
+async def check_enhanced_registration_conflicts(request: Request):
+    """Enhanced API endpoint to check for registration conflicts with approval system"""
+    try:
+        data = await request.json()
+        event_id = data.get("event_id")
+        enrollment_numbers = data.get("enrollment_numbers", [])
+        
+        if not event_id or not enrollment_numbers:
+            return {"success": False, "message": "Event ID and enrollment numbers are required"}
+        
+        # Get event details to check if multiple team registrations are allowed
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            return {"success": False, "message": "Event not found"}
+        
+        # Check event settings for multiple team registrations
+        allow_multiple_teams = event.get('allow_multiple_team_registrations', False)
+        
+        conflicts = []
+        pending_approvals = []
+        
+        # Check each enrollment number for existing registration
+        for enrollment_no in enrollment_numbers:
+            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": enrollment_no})
+            if student_data:
+                event_participations = student_data.get('event_participations', {})
+                
+                if event_id in event_participations:
+                    participation = event_participations[event_id]
+                    
+                    # Get current team information
+                    current_team_name = participation.get('student_data', {}).get('team_name', 'Unknown Team')
+                    current_registration_type = participation.get('registration_type', 'individual')
+                    current_team_leader = participation.get('team_leader_enrollment', 'N/A')
+                    
+                    if allow_multiple_teams:
+                        # Multiple teams allowed - create approval request
+                        pending_approvals.append({
+                            "enrollment_no": enrollment_no,
+                            "full_name": student_data.get('full_name', ''),
+                            "current_team_name": current_team_name,
+                            "current_team_leader": current_team_leader,
+                            "registration_type": current_registration_type,
+                            "registration_id": participation.get('registration_id', ''),
+                            "requires_approval": True,
+                            "message": f"Student is already part of team '{current_team_name}'. Approval required to join another team."
+                        })
+                    else:
+                        # Multiple teams not allowed - hard conflict
+                        conflicts.append({
+                            "enrollment_no": enrollment_no,
+                            "full_name": student_data.get('full_name', ''),
+                            "current_team_name": current_team_name,
+                            "current_team_leader": current_team_leader,
+                            "registration_type": current_registration_type,
+                            "registration_id": participation.get('registration_id', ''),
+                            "requires_approval": False,
+                            "message": f"Student is already registered for this event in team '{current_team_name}'. Multiple team registrations not allowed."
+                        })
+        
+        # Prepare response based on conflicts and approval requirements
+        if conflicts and not allow_multiple_teams:
+            return {
+                "success": False,
+                "message": "Some team members are already registered for this event",
+                "conflicts": conflicts,
+                "allow_multiple_teams": allow_multiple_teams,
+                "conflict_resolution": "not_allowed"
+            }
+        elif pending_approvals and allow_multiple_teams:
+            return {
+                "success": False,
+                "message": "Some team members are already in other teams. Approval requests will be sent.",
+                "pending_approvals": pending_approvals,
+                "allow_multiple_teams": allow_multiple_teams,
+                "conflict_resolution": "approval_required"
+            }
+        else:
+            return {
+                "success": True,
+                "message": "No registration conflicts found",
+                "allow_multiple_teams": allow_multiple_teams
+            }
+        
+    except Exception as e:
+        logger.error(f"Error checking enhanced registration conflicts: {str(e)}")
+        return {"success": False, "message": f"Error checking conflicts: {str(e)}"}
+
+@router.post("/send-team-approval-request")
+async def send_team_approval_request(request: Request, student: Student = Depends(require_student_login)):
+    """Send approval requests to students who are already in other teams"""
+    try:
+        data = await request.json()
+        event_id = data.get("event_id")
+        team_name = data.get("team_name")
+        requested_members = data.get("requested_members", [])  # List of enrollment numbers
+        
+        if not all([event_id, team_name, requested_members]):
+            return {"success": False, "message": "Event ID, team name, and requested members are required"}
+        
+        # Generate approval requests
+        requests_created = []
+        
+        for member_enrollment in requested_members:
+            # Generate unique request ID
+            request_id = f"TREQ_{event_id}_{student.enrollment_no}_{member_enrollment}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            
+            # Get member's current team info
+            member_data = await DatabaseOperations.find_one("students", {"enrollment_no": member_enrollment})
+            current_team_info = {}
+            
+            if member_data:
+                event_participations = member_data.get('event_participations', {})
+                if event_id in event_participations:
+                    participation = event_participations[event_id]
+                    current_team_info = {
+                        "team_name": participation.get('student_data', {}).get('team_name', 'Unknown'),
+                        "team_leader": participation.get('team_leader_enrollment', 'N/A'),
+                        "registration_type": participation.get('registration_type', 'individual')
+                    }
+            
+            # Create approval request
+            approval_request = {
+                "request_id": request_id,
+                "event_id": event_id,
+                "team_leader_enrollment": student.enrollment_no,
+                "team_name": team_name,
+                "requested_member_enrollment": member_enrollment,
+                "request_status": "pending",
+                "request_datetime": datetime.utcnow().isoformat(),
+                "requester_message": data.get("message", f"You are invited to join team '{team_name}'"),
+                "current_team_info": current_team_info
+            }
+            
+            # Store the approval request
+            await DatabaseOperations.insert_one("team_approval_requests", approval_request)
+            
+            # Add to member's pending requests
+            await DatabaseOperations.update_one(
+                "students",
+                {"enrollment_no": member_enrollment},
+                {"$push": {f"pending_team_requests.{event_id}": request_id}}
+            )
+            
+            requests_created.append({
+                "member_enrollment": member_enrollment,
+                "request_id": request_id,
+                "status": "sent"
+            })
+        
+        return {
+            "success": True,
+            "message": f"Approval requests sent to {len(requests_created)} members",
+            "requests_created": requests_created
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending team approval requests: {str(e)}")
+        return {"success": False, "message": f"Error sending approval requests: {str(e)}"}
+
+@router.post("/respond-team-approval")
+async def respond_team_approval(request: Request, student: Student = Depends(require_student_login)):
+    """Respond to a team approval request (approve/reject)"""
+    try:
+        data = await request.json()
+        request_id = data.get("request_id")
+        action = data.get("action")  # "approve" or "reject"
+        response_message = data.get("response_message", "")
+        
+        if not request_id or action not in ["approve", "reject"]:
+            return {"success": False, "message": "Valid request ID and action (approve/reject) are required"}
+        
+        # Get the approval request
+        approval_request = await DatabaseOperations.find_one("team_approval_requests", {"request_id": request_id})
+        if not approval_request:
+            return {"success": False, "message": "Approval request not found"}
+        
+        # Verify the student is the one being requested
+        if approval_request.get("requested_member_enrollment") != student.enrollment_no:
+            return {"success": False, "message": "You are not authorized to respond to this request"}
+        
+        # Check if already responded
+        if approval_request.get("request_status") != "pending":
+            return {"success": False, "message": "This request has already been responded to"}
+        
+        # Update approval request status
+        response_datetime = datetime.utcnow().isoformat()
+        await DatabaseOperations.update_one(
+            "team_approval_requests",
+            {"request_id": request_id},
+            {
+                "$set": {
+                    "request_status": action + "d",  # "approved" or "rejected"
+                    "response_datetime": response_datetime,
+                    "response_message": response_message
+                }
+            }
+        )
+        
+        if action == "approve":
+            # If approved, allow the student to be added to the new team
+            # This will be handled by the team registration process
+            message = "Team invitation approved. You can now be added to the new team."
+        else:
+            message = "Team invitation rejected."
+        
+        # Remove from pending requests
+        event_id = approval_request.get("event_id")
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": student.enrollment_no},
+            {"$pull": {f"pending_team_requests.{event_id}": request_id}}
+        )
+        
+        return {
+            "success": True,
+            "message": message,
+            "action": action,
+            "request_id": request_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error responding to team approval: {str(e)}")
+        return {"success": False, "message": f"Error responding to approval: {str(e)}"}
+
+@router.get("/pending-team-requests")
+async def get_pending_team_requests(student: Student = Depends(require_student_login)):
+    """Get all pending team approval requests for the current student"""
+    try:
+        # Get student's pending requests
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            return {"success": False, "message": "Student not found"}
+        
+        pending_requests = student_data.get('pending_team_requests', {})
+        all_requests = []
+        
+        for event_id, request_ids in pending_requests.items():
+            for request_id in request_ids:
+                # Get detailed request information
+                request_details = await DatabaseOperations.find_one("team_approval_requests", {"request_id": request_id})
+                if request_details and request_details.get("request_status") == "pending":
+                    # Get event details
+                    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                    event_name = event.get("event_name", "Unknown Event") if event else "Unknown Event"
+                    
+                    # Get team leader details
+                    leader = await DatabaseOperations.find_one("students", {"enrollment_no": request_details.get("team_leader_enrollment")})
+                    leader_name = leader.get("full_name", "Unknown") if leader else "Unknown"
+                    
+                    all_requests.append({
+                        **request_details,
+                        "event_name": event_name,
+                        "team_leader_name": leader_name
+                    })
+        
+        return {
+            "success": True,
+            "pending_requests": all_requests,
+            "total_requests": len(all_requests)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting pending team requests: {str(e)}")
+        return {"success": False, "message": f"Error getting pending requests: {str(e)}"}
+
 @router.get("/status/{event_id}")
 async def get_registration_status(event_id: str, student: Student = Depends(require_student_login)):
     """Get registration status for a specific event"""
@@ -598,7 +865,7 @@ async def add_team_member(
     request: Request,
     student: Student = Depends(require_student_login)
 ):
-    """Add a new member to an existing team registration"""
+    """Add a new member to an existing team registration with full data consistency"""
     try:
         request_data = await request.json()
         event_id = request_data.get('event_id')
@@ -617,6 +884,7 @@ async def add_team_member(
         registrations = event.get('registrations', {})
         team_registration = None
         team_reg_id = None
+        team_registration_id = None
         
         for reg_id, reg_data in registrations.items():
             student_data = reg_data.get('student_data', {})
@@ -624,6 +892,7 @@ async def add_team_member(
                 reg_data.get('registration_type') == 'team'):
                 team_registration = reg_data
                 team_reg_id = reg_id
+                team_registration_id = reg_data.get('team_registration_id')
                 break
         
         if not team_registration:
@@ -636,7 +905,9 @@ async def add_team_member(
         
         # Check if student is already registered for this event
         for reg_data in registrations.values():
-            if reg_data.get('student_data', {}).get('enrollment_no') == enrollment_no:
+            if (reg_data and 
+                reg_data.get('student_data', {}).get('enrollment_no') == enrollment_no and
+                reg_data.get('registration_type') in ['individual', 'team', 'team_member']):
                 return {"success": False, "message": "Student is already registered for this event"}
         
         # Check team size limit
@@ -647,33 +918,124 @@ async def add_team_member(
         if current_size >= team_size_max:
             return {"success": False, "message": f"Team is already at maximum size ({team_size_max})"}
         
-        # Add the new member to the team
+        # Generate new registration ID for the team member
+        import uuid
+        new_reg_id = f"REG{uuid.uuid4().hex[:6].upper()}"
+        
+        # Create new member data for team leader's array
         new_member_data = {
             "enrollment_no": enrollment_no,
-            "name": new_member.get('full_name'),
+            "full_name": new_member.get('full_name'),  # Fixed: use 'full_name' not 'name'
             "email": new_member.get('email'),
-            "mobile_no": new_member.get('mobile_no')
+            "phone": new_member.get('mobile_no'),  # Fixed: use 'phone' to match expected field
+            "course": new_member.get('course', new_member.get('department', '')),  # Added course
+            "semester": new_member.get('semester', '')  # Added semester
         }
         
+        # Create full registration record for the new team member
+        new_member_registration = {
+            'registration_id': new_reg_id,
+            'registration_type': 'team_member',
+            'registration_datetime': datetime.utcnow().isoformat() + '+00:00',
+            'team_registration_id': team_registration_id,
+            'team_id': team_registration_id,  # Added: Include team_id for consistency
+            'team_leader_enrollment': student.enrollment_no,
+            'student_data': {
+                'full_name': new_member.get('full_name'),
+                'enrollment_no': new_member.get('enrollment_no'),
+                'email': new_member.get('email'),
+                'mobile_no': new_member.get('mobile_no'),
+                'department': new_member.get('department'),
+                'semester': new_member.get('semester'),
+                'team_name': team_registration['student_data'].get('team_name'),
+                'is_team_leader': False
+            }
+        }
+        
+        # Create participation record for the new member
+        participation_record = {
+            'event_id': event_id,
+            'enrollment_no': new_member.get('enrollment_no'),
+            'full_name': new_member.get('full_name'),
+            'registration_id': new_reg_id,
+            'registration_type': 'team_member',
+            'participation_type': 'team_member',  # Added: for consistency
+            'team_registration_id': team_registration_id,
+            'team_id': team_registration_id,  # Added: Include team_id
+            'team_name': team_registration['student_data'].get('team_name'),
+            'registration_datetime': new_member_registration['registration_datetime'],
+            'status': 'registered',  # Added: status field
+            'attendance': {
+                'marked': False,
+                'attendance_id': None,
+                'attendance_date': None
+            },
+            'feedback': {
+                'submitted': False,
+                'feedback_id': None
+            },
+            'certificate': {
+                'earned': False,
+                'certificate_id': None
+            }
+        }
+        
+        # Update team leader's members array
         current_team_members.append(new_member_data)
         
-        # Update the team registration
-        update_data = {
-            f"registrations.{team_reg_id}.student_data.team_members": current_team_members
-        }
-        
+        # Perform all database updates
+        # 1. Add new member registration to event and update team leader's array
         await DatabaseOperations.update_one(
             "events", 
             {"event_id": event_id}, 
-            {"$set": update_data}
+            {
+                "$set": {
+                    f"registrations.{team_reg_id}.student_data.team_members": current_team_members,
+                    f"registrations.{new_reg_id}": new_member_registration
+                }
+            }
         )
         
-        logger.info(f"Added team member {enrollment_no} to team {team_id} for event {event_id}")
+        # 2. Add/update participation record
+        existing_participation = await DatabaseOperations.find_one(
+            "student_participation", 
+            {"event_id": event_id, "enrollment_no": enrollment_no}
+        )
+        
+        if existing_participation:
+            await DatabaseOperations.update_one(
+                "student_participation",
+                {"event_id": event_id, "enrollment_no": enrollment_no},
+                {"$set": participation_record}
+            )
+        else:
+            await DatabaseOperations.insert_one("student_participation", participation_record)
+        
+        # 3. CRITICAL: Add event participation to the student's individual record
+        # This is what makes the event show up in the student's profile page
+        student_participation_data = {
+            'registration_id': new_reg_id,
+            'registration_type': 'team_member',
+            'registration_datetime': new_member_registration['registration_datetime'],
+            'team_registration_id': team_registration_id,
+            'team_name': team_registration['student_data'].get('team_name'),
+            'team_leader_enrollment': student.enrollment_no,
+            'status': 'registered'
+        }
+        
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": enrollment_no},
+            {"$set": {f"event_participations.{event_id}": student_participation_data}}
+        )
+        
+        logger.info(f"Added team member {enrollment_no} to team {team_registration_id} for event {event_id} with registration {new_reg_id}")
         
         return {
             "success": True,
             "message": "Team member added successfully",
-            "member_data": new_member_data
+            "member_data": new_member_data,
+            "registration_id": new_reg_id
         }
         
     except Exception as e:
@@ -686,7 +1048,7 @@ async def remove_team_member(
     request: Request,
     student: Student = Depends(require_student_login)
 ):
-    """Remove a member from an existing team registration"""
+    """Remove a member from an existing team registration with full data consistency"""
     try:
         request_data = await request.json()
         event_id = request_data.get('event_id')
@@ -717,7 +1079,15 @@ async def remove_team_member(
         if not team_registration:
             return {"success": False, "message": "Team registration not found or you're not the team leader"}
         
-        # Find and remove the team member
+        # Find the member's registration ID
+        member_reg_id = None
+        for reg_id, reg_data in registrations.items():
+            if (reg_data.get('student_data', {}).get('enrollment_no') == enrollment_no and 
+                reg_data.get('registration_type') == 'team_member'):
+                member_reg_id = reg_id
+                break
+        
+        # Find and remove the team member from leader's array
         current_team_members = team_registration.get('student_data', {}).get('team_members', [])
         member_found = False
         updated_members = []
@@ -731,15 +1101,73 @@ async def remove_team_member(
         if not member_found:
             return {"success": False, "message": "Team member not found"}
         
-        # Update the team registration
-        update_data = {
-            f"registrations.{team_reg_id}.student_data.team_members": updated_members
+        # Prepare database updates
+        update_operations = {
+            "$set": {
+                f"registrations.{team_reg_id}.student_data.team_members": updated_members
+            }
         }
         
+        # Remove member registration if it exists
+        if member_reg_id:
+            update_operations["$unset"] = {
+                f"registrations.{member_reg_id}": ""
+            }
+        
+        # Update the team registration and remove member registration
+        # First, update the team leader's members array
         await DatabaseOperations.update_one(
             "events", 
             {"event_id": event_id}, 
-            {"$set": update_data}
+            {
+                "$set": {
+                    f"registrations.{team_reg_id}.student_data.team_members": updated_members
+                }
+            }
+        )
+        
+        # Then, remove the member's registration record if it exists
+        if member_reg_id:
+            await DatabaseOperations.update_one(
+                "events", 
+                {"event_id": event_id}, 
+                {
+                    "$unset": {
+                        f"registrations.{member_reg_id}": ""
+                    }
+                }
+            )
+            
+            # Additional cleanup: rebuild registrations without null/empty values
+            updated_event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+            clean_registrations = {}
+            
+            for reg_id, reg_data in updated_event.get('registrations', {}).items():
+                if reg_data and reg_data.get('student_data', {}).get('enrollment_no'):
+                    clean_registrations[reg_id] = reg_data
+            
+            await DatabaseOperations.update_one(
+                "events", 
+                {"event_id": event_id}, 
+                {
+                    "$set": {
+                        "registrations": clean_registrations
+                    }
+                }
+            )
+        
+        # Remove participation record
+        await DatabaseOperations.delete_one(
+            "student_participation",
+            {"event_id": event_id, "enrollment_no": enrollment_no}
+        )
+        
+        # CRITICAL: Remove event participation from the student's individual record
+        # This ensures the event no longer shows in the student's profile page
+        await DatabaseOperations.update_one(
+            "students",
+            {"enrollment_no": enrollment_no},
+            {"$unset": {f"event_participations.{event_id}": ""}}
         )
         
         logger.info(f"Removed team member {enrollment_no} from team {team_id} for event {event_id}")

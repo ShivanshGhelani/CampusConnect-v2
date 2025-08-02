@@ -135,24 +135,24 @@ class EventRegistrationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            # Try individual registrations first
-            individual_registration = await db["event_registrations"].find_one({
-                "registration_id": registration_id
-            })
+            # Registration ID format: {student_enrollment}_{event_id}
+            # Extract event_id from registration_id
+            parts = registration_id.split('_')
+            if len(parts) < 2:
+                return None
             
-            if individual_registration:
-                return EventRegistration(**individual_registration)
+            student_enrollment = parts[0]
+            event_id = '_'.join(parts[1:])  # Join back in case event_id contains underscores
             
-            # Check team registrations
-            team_registration = await db["team_event_registrations"].find_one({
-                f"team_members.{registration_id.split('_')[0]}.registration_id": registration_id
-            })
+            # Find the event and look for the registration
+            event = await db["events"].find_one(
+                {"event_id": event_id, "registrations.registration_id": registration_id},
+                {"registrations.$": 1}
+            )
             
-            if team_registration:
-                team_reg = TeamEventRegistration(**team_registration)
-                for member in team_reg.team_members.values():
-                    if member.registration_id == registration_id:
-                        return member
+            if event and "registrations" in event and event["registrations"]:
+                reg_data = event["registrations"][0]
+                return EventRegistration(**reg_data)
             
             return None
             
@@ -255,50 +255,119 @@ class EventRegistrationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            # Get the registration
-            registration = await self.get_registration_by_id(request.registration_id)
-            if not registration:
+            # The registration_id is the key in the registrations dictionary
+            registration_id = request.registration_id
+            
+            # Extract event_id from registration_id if needed
+            # First try to find the event that contains this registration
+            event = await db["events"].find_one({
+                f"registrations.{registration_id}": {"$exists": True}
+            })
+            
+            if not event:
                 return AttendanceResponse(
                     success=False,
                     message="Registration not found"
                 )
             
+            event_id = event["event_id"]
+            registrations = event.get("registrations", {})
+            current_reg = registrations.get(registration_id)
+            
+            if not current_reg:
+                return AttendanceResponse(
+                    success=False,
+                    message="Registration not found in event"
+                )
+            
             # Check if physical attendance already marked
-            if registration.physical_attendance_id:
+            if current_reg.get("physical_attendance_id"):
                 return AttendanceResponse(
                     success=False,
                     message="Physical attendance already marked",
-                    data=registration.get_attendance_summary()
+                    data=current_reg
+                )
+            
+            # Get student enrollment
+            student_enrollment = (
+                current_reg.get("enrollment_no") or 
+                current_reg.get("student_enrollment") or
+                current_reg.get("student_data", {}).get("enrollment_no") or
+                current_reg.get("student_data", {}).get("student_enrollment")
+            )
+            
+            if not student_enrollment:
+                return AttendanceResponse(
+                    success=False,
+                    message="Student enrollment not found in registration"
                 )
             
             # Generate physical attendance ID
             physical_attendance_id = generate_physical_attendance_id(
-                registration.student_enrollment, 
-                registration.event_id,
+                student_enrollment, 
+                event_id,
                 marked_by
             )
             
             # Mark physical attendance
             timestamp = datetime.utcnow()
-            registration.mark_physical_attendance(physical_attendance_id, timestamp, marked_by)
+            
+            # Update the registration in the event document
+            update_data = {
+                f"registrations.{registration_id}.physical_attendance_id": physical_attendance_id,
+                f"registrations.{registration_id}.physical_attendance_timestamp": timestamp.isoformat(),
+                f"registrations.{registration_id}.physical_attendance_marked_by": marked_by,
+            }
+            
+            # Update final attendance status
+            has_virtual = current_reg.get("virtual_attendance_id") is not None
+            if has_virtual:
+                update_data[f"registrations.{registration_id}.final_attendance_status"] = "present"
+            else:
+                update_data[f"registrations.{registration_id}.final_attendance_status"] = "physical_only"
             
             # Add metadata
+            if "attendance_metadata" not in current_reg:
+                current_reg["attendance_metadata"] = {}
+            
+            attendance_metadata = current_reg.get("attendance_metadata", {})
+            attendance_metadata["physical_marked_at"] = timestamp.isoformat()
             if request.notes:
-                registration.attendance_metadata["physical_notes"] = request.notes
-            registration.attendance_metadata["physical_marked_at"] = timestamp.isoformat()
+                attendance_metadata["physical_notes"] = request.notes
+            
+            update_data[f"registrations.{registration_id}.attendance_metadata"] = attendance_metadata
             
             # Update in database
-            await db["event_registrations"].update_one(
-                {"registration_id": request.registration_id},
-                {"$set": registration.dict()}
+            result = await db["events"].update_one(
+                {"event_id": event_id},
+                {"$set": update_data}
             )
             
-            logger.info(f"Physical attendance marked for {registration.student_enrollment} in event {registration.event_id} by {marked_by}")
+            if result.modified_count == 0:
+                return AttendanceResponse(
+                    success=False,
+                    message="Failed to update attendance in database"
+                )
+            
+            logger.info(f"Physical attendance marked for {student_enrollment} in event {event_id} by {marked_by}")
+            
+            # Get updated registration for response
+            updated_reg = {**current_reg}
+            updated_reg["physical_attendance_id"] = physical_attendance_id
+            updated_reg["physical_attendance_timestamp"] = timestamp.isoformat()
+            updated_reg["physical_attendance_marked_by"] = marked_by
+            updated_reg["final_attendance_status"] = "present" if has_virtual else "physical_only"
+            
+            if "attendance_metadata" not in updated_reg:
+                updated_reg["attendance_metadata"] = {}
+            updated_reg["attendance_metadata"]["physical_marked_at"] = timestamp.isoformat()
+            if request.notes:
+                updated_reg["attendance_metadata"]["physical_notes"] = request.notes
             
             return AttendanceResponse(
                 success=True,
                 message="Physical attendance marked successfully",
-                data=registration.get_attendance_summary()
+                data=updated_reg
             )
             
         except Exception as e:
@@ -386,22 +455,71 @@ class EventRegistrationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            # Get all registrations for the event
-            registrations = await db["event_registrations"].find({"event_id": event_id}).to_list(None)
+            # Get the event with its registrations and attendances
+            event = await db["events"].find_one({"event_id": event_id}, {"registrations": 1, "attendances": 1})
             
-            # Calculate statistics
-            total_registrations = len(registrations)
-            virtual_attendance_count = sum(1 for reg in registrations if reg.get("virtual_attendance_id"))
-            physical_attendance_count = sum(1 for reg in registrations if reg.get("physical_attendance_id"))
+            if not event or "registrations" not in event:
+                return AttendanceStatsResponse(
+                    event_id=event_id,
+                    total_registrations=0,
+                    virtual_attendance_count=0,
+                    physical_attendance_count=0,
+                    present_count=0,
+                    virtual_only_count=0,
+                    physical_only_count=0,
+                    absent_count=0,
+                    attendance_percentage=0.0,
+                    last_updated=datetime.utcnow()
+                )
             
-            # Count by final status
-            present_count = sum(1 for reg in registrations if reg.get("final_attendance_status") == "present")
-            virtual_only_count = sum(1 for reg in registrations if reg.get("final_attendance_status") == "virtual_only")
-            physical_only_count = sum(1 for reg in registrations if reg.get("final_attendance_status") == "physical_only")
-            absent_count = sum(1 for reg in registrations if reg.get("final_attendance_status") == "absent")
+            registrations_dict = event.get("registrations", {})
+            attendances_dict = event.get("attendances", {})
             
-            # Calculate attendance percentage (based on present count)
-            attendance_percentage = (present_count / total_registrations * 100) if total_registrations > 0 else 0
+            # Create a mapping of registration_id to attendance status
+            virtual_attendance_map = {}
+            for att_data in attendances_dict.values():
+                reg_id = att_data.get("registration_id")
+                if reg_id:
+                    virtual_attendance_map[reg_id] = True
+            
+            # Filter out registrations without valid enrollment numbers
+            valid_registrations = {}
+            for reg_id, reg_data in registrations_dict.items():
+                # Check enrollment number in multiple possible locations
+                enrollment = (
+                    reg_data.get("enrollment_no") or  # Top level (legacy)
+                    reg_data.get("student_data", {}).get("enrollment_no")  # New structure
+                )
+                if enrollment and enrollment.strip():
+                    valid_registrations[reg_id] = reg_data
+            
+            # Calculate statistics by combining both data sources (only valid registrations)
+            total_registrations = len(valid_registrations)
+            virtual_attendance_count = len(virtual_attendance_map)
+            physical_attendance_count = sum(1 for reg in valid_registrations.values() if reg.get("physical_attendance_id"))
+            
+            # Count by final status - only for valid registrations
+            present_count = 0
+            virtual_only_count = 0
+            physical_only_count = 0
+            absent_count = 0
+            
+            for reg_id, reg_data in valid_registrations.items():
+                has_virtual = reg_id in virtual_attendance_map
+                has_physical = reg_data.get("physical_attendance_id") is not None
+                
+                if has_virtual and has_physical:
+                    present_count += 1
+                elif has_virtual and not has_physical:
+                    virtual_only_count += 1
+                elif not has_virtual and has_physical:
+                    physical_only_count += 1
+                else:
+                    absent_count += 1
+            
+            # Calculate attendance percentage (present + virtual_only + physical_only)
+            attended_count = present_count + virtual_only_count + physical_only_count
+            attendance_percentage = (attended_count / total_registrations * 100) if total_registrations > 0 else 0
             
             return AttendanceStatsResponse(
                 event_id=event_id,
@@ -435,16 +553,120 @@ class EventRegistrationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            registrations = await db["event_registrations"].find({"event_id": event_id}).to_list(None)
+            # Get the event with its registrations and attendances
+            event = await db["events"].find_one({"event_id": event_id}, {"registrations": 1, "attendances": 1})
+            
+            if not event or "registrations" not in event:
+                logger.info(f"No registrations found for event {event_id}")
+                return []
+            
+            registrations_dict = event.get("registrations", {})
+            attendances_dict = event.get("attendances", {})
+            
+            # Filter out registrations without valid enrollment numbers
+            valid_registrations = {}
+            for reg_id, reg_data in registrations_dict.items():
+                # Check enrollment number in multiple possible locations
+                enrollment = (
+                    reg_data.get("enrollment_no") or  # Top level (legacy)
+                    reg_data.get("student_data", {}).get("enrollment_no")  # New structure
+                )
+                if isinstance(reg_data, dict) and enrollment and enrollment.strip():
+                    valid_registrations[reg_id] = reg_data
+            
+            logger.info(f"Filtered {len(registrations_dict) - len(valid_registrations)} invalid registrations")
+            
+            # Create a mapping of registration_id to virtual attendance data
+            virtual_attendance_map = {}
+            for att_id, att_data in attendances_dict.items():
+                reg_id = att_data.get("registration_id")
+                if reg_id and reg_id in valid_registrations:  # Only include attendance for valid registrations
+                    virtual_attendance_map[reg_id] = {
+                        "virtual_attendance_id": att_id,
+                        "virtual_attendance_timestamp": att_data.get("marked_at"),
+                        "virtual_attendance_status": att_data.get("attendance_status")
+                    }
             
             result = []
-            for reg_data in registrations:
-                reg = EventRegistration(**reg_data)
-                result.append({
-                    **reg.dict(),
-                    "attendance_summary": reg.get_attendance_summary()
-                })
             
+            # Process only valid registrations
+            for registration_id, reg_data in valid_registrations.items():
+                # Get student enrollment from the registration data
+                student_enrollment = (
+                    reg_data.get("enrollment_no") or  # Top level (legacy)
+                    reg_data.get("student_data", {}).get("enrollment_no")  # New structure
+                )
+                
+                if student_enrollment:
+                    # Get student data from students collection
+                    student = await db["students"].find_one(
+                        {"enrollment_number": student_enrollment},
+                        {"full_name": 1, "email": 1, "phone": 1, "course": 1, "year": 1}
+                    )
+                    
+                    # Normalize registration data structure
+                    student_data = {}
+                    if "student_data" in reg_data:
+                        student_data = reg_data["student_data"]
+                    else:
+                        # Map old format to new format
+                        student_data = {
+                            "full_name": reg_data.get("full_name", ""),
+                            "enrollment_no": student_enrollment,
+                            "email": reg_data.get("email", ""),
+                            "mobile_no": reg_data.get("mobile_no", ""),
+                            "department": reg_data.get("department", ""),
+                            "semester": reg_data.get("semester", ""),
+                            "gender": reg_data.get("gender", ""),
+                            "date_of_birth": reg_data.get("date_of_birth", "")
+                        }
+                    
+                    # Get virtual attendance data for this registration
+                    virtual_att_data = virtual_attendance_map.get(registration_id, {})
+                    
+                    # Calculate final attendance status based on both virtual and physical
+                    has_virtual = virtual_att_data.get("virtual_attendance_id") is not None
+                    has_physical = reg_data.get("physical_attendance_id") is not None
+                    
+                    if has_virtual and has_physical:
+                        final_status = "present"
+                    elif has_virtual and not has_physical:
+                        final_status = "virtual_only"
+                    elif not has_virtual and has_physical:
+                        final_status = "physical_only"
+                    else:
+                        final_status = "absent"
+                    
+                    # Create enhanced registration object
+                    # Remove final_attendance_status from original data to avoid override
+                    reg_data_filtered = {k: v for k, v in reg_data.items() if k != "final_attendance_status"}
+                    
+                    enhanced_reg = {
+                        "registration_id": registration_id,
+                        "student_enrollment": student_enrollment,
+                        "student_data": {**student_data, **(student if student else {})},
+                        "registration_datetime": reg_data.get("registration_datetime") or reg_data.get("registration_date"),
+                        "registration_status": reg_data.get("registration_status", "confirmed"),
+                        "final_attendance_status": final_status,
+                        
+                        # Virtual attendance data (from attendances collection)
+                        "virtual_attendance_id": virtual_att_data.get("virtual_attendance_id"),
+                        "virtual_attendance_timestamp": virtual_att_data.get("virtual_attendance_timestamp"),
+                        "virtual_attendance_status": virtual_att_data.get("virtual_attendance_status"),
+                        
+                        # Physical attendance data (from registrations collection)
+                        "physical_attendance_id": reg_data.get("physical_attendance_id"),
+                        "physical_attendance_timestamp": reg_data.get("physical_attendance_timestamp"),
+                        "physical_attendance_marked_by": reg_data.get("physical_attendance_marked_by"),
+                        
+                        "attendance_metadata": reg_data.get("attendance_metadata", {}),
+                        # Include original registration data for compatibility (excluding final_attendance_status)
+                        **reg_data_filtered
+                    }
+                    
+                    result.append(enhanced_reg)
+            
+            logger.info(f"Retrieved {len(result)} registrations for event {event_id}")
             return result
             
         except Exception as e:

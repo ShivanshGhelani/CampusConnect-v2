@@ -15,7 +15,7 @@ const AttendanceStatusBadge = ({ status }) => {
       case 'virtual_only':
         return {
           icon: Clock,
-          label: 'Virtual Only',
+          label: 'Registered Only',
           bgColor: 'bg-yellow-100',
           textColor: 'text-yellow-800',
           iconColor: 'text-yellow-600'
@@ -23,7 +23,7 @@ const AttendanceStatusBadge = ({ status }) => {
       case 'physical_only':
         return {
           icon: AlertCircle,
-          label: 'Physical Only',
+          label: 'Walk-in Present',
           bgColor: 'bg-blue-100',
           textColor: 'text-blue-800',
           iconColor: 'text-blue-600'

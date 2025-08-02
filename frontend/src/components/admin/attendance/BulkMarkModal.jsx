@@ -41,27 +41,53 @@ const BulkMarkModal = ({ selectedCount, onConfirm, onCancel, registrationIds }) 
         </div>
 
         <div className="mb-6">
-          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
             <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-800">
-              This will mark <strong>{selectedCount}</strong> student{selectedCount !== 1 ? 's' : ''} as physically present at the venue. 
-              This action cannot be undone.
+              <div className="font-medium mb-1">Bulk Attendance Marking</div>
+              <div>
+                This will mark <strong>{selectedCount}</strong> student{selectedCount !== 1 ? 's' : ''} as present at the event. 
+                This action cannot be undone, but you can unmark individual students later if needed.
+              </div>
+            </div>
+          </div>
+
+          {/* Action Preview */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <div className="text-sm font-medium text-gray-700 mb-2">What will happen:</div>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                <span>{selectedCount} student{selectedCount !== 1 ? 's' : ''} will be marked as present</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                <span>Students with prior registration will become "Present"</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                <span>Students without virtual attendance will become "Physical Only"</span>
+              </div>
             </div>
           </div>
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
               Notes (Optional)
+              <span className="text-gray-500 font-normal ml-1">- Add context about this bulk marking</span>
             </label>
             <textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about this attendance marking..."
+              placeholder="e.g., 'End of event - marking all remaining students present'"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
               rows={3}
               disabled={isProcessing}
             />
+            <div className="text-xs text-gray-500 mt-1">
+              These notes will be attached to each attendance record for audit purposes.
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 """
 Authentication API Routes
-Handles authentication-related API endpoints
+Handles authentication-related API endpoints with token-based "Remember Me" functionality
 """
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -11,11 +11,16 @@ from models.faculty import Faculty, FacultyCreate
 from routes.auth import get_current_admin, authenticate_admin
 from dependencies.auth import get_current_student_optional, get_current_student
 from database.operations import DatabaseOperations
+from utils.token_manager import token_manager
+from middleware.auth_middleware import AuthMiddleware, create_token_response
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional
 import logging
 import re
 from passlib.context import CryptContext
+
+# Import password reset router
+from .password_reset import router as password_reset_router
 
 # Password hashing context for faculty
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -51,10 +56,12 @@ logger = logging.getLogger(__name__)
 class AdminLoginRequest(BaseModel):
     username: str
     password: str
+    remember_me: bool = False
 
 class StudentLoginRequest(BaseModel):
     enrollment_no: str
     password: str
+    remember_me: bool = False
 
 class StudentRegisterRequest(BaseModel):
     full_name: str
@@ -70,6 +77,7 @@ class StudentRegisterRequest(BaseModel):
 class FacultyLoginRequest(BaseModel):
     employee_id: str
     password: str
+    remember_me: bool = False
 
 class FacultyRegisterRequest(BaseModel):
     employee_id: str
@@ -87,6 +95,9 @@ class FacultyRegisterRequest(BaseModel):
     date_of_joining: str = None
     employment_type: str = None
     password: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 @router.get("/admin/status")
 async def admin_auth_status(request: Request):
@@ -162,12 +173,12 @@ async def faculty_auth_status(request: Request):
         return {"authenticated": False, "error": str(e), "user_type": "faculty"}
 
 @router.post("/admin/login")
-async def admin_login_api(request: Request):
-    """API endpoint for admin login"""
+async def admin_login_api(request: Request, login_data: AdminLoginRequest):
+    """API endpoint for admin login with token-based authentication"""
     try:
-        data = await request.json()
-        username = data.get("username")
-        password = data.get("password")
+        username = login_data.username
+        password = login_data.password
+        remember_me = login_data.remember_me
         
         if not all([username, password]):
             return JSONResponse(
@@ -189,7 +200,7 @@ async def admin_login_api(request: Request):
             {"$set": {"last_login": datetime.utcnow()}}
         )
         
-        # Store admin in session
+        # Prepare user data for token
         admin_data = admin.model_dump()
         current_time = datetime.utcnow()
         
@@ -197,8 +208,18 @@ async def admin_login_api(request: Request):
             if isinstance(value, datetime):
                 admin_data[key] = value.isoformat()
         
-        admin_data["login_time"] = current_time.isoformat()
+        # Generate tokens if Redis is available
+        tokens = {}
+        if token_manager.is_available():
+            tokens = token_manager.generate_tokens(
+                user_id=username,
+                user_type='admin',
+                user_data=admin_data,
+                remember_me=remember_me
+            )
         
+        # Always store in session as fallback
+        admin_data["login_time"] = current_time.isoformat()
         request.session["admin"] = admin_data
         
         # Determine redirect URL based on role
@@ -206,19 +227,42 @@ async def admin_login_api(request: Request):
             AdminRole.SUPER_ADMIN: "/admin/dashboard",
             AdminRole.EXECUTIVE_ADMIN: "/admin/events/create",
             AdminRole.EVENT_ADMIN: "/admin/events",
-            AdminRole.CONTENT_ADMIN: "/admin/events"
+            AdminRole.CONTENT_ADMIN: "/admin/events",
+            AdminRole.ORGANIZER_ADMIN: "/admin/events",
+            AdminRole.VENUE_ADMIN: "/admin/venue"
         }
         
-        return {
+        response_data = {
             "success": True,
             "message": "Login successful",
             "redirect_url": redirect_urls.get(admin.role, "/admin/dashboard"),
             "user": {
                 "username": admin.username,
                 "fullname": admin.fullname,
-                "role": admin.role.value if admin.role else None
-            }
+                "role": admin.role.value if admin.role else None,
+                "user_type": "admin"
+            },
+            "auth_type": "token" if tokens else "session",
+            "remember_me": remember_me
         }
+        
+        # Add token information if available
+        if tokens:
+            response_data["expires_in"] = tokens.get("expires_in", 3600)
+        
+        # Create response
+        response = JSONResponse(content=response_data)
+        
+        # Set token cookies if tokens were generated
+        if tokens:
+            AuthMiddleware.set_token_cookies(
+                response,
+                access_token=tokens["access_token"],
+                refresh_token=tokens.get("refresh_token"),
+                expires_in=tokens.get("expires_in", 3600)
+            )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in admin login API: {str(e)}")
@@ -229,16 +273,29 @@ async def admin_login_api(request: Request):
 
 @router.post("/admin/logout")
 async def admin_logout_api(request: Request):
-    """API endpoint for admin logout"""
+    """API endpoint for admin logout with token cleanup"""
     try:
+        # Get admin info for token cleanup
+        admin_data = request.session.get("admin")
+        if admin_data:
+            username = admin_data.get("username")
+            if username and token_manager.is_available():
+                token_manager.revoke_user_tokens(username, 'admin')
+        
         # Clear admin session
         if "admin" in request.session:
             del request.session["admin"]
         
-        return {
+        response_data = {
             "success": True,
             "message": "Logout successful"
         }
+        
+        # Create response and clear token cookies
+        response = JSONResponse(content=response_data)
+        AuthMiddleware.clear_token_cookies(response)
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in admin logout API: {str(e)}")
@@ -249,10 +306,11 @@ async def admin_logout_api(request: Request):
 
 @router.post("/student/login")
 async def student_login_api(request: Request, login_data: StudentLoginRequest):
-    """API endpoint for student login"""
+    """API endpoint for student login with token-based authentication"""
     try:
         enrollment_no = login_data.enrollment_no
         password = login_data.password
+        remember_me = login_data.remember_me
         
         if not all([enrollment_no, password]):
             return JSONResponse(
@@ -274,16 +332,27 @@ async def student_login_api(request: Request, login_data: StudentLoginRequest):
             {"$set": {"last_login": datetime.utcnow()}}
         )
         
-        # Store student in session
+        # Prepare user data for token
         student_data = student.model_dump()
         for key, value in student_data.items():
             if isinstance(value, datetime):
                 student_data[key] = value.isoformat()
         
+        # Generate tokens if Redis is available
+        tokens = {}
+        if token_manager.is_available():
+            tokens = token_manager.generate_tokens(
+                user_id=enrollment_no,
+                user_type='student',
+                user_data=student_data,
+                remember_me=remember_me
+            )
+        
+        # Always store in session as fallback
         request.session["student"] = student_data
         request.session["student_enrollment"] = enrollment_no
         
-        return {
+        response_data = {
             "success": True,
             "message": "Login successful",
             "redirect_url": "/client/dashboard",
@@ -293,8 +362,28 @@ async def student_login_api(request: Request, login_data: StudentLoginRequest):
                 "email": student.email,
                 "department": student.department,
                 "user_type": "student"
-            }
+            },
+            "auth_type": "token" if tokens else "session",
+            "remember_me": remember_me
         }
+        
+        # Add token information if available
+        if tokens:
+            response_data["expires_in"] = tokens.get("expires_in", 3600)
+        
+        # Create response
+        response = JSONResponse(content=response_data)
+        
+        # Set token cookies if tokens were generated
+        if tokens:
+            AuthMiddleware.set_token_cookies(
+                response,
+                access_token=tokens["access_token"],
+                refresh_token=tokens.get("refresh_token"),
+                expires_in=tokens.get("expires_in", 3600)
+            )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in student login API: {str(e)}")
@@ -305,10 +394,11 @@ async def student_login_api(request: Request, login_data: StudentLoginRequest):
 
 @router.post("/faculty/login")
 async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
-    """API endpoint for faculty login"""
+    """API endpoint for faculty login with token-based authentication"""
     try:
         employee_id = login_data.employee_id
         password = login_data.password
+        remember_me = login_data.remember_me
         
         if not all([employee_id, password]):
             return JSONResponse(
@@ -330,16 +420,27 @@ async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
             {"$set": {"last_login": datetime.utcnow()}}
         )
         
-        # Store faculty in session
+        # Prepare user data for token
         faculty_data = faculty.model_dump()
         for key, value in faculty_data.items():
             if isinstance(value, datetime):
                 faculty_data[key] = value.isoformat()
         
+        # Generate tokens if Redis is available
+        tokens = {}
+        if token_manager.is_available():
+            tokens = token_manager.generate_tokens(
+                user_id=employee_id,
+                user_type='faculty',
+                user_data=faculty_data,
+                remember_me=remember_me
+            )
+        
+        # Always store in session as fallback
         request.session["faculty"] = faculty_data
         request.session["faculty_employee_id"] = employee_id
         
-        return {
+        response_data = {
             "success": True,
             "message": "Login successful",
             "redirect_url": "/faculty/profile",
@@ -349,8 +450,28 @@ async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
                 "email": faculty.email,
                 "department": faculty.department,
                 "user_type": "faculty"
-            }
+            },
+            "auth_type": "token" if tokens else "session",
+            "remember_me": remember_me
         }
+        
+        # Add token information if available
+        if tokens:
+            response_data["expires_in"] = tokens.get("expires_in", 3600)
+        
+        # Create response
+        response = JSONResponse(content=response_data)
+        
+        # Set token cookies if tokens were generated
+        if tokens:
+            AuthMiddleware.set_token_cookies(
+                response,
+                access_token=tokens["access_token"],
+                refresh_token=tokens.get("refresh_token"),
+                expires_in=tokens.get("expires_in", 3600)
+            )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in faculty login API: {str(e)}")
@@ -361,13 +482,26 @@ async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
 
 @router.post("/student/logout")
 async def student_logout_api(request: Request):
-    """API endpoint for student logout"""
+    """API endpoint for student logout with token cleanup"""
     try:
+        # Get student info for token cleanup
+        student_data = request.session.get("student")
+        if student_data:
+            enrollment_no = student_data.get("enrollment_no")
+            if enrollment_no and token_manager.is_available():
+                token_manager.revoke_user_tokens(enrollment_no, 'student')
+        
         # Clear session data
         request.session.pop("student", None)
         request.session.pop("student_enrollment", None)
         
-        return {"success": True, "message": "Logout successful"}
+        response_data = {"success": True, "message": "Logout successful"}
+        
+        # Create response and clear token cookies
+        response = JSONResponse(content=response_data)
+        AuthMiddleware.clear_token_cookies(response)
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in student logout API: {str(e)}")
@@ -378,16 +512,76 @@ async def student_logout_api(request: Request):
 
 @router.post("/faculty/logout")
 async def faculty_logout_api(request: Request):
-    """API endpoint for faculty logout"""
+    """API endpoint for faculty logout with token cleanup"""
     try:
+        # Get faculty info for token cleanup
+        faculty_data = request.session.get("faculty")
+        if faculty_data:
+            employee_id = faculty_data.get("employee_id")
+            if employee_id and token_manager.is_available():
+                token_manager.revoke_user_tokens(employee_id, 'faculty')
+        
         # Clear session data
         request.session.pop("faculty", None)
         request.session.pop("faculty_employee_id", None)
         
-        return {"success": True, "message": "Logout successful"}
+        response_data = {"success": True, "message": "Logout successful"}
+        
+        # Create response and clear token cookies
+        response = JSONResponse(content=response_data)
+        AuthMiddleware.clear_token_cookies(response)
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error in faculty logout API: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Internal server error"}
+        )
+
+@router.post("/refresh-token")
+async def refresh_token_api(request: Request, refresh_data: RefreshTokenRequest):
+    """API endpoint to refresh access token using refresh token"""
+    try:
+        refresh_token = refresh_data.refresh_token
+        
+        if not refresh_token:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Refresh token is required"}
+            )
+        
+        # Try to refresh the access token
+        new_token_data = token_manager.refresh_access_token(refresh_token)
+        if not new_token_data:
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "message": "Invalid or expired refresh token"}
+            )
+        
+        response_data = {
+            "success": True,
+            "message": "Token refreshed successfully",
+            "access_token": new_token_data["access_token"],
+            "expires_in": new_token_data["expires_in"]
+        }
+        
+        # Create response and set new access token cookie
+        response = JSONResponse(content=response_data)
+        response.set_cookie(
+            key="access_token",
+            value=new_token_data["access_token"],
+            max_age=new_token_data["expires_in"],
+            httponly=True,
+            secure=True,  # Set to True in production with HTTPS
+            samesite="lax"
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in refresh token API: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": "Internal server error"}
@@ -743,3 +937,6 @@ async def authenticate_faculty(employee_id: str, password: str):
     except Exception as e:
         logger.error(f"Error authenticating faculty: {str(e)}")
         return None
+
+# Include password reset routes
+router.include_router(password_reset_router)

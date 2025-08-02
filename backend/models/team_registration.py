@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 
@@ -9,6 +9,40 @@ class TeamParticipant(BaseModel):
     email: Optional[str] = Field(default=None, description="Auto-filled participant email")
     department: Optional[str] = Field(default=None, description="Auto-filled participant department")
     semester: Optional[int] = Field(default=None, description="Auto-filled participant semester")
+
+
+class TeamRegistrationRequest(BaseModel):
+    """Model for team registration requests when conflicts exist"""
+    request_id: str = Field(..., description="Unique request ID")
+    event_id: str = Field(..., description="Event ID for the registration")
+    team_leader_enrollment: str = Field(..., description="Team leader's enrollment number")
+    team_name: str = Field(..., description="Name of the team")
+    requested_member_enrollment: str = Field(..., description="Enrollment number of requested member")
+    request_status: str = Field(default="pending", description="Status: pending, approved, rejected")
+    request_datetime: str = Field(..., description="When the request was made")
+    response_datetime: Optional[str] = Field(None, description="When the request was responded to")
+    requester_message: Optional[str] = Field(None, description="Optional message from requester")
+    response_message: Optional[str] = Field(None, description="Optional response message")
+    current_team_info: Optional[Dict[str, Any]] = Field(None, description="Info about member's current team")
+
+
+class TeamRegistrationConflict(BaseModel):
+    """Model for team registration conflict information"""
+    enrollment_no: str
+    full_name: str
+    current_team_name: str
+    current_team_leader: str
+    registration_type: str  # "team_leader", "team_member"
+    registration_id: str
+    requires_approval: bool = True
+    conflict_type: str = "already_registered"  # "already_registered", "multiple_teams_not_allowed"
+
+
+class TeamApprovalRequest(BaseModel):
+    """Model for team member approval requests"""
+    request_id: str
+    action: str  # "approve", "reject"
+    response_message: Optional[str] = None
 
 
 class TeamRegistrationForm(BaseModel):

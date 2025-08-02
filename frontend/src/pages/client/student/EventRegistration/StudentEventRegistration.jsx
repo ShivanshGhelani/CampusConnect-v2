@@ -13,6 +13,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Refs to track execution state
   const eventLoadingRef = useRef(false);
+  const profileLoadingRef = useRef(false);
 
   // State management
   const [event, setEvent] = useState(null);
@@ -22,6 +23,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const [success, setSuccess] = useState('');
   const [registrationBlocked, setRegistrationBlocked] = useState(false);
   const [eventLoaded, setEventLoaded] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -64,10 +66,65 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       console.log('Form data updated:', {
         mobile_no: formData.mobile_no,
         gender: formData.gender,
-        semester: formData.semester
+        semester: formData.semester,
+        profileLoaded: profileLoaded,
+        eventLoaded: eventLoaded
       });
     }
-  }, [formData.mobile_no, formData.gender, formData.semester]); // Only trigger for specific fields
+  }, [formData.mobile_no, formData.gender, formData.semester, profileLoaded, eventLoaded]); // Track loading states too
+
+  // Load complete profile data - SEPARATE FROM EVENT LOADING
+  useEffect(() => {
+    if (!user || !user.enrollment_no || profileLoaded || profileLoadingRef.current) return;
+    
+    profileLoadingRef.current = true; // Prevent multiple executions
+    
+    const loadProfileData = async () => {
+      try {
+        console.log('Loading complete profile data...');
+        const response = await clientAPI.getProfile();
+        
+        if (response.data.success && response.data.student) {
+          const profileData = response.data.student;
+          console.log('Profile data loaded:', profileData);
+          
+          setFormData(prev => ({
+            ...prev,
+            full_name: profileData.full_name || prev.full_name,
+            enrollment_no: profileData.enrollment_number || prev.enrollment_no,
+            email: profileData.email || prev.email,
+            mobile_no: profileData.phone_number || profileData.mobile_no || prev.mobile_no,
+            department: profileData.department || prev.department,
+            semester: profileData.semester || prev.semester,
+            gender: profileData.gender || prev.gender,
+            date_of_birth: profileData.date_of_birth ? formatDateForInput(profileData.date_of_birth) : prev.date_of_birth,
+          }));
+          
+          setProfileLoaded(true);
+          
+          // Update year display after profile load
+          setTimeout(() => {
+            const yearElement = document.getElementById('year');
+            if (yearElement && profileData.semester) {
+              const year = calculateYear(profileData.semester);
+              yearElement.textContent = year || '-';
+            }
+          }, 100);
+        } else {
+          console.log('No profile data in response, using AuthContext data');
+          setProfileLoaded(true);
+        }
+      } catch (error) {
+        console.warn('Failed to load complete profile data:', error);
+        // Fallback to user data from AuthContext
+        setProfileLoaded(true);
+      } finally {
+        profileLoadingRef.current = false;
+      }
+    };
+
+    loadProfileData();
+  }, [user?.enrollment_no]); // Only depend on user enrollment to avoid unnecessary calls
 
   // Load event details and initialize form - ONLY ONCE
   useEffect(() => {
@@ -126,8 +183,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         setTeamSizeMin(eventData.team_size_min || 2);
         setTeamSizeMax(eventData.team_size_max || 5);
 
-        // Initialize form with user data (using cached data from AuthContext)        
-        if (user) {
+        // Initialize form with user data (only if profile not already loaded)        
+        if (user && !profileLoaded) {
           const newFormData = {
             full_name: user.full_name || '',
             enrollment_no: user.enrollment_no || '',
@@ -176,7 +233,15 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setEventLoaded(false);
     setLoading(true);
     eventLoadingRef.current = false;
+    // Don't reset profile data when changing events - it's user-specific, not event-specific
   }, [eventId]);
+
+  // Update loading state when event loads (don't wait for profile)
+  useEffect(() => {
+    if (eventLoaded) {
+      setLoading(false);
+    }
+  }, [eventLoaded]);
 
   // Initialize participants array for team registration
   const initializeParticipants = useCallback((count) => {
@@ -1005,7 +1070,15 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                   {/* Individual Registration Form */}
                   {/* Personal Information */}
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
+                      {!profileLoaded && user && (
+                        <div className="flex items-center text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-2"></i>
+                          Loading complete profile...
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">

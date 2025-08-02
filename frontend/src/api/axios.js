@@ -4,7 +4,19 @@ import axios from 'axios';
  * BACKEND API ENDPOINTS REFERENCE (v1) - COMPLETE IMPLEMENTATION
  * ================================================================
  * 
- * This file contains ALL API endpoints available in the CampusConnect backend.
+ * This file contains ALL API endpoints available in the C  // Registration
+  registerForEvent: (eventId, registrationData) => api.post(`/api/v1/client/registration/register/${eventId}`, registrationData),
+  getRegistrationStatus: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
+  getTeamDetails: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
+  validateRegistration: (filters) => api.get('/api/v1/client/registration/validate', { params: filters }),
+  validateParticipant: (enrollmentNo, eventId, teamId) => api.get(`/api/v1/client/registration/validate-participant?enrollment_no=${enrollmentNo}&event_id=${eventId}&team_id=${teamId}`),
+  validateFacultyParticipant: (facultyId) => api.get(`/api/v1/client/registration/validate-faculty-participant?faculty_id=${facultyId}`),
+  checkRegistrationConflicts: (conflictData) => api.post('/api/v1/client/registration/check-conflicts', conflictData),
+  checkEnhancedRegistrationConflicts: (conflictData) => api.post('/api/v1/client/registration/check-enhanced-conflicts', conflictData),
+  sendTeamApprovalRequest: (requestData) => api.post('/api/v1/client/registration/send-team-approval-request', requestData),
+  respondTeamApproval: (responseData) => api.post('/api/v1/client/registration/respond-team-approval', responseData),
+  getPendingTeamRequests: () => api.get('/api/v1/client/registration/pending-team-requests'),
+  cancelRegistration: (eventId) => api.post(`/api/v1/client/registration/cancel/${eventId}`),ect backend.
  * Endpoints are organized by category and access level for easy reference.
  * 
  * AUTH API (/api/v1/auth/):
@@ -308,6 +320,10 @@ export const adminAPI = {
   bulkUpdateEventStatus: (updateData) => api.post('/api/v1/admin/events/bulk-update-status', updateData),
   // Legacy endpoint
   getEventStats: (eventId) => api.get(`/api/v1/admin/events/stats?event_id=${eventId}`),
+  
+  // New dual-layer attendance system
+  getAttendanceStatistics: (eventId) => api.get(`/api/v1/admin/event-registration/attendance/stats/${eventId}`),
+  getEventRegistrationsWithAttendance: (eventId, filters) => api.get(`/api/v1/admin/event-registration/event/${eventId}`, { params: filters }),
   
   // Student Management
   getStudents: (filters) => api.get('/api/v1/admin/students/list', { params: filters }),

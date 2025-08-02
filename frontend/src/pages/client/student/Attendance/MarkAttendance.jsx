@@ -65,7 +65,7 @@ function MarkAttendance() {
         return;
       }
 
-      // Try to get registration status and auto-fill if registered
+      // Check registration status - REQUIRED for attendance marking
       let registrationData = null;
       try {
         const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
@@ -86,10 +86,16 @@ function MarkAttendance() {
             student_name: regData.full_name || '',
             enrollment_no: regData.enrollment_no || ''
           });
+        } else {
+          // Student is not registered for this event - redirect to NotRegistered page
+          navigate(`/client/events/${eventId}/not-registered`);
+          return;
         }
       } catch (regError) {
-        // Registration not found - user must enter details manually
-        console.log('No registration found, manual entry required');
+        // Registration not found - redirect to NotRegistered page
+        console.log('No registration found, student must register first');
+        navigate(`/client/events/${eventId}/not-registered`);
+        return;
       }
 
       // Check if attendance is already marked

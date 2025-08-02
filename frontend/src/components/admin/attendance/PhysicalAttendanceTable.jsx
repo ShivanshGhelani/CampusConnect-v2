@@ -18,7 +18,8 @@ const PhysicalAttendanceTable = ({
   onSelectRegistration,
   onSelectAll,
   onMarkAttendance,
-  loading
+  loading,
+  quickMode = false
 }) => {
 
   const formatDate = (dateString) => {
@@ -59,6 +60,17 @@ const PhysicalAttendanceTable = ({
 
   return (
     <div className="overflow-x-auto">
+      {/* Quick mode banner */}
+      {quickMode && (
+        <div className="bg-orange-50 border-b border-orange-200 px-6 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium text-orange-800">Quick Mode Active</span>
+            <span className="text-xs text-orange-600">- Click any student to instantly mark attendance</span>
+          </div>
+        </div>
+      )}
+      
       <table className="w-full">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
@@ -91,15 +103,18 @@ const PhysicalAttendanceTable = ({
           {registrations.map((registration) => {
             const isSelected = selectedRegistrations.includes(registration.registration_id);
             const studentData = registration.student_data || {};
-            const virtualTimestamp = registration.attendance_timestamps?.virtual;
-            const physicalTimestamp = registration.attendance_timestamps?.physical;
             
             return (
               <tr 
                 key={registration.registration_id}
                 className={`hover:bg-gray-50 transition-colors ${
                   isSelected ? 'bg-blue-50' : ''
-                }`}
+                } ${quickMode && canMarkPhysical(registration) ? 'cursor-pointer hover:bg-orange-50' : ''}`}
+                onClick={() => {
+                  if (quickMode && canMarkPhysical(registration)) {
+                    onMarkAttendance(registration.registration_id);
+                  }
+                }}
               >
                 {/* Checkbox */}
                 <td className="px-6 py-4">
@@ -133,7 +148,7 @@ const PhysicalAttendanceTable = ({
                       )}
                       <div className="text-xs text-gray-400 flex items-center gap-1 mt-1">
                         <Calendar className="w-3 h-3" />
-                        Reg: {formatDate(registration.registration_timestamp)}
+                        Reg: {formatDate(registration.registration_datetime)}
                       </div>
                     </div>
                   </div>
@@ -150,16 +165,16 @@ const PhysicalAttendanceTable = ({
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <div>
-                        <div className="text-sm text-green-700 font-medium">Marked</div>
+                        <div className="text-sm text-green-700 font-medium">Registered</div>
                         <div className="text-xs text-gray-500">
-                          {formatDate(virtualTimestamp)}
+                          {formatDate(registration.virtual_attendance_timestamp)}
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-500">Not marked</span>
+                      <span className="text-sm text-gray-500">Not registered</span>
                     </div>
                   )}
                 </td>
@@ -170,13 +185,13 @@ const PhysicalAttendanceTable = ({
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-blue-500" />
                       <div>
-                        <div className="text-sm text-blue-700 font-medium">Verified</div>
+                        <div className="text-sm text-blue-700 font-medium">Verified Present</div>
                         <div className="text-xs text-gray-500">
-                          {formatDate(physicalTimestamp)}
+                          {formatDate(registration.physical_attendance_timestamp)}
                         </div>
-                        {registration.attendance_metadata?.physical_marked_by && (
+                        {registration.physical_attendance_marked_by && (
                           <div className="text-xs text-gray-400">
-                            by {registration.attendance_metadata.physical_marked_by}
+                            by {registration.physical_attendance_marked_by}
                           </div>
                         )}
                       </div>
@@ -193,11 +208,18 @@ const PhysicalAttendanceTable = ({
                 <td className="px-6 py-4">
                   {canMarkPhysical(registration) ? (
                     <button
-                      onClick={() => onMarkAttendance(registration.registration_id)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click in quick mode
+                        onMarkAttendance(registration.registration_id);
+                      }}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        quickMode 
+                          ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
                     >
                       <UserCheck className="w-4 h-4" />
-                      Mark Present
+                      {quickMode ? 'Quick Mark' : 'Mark Present'}
                     </button>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-500 rounded-lg">

@@ -66,6 +66,7 @@ function CreateEvent() {
     registration_mode: '',
     team_size_min: '',
     team_size_max: '',
+    allow_multiple_team_registrations: false,
     max_participants: '',
     min_participants: '1',
     certificate_template: null,
@@ -415,6 +416,7 @@ function CreateEvent() {
           <>
             <p><strong>Min Team Size:</strong> {form.team_size_min}</p>
             <p><strong>Max Team Size:</strong> {form.team_size_max}</p>
+            <p><strong>Multiple Teams Allowed:</strong> {form.allow_multiple_team_registrations ? 'Yes (with approval)' : 'No'}</p>
           </>
         )}
         {form.max_participants && <p><strong>Max Participants:</strong> {form.max_participants}</p>}
@@ -474,6 +476,7 @@ function CreateEvent() {
         registration_mode: form.registration_mode,
         team_size_min: form.team_size_min ? parseInt(form.team_size_min) : null,
         team_size_max: form.team_size_max ? parseInt(form.team_size_max) : null,
+        allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1
       };
@@ -1093,6 +1096,21 @@ function CreateEvent() {
                     <input type="number" name="team_size_max" min="2" value={form.team_size_max} onChange={handleChange} placeholder="e.g., 5" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.team_size_max ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
                     <p className="helper-text text-xs text-gray-500 mt-1">Maximum number of members per team</p>
                     {errors.team_size_max && <p className="text-xs text-red-500">{errors.team_size_max}</p>}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        name="allow_multiple_team_registrations"
+                        checked={form.allow_multiple_team_registrations}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-700">Allow Multiple Team Registrations</span>
+                        <p className="text-xs text-gray-500">Allow students to be part of multiple teams for this event (requires approval)</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               )}

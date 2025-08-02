@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../api/axios';
 
 // Status badge component
 const StatusBadge = ({ status }) => {
@@ -46,21 +47,38 @@ const StatusBadge = ({ status }) => {
 };
 
 // Main ProfileEventCard component
-const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => {
+const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onViewDetails, onViewTeam }) => {
   // Registration data available for debugging if needed
   // reg.event_id, reg.event?.event_name, reg.registration?.registration_type, etc.
+  
+  // State for dynamic team name fetching
+  const [teamName, setTeamName] = useState(reg.registration?.team_name);
   
   // Debug: Check event status for cancel button visibility
   const shouldShowCancelButtons = reg.event.status === "upcoming" && reg.event.sub_status === "registration_open";
   
-  console.log('ProfileEventCard - Event Status Debug:', {
-    event_name: reg.event?.event_name,
-    status: reg.event?.status,
-    sub_status: reg.event?.sub_status,
-    registration_type: reg.registration?.registration_type,
-    shouldShowCancelButtons: shouldShowCancelButtons,
-    hasOnCancelFunction: !!onCancelRegistration
-  });
+  // Debug: Check View Team button visibility
+  const shouldShowViewTeamButton = reg.registration?.registration_type === "team_member";
+
+  // Effect to fetch team name if it's null for team members
+  useEffect(() => {
+    const fetchTeamName = async () => {
+      if (reg.registration?.registration_type === 'team_member' && 
+          !reg.registration?.team_name && 
+          reg.registration?.team_registration_id) {
+        try {
+          const response = await api.get(`/api/v1/client/profile/team-info/${reg.event_id}/${reg.registration.team_registration_id}`);
+          if (response.data.success && response.data.data?.team_name) {
+            setTeamName(response.data.data.team_name);
+          }
+        } catch (error) {
+          console.error('Error fetching team name:', error);
+        }
+      }
+    };
+
+    fetchTeamName();
+  }, [reg.event_id, reg.registration?.team_registration_id, reg.registration?.team_name, reg.registration?.registration_type]);
 
   return (
     <div className="group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 hover:border-blue-300">
@@ -128,7 +146,9 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                   ? 'bg-purple-50 text-purple-700 border border-purple-200' 
                   : reg.registration.registration_type === 'individual'
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : reg.registration.registration_type === 'team_member'
+                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-slate-50 text-slate-700 border border-slate-200'
               }`}>
                 {(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team') && (
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,12 +160,15 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 )}
-                {reg.registration.registration_type === 'team_participant' && (
+                {reg.registration.registration_type === 'team_member' && (
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 )}
-                {reg.registration.registration_type === 'team' ? 'Team Leader' : reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {reg.registration.registration_type === 'team' ? 'Team Leader' : 
+                 reg.registration.registration_type === 'team_member' ? 
+                   `Team Member${teamName ? ` - ${teamName}` : ''}` :
+                   reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </span>
             )}
             
@@ -162,16 +185,16 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
 
           {/* Action Buttons */}
           {showActions && (
-            <div className="flex items-center gap-1.5">              <Link
-                to={`/client/events/${reg.event_id}`}
+            <div className="flex items-center gap-1.5">              <button
+                onClick={() => onViewDetails && onViewDetails(reg)}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-all duration-200 border border-blue-100 hover:border-blue-200"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                View
-              </Link>
+                Details
+              </button>
 
               {/* Team Management Button - Always show for team leaders */}
               {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
@@ -184,6 +207,25 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                   </svg>
                   Manage Team
                 </Link>
+              )}
+
+              {/* View Team Button - Show only for team participants */}
+              {shouldShowViewTeamButton && (
+                <button
+                  onClick={() => onViewTeam && onViewTeam({
+                    eventId: reg.event_id,
+                    eventName: reg.event.event_name,
+                    teamName: teamName || reg.registration?.team_name,
+                    teamId: reg.registration?.team_registration_id,
+                    userRole: reg.registration?.registration_type
+                  })}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  View Team
+                </button>
               )}
 
               {/* Registration Management Buttons - Show only when registration is open */}
@@ -211,15 +253,6 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration }) => 
                       </svg>
                       Cancel Registration
                     </button>
-                  )}
-
-                  {reg.registration?.registration_type === "team_participant" && (
-                    <span className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-slate-50 text-slate-600 rounded-lg font-medium border border-slate-200">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Contact Leader
-                    </span>
                   )}
                 </>
               )}

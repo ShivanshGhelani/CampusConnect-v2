@@ -461,6 +461,46 @@ class EmailService:
             logger.error(f"Failed to send welcome email: {str(e)}")
             return False
 
+    async def send_password_reset_email(
+        self, 
+        user_email: str, 
+        user_name: str, 
+        reset_url: str,
+        timestamp: str
+    ) -> bool:
+        """Send password reset email with secure token link"""
+        try:
+            subject = "Password Reset Request - CampusConnect"
+            
+            html_content = self.render_template(
+                'password_reset.html',
+                user_name=user_name,
+                reset_url=reset_url,
+                timestamp=timestamp
+            )
+            
+            # Create a simple text version as fallback
+            text_content = f"""
+Hello {user_name}!
+
+We received a request to reset your password for your CampusConnect account.
+
+Reset your password by clicking this link: {reset_url}
+
+This link will expire in 10 minutes for security reasons.
+
+If you didn't request this password reset, please ignore this email.
+
+Best regards,
+CampusConnect Team
+            """.strip()
+            
+            return await self.send_email_async(user_email, subject, html_content, text_content)
+            
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {str(e)}")
+            return False
+
     async def send_team_registration_confirmation(
         self, 
         team_members: List[dict],
