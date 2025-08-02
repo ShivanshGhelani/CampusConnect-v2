@@ -11,6 +11,8 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackForm from '../pages/client/FeedbackForm';
+import FeedbackSuccess from '../pages/client/FeedbackSuccess';
+import FeedbackConfirm from '../pages/client/FeedbackConfirm';
 import CertificateDownload from '../pages/client/CertificateDownload';
 
 // Student components - new organized structure
@@ -93,6 +95,8 @@ function AppRoutes() {
         <Route path="/client/events" element={<EventListPage />} />
         <Route path="/client/events/:eventId" element={<EventDetailPage />} />
         <Route path="/client/events/:eventId/feedback" element={<FeedbackForm />} />
+        <Route path="/client/events/:eventId/feedback-success" element={<FeedbackSuccess />} />
+        <Route path="/client/events/:eventId/feedback-confirmation" element={<FeedbackConfirm />} />
         <Route path="/client/events/:eventId/certificate" element={<CertificateDownload />} />
         <Route path="/client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
         

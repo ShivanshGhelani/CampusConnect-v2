@@ -10,6 +10,103 @@ const FeedbackForm = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
 
+  // Mapping functions to convert form values to backend expected formats
+  const mapSatisfactionToNumber = (value) => {
+    const mapping = {
+      'excellent': 5,
+      'very_good': 4,
+      'good': 3,
+      'fair': 2,
+      'poor': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapRatingToNumber = (value) => {
+    const mapping = {
+      'excellent': 5,
+      'very_good': 4,
+      'good': 3,
+      'fair': 2,
+      'poor': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapRelevanceToNumber = (value) => {
+    const mapping = {
+      'highly_relevant': 5,
+      'relevant': 4,
+      'somewhat_relevant': 3,
+      'not_very_relevant': 2,
+      'not_relevant': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapExpectationsToNumber = (value) => {
+    const mapping = {
+      'exceeded': 5,
+      'met': 4,
+      'somewhat_met': 3,
+      'did_not_meet': 2,
+      'far_below': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapLikelihoodToNumber = (value) => {
+    const mapping = {
+      'very_likely': 5,
+      'likely': 4,
+      'neutral': 3,
+      'unlikely': 2,
+      'very_unlikely': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapClarityToNumber = (value) => {
+    const mapping = {
+      'very_clear': 5,
+      'clear': 4,
+      'somewhat_clear': 3,
+      'unclear': 2,
+      'very_unclear': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapValueToNumber = (value) => {
+    const mapping = {
+      'excellent_value': 5,
+      'good_value': 4,
+      'fair_value': 3,
+      'poor_value': 2,
+      'very_poor_value': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapProcessToNumber = (value) => {
+    const mapping = {
+      'very_easy': 5,
+      'easy': 4,
+      'neutral': 3,
+      'difficult': 2,
+      'very_difficult': 1
+    };
+    return mapping[value] || 3;
+  };
+
+  const mapExpectationsToBool = (value) => {
+    return ['exceeded', 'met', 'somewhat_met'].includes(value);
+  };
+
+  const mapLikelihoodToBool = (value) => {
+    return ['very_likely', 'likely'].includes(value);
+  };
+
   // State management
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +163,22 @@ const FeedbackForm = () => {
       if (response.data.success) {
         const eventData = response.data.event;
         setEvent(eventData);
+        
+        // Check if feedback already exists
+        try {
+          const feedbackResponse = await clientAPI.getFeedbackStatus(eventId);
+          console.log('Feedback status response:', feedbackResponse.data);
+          
+          if (feedbackResponse.data.success && feedbackResponse.data.feedback_submitted) {
+            console.log('Feedback already submitted, redirecting to confirmation');
+            // Feedback already submitted, redirect to confirmation page
+            navigate(`/client/events/${eventId}/feedback-confirmation`);
+            return;
+          }
+        } catch (feedbackError) {
+          // No feedback found, continue with form
+          console.log('No feedback found, proceeding with form:', feedbackError);
+        }
         
         // Auto-populate user data if available
         if (user) {
@@ -315,7 +428,48 @@ const FeedbackForm = () => {
       setIsSubmitting(true);
       
       // Submit feedback to API
-      const response = await clientAPI.submitEventFeedback(eventId, formData);
+      const feedbackPayload = {
+        // Participant Details
+        participant_name: formData.participant_name,
+        participant_email: formData.participant_email,
+        department: formData.department,
+        year_of_study: formData.year_of_study,
+        registration_type: formData.registration_type,
+
+        // Map form fields to backend expected fields
+        overall_satisfaction: mapSatisfactionToNumber(formData.overall_satisfaction),
+        speaker_effectiveness: mapRatingToNumber(formData.speaker_engagement),
+        content_quality: mapRelevanceToNumber(formData.content_relevance),
+        organization: mapExpectationsToNumber(formData.met_expectations),
+        venue_rating: 4, // Default venue rating
+        likelihood_recommend: mapLikelihoodToNumber(formData.recommendation_likelihood),
+
+        // Text fields
+        most_valuable: "Event content and presentation", // Default
+        suggestions: formData.future_suggestions || '',
+        additional_comments: formData.additional_comments || '',
+
+        // Boolean fields
+        attended_similar: false, // Default
+        learned_something_new: true, // Default
+        met_expectations: mapExpectationsToBool(formData.met_expectations),
+        would_attend_future: mapLikelihoodToBool(formData.recommendation_likelihood),
+
+        // Conditional fields
+        ...(event?.is_team_based || event?.registration_mode === 'team' ? {
+          team_format_management: mapRatingToNumber(formData.team_format_management),
+          rules_clarity: mapClarityToNumber(formData.rules_clarity)
+        } : {}),
+
+        ...(event?.is_paid || event?.registration_fee > 0 ? {
+          value_for_money: mapValueToNumber(formData.value_for_money),
+          payment_process: mapProcessToNumber(formData.payment_process)
+        } : {})
+      };
+
+      console.log('Submitting feedback payload:', feedbackPayload);
+      const response = await clientAPI.submitEventFeedback(eventId, feedbackPayload);
+      console.log('Feedback submission response:', response.data);
       
       if (response.data.success) {
         // Show success message and redirect
@@ -337,7 +491,7 @@ const FeedbackForm = () => {
         document.body.appendChild(successDiv);
         
         setTimeout(() => {
-          navigate(`/client/events/${eventId}/certificate`);
+          navigate(`/client/events/${eventId}/feedback-success?feedback_submitted=True`);
         }, 2000);
         
       } else {
