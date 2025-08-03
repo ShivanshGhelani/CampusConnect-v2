@@ -1168,14 +1168,40 @@ function CreateEvent() {
 
   return (
     <AdminLayout pageTitle="Create Event">
-      {/* Debug auth status */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-          <strong>Debug Info:</strong> Auth: {isAuthenticated ? 'Yes' : 'No'}, Type: {userType || 'None'}, User: {user?.username || 'None'}
-        </div>
-      )}
-      
       <div className="max-w-4xl mx-auto py-8 px-2">
+        {/* Page Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between">
+            {/* Left Side - Page Title */}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Create Event</h1>
+              <p className="text-gray-600 mt-1">Set up a new event with all the necessary details</p>
+            </div>
+            
+            {/* Right Side - Action Buttons */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => window.open('/admin/certificates', '_blank')}
+                className="inline-flex items-center px-4 py-2 border border-purple-300 text-purple-700 bg-white hover:bg-purple-50 rounded-lg font-medium transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Certificates
+              </button>
+              <button
+                onClick={() => window.open('/admin/certificate-editor', '_blank')}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Editor
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Progress Steps */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="relative">

@@ -66,6 +66,25 @@ class DatabaseOperations:
         return result.deleted_count > 0
 
     @classmethod
+    async def find_by_id(cls, collection_name: str, document_id: ObjectId, db_name: str = "CampusConnect") -> Optional[Dict]:
+        """Find a document by its ObjectId"""
+        return await cls.find_one(collection_name, {"_id": document_id}, db_name)
+    
+    @classmethod
+    async def update_by_id(cls, collection_name: str, document_id: ObjectId, update: Dict, db_name: str = "CampusConnect") -> bool:
+        """Update a document by its ObjectId"""
+        return await cls.update_one(collection_name, {"_id": document_id}, update, db_name)
+    
+    @classmethod
+    async def aggregate(cls, collection_name: str, pipeline: List[Dict], db_name: str = "CampusConnect") -> List[Dict]:
+        """Run an aggregation pipeline on the specified collection"""
+        db = await Database.get_database(db_name)
+        if db is None:
+            return []
+        cursor = db[collection_name].aggregate(pipeline)
+        return await cursor.to_list(length=None)
+
+    @classmethod
     async def count_documents(cls, collection_name: str, query: Dict = {}, db_name: str = "CampusConnect") -> int:
         """Count documents in the specified collection"""
         db = await Database.get_database(db_name)

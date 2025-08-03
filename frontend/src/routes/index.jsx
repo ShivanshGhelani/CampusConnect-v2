@@ -53,6 +53,7 @@ import SettingsProfile from '../pages/admin/SettingsProfile';
 import MaintenanceDashboard from '../components/admin/maintenance/MaintenanceDashboard';
 import { MessageInbox, MessageThreadView } from '../components/admin/messages';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
+import CertificateEditor from '../pages/admin/CertificateEditor';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -341,6 +342,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <ManageCertificates />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/certificate-editor"
+          element={
+            <ProtectedRoute userType="admin">
+              <CertificateEditor />
             </ProtectedRoute>
           }
         />

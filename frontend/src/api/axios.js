@@ -309,6 +309,20 @@ export const adminAPI = {
   getCertificateTemplates: () => api.get('/api/v1/admin/certificates/templates'),
   getCertificateStatistics: () => api.get('/api/v1/admin/certificates/statistics'),
   
+  // Certificate Template Management
+  getCertificateTemplatesList: (filters) => api.get('/api/v1/admin/certificate-templates/dashboard', { params: filters }),
+  uploadCertificateTemplate: (formData) => {
+    return api.post('/api/v1/admin/certificate-templates/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  deleteCertificateTemplate: (templateId) => api.delete(`/api/v1/admin/certificate-templates/${templateId}`),
+  previewCertificateTemplate: (templateId) => api.get(`/api/v1/admin/certificate-templates/${templateId}/preview`),
+  getCertificateTemplateStatistics: () => api.get('/api/v1/admin/certificate-templates/statistics'),
+  migrateCertificateTemplates: () => api.post('/api/v1/admin/certificate-templates/migrate'),
+  
   // Events Management
   getEvents: (filters) => api.get('/api/v1/admin/events/list', { params: filters }),
   getEvent: (eventId) => api.get(`/api/v1/admin/events/details/${eventId}`),
