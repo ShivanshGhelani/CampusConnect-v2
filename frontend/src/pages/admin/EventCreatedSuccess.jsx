@@ -65,9 +65,11 @@ function EventCreatedSuccess() {
                 </svg>
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Event Created Successfully!</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              {location.state?.message || 'Event Created Successfully!'}
+            </h1>
             <p className="text-lg text-gray-600 mb-6">
-              Your event "<span className="font-semibold text-blue-600">{eventData.event_name}</span>" has been created and is ready for registration.
+              Your event "<span className="font-semibold text-blue-600">{eventData.event_name}</span>" has been created{location.state?.pendingApproval ? ' and is pending approval' : ' and is ready for registration'}.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -177,7 +179,7 @@ function EventCreatedSuccess() {
                         <div className="flex flex-wrap gap-2">
                           {eventData.organizers?.map((organizer, index) => (
                             <span key={index} className="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800 text-sm">
-                              {organizer}
+                              {typeof organizer === 'object' ? organizer.name : organizer}
                             </span>
                           ))}
                         </div>
@@ -367,16 +369,18 @@ function EventCreatedSuccess() {
       </div>
 
       {/* Print Styles */}
-      <style jsx>{`
-        @media print {
-          body { margin: 0; }
-          .print\\:hidden { display: none !important; }
-          .print\\:block { display: block !important; }
-          .print\\:shadow-none { box-shadow: none !important; }
-          .print\\:border-none { border: none !important; }
-          @page { margin: 0.5in; }
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body { margin: 0; }
+            .print\\:hidden { display: none !important; }
+            .print\\:block { display: block !important; }
+            .print\\:shadow-none { box-shadow: none !important; }
+            .print\\:border-none { border: none !important; }
+            @page { margin: 0.5in; }
+          }
+        `
+      }} />
     </AdminLayout>
   );
 }

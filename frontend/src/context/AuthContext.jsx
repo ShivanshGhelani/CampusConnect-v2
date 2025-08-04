@@ -201,6 +201,13 @@ export function AuthProvider({ children }) {
       // Continue with logout even if API fails
     }
     
+    // Clear Executive Admin session if user is executive admin
+    if (state.user?.role === 'executive_admin') {
+      const sessionKey = `eventCreatorSession_${state.user.username || state.user.id || 'default'}`;
+      sessionStorage.removeItem(sessionKey);
+      console.log('Executive Admin session cleared on logout for user:', state.user.username);
+    }
+    
     // Clear local storage
     localStorage.removeItem('user_data');
     localStorage.removeItem('user_type');

@@ -5,6 +5,9 @@ from enum import Enum
 
 class NotificationType(str, Enum):
     """Types of notifications in the system"""
+    EVENT_APPROVAL_REQUEST = "event_approval_request"
+    EVENT_APPROVED = "event_approved"
+    EVENT_REJECTED = "event_rejected"
     EVENT_DELETION_REQUEST = "event_deletion_request"
     VENUE_BOOKING_REQUEST = "venue_booking_request"
     VENUE_BOOKING_APPROVED = "venue_booking_approved"

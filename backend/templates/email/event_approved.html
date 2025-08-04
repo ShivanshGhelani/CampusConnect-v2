@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Approved - Login Credentials</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border: 1px solid #e5e5e5;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #e5e5e5;
+            border-top: none;
+        }
+        .approval-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .credentials-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .event-details {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #059669;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .credentials {
+            font-family: monospace;
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Event Approved!</h1>
+            <p>Your event has been approved and your admin account is ready</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ organizer_name }},</p>
+            
+            <div class="approval-box">
+                <h3 style="color: #059669; margin-top: 0;">✅ Great News! Your event has been approved</h3>
+                <p><strong>Event Name:</strong> {{ event_name }}</p>
+                <p><strong>Approved by:</strong> {{ super_admin_name }}</p>
+                <p><strong>Approval Date:</strong> {{ approval_date }}</p>
+            </div>
+            
+            <div class="event-details">
+                <h4>📅 Approved Event Details</h4>
+                <p><strong>Event ID:</strong> {{ event_id }}</p>
+                <p><strong>Event Type:</strong> {{ event_type }}</p>
+                <p><strong>Organizing Department:</strong> {{ organizing_department }}</p>
+                <p><strong>Event Dates:</strong> {{ start_date }} to {{ end_date }}</p>
+                <p><strong>Mode:</strong> {{ event_mode }}</p>
+            </div>
+            
+            {% if is_new_organizer %}
+            <div class="credentials-box">
+                <h4 style="color: #1e40af; margin-top: 0;">🔑 Your Admin Portal Login Credentials</h4>
+                <p>An admin account has been created for you to manage this event:</p>
+                
+                <div class="credentials">
+                    <p><strong>Portal URL:</strong> {{ portal_url }}</p>
+                    <p><strong>Username:</strong> {{ username }}</p>
+                    <p><strong>Password:</strong> {{ temporary_password }}</p>
+                </div>
+                
+                <div class="warning-box">
+                    <h4 style="color: #d97706; margin-top: 0;">⚠️ Important Security Notice</h4>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li><strong>You MUST change your password on first login</strong></li>
+                        <li>You can update your username from your profile settings</li>
+                        <li>Keep your login credentials secure</li>
+                        <li>Do not share your account access with others</li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            
+            <h4>📋 What You Can Do Now:</h4>
+            <ul>
+                <li>{% if is_new_organizer %}Login to your admin portal using the credentials above{% else %}Access your admin portal{% endif %}</li>
+                <li>Manage your event details and settings</li>
+                <li>Monitor event registrations</li>
+                <li>Generate certificates for participants</li>
+                <li>View attendance and feedback reports</li>
+            </ul>
+            
+            <h4>🎯 Your Permissions:</h4>
+            <ul>
+                <li>Manage events where you are listed as an organizer</li>
+                <li>View and export participant data for your events</li>
+                <li>Generate and manage certificates</li>
+                <li>Access attendance tracking features</li>
+            </ul>
+            
+            {% if approval_message %}
+            <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 15px; margin: 15px 0;">
+                <h4 style="color: #059669; margin-top: 0;">💬 Message from Super Admin:</h4>
+                <p>{{ approval_message }}</p>
+            </div>
+            {% endif %}
+            
+            <p>Congratulations on your event approval! We look forward to a successful event. If you need any assistance, please don't hesitate to contact our support team.</p>
+            
+            <a href="{{ portal_url }}" class="btn">Access Admin Portal</a>
+        </div>
+        
+        <div class="footer">
+            <p><strong>CampusConnect Event Management System</strong></p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p style="font-size: 12px; color: #6b7280;">
+                If you need help, contact {{ support_email | default('support@campusconnect.edu') }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

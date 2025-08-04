@@ -1072,7 +1072,9 @@ function EventDetail() {
                       <h4 className="font-medium text-indigo-900 mb-2">Event Organizers</h4>
                       <div className="grid grid-cols-2 gap-2">
                         {event.organizers.map((organizer, index) => (
-                          <div key={index} className="text-indigo-800">• {organizer}</div>
+                          <div key={index} className="text-indigo-800">
+                            • {typeof organizer === 'string' ? organizer : organizer.name || organizer.email || 'Unknown Organizer'}
+                          </div>
                         ))}
                       </div>
                     </div>

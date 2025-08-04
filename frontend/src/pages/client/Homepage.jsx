@@ -151,7 +151,7 @@ function Homepage() {
           <div className="absolute inset-0  bg-gradient-to-br from-teal-900/60 via-sky-800/50 to-purple-900/60"></div>
           
           {/* Content */}
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center w-full">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center w-full pt-20"> {/* Added pt-20 to clear navigation */}
             <div className="max-w-4xl mx-auto">
               {/* Main Heading */}
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white mb-8 drop-shadow-2xl">

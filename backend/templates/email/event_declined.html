@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Creation Request Declined</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border: 1px solid #e5e5e5;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #e5e5e5;
+            border-top: none;
+        }
+        .decline-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .reason-box {
+            background: #f3f4f6;
+            border-left: 4px solid #dc2626;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .contact-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .event-details {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚫 Event Request Declined</h1>
+            <p>Your event creation request has been declined</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ organizer_name }},</p>
+            
+            <div class="decline-box">
+                <h3 style="color: #dc2626; margin-top: 0;">Your event creation request has been declined by the Super Admin</h3>
+                <p><strong>Event Name:</strong> {{ event_name }}</p>
+                <p><strong>Super Admin:</strong> {{ super_admin_name }}</p>
+                <p><strong>Decision Date:</strong> {{ decision_date }}</p>
+            </div>
+            
+            {% if reason %}
+            <div class="reason-box">
+                <h4 style="color: #dc2626; margin-top: 0;">📝 Reason for Decline:</h4>
+                <p>{{ reason }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="event-details">
+                <h4>📅 Event Details (For Reference)</h4>
+                <p><strong>Event ID:</strong> {{ event_id }}</p>
+                <p><strong>Event Type:</strong> {{ event_type }}</p>
+                <p><strong>Organizing Department:</strong> {{ organizing_department }}</p>
+                <p><strong>Scheduled Date:</strong> {{ start_date }} to {{ end_date }}</p>
+            </div>
+            
+            <div class="contact-info">
+                <h4 style="color: #1f2937; margin-top: 0;">📞 Need Help? Contact Super Admin</h4>
+                <p>If you have questions about this decision or need clarification, please contact our Super Admin:</p>
+                <p>
+                    <strong>{{ super_admin_name }}</strong><br>
+                    📧 Email: {{ super_admin_email }}<br>
+                    📱 Phone: {{ super_admin_phone | default('Contact through email') }}<br>
+                    🏢 Office: {{ super_admin_office | default('Administrative Office') }}
+                </p>
+            </div>
+            
+            <h4>📋 Next Steps:</h4>
+            <ul>
+                <li>Review the reason for decline carefully</li>
+                <li>Make necessary adjustments to your event proposal</li>
+                <li>Contact the Super Admin if you need clarification</li>
+                <li>Resubmit your event request with the required changes</li>
+            </ul>
+            
+            <p>We encourage you to address the concerns mentioned and resubmit your event proposal. Our goal is to help you organize successful events that align with our institution's standards.</p>
+            
+            <a href="{{ portal_url }}" class="btn">Return to Admin Portal</a>
+        </div>
+        
+        <div class="footer">
+            <p><strong>CampusConnect Event Management System</strong></p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p style="font-size: 12px; color: #6b7280;">
+                If you received this email in error, please contact {{ support_email | default('support@campusconnect.edu') }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

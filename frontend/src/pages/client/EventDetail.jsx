@@ -28,8 +28,16 @@ function EventDetail() {
       setIsLoading(true);
       setError('');
       
-      const response = await clientAPI.getEventDetails(eventId);      if (response.data.success) {
+      const response = await clientAPI.getEventDetails(eventId);
+      
+      if (response.data.success) {
         setEvent(response.data.event);
+        
+        // Debug: Log the event data to console to check organizers and contacts
+        console.log('Event data received:', response.data.event);
+        console.log('Organizers:', response.data.event.organizers);
+        console.log('Contacts:', response.data.event.contacts);
+        
         // Check registration status if user is authenticated
         if (isAuthenticated) {
           // This would be an API call to check if user is registered
@@ -1252,9 +1260,13 @@ function EventDetail() {
                     <div className="space-y-3">
                       <div className="text-sm font-medium text-gray-800 mb-3">Organizing Team</div>
 
+                      {/* Debug info - remove this after fixing */}
+                      {console.log('Debug - Organizers:', event.organizers)}
+                      {console.log('Debug - Contacts:', event.contacts)}
+
                       {/* Display organizers from array */}
-                      {event.organizers && event.organizers.map((organizer, index) => {
-                        if (!organizer) return null;
+                      {event.organizers && Array.isArray(event.organizers) && event.organizers.length > 0 && event.organizers.map((organizer, index) => {
+                        if (!organizer || typeof organizer !== 'string') return null;
                         
                         const organizerParts = organizer.split(' - ');
                         const organizerName = organizerParts[0] || organizer;
@@ -1271,12 +1283,13 @@ function EventDetail() {
                                 <div className="font-medium text-gray-800 mb-1">{organizer}</div>
                                 
                                 {/* Contact Details */}
-                                {event.contacts && event.contacts.length > 0 && event.contacts.map((contact, contactIndex) => {
+                                {event.contacts && Array.isArray(event.contacts) && event.contacts.length > 0 && event.contacts.map((contact, contactIndex) => {
                                   if (!contact || !contact.name || !contact.contact) return null;
                                   
-                                  const contactName = contact.name.toLowerCase();
-                                  const organizerNameLower = organizerName.toLowerCase();
+                                  const contactName = contact.name.toLowerCase().trim();
+                                  const organizerNameLower = organizerName.toLowerCase().trim();
                                   
+                                  // Try to match organizer with contact
                                   if (contactName === organizerNameLower || 
                                       contactName.includes(organizerNameLower) || 
                                       organizerNameLower.includes(contactName)) {
@@ -1328,7 +1341,7 @@ function EventDetail() {
                       })}
 
                       {/* Fallback for single organizer */}
-                      {!event.organizers && event.organizer_name && (
+                      {(!event.organizers || !Array.isArray(event.organizers) || event.organizers.length === 0) && event.organizer_name && (
                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
                           <div className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
@@ -1367,8 +1380,11 @@ function EventDetail() {
                         </div>
                       )}
 
-                      {/* Fallback for contacts only */}
-                      {!event.organizers && !event.organizer_name && event.contacts && event.contacts.map((contact, index) => {
+                      {/* Display contacts only (if no organizers found) */}
+                      {(!event.organizers || !Array.isArray(event.organizers) || event.organizers.length === 0) && 
+                       !event.organizer_name && 
+                       event.contacts && Array.isArray(event.contacts) && event.contacts.length > 0 && 
+                       event.contacts.map((contact, index) => {
                         if (!contact || !contact.name || !contact.contact) return null;
                         
                         const isEmail = contact.contact.includes('@');
@@ -1422,12 +1438,19 @@ function EventDetail() {
                       })}
                     </div>
                   )}                  {/* Fallback message if no organizers found */}
-                  {!event.organizers && !event.organizer_name && !event.contacts && (
+                  {(!event.organizers || !Array.isArray(event.organizers) || event.organizers.length === 0) && 
+                   !event.organizer_name && 
+                   (!event.contacts || !Array.isArray(event.contacts) || event.contacts.length === 0) && (
                     <div className="text-center py-8 text-gray-500">
                       <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                       </svg>
                       <p>Organizer information will be updated soon.</p>
+                      {/* Debug info - remove after fixing */}
+                      <div className="text-xs text-red-500 mt-2">
+                        Debug: organizers={event.organizers ? JSON.stringify(event.organizers) : 'null'}, 
+                        contacts={event.contacts ? JSON.stringify(event.contacts) : 'null'}
+                      </div>
                     </div>
                   )}
                 </div>

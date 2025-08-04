@@ -75,7 +75,7 @@ function ClientNavigation() {
     <>
       <nav className="bg-white shadow-lg fixed top-8 left-0 right-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-18">
+          <div className="flex justify-between items-center h-17">
             {/* Logo */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-3">
@@ -89,21 +89,10 @@ function ClientNavigation() {
                   <span className="bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent">Connect</span>
                 </span>
               </Link>
-            </div>            {/* Mobile Menu Toggle - Hidden since we use bottom nav */}
-            <div className="md:hidden hidden">
-              <button
-                onClick={toggleMobileMenu}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <i className="fas fa-bars text-xl"></i>
-              </button>
-            </div>{/* Desktop Navigation - moved to empty middle section */}
-            <div className="hidden md:flex items-center space-x-1">
-              {/* Empty middle section for better layout */}
             </div>
 
             {/* User Actions Section with Events Tabs */}
-            <div className="hidden md:flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-3 pt-1  ">
               {/* Main Navigation Pills */}
               <div className="flex items-center backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-1">
                 <Link

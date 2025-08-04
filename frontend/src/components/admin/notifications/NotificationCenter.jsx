@@ -86,6 +86,9 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     if (notification.status === 'unread') {
       await markAsRead(notification.id, true);
     }
+    console.log('🔥 SELECTED NOTIFICATION:', notification);
+    console.log('🔥 ACTION_DATA:', notification.action_data);
+    console.log('🔥 CREATED_BY:', notification.action_data?.created_by);
     setSelectedNotification(notification);
   };
 
@@ -309,8 +312,245 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                   </p>
                 </div>
 
-                {/* Metadata */}
-                {selectedNotification.metadata && Object.keys(selectedNotification.metadata).length > 0 && (
+                {/* Event Details for Approval Requests */}
+                {(selectedNotification.type === 'event_approval_request' || selectedNotification.action_data) && (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 text-lg">📋</span>
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-900">Event Request Details</h4>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 space-y-6 border border-blue-200">
+                      
+                      {/* Quick Overview Cards */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <span className="text-green-600 font-semibold">👤</span>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Requested by</p>
+                              <p className="font-semibold text-gray-900">{selectedNotification.action_data?.created_by || 'Unknown User'}</p>
+                              <p className="text-xs text-gray-500">{formatRelativeTime(selectedNotification.created_at)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                              <span className="text-purple-600 font-semibold">🎯</span>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Event Type</p>
+                              <p className="font-semibold text-gray-900 capitalize">{selectedNotification.action_data?.event_type || 'N/A'}</p>
+                              <p className="text-xs text-gray-500 capitalize">{selectedNotification.action_data?.target_audience || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Event Information */}
+                      <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2">ℹ️</span>
+                          Basic Information
+                        </h5>
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Event ID</p>
+                              <p className="text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">{selectedNotification.action_data?.event_id || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Department</p>
+                              <p className="text-gray-900">{selectedNotification.action_data?.organizing_department || 'N/A'}</p>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Event Name</p>
+                              <p className="text-gray-900 font-medium">{selectedNotification.action_data?.event_name || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Status</p>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Pending Approval
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Schedule & Venue */}
+                      <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2">📅</span>
+                          Schedule & Venue
+                        </h5>
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Event Period</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-gray-900">
+                                  {selectedNotification.action_data?.start_date 
+                                    ? new Date(selectedNotification.action_data.start_date).toLocaleDateString('en-US', { 
+                                        month: 'short', day: 'numeric', year: 'numeric'
+                                      })
+                                    : 'TBD'
+                                  }
+                                </p>
+                                {selectedNotification.action_data?.end_date && selectedNotification.action_data.end_date !== selectedNotification.action_data.start_date && (
+                                  <>
+                                    <span className="text-gray-400">→</span>
+                                    <p className="text-gray-900">
+                                      {new Date(selectedNotification.action_data.end_date).toLocaleDateString('en-US', { 
+                                        month: 'short', day: 'numeric', year: 'numeric'
+                                      })}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Mode</p>
+                              <div className="flex items-center space-x-2">
+                                <span className={`w-2 h-2 rounded-full ${
+                                  selectedNotification.action_data?.mode === 'online' ? 'bg-blue-500' : 
+                                  selectedNotification.action_data?.mode === 'offline' ? 'bg-green-500' : 'bg-gray-400'
+                                }`}></span>
+                                <p className="text-gray-900 capitalize">{selectedNotification.action_data?.mode || 'TBD'}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Venue</p>
+                              <p className="text-gray-900">{selectedNotification.action_data?.venue || 'TBD'}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Registration Period</p>
+                              <p className="text-gray-900 text-sm">
+                                {selectedNotification.action_data?.registration_start_date && selectedNotification.action_data?.registration_end_date
+                                  ? `${new Date(selectedNotification.action_data.registration_start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(selectedNotification.action_data.registration_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                                  : 'TBD'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Registration Details */}
+                      <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2">📝</span>
+                          Registration Details
+                        </h5>
+                        <div className="grid grid-cols-4 gap-4">
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-2xl font-bold text-blue-600">{selectedNotification.action_data?.registration_type || 'Free'}</p>
+                            <p className="text-xs text-gray-600">Type</p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-2xl font-bold text-green-600 capitalize">{selectedNotification.action_data?.registration_mode || 'Individual'}</p>
+                            <p className="text-xs text-gray-600">Mode</p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-2xl font-bold text-purple-600">{selectedNotification.action_data?.is_team_based ? 'Yes' : 'No'}</p>
+                            <p className="text-xs text-gray-600">Team Based</p>
+                          </div>
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-2xl font-bold text-orange-600">
+                              {selectedNotification.action_data?.min_participants || '∞'}
+                              {selectedNotification.action_data?.max_participants ? `-${selectedNotification.action_data.max_participants}` : '+'}
+                            </p>
+                            <p className="text-xs text-gray-600">Participants</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Team & Contacts */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Organizers */}
+                        {selectedNotification.action_data?.organizers && selectedNotification.action_data.organizers.length > 0 && (
+                          <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                            <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
+                              <span className="mr-2">👥</span>
+                              Organizers ({selectedNotification.action_data.organizers.length})
+                            </h5>
+                            <div className="space-y-3">
+                              {selectedNotification.action_data.organizers.map((organizer, index) => (
+                                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                                    {organizer.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 truncate">{organizer.name}</p>
+                                    <p className="text-sm text-gray-600 truncate">{organizer.email}</p>
+                                    {organizer.employee_id && <p className="text-xs text-gray-500">ID: {organizer.employee_id}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contacts */}
+                        {selectedNotification.action_data?.contacts && selectedNotification.action_data.contacts.length > 0 && (
+                          <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                            <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
+                              <span className="mr-2">📞</span>
+                              Contacts ({selectedNotification.action_data.contacts.length})
+                            </h5>
+                            <div className="space-y-3">
+                              {selectedNotification.action_data.contacts.map((contact, index) => (
+                                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                                    {contact.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 truncate">{contact.name}</p>
+                                    <p className="text-sm text-gray-600">{contact.contact}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
+                        <h5 className="font-semibold text-gray-800 mb-4 flex items-center">
+                          <span className="mr-2">📄</span>
+                          Event Description
+                        </h5>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 mb-2">Short Description</p>
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <p className="text-gray-900">{selectedNotification.action_data?.short_description || 'No description provided'}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 mb-2">Detailed Description</p>
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <p className="text-gray-900">{selectedNotification.action_data?.detailed_description || 'No detailed description provided'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Metadata (for non-event notifications or debugging) */}
+                {selectedNotification.metadata && Object.keys(selectedNotification.metadata).length > 0 && selectedNotification.type !== 'event_approval_request' && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-900 mb-2">Additional Information</h4>
                     <div className="bg-gray-50 rounded-lg p-3">
@@ -323,38 +563,67 @@ const NotificationCenter = ({ isOpen, onClose }) => {
 
                 {/* Actions */}
                 {selectedNotification.action_required && (
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-medium text-gray-900">Required Action</h4>
+                  <div className="bg-white rounded-xl p-6 space-y-6 border-2 border-blue-200 shadow-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <span className="text-orange-600 text-lg">⚡</span>
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900">Action Required</h4>
+                    </div>
                     
                     <div>
-                      <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-3">
                         Reason/Notes (optional):
                       </label>
                       <textarea
                         id="reason"
                         value={actionReason}
                         onChange={(e) => setActionReason(e.target.value)}
-                        rows={3}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        placeholder="Add a reason or note for your decision..."
+                        rows={4}
+                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
+                        placeholder="Add a reason or note for your decision... (This will be sent to the event creator)"
                       />
+                      <p className="mt-2 text-xs text-gray-500">
+                        💡 Your decision and reason will be logged and sent to the event creator.
+                      </p>
                     </div>
 
-                    <div className="flex space-x-3">
+                    <div className="flex space-x-4">
                       <button
                         onClick={() => handleAction('approve')}
-                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                        className="flex-1 group relative overflow-hidden bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-300"
                       >
-                        <CheckIcon className="h-4 w-4 mr-2" />
-                        Approve
+                        <span className="relative flex items-center justify-center space-x-2">
+                          <CheckIcon className="h-5 w-5" />
+                          <span>Approve Event</span>
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 opacity-0 group-hover:opacity-20 transition-opacity duration-200"></div>
                       </button>
+                      
                       <button
                         onClick={() => handleAction('reject')}
-                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                        className="flex-1 group relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-300"
                       >
-                        <XMarkIcon className="h-4 w-4 mr-2" />
-                        Reject
+                        <span className="relative flex items-center justify-center space-x-2">
+                          <XMarkIcon className="h-5 w-5" />
+                          <span>Reject & Delete</span>
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-200"></div>
                       </button>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <span className="text-yellow-600 text-lg">⚠️</span>
+                        <div className="text-sm">
+                          <p className="font-medium text-yellow-800">Important:</p>
+                          <ul className="mt-1 text-yellow-700 space-y-1">
+                            <li>• <strong>Approve:</strong> Event will be published and become active</li>
+                            <li>• <strong>Reject:</strong> Event will be permanently deleted from the system</li>
+                            <li>• The event creator will be notified of your decision</li>
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

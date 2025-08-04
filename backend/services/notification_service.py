@@ -144,7 +144,13 @@ class NotificationService:
             # Convert to Notification objects
             notifications = []
             for notif_data in notifications_data:
-                notif_data["id"] = notif_data.get("_id", notif_data.get("id"))
+                # Convert MongoDB ObjectId to string for Pydantic compatibility
+                if "_id" in notif_data:
+                    notif_data["id"] = str(notif_data["_id"])
+                    del notif_data["_id"]  # Remove the original _id field
+                elif "id" in notif_data and hasattr(notif_data["id"], '__str__'):
+                    notif_data["id"] = str(notif_data["id"])
+                
                 notifications.append(Notification(**notif_data))
             
             return NotificationListResponse(
@@ -281,6 +287,10 @@ class NotificationService:
                 await self._handle_event_deletion_approval(notification, True, reason, additional_data)
             elif notification.action_type == "approve_event_deletion" and action == "reject":
                 await self._handle_event_deletion_approval(notification, False, reason, additional_data)
+            elif notification.action_type == "approve_event" and action == "approve":
+                await self._handle_event_approval(notification, True, reason, additional_data)
+            elif notification.action_type == "approve_event" and action == "reject":
+                await self._handle_event_approval(notification, False, reason, additional_data)
             else:
                 return NotificationResponse(
                     success=False,
@@ -598,6 +608,91 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Error sending maintenance notifications: {e}")
             return NotificationResponse(success=False, message=str(e))
+
+    async def _handle_event_approval(self, notification: Notification, approved: bool, reason: str = None, additional_data: dict = None):
+        """Handle event approval/rejection"""
+        from database.operations import DatabaseOperations
+        
+        try:
+            event_id = notification.action_data.get("event_id")
+            event_name = notification.action_data.get("event_name", "Unknown Event")
+            created_by = notification.action_data.get("created_by", "Unknown User")
+            
+            if not event_id:
+                logger.error("No event_id in notification action_data")
+                return
+            
+            if approved:
+                # Approve the event - update status to approved
+                db = await Database.get_database("CampusConnect")
+                if db is None:
+                    logger.error("Database connection failed")
+                    return
+                
+                result = await db["events"].update_one(
+                    {"event_id": event_id},
+                    {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
+                )
+                
+                if result.modified_count > 0:
+                    logger.info(f"✅ Event {event_id} approved successfully")
+                    
+                    # Notify the event creator about approval
+                    await self.create_notification(
+                        notification_type=NotificationType.EVENT_APPROVED,
+                        title="Event Approved",
+                        message=f"Your event '{event_name}' has been approved! {reason or ''}",
+                        recipient_username=created_by,
+                        recipient_role="event_creator",
+                        sender_username=notification.recipient_username,
+                        sender_role="super_admin",
+                        related_entity_type="event",
+                        related_entity_id=event_id,
+                        priority=NotificationPriority.HIGH,
+                        action_required=False,
+                        metadata={
+                            "approval_reason": reason,
+                            "approved_by": notification.recipient_username
+                        }
+                    )
+                else:
+                    logger.warning(f"⚠️ Event {event_id} not found or already processed")
+            else:
+                # Reject the event - DELETE it from database
+                db = await Database.get_database("CampusConnect") 
+                if db is None:
+                    logger.error("Database connection failed")
+                    return
+                
+                result = await db["events"].delete_one({"event_id": event_id})
+                
+                if result.deleted_count > 0:
+                    logger.info(f"🗑️ Event {event_id} rejected and deleted successfully")
+                    
+                    # Notify the event creator about rejection
+                    await self.create_notification(
+                        notification_type=NotificationType.EVENT_REJECTED,
+                        title="Event Rejected",
+                        message=f"Your event '{event_name}' has been rejected and removed. Reason: {reason or 'No reason provided'}",
+                        recipient_username=created_by,
+                        recipient_role="event_creator", 
+                        sender_username=notification.recipient_username,
+                        sender_role="super_admin",
+                        related_entity_type="event",
+                        related_entity_id=event_id,
+                        priority=NotificationPriority.HIGH,
+                        action_required=False,
+                        metadata={
+                            "rejection_reason": reason,
+                            "rejected_by": notification.recipient_username
+                        }
+                    )
+                else:
+                    logger.warning(f"⚠️ Event {event_id} not found for deletion")
+                    
+        except Exception as e:
+            logger.error(f"Error handling event approval: {e}")
+            raise
 
 # Create singleton instance
 notification_service = NotificationService()

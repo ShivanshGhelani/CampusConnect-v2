@@ -59,6 +59,17 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ScrollToTop from '../components/common/ScrollToTop';
 
+// Admin redirect component to handle role-based redirects
+function AdminRedirect() {
+  const { user } = useAuth();
+  
+  if (user?.role === 'executive_admin') {
+    return <Navigate to="/admin/events/create" replace />;
+  }
+  
+  return <Navigate to="/admin/dashboard" replace />;
+}
+
 function AppRoutes() {
   const { isLoading } = useAuth();
 
@@ -293,7 +304,7 @@ function AppRoutes() {
           path="/admin"
           element={
             <ProtectedRoute userType="admin">
-              <Navigate to="/admin/dashboard" replace />
+              <AdminRedirect />
             </ProtectedRoute>
           }
         />
@@ -403,6 +414,14 @@ function AppRoutes() {
         />
         <Route
           path="/admin/create-event"
+          element={
+            <ProtectedRoute userType="admin">
+              <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/create"
           element={
             <ProtectedRoute userType="admin">
               <CreateEvent />

@@ -582,6 +582,92 @@ CampusConnect Team
             logger.error(f"Failed to send bulk event reminders: {str(e)}")
             return [False] * len(registered_students)
 
+    # Note: Super Admin approval requests are handled via notification center, not email
+
+    async def send_new_organizer_approval_notification(
+        self,
+        organizer_email: str,
+        organizer_name: str,
+        event_data: dict,
+        super_admin_name: str,
+        approval_date: str,
+        username: str,
+        temporary_password: str,
+        portal_url: str,
+        approval_message: str = None
+    ) -> bool:
+        """Send approval notification with login credentials to NEW organizers only"""
+        try:
+            subject = f"🎉 Welcome as Event Organizer - Login Credentials for {event_data.get('event_name', 'Your Event')}"
+            
+            html_content = self.render_template(
+                'event_approved.html',
+                organizer_name=organizer_name,
+                event_name=event_data.get('event_name'),
+                super_admin_name=super_admin_name,
+                approval_date=approval_date,
+                event_id=event_data.get('event_id'),
+                event_type=event_data.get('event_type'),
+                organizing_department=event_data.get('organizing_department'),
+                start_date=event_data.get('start_date'),
+                end_date=event_data.get('end_date'),
+                event_mode=event_data.get('mode'),
+                is_new_organizer=True,  # Always true for this method
+                username=username,
+                temporary_password=temporary_password,
+                portal_url=portal_url,
+                approval_message=approval_message,
+                support_email=self.settings.SUPPORT_EMAIL if hasattr(self.settings, 'SUPPORT_EMAIL') else 'support@campusconnect.edu'
+            )
+            
+            return await self.send_email_async(organizer_email, subject, html_content)
+            
+        except Exception as e:
+            logger.error(f"Failed to send new organizer approval notification: {str(e)}")
+            return False
+
+    async def send_new_organizer_declined_notification(
+        self,
+        organizer_email: str,
+        organizer_name: str,
+        event_data: dict,
+        super_admin_name: str,
+        super_admin_email: str,
+        decision_date: str,
+        reason: str = None,
+        portal_url: str = None,
+        super_admin_phone: str = None,
+        super_admin_office: str = None
+    ) -> bool:
+        """Send decline notification to NEW organizers only"""
+        try:
+            subject = f"❌ Organizer Application Declined for {event_data.get('event_name', 'Event')}"
+            
+            html_content = self.render_template(
+                'event_declined.html',
+                organizer_name=organizer_name,
+                event_name=event_data.get('event_name'),
+                super_admin_name=super_admin_name,
+                super_admin_email=super_admin_email,
+                decision_date=decision_date,
+                reason=reason,
+                event_id=event_data.get('event_id'),
+                event_type=event_data.get('event_type'),
+                organizing_department=event_data.get('organizing_department'),
+                start_date=event_data.get('start_date'),
+                end_date=event_data.get('end_date'),
+                portal_url=portal_url,
+                super_admin_phone=super_admin_phone,
+                super_admin_office=super_admin_office,
+                support_email=self.settings.SUPPORT_EMAIL if hasattr(self.settings, 'SUPPORT_EMAIL') else 'support@campusconnect.edu'
+            )
+            
+            return await self.send_email_async(organizer_email, subject, html_content)
+            
+        except Exception as e:
+            logger.error(f"Failed to send new organizer decline notification: {str(e)}")
+            return False
+
     def close_connection(self):
         """Manually close the SMTP connection"""
         with self._connection_lock:

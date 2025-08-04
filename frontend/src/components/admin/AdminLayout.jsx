@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/axios';
 import NotificationBell from './notifications/NotificationBell';
+import NotificationPanel from './notifications/NotificationPanel';
 
 function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     const { user, logout } = useAuth();
@@ -12,6 +13,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     // State management
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [showNotificationPanel, setShowNotificationPanel] = useState(false);
     const [stats, setStats] = useState({
         totalEvents: 0,
         liveEvents: 0,
@@ -199,8 +201,8 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
         return 0;
     };
 
-    // Determine if sidebar should be hidden (for event admins)
-    const showSidebar = user && user.role !== 'event_admin';
+    // Determine if sidebar should be hidden (for event admins and executive admins)
+    const showSidebar = user && !['event_admin', 'executive_admin'].includes(user.role);
 
     return (
         <div className={`h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${showSidebar ? 'grid grid-cols-[250px_1fr] grid-rows-1' : 'grid grid-cols-1 grid-rows-1'}`}
@@ -583,17 +585,74 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                             </div>
 
-                            {/* Notifications */}
-                            <NotificationBell className="hover:scale-105" />
+                            {/* Notifications with Enhanced Styling */}
+                            <div className="relative">
+                                <NotificationBell 
+                                  className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-105 shadow-sm" 
+                                  onTogglePanel={() => setShowNotificationPanel(!showNotificationPanel)}
+                                />
+                            </div>
                         </div>
                     </div>
                 </aside>
             )}
             {/* Main Content */}
             <main
-                className="overflow-y-auto p-6 bg-gradient-to-br from-slate-50/50 to-blue-50/30" style={{ gridArea: 'main' }}
+                className="overflow-y-auto bg-gradient-to-br from-slate-50/50 to-blue-50/30" style={{ gridArea: 'main' }}
             >
-                {children}
+                {/* Simple Header for Executive Admin (no sidebar) */}
+                {!showSidebar && (
+                    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                            <img
+                                src="/logo/ksv.png"
+                                alt="KSV Logo"
+                                className="h-8 w-8 object-contain"
+                            />
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">
+                                    Campus<span className="text-blue-600">Connect</span>
+                                </h1>
+                                <p className="text-sm text-gray-500">Executive Admin Panel</p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4">
+                            {/* User Info */}
+                            <div className="text-right">
+                                <div className="text-sm font-medium text-gray-900">
+                                    {user?.fullname || 'Executive Admin'}
+                                </div>
+                                <div className="text-xs text-gray-500 capitalize">
+                                    {user?.role?.replace('_', ' ') || 'executive admin'}
+                                </div>
+                            </div>
+                            
+                            {/* Logout Button */}
+                            <button
+                                onClick={handleLogout}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                            >
+                                <i className="fas fa-sign-out-alt mr-2"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </header>
+                )}
+                
+                {/* Content Area */}
+                <div className="flex h-full">
+                    {/* Main Content */}
+                    <div className={`flex-1 ${showSidebar ? "p-6" : "p-0"}`}>
+                        {children}
+                    </div>
+                </div>
+                
+                {/* Gmail-style Notification Modal */}
+                <NotificationPanel 
+                    isOpen={showNotificationPanel}
+                    onClose={() => setShowNotificationPanel(false)} 
+                />
             </main>
         </div>
     );

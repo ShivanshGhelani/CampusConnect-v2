@@ -7,7 +7,7 @@ function ClientLayout({ children, noPadding = false }) {
     <div className="min-h-screen">
       <TopBanner />
       <ClientNavigation />
-      <div className="pt-28"> {/* Increased padding to account for fixed top banner + fixed navigation */}
+      <div className={noPadding ? "" : "pt-20"}> {/* TopBanner (~32px with py-2 + content) + Navigation (64px) = ~96px, using pt-20 (80px) */}
         <main>
           {children}
         </main>

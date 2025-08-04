@@ -134,6 +134,8 @@ export function NotificationProvider({ children }) {
       const response = await adminAPI.getNotifications(filters);
 
       if (response.data) {
+        console.log('🚀 FETCHED NOTIFICATIONS:', response.data.notifications);
+        console.log('🚀 FIRST NOTIFICATION ACTION_DATA:', response.data.notifications[0]?.action_data);
         dispatch({
           type: ACTIONS.FETCH_SUCCESS,
           payload: response.data

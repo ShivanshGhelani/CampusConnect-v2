@@ -406,10 +406,12 @@ export const adminAPI = {
 
   // Phase 2 APIs - Notification Management
   getNotifications: (filters) => api.get('/api/v1/admin/notifications/', { params: filters }),
-  createNotification: (notificationData) => api.post('/api/v1/admin/notifications/create', notificationData),
-  markNotificationAsRead: (notificationId, isRead) => api.patch(`/api/v1/admin/notifications/${notificationId}/read`, { is_read: isRead }),
+  getUnreadNotifications: (page = 1, per_page = 20) => api.get('/api/v1/admin/notifications/unread', { params: { page, per_page } }),
+  createNotification: (notificationData) => api.post('/api/v1/admin/notifications/', notificationData),
+  markNotificationAsRead: (notificationId) => api.post(`/api/v1/admin/notifications/${notificationId}/mark-read`),
+  markNotificationsAsRead: (notificationIds) => api.post('/api/v1/admin/notifications/mark-read', { notification_ids: notificationIds }),
   handleNotificationAction: (notificationId, actionData) => api.post(`/api/v1/admin/notifications/${notificationId}/action`, actionData),
-  archiveNotification: (notificationId) => api.delete(`/api/v1/admin/notifications/${notificationId}/archive`),
+  archiveNotification: (notificationId) => api.delete(`/api/v1/admin/notifications/${notificationId}`),
   getNotificationStats: () => api.get('/api/v1/admin/notifications/stats'),
 
   // Phase 2 APIs - Venue Booking Management
@@ -444,6 +446,14 @@ export const adminAPI = {
   assignEventsToAdminUser: (username, eventIds) => api.post(`/api/v1/admin/admin-users/${username}/assign-events`, eventIds),
   getAvailableAdminRoles: () => api.get('/api/v1/admin/admin-users/roles/available'),
   getAdminManagementStats: () => api.get('/api/v1/admin/admin-users/stats/overview'),
+  
+  // Event Organizers Management
+  getEventOrganizers: (filters) => api.get('/api/v1/admin/event-organizers', { params: filters }),
+  getEventOrganizer: (organizerId) => api.get(`/api/v1/admin/event-organizers/${organizerId}`),
+  createEventOrganizer: (organizerData) => api.post('/api/v1/admin/event-organizers', organizerData),
+  updateEventOrganizer: (organizerId, organizerData) => api.put(`/api/v1/admin/event-organizers/${organizerId}`, organizerData),
+  deleteEventOrganizer: (organizerId) => api.delete(`/api/v1/admin/event-organizers/${organizerId}`),
+  getEventOrganizerDepartments: () => api.get('/api/v1/admin/event-organizers/departments/list'),
 };
 
 // Dedicated asset API object for easier use

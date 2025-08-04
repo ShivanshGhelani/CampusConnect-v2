@@ -50,12 +50,13 @@ class EventStatusManager:
                     return default
     
     @staticmethod
-    async def get_available_events(status_filter: str = "all") -> List[Dict[str, Any]]:
+    async def get_available_events(status_filter: str = "all", include_pending_approval: bool = False) -> List[Dict[str, Any]]:
         """
         Get events filtered by their current status.
         
         Args:
-            status_filter: Filter for event status ("upcoming", "ongoing", "completed", "all")
+            status_filter: Filter for event status ("upcoming", "ongoing", "completed", "all", "pending_approval")
+            include_pending_approval: Whether to include pending approval events (for Super Admin)
             
         Returns:
             List of events matching the status filter
@@ -70,7 +71,14 @@ class EventStatusManager:
                 query["status"] = "ongoing"
             elif status_filter == "completed":
                 query["status"] = "completed"
-            # "all" means no status filter
+            elif status_filter == "pending_approval":
+                query["status"] = "pending_approval"
+            else:
+                # For "all" filter, behavior depends on include_pending_approval
+                if not include_pending_approval:
+                    # Only approved events should be visible in general listings
+                    query["status"] = {"$ne": "pending_approval"}
+                # If include_pending_approval is True, no status filter (show all events)
             
             # Get events from database
             events = await DatabaseOperations.find_many("events", query)
@@ -78,12 +86,17 @@ class EventStatusManager:
             if not events:
                 return []
             
-            # Update status for each event to ensure accuracy
+            # Update status for each event to ensure accuracy (except pending approval)
             current_time = datetime.now()
             updated_events = []
             
             for event in events:
-                # Calculate current status and sub_status
+                # Don't update status for pending approval events
+                if event.get('status') == 'pending_approval':
+                    updated_events.append(event)
+                    continue
+                    
+                # Calculate current status and sub_status for approved events
                 calculated_status, calculated_sub_status = await EventStatusManager._calculate_event_status(event, current_time)
                 
                 # Update the event status if it has changed
@@ -100,7 +113,8 @@ class EventStatusManager:
                     event['status'] = calculated_status
                     event['sub_status'] = calculated_sub_status
                     logger.info(f"Updated event {event.get('event_id')} status to {calculated_status}/{calculated_sub_status}")
-                  # Apply status filter after status update
+                
+                # Apply status filter after status update
                 if status_filter == "all" or event.get('status') == status_filter:
                     updated_events.append(event)
             
@@ -119,7 +133,7 @@ class EventStatusManager:
             
             updated_events.sort(key=safe_sort_key)
             
-            logger.info(f"Retrieved {len(updated_events)} events with status filter: {status_filter}")
+            logger.info(f"Retrieved {len(updated_events)} events with status filter: {status_filter}, include_pending: {include_pending_approval}")
             return updated_events
             
         except Exception as e:

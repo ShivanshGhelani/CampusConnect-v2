@@ -9,6 +9,7 @@ class EventMainStatus(Enum):
     UPCOMING = "upcoming"
     ONGOING = "ongoing"
     COMPLETED = "completed"
+    PENDING_APPROVAL = "pending_approval"  # New status for approval workflow
 
 class EventSubStatus(Enum):
     """Detailed event sub-status for registration and event lifecycle"""
@@ -19,6 +20,7 @@ class EventSubStatus(Enum):
     EVENT_ENDED = "event_ended"
     CERTIFICATE_AVAILABLE = "certificate_available"
     EVENT_COMPLETED = "event_completed"
+    PENDING_APPROVAL = "pending_approval"  # New sub-status for approval workflow
 
 class CustomField(BaseModel):
     name: str
@@ -33,6 +35,19 @@ class TeamRegistration(BaseModel):
     team_leader_enrollment: str = Field(..., description="Enrollment number of team leader")
     participants: List[str] = Field(..., description="List of participant enrollment numbers")
     registration_date: datetime = Field(default_factory=datetime.utcnow, description="Date of team registration")
+
+class EventOrganizer(BaseModel):
+    """Event organizer information"""
+    id: Optional[str] = Field(default=None, description="Organizer ID (null for new organizers)")
+    name: str = Field(..., description="Organizer full name")
+    email: str = Field(..., description="Organizer email address")
+    employee_id: str = Field(..., description="Employee/Faculty ID")
+    isNew: bool = Field(default=False, description="Whether this is a new organizer requiring approval")
+
+class EventContact(BaseModel):
+    """Event contact information"""
+    name: str = Field(..., description="Contact person name")
+    contact: str = Field(..., description="Contact number or email")
 
 class Event(BaseModel):
     event_id: str
@@ -54,16 +69,23 @@ class Event(BaseModel):
     is_xenesis_event: bool = Field(default=False, description="Whether this is a Xenesis event")
     
     # Additional event details
-    organizers: List[str] = Field(default=[], description="List of event organizers")
-    contacts: List[Dict[str, str]] = Field(default=[], description="Contact information")
-    target_outcomes: Optional[str] = Field(default=None, description="Learning objectives and goals")
-    prerequisites: Optional[str] = Field(default=None, description="Prerequisites for participation")
-    what_to_bring: Optional[str] = Field(default=None, description="What participants should bring")
+    organizers: List[EventOrganizer] = Field(default=[], description="List of event organizers with details")
+    contacts: List[EventContact] = Field(default=[], description="Contact information")
+    
+    # Approval workflow fields
+    approval_required: bool = Field(default=True, description="Whether event requires approval")
+    event_created_by: Optional[str] = Field(default=None, description="Who created the event (for Executive Admin sessions)")
+    approved_by: Optional[str] = Field(default=None, description="Who approved the event")
+    approved_at: Optional[datetime] = Field(default=None, description="When the event was approved")
+    declined_by: Optional[str] = Field(default=None, description="Who declined the event")
+    declined_at: Optional[datetime] = Field(default=None, description="When the event was declined")
+    decline_reason: Optional[str] = Field(default=None, description="Reason for declining the event")
     
     # Registration settings extended
     registration_mode: str = Field(default="individual", description="individual or team")
     team_size_min: Optional[int] = Field(default=None, description="Minimum team size for team events")
     team_size_max: Optional[int] = Field(default=None, description="Maximum team size for team events")
+    allow_multiple_team_registrations: bool = Field(default=False, description="Allow multiple team registrations per student")
     max_participants: Optional[int] = Field(default=None, description="Maximum number of participants")
     min_participants: int = Field(default=1, description="Minimum number of participants")
     fee_description: Optional[str] = Field(default=None, description="Description of what the fee includes")
@@ -252,14 +274,9 @@ class CreateEvent(BaseModel):
     target_audience: str = Field(..., description="student, faculty, or both")
     is_xenesis_event: bool = Field(default=False, description="Xenesis event flag")
     
-    # Organizer information
-    organizers: List[str] = Field(..., description="List of organizer names")
-    contacts: List[Dict[str, str]] = Field(..., description="Contact information")
-    
-    # Event details
-    target_outcomes: str = Field(..., description="Learning objectives")
-    prerequisites: Optional[str] = Field(default=None, description="Prerequisites")
-    what_to_bring: Optional[str] = Field(default=None, description="What to bring")
+    # Organizer information - updated to handle new structure
+    organizers: List[EventOrganizer] = Field(..., description="List of organizer objects with details")
+    contacts: List[EventContact] = Field(..., description="Contact information objects")
     
     # Registration settings
     registration_type: str = Field(..., description="free, paid, or sponsored")
@@ -268,8 +285,19 @@ class CreateEvent(BaseModel):
     registration_mode: str = Field(..., description="individual or team")
     team_size_min: Optional[int] = Field(default=None, description="Min team size")
     team_size_max: Optional[int] = Field(default=None, description="Max team size")
+    allow_multiple_team_registrations: bool = Field(default=False, description="Allow multiple team registrations")
     max_participants: Optional[int] = Field(default=None, description="Max participants")
     min_participants: int = Field(default=1, description="Min participants")
+    
+    # Approval workflow fields
+    approval_required: bool = Field(default=True, description="Whether event requires approval")
+    status: str = Field(default="pending_approval", description="Event status")
+    event_created_by: Optional[str] = Field(default=None, description="Who created the event (for Executive Admin sessions)")
+    
+    # Additional optional fields
+    target_outcomes: Optional[str] = Field(default=None, description="Target outcomes for the event")
+    prerequisites: Optional[str] = Field(default=None, description="Prerequisites for participation")
+    what_to_bring: Optional[str] = Field(default=None, description="What participants should bring")
 
 class UpdateEvent(BaseModel):
     """Model for updating an existing event"""
@@ -295,9 +323,6 @@ class UpdateEvent(BaseModel):
     is_xenesis_event: Optional[bool] = None
     organizers: Optional[List[str]] = None
     contacts: Optional[List[Dict[str, str]]] = None
-    target_outcomes: Optional[str] = None
-    prerequisites: Optional[str] = None
-    what_to_bring: Optional[str] = None
     registration_type: Optional[str] = None
     registration_fee: Optional[float] = None
     fee_description: Optional[str] = None
@@ -326,9 +351,6 @@ class EventResponse(BaseModel):
     is_xenesis_event: bool
     organizers: List[str] = []
     contacts: List[Dict[str, str]] = []
-    target_outcomes: Optional[str] = None
-    prerequisites: Optional[str] = None
-    what_to_bring: Optional[str] = None
     registration_mode: str = "individual"
     team_size_min: Optional[int] = None
     team_size_max: Optional[int] = None
