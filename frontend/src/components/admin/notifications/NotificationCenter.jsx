@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotifications } from '../../../context/NotificationContext';
+import { useAuth } from '../../../context/AuthContext';
 import { 
   BellIcon, 
   XMarkIcon, 
@@ -7,11 +8,13 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   ChevronDownIcon,
-  AdjustmentsHorizontalIcon
+  AdjustmentsHorizontalIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon as BellSolidIcon } from '@heroicons/react/24/solid';
 
 const NotificationCenter = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -20,6 +23,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     markAsRead,
     archiveNotification,
     handleNotificationAction,
+    triggerPendingNotifications,
     filters,
     updateFilters,
     clearError
@@ -28,6 +32,9 @@ const NotificationCenter = ({ isOpen, onClose }) => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [actionReason, setActionReason] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isTriggeringNotifications, setIsTriggeringNotifications] = useState(false);
+
+
 
   // Priority colors and icons
   const getPriorityConfig = (priority) => {
@@ -81,15 +88,31 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     return date.toLocaleDateString();
   };
 
+  // Handle triggering pending notifications (Super Admin only)
+  const handleTriggerNotifications = async () => {
+    setIsTriggeringNotifications(true);
+    try {
+      const result = await triggerPendingNotifications();
+      if (result.success) {
+        alert(`Success: ${result.message}\nEvents processed: ${result.data?.events_processed || 0}\nNotifications sent: ${result.data?.notifications_sent || 0}`);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Failed to trigger notifications: ${error.message}`);
+    } finally {
+      setIsTriggeringNotifications(false);
+    }
+  };
+
   // Handle notification click
   const handleNotificationClick = async (notification) => {
     if (notification.status === 'unread') {
       await markAsRead(notification.id, true);
     }
-    console.log('🔥 SELECTED NOTIFICATION:', notification);
-    console.log('🔥 ACTION_DATA:', notification.action_data);
-    console.log('🔥 CREATED_BY:', notification.action_data?.created_by);
-    setSelectedNotification(notification);
+    
+    const clonedNotification = JSON.parse(JSON.stringify(notification));
+    setSelectedNotification(clonedNotification);
   };
 
   // Handle action (approve/reject)
@@ -134,6 +157,18 @@ const NotificationCenter = ({ isOpen, onClose }) => {
             )}
           </div>
           <div className="flex items-center space-x-2">
+            {/* Trigger Notifications Button (Super Admin only) */}
+            {user?.role === 'super_admin' && (
+              <button
+                onClick={handleTriggerNotifications}
+                disabled={isTriggeringNotifications}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                title="Trigger notifications for all pending approval events"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${isTriggeringNotifications ? 'animate-spin' : ''}`} />
+                <span>{isTriggeringNotifications ? 'Triggering...' : 'Trigger Pending'}</span>
+              </button>
+            )}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -160,6 +195,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
                 <option value="">All Types</option>
+                <option value="event_approval_request">Event Approval</option>
                 <option value="venue_booking_request">Venue Booking</option>
                 <option value="event_deletion_request">Event Deletion</option>
                 <option value="admin_announcement">Announcement</option>
@@ -333,7 +369,11 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                             </div>
                             <div>
                               <p className="text-sm text-gray-600">Requested by</p>
-                              <p className="font-semibold text-gray-900">{selectedNotification.action_data?.created_by || 'Unknown User'}</p>
+                              <p className="font-semibold text-gray-900">
+                                {selectedNotification?.action_data?.created_by || 
+                                 selectedNotification?.sender_username || 
+                                 'Unknown User'}
+                              </p>
                               <p className="text-xs text-gray-500">{formatRelativeTime(selectedNotification.created_at)}</p>
                             </div>
                           </div>
@@ -346,8 +386,12 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                             </div>
                             <div>
                               <p className="text-sm text-gray-600">Event Type</p>
-                              <p className="font-semibold text-gray-900 capitalize">{selectedNotification.action_data?.event_type || 'N/A'}</p>
-                              <p className="text-xs text-gray-500 capitalize">{selectedNotification.action_data?.target_audience || 'N/A'}</p>
+                              <p className="font-semibold text-gray-900 capitalize">
+                                {selectedNotification.action_data?.event_type || 'N/A'}
+                              </p>
+                              <p className="text-xs text-gray-500 capitalize">
+                                {selectedNotification.action_data?.target_audience || 'N/A'}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -363,7 +407,9 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                           <div className="space-y-3">
                             <div>
                               <p className="text-sm font-medium text-gray-600">Event ID</p>
-                              <p className="text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">{selectedNotification.action_data?.event_id || 'N/A'}</p>
+                              <p className="text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                {selectedNotification.action_data?.event_id || 'N/A'}
+                              </p>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-600">Department</p>

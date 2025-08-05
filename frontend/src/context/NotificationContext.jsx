@@ -134,8 +134,6 @@ export function NotificationProvider({ children }) {
       const response = await adminAPI.getNotifications(filters);
 
       if (response.data) {
-        console.log('🚀 FETCHED NOTIFICATIONS:', response.data.notifications);
-        console.log('🚀 FIRST NOTIFICATION ACTION_DATA:', response.data.notifications[0]?.action_data);
         dispatch({
           type: ACTIONS.FETCH_SUCCESS,
           payload: response.data
@@ -252,6 +250,31 @@ export function NotificationProvider({ children }) {
     }
   }, []);
 
+  // Trigger pending notifications (Super Admin only)
+  const triggerPendingNotifications = useCallback(async () => {
+    try {
+      const response = await adminAPI.triggerPendingNotifications();
+      
+      if (response.data.success) {
+        // Refresh notifications after triggering
+        fetchNotifications();
+        return { 
+          success: true, 
+          message: response.data.message,
+          data: response.data
+        };
+      }
+      
+      return { success: false, error: response.data.message };
+    } catch (error) {
+      console.error('Error triggering pending notifications:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to trigger pending notifications'
+      };
+    }
+  }, [fetchNotifications]);
+
   // Clear error
   const clearError = useCallback(() => {
     dispatch({ type: ACTIONS.CLEAR_ERROR });
@@ -296,6 +319,7 @@ export function NotificationProvider({ children }) {
     archiveNotification,
     handleNotificationAction,
     createNotification,
+    triggerPendingNotifications,
     fetchStats,
     clearError
   };

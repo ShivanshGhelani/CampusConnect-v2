@@ -166,9 +166,6 @@ const api = axios.create({
   },
 });
 
-// Log the API base URL for debugging
-console.log('API Base URL:', getApiBaseUrl());
-
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -413,6 +410,7 @@ export const adminAPI = {
   handleNotificationAction: (notificationId, actionData) => api.post(`/api/v1/admin/notifications/${notificationId}/action`, actionData),
   archiveNotification: (notificationId) => api.delete(`/api/v1/admin/notifications/${notificationId}`),
   getNotificationStats: () => api.get('/api/v1/admin/notifications/stats'),
+  triggerPendingNotifications: () => api.post('/api/v1/admin/events/trigger-pending-notifications'),
 
   // Phase 2 APIs - Venue Booking Management
   getVenueBookingRequests: (filters) => api.get('/api/v1/admin/venue-bookings/', { params: filters }),

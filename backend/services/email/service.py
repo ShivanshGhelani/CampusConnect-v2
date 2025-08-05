@@ -34,7 +34,7 @@ class EmailService:
             self.from_email = self.settings.FROM_EMAIL or self.email_user
             
             # Email Templates Configuration
-            template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates', 'email')
+            template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'templates', 'email')
             self.env = Environment(loader=FileSystemLoader(template_dir))
             
             # Thread pool for async email sending

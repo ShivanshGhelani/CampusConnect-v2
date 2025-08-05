@@ -90,7 +90,6 @@ class MarkAsReadRequest(BaseModel):
 
 class NotificationActionRequest(BaseModel):
     """Request model for notification actions (approve/reject)"""
-    notification_id: str = Field(..., description="Notification ID")
     action: str = Field(..., description="Action to take (approve/reject)")
     reason: Optional[str] = Field(default=None, description="Reason for the action")
     additional_data: Optional[Dict[str, Any]] = Field(default={}, description="Additional action data")

@@ -41,7 +41,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
       approvalNotifications.forEach(notification => {
         const notificationDate = new Date(notification.created_at);
         if (notificationDate < sevenDaysAgo) {
-          console.log(`Auto-deleting notification ${notification.id} (older than 7 days)`);
+          // Auto-delete notifications older than 7 days
           // API call to delete from backend would go here
         }
       });
@@ -248,13 +248,13 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                               {/* Header with creator name - Gmail style */}
                               <div className="flex items-center space-x-3 mb-2">
                                 <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                                  {notification.data?.event_created_by?.charAt(0) || 'U'}
+                                  {notification.action_data?.created_by?.charAt(0) || 'U'}
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-gray-900">
                                     Event creation requested by{' '}
                                     <span className="text-blue-600 font-semibold">
-                                      {notification.data?.event_created_by || 'Unknown User'}
+                                      {notification.action_data?.created_by || 'Unknown User'}
                                     </span>
                                   </p>
                                   <p className="text-xs text-gray-500">{formatRelativeTime(notification.created_at)}</p>
@@ -267,16 +267,16 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                               {/* Event details preview - Gmail style */}
                               <div className="space-y-1 ml-11">
                                 <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                  {notification.data?.event_name || notification.title}
+                                  {notification.action_data?.event_name || notification.title}
                                 </h3>
                                 <p className="text-sm text-gray-600 line-clamp-2">
-                                  {notification.data?.short_description || notification.message}
+                                  {notification.action_data?.short_description || notification.message}
                                 </p>
                                 <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                  <span>📅 {notification.data?.start_date || 'TBD'}</span>
-                                  <span>🏢 {notification.data?.organizing_department || 'N/A'}</span>
-                                  <span>🎯 {notification.data?.event_type || 'N/A'}</span>
-                                  {notification.data?.organizers?.some(org => org.isNew) && (
+                                  <span>📅 {notification.action_data?.start_date || 'TBD'}</span>
+                                  <span>🏢 {notification.action_data?.organizing_department || 'N/A'}</span>
+                                  <span>🎯 {notification.action_data?.event_type || 'N/A'}</span>
+                                  {notification.action_data?.organizers?.some(org => org.isNew) && (
                                     <span className="text-amber-600 font-medium">⚠️ New Organizers</span>
                                   )}
                                 </div>
@@ -331,16 +331,16 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                          {selectedNotification?.data?.event_created_by?.charAt(0) || 'U'}
+                          {selectedNotification?.action_data?.event_created_by?.charAt(0) || 'U'}
                         </div>
                         <div>
                           <h1 className="text-2xl font-bold text-gray-900">
-                            {selectedNotification?.data?.event_name || selectedNotification?.title || 'Untitled Event'}
+                            {selectedNotification?.action_data?.event_name || selectedNotification?.title || 'Untitled Event'}
                           </h1>
                           <p className="text-sm text-gray-600">
                             Event creation requested by{' '}
                             <span className="font-semibold text-blue-600">
-                              {selectedNotification?.data?.event_created_by || 'Unknown User'}
+                              {selectedNotification?.action_data?.created_by || 'Unknown User'}
                             </span>
                             {' on '}{formatRelativeTime(selectedNotification?.created_at)}
                           </p>
@@ -348,11 +348,11 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       </div>
                       <div className="text-right">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          selectedNotification?.data?.organizers?.some(org => org.isNew)
+                          selectedNotification?.action_data?.organizers?.some(org => org.isNew)
                             ? 'bg-amber-100 text-amber-800' 
                             : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {selectedNotification?.data?.organizers?.some(org => org.isNew) ? '⚠️ New Organizers' : '📋 Standard Request'}
+                          {selectedNotification?.action_data?.organizers?.some(org => org.isNew) ? '⚠️ New Organizers' : '📋 Standard Request'}
                         </span>
                       </div>
                     </div>
@@ -380,25 +380,25 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                         <div>
                           <label className="text-sm font-medium text-gray-500">Event ID</label>
                           <p className="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded">
-                            {selectedNotification?.data?.event_id || 'N/A'}
+                            {selectedNotification?.action_data?.event_id || 'N/A'}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Event Type</label>
                           <p className="text-sm text-gray-900 capitalize">
-                            {selectedNotification?.data?.event_type || 'N/A'}
+                            {selectedNotification?.action_data?.event_type || 'N/A'}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Target Audience</label>
                           <p className="text-sm text-gray-900 capitalize">
-                            {selectedNotification?.data?.target_audience || 'N/A'}
+                            {selectedNotification?.action_data?.target_audience || 'N/A'}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Department</label>
                           <p className="text-sm text-gray-900">
-                            {selectedNotification?.data?.organizing_department || 'N/A'}
+                            {selectedNotification?.action_data?.organizing_department || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -414,25 +414,25 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                         <div>
                           <label className="text-sm font-medium text-gray-500">Event Date</label>
                           <p className="text-sm text-gray-900">
-                            {selectedNotification?.data?.start_date} to {selectedNotification?.data?.end_date}
+                            {selectedNotification?.action_data?.start_date} to {selectedNotification?.action_data?.end_date}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Mode</label>
                           <p className="text-sm text-gray-900 capitalize">
-                            {selectedNotification?.data?.mode || 'N/A'}
+                            {selectedNotification?.action_data?.mode || 'N/A'}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Venue</label>
                           <p className="text-sm text-gray-900">
-                            {selectedNotification?.data?.venue || 'N/A'}
+                            {selectedNotification?.action_data?.venue || 'N/A'}
                           </p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-500">Registration Type</label>
                           <p className="text-sm text-gray-900 capitalize">
-                            {selectedNotification?.data?.registration_type || 'N/A'}
+                            {selectedNotification?.action_data?.registration_type || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -446,27 +446,27 @@ const NotificationPanel = ({ isOpen, onClose }) => {
                       <div>
                         <label className="text-sm font-medium text-gray-500">Short Description</label>
                         <p className="text-sm text-gray-900 mt-1">
-                          {selectedNotification?.data?.short_description || 'No description provided'}
+                          {selectedNotification?.action_data?.short_description || 'No description provided'}
                         </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-500">Detailed Description</label>
                         <div className="text-sm text-gray-900 mt-1 whitespace-pre-wrap bg-gray-50 p-4 rounded-md">
-                          {selectedNotification?.data?.detailed_description || 'No detailed description provided'}
+                          {selectedNotification?.action_data?.detailed_description || 'No detailed description provided'}
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Organizers - Gmail style */}
-                  {selectedNotification?.data?.organizers && selectedNotification.data.organizers.length > 0 && (
+                  {selectedNotification?.action_data?.organizers && selectedNotification.action_data.organizers.length > 0 && (
                     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                         <UserGroupIcon className="w-5 h-5 text-purple-500 mr-2" />
                         Event Organizers
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {selectedNotification.data.organizers.map((organizer, index) => (
+                        {selectedNotification.action_data.organizers.map((organizer, index) => (
                           <div 
                             key={index} 
                             className={`p-4 rounded-lg border-2 ${

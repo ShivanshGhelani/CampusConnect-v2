@@ -83,7 +83,9 @@ class NotificationService:
             )
             
             # Insert into database
-            result = await db[self.collection_name].insert_one(notification.dict())
+            notification_dict = notification.dict()
+            
+            result = await db[self.collection_name].insert_one(notification_dict)
             
             if result.inserted_id:
                 logger.info(f"Notification created: {notification_id} for {recipient_username}")
@@ -144,14 +146,17 @@ class NotificationService:
             # Convert to Notification objects
             notifications = []
             for notif_data in notifications_data:
-                # Convert MongoDB ObjectId to string for Pydantic compatibility
+                # Handle ID field for Pydantic compatibility
                 if "_id" in notif_data:
-                    notif_data["id"] = str(notif_data["_id"])
+                    # Only use MongoDB _id if no custom id field exists
+                    if "id" not in notif_data or notif_data["id"] is None:
+                        notif_data["id"] = str(notif_data["_id"])
                     del notif_data["_id"]  # Remove the original _id field
                 elif "id" in notif_data and hasattr(notif_data["id"], '__str__'):
                     notif_data["id"] = str(notif_data["id"])
                 
-                notifications.append(Notification(**notif_data))
+                notification = Notification(**notif_data)
+                notifications.append(notification)
             
             return NotificationListResponse(
                 notifications=notifications,
@@ -263,6 +268,12 @@ class NotificationService:
             if db is None:
                 raise Exception("Database connection failed")
             
+            # Add detailed logging for debugging
+            logger.info(f"🔍 Looking for notification with:")
+            logger.info(f"   - notification_id: {notification_id}")
+            logger.info(f"   - recipient_username: {username}")
+            logger.info(f"   - action_required: True")
+            
             # Get the notification
             notification_data = await db[self.collection_name].find_one({
                 "id": notification_id,
@@ -271,12 +282,33 @@ class NotificationService:
             })
             
             if not notification_data:
+                # Additional debugging - check if notification exists with different criteria
+                logger.error(f"❌ Notification not found with standard criteria")
+                
+                # Check if notification exists at all
+                any_notification = await db[self.collection_name].find_one({"id": notification_id})
+                if any_notification:
+                    logger.error(f"❌ Notification exists but with different criteria:")
+                    logger.error(f"   - actual recipient_username: {any_notification.get('recipient_username')}")
+                    logger.error(f"   - actual action_required: {any_notification.get('action_required')}")
+                    logger.error(f"   - provided username: {username}")
+                else:
+                    logger.error(f"❌ Notification {notification_id} does not exist in database")
+                
                 return NotificationResponse(
                     success=False,
                     message="Notification not found or action not required"
                 )
             
             notification = Notification(**notification_data)
+            
+            # Log notification details for debugging
+            logger.info(f"🔍 Processing notification action:")
+            logger.info(f"   - notification_id: {notification_id}")
+            logger.info(f"   - action: {action}")
+            logger.info(f"   - action_type: {notification.action_type}")
+            logger.info(f"   - action_required: {notification.action_required}")
+            logger.info(f"   - reason: {reason}")
             
             # Handle different action types
             if notification.action_type == "approve_venue_booking" and action == "approve":
@@ -297,19 +329,25 @@ class NotificationService:
                     message=f"Unknown action type: {notification.action_type}"
                 )
             
-            # Mark notification as read and update metadata
+            # Mark notification as read and update metadata, then archive for event actions
             current_time = datetime.utcnow()
+            update_data = {
+                "status": NotificationStatus.READ.value,
+                "read_at": current_time,
+                f"metadata.action_taken": action,
+                f"metadata.action_reason": reason,
+                f"metadata.action_timestamp": current_time.isoformat()
+            }
+            
+            # Archive event approval/rejection notifications after processing
+            if notification.action_type in ["approve_event"]:
+                update_data["status"] = NotificationStatus.ARCHIVED.value
+                update_data["archived_at"] = current_time
+                logger.info(f"🗂️ Archiving notification {notification_id} after event action")
+            
             await db[self.collection_name].update_one(
                 {"id": notification_id},
-                {
-                    "$set": {
-                        "status": NotificationStatus.READ.value,
-                        "read_at": current_time,
-                        f"metadata.action_taken": action,
-                        f"metadata.action_reason": reason,
-                        f"metadata.action_timestamp": current_time.isoformat()
-                    }
-                }
+                {"$set": update_data}
             )
             
             logger.info(f"Handled notification action: {notification_id} - {action} by {username}")
@@ -610,25 +648,35 @@ class NotificationService:
             return NotificationResponse(success=False, message=str(e))
 
     async def _handle_event_approval(self, notification: Notification, approved: bool, reason: str = None, additional_data: dict = None):
-        """Handle event approval/rejection"""
+        """Handle event approval/rejection with email notifications and organizer account creation"""
         from database.operations import DatabaseOperations
+        from services.email.service import EmailService
+        from models.admin_user import AdminUser, AdminRole
+        import secrets
+        import string
         
         try:
             event_id = notification.action_data.get("event_id")
             event_name = notification.action_data.get("event_name", "Unknown Event")
             created_by = notification.action_data.get("created_by", "Unknown User")
+            organizers = notification.action_data.get("organizers", [])
+            event_data = notification.action_data  # Full event data for email templates
             
             if not event_id:
                 logger.error("No event_id in notification action_data")
                 return
+
+            db = await Database.get_database("CampusConnect")
+            if db is None:
+                logger.error("Database connection failed")
+                return
+            
+            # Initialize email service
+            email_service = EmailService()
+            logger.info(f"📧 Email service initialized for event {event_id} action: {'approve' if approved else 'reject'}")
             
             if approved:
                 # Approve the event - update status to approved
-                db = await Database.get_database("CampusConnect")
-                if db is None:
-                    logger.error("Database connection failed")
-                    return
-                
                 result = await db["events"].update_one(
                     {"event_id": event_id},
                     {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
@@ -637,11 +685,115 @@ class NotificationService:
                 if result.modified_count > 0:
                     logger.info(f"✅ Event {event_id} approved successfully")
                     
-                    # Notify the event creator about approval
+                    # Get super admin details for email template
+                    super_admin = await db["admin_users"].find_one({"username": notification.recipient_username})
+                    super_admin_name = super_admin.get("name", notification.recipient_username) if super_admin else notification.recipient_username
+                    super_admin_email = super_admin.get("email", "") if super_admin else ""
+                    super_admin_phone = super_admin.get("phone", "") if super_admin else ""
+                    
+                    # Process each organizer
+                    for organizer in organizers:
+                        organizer_email = organizer.get("email")
+                        organizer_name = organizer.get("name", "Unknown Organizer")
+                        organizer_employee_id = organizer.get("employee_id")
+                        
+                        if not organizer_email:
+                            logger.warning(f"No email found for organizer: {organizer_name}")
+                            continue
+                        
+                        # Check if organizer already has an admin account
+                        existing_admin = await db["admin_users"].find_one({"email": organizer_email})
+                        is_new_organizer = existing_admin is None
+                        
+                        username = None
+                        temporary_password = None
+                        
+                        if is_new_organizer:
+                            # Generate username and temporary password
+                            username = organizer_employee_id or f"org_{organizer_email.split('@')[0]}"
+                            # Ensure username is unique
+                            existing_username = await db["admin_users"].find_one({"username": username})
+                            if existing_username:
+                                username = f"{username}_{secrets.token_hex(3)}"
+                            
+                            # Generate temporary password
+                            temporary_password = self._generate_secure_password()
+                            
+                            # Create admin account for organizer
+                            new_admin = AdminUser(
+                                fullname=organizer_name,
+                                username=username,
+                                email=organizer_email,
+                                password=temporary_password,
+                                role=AdminRole.ORGANIZER_ADMIN,
+                                is_active=True,
+                                created_by=notification.recipient_username
+                            )
+                            
+                            # Insert new admin user
+                            admin_dict = new_admin.dict()
+                            # Add extra fields that are not in the Pydantic model but needed in database
+                            admin_dict["employee_id"] = organizer_employee_id
+                            admin_dict["department"] = event_data.get("organizing_department", "")
+                            admin_dict["must_change_password"] = True
+                            await db["admin_users"].insert_one(admin_dict)
+                            
+                            logger.info(f"✅ Created new organizer admin account: {username}")
+                        else:
+                            username = existing_admin["username"]
+                            logger.info(f"ℹ️ Using existing admin account: {username}")
+                        
+                        # Send approval email with event template
+                        try:
+                            if is_new_organizer:
+                                # Send email with credentials for new organizers
+                                success = await email_service.send_new_organizer_approval_notification(
+                                    organizer_email=organizer_email,
+                                    organizer_name=organizer_name,
+                                    event_data=event_data,
+                                    super_admin_name=super_admin_name,
+                                    approval_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
+                                    username=username,
+                                    temporary_password=temporary_password,
+                                    portal_url="http://localhost:3000/admin",  # Update with actual URL
+                                    approval_message=reason
+                                )
+                            else:
+                                # Send approval email for existing organizers (without credentials)
+                                subject = f"🎉 Event Approved: {event_name}"
+                                html_content = email_service.render_template(
+                                    'event_approved.html',
+                                    organizer_name=organizer_name,
+                                    event_name=event_name,
+                                    super_admin_name=super_admin_name,
+                                    approval_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
+                                    event_id=event_id,
+                                    event_type=event_data.get("event_type", "N/A"),
+                                    organizing_department=event_data.get("organizing_department", "N/A"),
+                                    start_date=event_data.get("start_date", "TBD"),
+                                    end_date=event_data.get("end_date", "TBD"),
+                                    event_mode=event_data.get("mode", "N/A"),
+                                    is_new_organizer=False,
+                                    username=username,
+                                    portal_url="http://localhost:3000/admin",
+                                    approval_message=reason,
+                                    support_email="support@campusconnect.edu"
+                                )
+                                success = await email_service.send_email_async(organizer_email, subject, html_content)
+                            
+                            if success:
+                                logger.info(f"✅ Sent approval email to {organizer_email}")
+                            else:
+                                logger.error(f"❌ Failed to send approval email to {organizer_email}")
+                            
+                        except Exception as e:
+                            logger.error(f"Failed to send approval email to {organizer_email}: {e}")
+                    
+                    # Create success notification for event creator
                     await self.create_notification(
                         notification_type=NotificationType.EVENT_APPROVED,
                         title="Event Approved",
-                        message=f"Your event '{event_name}' has been approved! {reason or ''}",
+                        message=f"Your event '{event_name}' has been approved! All organizers have been notified and given admin access.",
                         recipient_username=created_by,
                         recipient_role="event_creator",
                         sender_username=notification.recipient_username,
@@ -652,22 +804,62 @@ class NotificationService:
                         action_required=False,
                         metadata={
                             "approval_reason": reason,
-                            "approved_by": notification.recipient_username
+                            "approved_by": notification.recipient_username,
+                            "organizers_count": len(organizers)
                         }
                     )
                 else:
                     logger.warning(f"⚠️ Event {event_id} not found or already processed")
             else:
                 # Reject the event - DELETE it from database
-                db = await Database.get_database("CampusConnect") 
-                if db is None:
-                    logger.error("Database connection failed")
-                    return
+                logger.info(f"🔄 Starting event rejection process for event_id: {event_id}")
+                logger.info(f"📧 Event has {len(organizers)} organizers to notify")
                 
                 result = await db["events"].delete_one({"event_id": event_id})
                 
                 if result.deleted_count > 0:
                     logger.info(f"🗑️ Event {event_id} rejected and deleted successfully")
+                    
+                    # Get super admin details for email template
+                    super_admin = await db["admin_users"].find_one({"username": notification.recipient_username})
+                    super_admin_name = super_admin.get("name", notification.recipient_username) if super_admin else notification.recipient_username
+                    super_admin_email = super_admin.get("email", "") if super_admin else ""
+                    super_admin_phone = super_admin.get("phone", "") if super_admin else ""
+                    super_admin_office = super_admin.get("office", "") if super_admin else ""
+                    
+                    # Send rejection email to all organizers
+                    for organizer in organizers:
+                        organizer_email = organizer.get("email")
+                        organizer_name = organizer.get("name", "Unknown Organizer")
+                        
+                        if not organizer_email:
+                            logger.warning(f"No email found for organizer: {organizer_name}")
+                            continue
+                        
+                        try:
+                            logger.info(f"📧 Attempting to send rejection email to {organizer_email}")
+                            success = await email_service.send_new_organizer_declined_notification(
+                                organizer_email=organizer_email,
+                                organizer_name=organizer_name,
+                                event_data=event_data,
+                                super_admin_name=super_admin_name,
+                                super_admin_email=super_admin_email,
+                                decision_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
+                                reason=reason or "No specific reason provided",
+                                portal_url="http://localhost:3000/admin",  # Update with actual URL
+                                super_admin_phone=super_admin_phone,
+                                super_admin_office=super_admin_office
+                            )
+                            
+                            if success:
+                                logger.info(f"✅ Sent rejection email to {organizer_email}")
+                            else:
+                                logger.error(f"❌ Failed to send rejection email to {organizer_email}")
+                            
+                        except Exception as e:
+                            logger.error(f"❌ Exception sending rejection email to {organizer_email}: {e}")
+                            import traceback
+                            logger.error(f"Full traceback: {traceback.format_exc()}")
                     
                     # Notify the event creator about rejection
                     await self.create_notification(
@@ -693,6 +885,14 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Error handling event approval: {e}")
             raise
+
+    def _generate_secure_password(self, length: int = 12) -> str:
+        """Generate a secure temporary password"""
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        password = ''.join(secrets.choice(alphabet) for _ in range(length))
+        return password
 
 # Create singleton instance
 notification_service = NotificationService()
