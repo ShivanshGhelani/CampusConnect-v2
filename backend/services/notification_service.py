@@ -311,11 +311,7 @@ class NotificationService:
             logger.info(f"   - reason: {reason}")
             
             # Handle different action types
-            if notification.action_type == "approve_venue_booking" and action == "approve":
-                await self._handle_venue_booking_approval(notification, True, reason, additional_data)
-            elif notification.action_type == "approve_venue_booking" and action == "reject":
-                await self._handle_venue_booking_approval(notification, False, reason, additional_data)
-            elif notification.action_type == "approve_event_deletion" and action == "approve":
+            if notification.action_type == "approve_event_deletion" and action == "approve":
                 await self._handle_event_deletion_approval(notification, True, reason, additional_data)
             elif notification.action_type == "approve_event_deletion" and action == "reject":
                 await self._handle_event_deletion_approval(notification, False, reason, additional_data)
@@ -359,63 +355,6 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Error handling notification action: {e}")
             return NotificationResponse(success=False, message=str(e))
-    
-    async def _handle_venue_booking_approval(
-        self,
-        notification: Notification,
-        approved: bool,
-        reason: Optional[str] = None,
-        additional_data: Optional[Dict[str, Any]] = None
-    ):
-        """Handle venue booking approval/rejection"""
-        # Import here to avoid circular imports
-        from services.venue_service import venue_service
-        
-        booking_id = notification.related_entity_id
-        venue_id = notification.action_data.get("venue_id")
-        
-        if approved:
-            await venue_service.approve_venue_booking(
-                venue_id=venue_id,
-                booking_id=booking_id,
-                approved_by=notification.recipient_username,
-                admin_notes=reason
-            )
-            
-            # Notify the organizer about approval
-            await self.create_notification(
-                notification_type=NotificationType.VENUE_BOOKING_APPROVED,
-                title="Venue Booking Approved",
-                message=f"Your venue booking for '{notification.action_data.get('event_name')}' has been approved.",
-                recipient_username=notification.action_data.get("booked_by"),
-                recipient_role="organizer_admin",
-                sender_username=notification.recipient_username,
-                sender_role="venue_admin",
-                related_entity_type="venue_booking",
-                related_entity_id=booking_id,
-                priority=NotificationPriority.HIGH
-            )
-        else:
-            await venue_service.reject_venue_booking(
-                venue_id=venue_id,
-                booking_id=booking_id,
-                rejected_by=notification.recipient_username,
-                rejection_reason=reason
-            )
-            
-            # Notify the organizer about rejection
-            await self.create_notification(
-                notification_type=NotificationType.VENUE_BOOKING_REJECTED,
-                title="Venue Booking Rejected",
-                message=f"Your venue booking for '{notification.action_data.get('event_name')}' has been rejected. Reason: {reason or 'No reason provided'}",
-                recipient_username=notification.action_data.get("booked_by"),
-                recipient_role="organizer_admin",
-                sender_username=notification.recipient_username,
-                sender_role="venue_admin",
-                related_entity_type="venue_booking",
-                related_entity_id=booking_id,
-                priority=NotificationPriority.HIGH
-            )
     
     async def _handle_event_deletion_approval(
         self,
@@ -462,69 +401,6 @@ class NotificationService:
                 related_entity_id=event_id,
                 priority=NotificationPriority.HIGH
             )
-    
-    async def send_venue_booking_request(
-        self,
-        venue_id: str,
-        venue_name: str,
-        booking_id: str,
-        event_name: str,
-        booked_by: str,
-        start_datetime: str,
-        end_datetime: str
-    ) -> NotificationResponse:
-        """Send venue booking request notification to venue admins"""
-        try:
-            db = await self.get_database()
-            if db is None:
-                raise Exception("Database connection failed")
-            
-            # Find all venue admins
-            venue_admins = await db["admin_users"].find({"role": "venue_admin", "is_active": True}).to_list(None)
-            
-            responses = []
-            for admin in venue_admins:
-                response = await self.create_notification(
-                    notification_type=NotificationType.VENUE_BOOKING_REQUEST,
-                    title=f"New Venue Booking Request: {venue_name}",
-                    message=f"Event '{event_name}' requests to book {venue_name} from {start_datetime} to {end_datetime}.",
-                    recipient_username=admin["username"],
-                    recipient_role="venue_admin",
-                    sender_username=booked_by,
-                    sender_role="organizer_admin",
-                    related_entity_type="venue_booking",
-                    related_entity_id=booking_id,
-                    priority=NotificationPriority.HIGH,
-                    action_required=True,
-                    action_type="approve_venue_booking",
-                    action_data={
-                        "venue_id": venue_id,
-                        "venue_name": venue_name,
-                        "event_name": event_name,
-                        "booked_by": booked_by,
-                        "start_datetime": start_datetime,
-                        "end_datetime": end_datetime
-                    },
-                    expires_in_hours=72  # 3 days to respond
-                )
-                responses.append(response)
-            
-            successful_notifications = sum(1 for r in responses if r.success)
-            
-            if successful_notifications > 0:
-                return NotificationResponse(
-                    success=True,
-                    message=f"Venue booking request sent to {successful_notifications} venue admin(s)"
-                )
-            else:
-                return NotificationResponse(
-                    success=False,
-                    message="Failed to send venue booking request notifications"
-                )
-                
-        except Exception as e:
-            logger.error(f"Error sending venue booking request: {e}")
-            return NotificationResponse(success=False, message=str(e))
     
     async def send_event_deletion_request(
         self,
@@ -582,69 +458,6 @@ class NotificationService:
                 
         except Exception as e:
             logger.error(f"Error sending event deletion request: {e}")
-            return NotificationResponse(success=False, message=str(e))
-    
-    async def send_maintenance_scheduled_notification(
-        self,
-        venue_id: str,
-        venue_name: str,
-        maintenance_id: str,
-        start_time: str,
-        end_time: str,
-        reason: str,
-        affected_bookings: List[str],
-        scheduled_by: str
-    ) -> NotificationResponse:
-        """Send maintenance scheduled notifications to affected users"""
-        try:
-            db = await self.get_database()
-            if db is None:
-                raise Exception("Database connection failed")
-            
-            # Get affected bookings
-            bookings = await db["venue_bookings"].find(
-                {"id": {"$in": affected_bookings}}
-            ).to_list(length=None)
-            
-            responses = []
-            for booking in bookings:
-                response = await self.create_notification(
-                    notification_type="VENUE_MAINTENANCE_SCHEDULED",
-                    title=f"Maintenance Scheduled for {venue_name}",
-                    message=f"Maintenance has been scheduled for {venue_name} from {start_time} to {end_time}. Your booking for '{booking.get('event_name')}' may be affected. Reason: {reason}",
-                    recipient_username=booking.get("booked_by"),
-                    recipient_role="organizer_admin",
-                    sender_username=scheduled_by,
-                    sender_role="venue_admin",
-                    related_entity_type="maintenance_window",
-                    related_entity_id=maintenance_id,
-                    priority=NotificationPriority.HIGH,
-                    metadata={
-                        "venue_id": venue_id,
-                        "venue_name": venue_name,
-                        "booking_id": booking["id"],
-                        "maintenance_start": start_time,
-                        "maintenance_end": end_time,
-                        "maintenance_reason": reason
-                    }
-                )
-                responses.append(response)
-            
-            successful_notifications = sum(1 for r in responses if r.success)
-            
-            if successful_notifications > 0:
-                return NotificationResponse(
-                    success=True,
-                    message=f"Maintenance notifications sent to {successful_notifications} user(s)"
-                )
-            else:
-                return NotificationResponse(
-                    success=True,  # Not an error if no affected users
-                    message="No affected users to notify"
-                )
-                
-        except Exception as e:
-            logger.error(f"Error sending maintenance notifications: {e}")
             return NotificationResponse(success=False, message=str(e))
 
     async def _handle_event_approval(self, notification: Notification, approved: bool, reason: str = None, additional_data: dict = None):

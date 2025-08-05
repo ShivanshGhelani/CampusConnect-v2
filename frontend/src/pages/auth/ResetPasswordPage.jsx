@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { authAPI } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -30,31 +31,14 @@ function ResetPasswordPage() {
 
   const validateToken = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/auth/validate-reset-token/${token}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await authAPI.validateResetToken(token);
+
+      setTokenValidation({
+        isValid: true,
+        isLoading: false,
+        userType: response.data.user_type,
+        userInfo: response.data.user_info,
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setTokenValidation({
-          isValid: true,
-          isLoading: false,
-          userType: data.user_type,
-          userInfo: data.user_info,
-        });
-      } else {
-        setTokenValidation({
-          isValid: false,
-          isLoading: false,
-          userType: null,
-          userInfo: null,
-        });
-        setError(data.detail || 'Invalid or expired reset token.');
-      }
     } catch (error) {
       console.error('Token validation error:', error);
       setTokenValidation({
@@ -63,7 +47,7 @@ function ResetPasswordPage() {
         userType: null,
         userInfo: null,
       });
-      setError('Network error. Please check your connection and try again.');
+      setError(error.response?.data?.detail || 'Invalid or expired reset token.');
     }
   };
 
@@ -104,57 +88,39 @@ function ResetPasswordPage() {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/auth/reset-password/${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          new_password: formData.password,
-        }),
+      const data = await authAPI.resetPassword(token, {
+        new_password: formData.password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage('Password has been reset successfully! Logging you in...');
+      setMessage('Password has been reset successfully! Logging you in...');
         
-        // Auto-login after successful password reset
-        setTimeout(async () => {
-          try {
-            let loginData;
-            if (tokenValidation.userType === 'student') {
-              loginData = {
-                enrollment_no: tokenValidation.userInfo.enrollment_no,
-                password: formData.password,
-                remember_me: false,
-              };
-            } else if (tokenValidation.userType === 'faculty') {
-              loginData = {
-                employee_id: tokenValidation.userInfo.employee_id,
-                password: formData.password,
-                remember_me: false,
-              };
-            }
+      // Auto-login after successful password reset
+      setTimeout(async () => {
+        try {
+          let loginData;
+          if (tokenValidation.userType === 'student') {
+            loginData = {
+              enrollment_no: tokenValidation.userInfo.enrollment_no,
+              password: formData.password,
+              remember_me: false,
+            };
+          } else if (tokenValidation.userType === 'faculty') {
+            loginData = {
+              employee_id: tokenValidation.userInfo.employee_id,
+              password: formData.password,
+              remember_me: false,
+            };
+          }
 
-            const loginResult = await login(loginData, tokenValidation.userType);
-            
-            if (loginResult.success) {
-              const redirectPath = tokenValidation.userType === 'faculty' 
-                ? '/faculty/profile' 
-                : '/client/dashboard';
-              navigate(redirectPath, { replace: true });
-            } else {
-              // If auto-login fails, redirect to login page
-              navigate('/auth/login', { 
-                replace: true,
-                state: { 
-                  message: 'Password reset successful! Please log in with your new password.' 
-                }
-              });
-            }
-          } catch (loginError) {
-            console.error('Auto-login error:', loginError);
+          const loginResult = await login(loginData, tokenValidation.userType);
+          
+          if (loginResult.success) {
+            const redirectPath = tokenValidation.userType === 'faculty' 
+              ? '/faculty/profile' 
+              : '/client/dashboard';
+            navigate(redirectPath, { replace: true });
+          } else {
+            // If auto-login fails, redirect to login page
             navigate('/auth/login', { 
               replace: true,
               state: { 
@@ -162,10 +128,16 @@ function ResetPasswordPage() {
               }
             });
           }
-        }, 2000);
-      } else {
-        setError(data.detail || 'Failed to reset password. Please try again.');
-      }
+        } catch (loginError) {
+          console.error('Auto-login error:', loginError);
+          navigate('/auth/login', { 
+            replace: true,
+            state: { 
+              message: 'Password reset successful! Please log in with your new password.' 
+            }
+          });
+        }
+      }, 2000);
     } catch (error) {
       console.error('Reset password error:', error);
       setError('Network error. Please check your connection and try again.');

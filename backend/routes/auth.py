@@ -138,8 +138,6 @@ async def admin_login_page(request: Request):
             return RedirectResponse(url="/admin/events/create", status_code=302)
         elif admin.role == AdminRole.ORGANIZER_ADMIN:
             return RedirectResponse(url="/admin/events", status_code=302)
-        elif admin.role == AdminRole.VENUE_ADMIN:
-            return RedirectResponse(url="/admin/venue", status_code=302)
         elif admin.role == AdminRole.EVENT_ADMIN:
             return RedirectResponse(url="/admin/events", status_code=302)
         elif admin.role == AdminRole.CONTENT_ADMIN:
@@ -191,9 +189,6 @@ async def admin_login(request: Request):
     elif admin.role == AdminRole.ORGANIZER_ADMIN:
         # Organizer Admin goes to their assigned events
         return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)
-    elif admin.role == AdminRole.VENUE_ADMIN:
-        # Venue Admin goes to venue management dashboard
-        return RedirectResponse(url="http://localhost:3000/admin/venue", status_code=303)
     elif admin.role == AdminRole.EVENT_ADMIN:
         # Event Admin goes to events page (filtered view)
         return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)

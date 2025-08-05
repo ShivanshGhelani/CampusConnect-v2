@@ -353,26 +353,6 @@ def generate_bulk_certificate_ids(enrollment_numbers: list, event_id: str) -> di
     return certificate_ids
 
 
-def generate_venue_id() -> str:
-    """
-    Generate a unique venue ID
-    
-    Returns:
-        Unique venue ID in format VEN{8-digit-code}
-    """
-    return generate_base_id("VEN", 8)
-
-
-def generate_booking_id() -> str:
-    """
-    Generate a unique booking ID
-    
-    Returns:
-        Unique booking ID in format BKG{8-digit-code}
-    """
-    return generate_base_id("BKG", 8)
-
-
 def generate_notification_id() -> str:
     """
     Generate a unique notification ID

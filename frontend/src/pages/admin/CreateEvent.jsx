@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
-import DateRangePicker from '../../components/common/DateRangePicker';
 import DateTimePicker from '../../components/common/DateTimePicker';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import ClockPicker from '../../components/common/ClockPicker';
 import { useAuth } from '../../context/AuthContext';
 import { venueApi } from '../../api/axios';
@@ -25,9 +25,9 @@ function CreateEvent() {
   const totalSteps = steps.length;
   const [venues, setVenues] = useState([]);
   const [selectedVenueId, setSelectedVenueId] = useState('');
-  const [venueBookings, setVenueBookings] = useState([]);
-  const [showVenueAvailability, setShowVenueAvailability] = useState(false);
-  const [bookingDateRange, setBookingDateRange] = useState({ start: null, end: null });
+  const [isCustomVenueChecked, setIsCustomVenueChecked] = useState(false);
+  const [filteredVenues, setFilteredVenues] = useState([]);
+  const [showVenueDropdown, setShowVenueDropdown] = useState(false);
   
   // Session management for Executive Admin
   const [eventCreatorSession, setEventCreatorSession] = useState(null);
@@ -160,9 +160,6 @@ function CreateEvent() {
       setCreatorName('');
     }
   };
-  const [venueAvailability, setVenueAvailability] = useState([]);
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
-
   // Form state (expanded for all fields) - Move this before useEffect that uses it
   const [form, setForm] = useState({
     event_id: '',
@@ -339,8 +336,10 @@ function CreateEvent() {
       console.log('Venues API response:', response);
       
       if (response.data) {
-        // The venueApi.list() returns response.data which contains the venues array
-        const venueArray = Array.isArray(response.data) ? response.data : [];
+        // The API returns { success: true, data: [venues], message: "..." }
+        // So we need to access response.data.data, not just response.data
+        const apiData = response.data.data || response.data;
+        const venueArray = Array.isArray(apiData) ? apiData : [];
         setVenues(venueArray);
         console.log(`Loaded ${venueArray.length} venues`);
       } else {
@@ -432,44 +431,6 @@ function CreateEvent() {
     return `${baseId}${Date.now()}`;
   };
 
-  const checkVenueAvailability = async () => {
-    if (!selectedVenueId || selectedVenueId === 'custom') return;
-    
-    try {
-      setCheckingAvailability(true);
-      const response = await venueApi.getBookings(selectedVenueId);
-      console.log('Venue bookings response:', response);
-      
-      if (response.data) {
-        const bookings = response.data.bookings || response.data || [];
-        setVenueBookings(bookings);
-        
-        // Convert bookings to date ranges for the date picker
-        const bookedRanges = bookings.map(booking => ({
-          start: booking.start_datetime.split('T')[0],
-          end: booking.end_datetime.split('T')[0],
-          eventName: booking.event_name
-        }));
-        
-        setVenueAvailability(bookedRanges);
-      }
-    } catch (err) {
-      console.error('Error checking venue availability:', err);
-    } finally {
-      setCheckingAvailability(false);
-    }
-  };
-
-  // Check venue availability when venue changes
-  useEffect(() => {
-    if (selectedVenueId && selectedVenueId !== 'custom') {
-      checkVenueAvailability();
-    } else {
-      setVenueAvailability([]);
-      setVenueBookings([]);
-    }
-  }, [selectedVenueId]);
-
   // Load existing organizers on component mount
   useEffect(() => {
     const fetchExistingOrganizers = async () => {
@@ -505,15 +466,28 @@ function CreateEvent() {
           !event.target.closest('.organizer-dropdown-container')) {
         setActiveOrganizerDropdown(null);
       }
+      // Close venue dropdown when clicking outside
+      if (showVenueDropdown && !event.target.closest('.venue-search-container')) {
+        setShowVenueDropdown(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeOrganizerDropdown]);
+  }, [activeOrganizerDropdown, showVenueDropdown]);
+
+  // Debug useEffect for selectedVenueId changes
+  useEffect(() => {
+    console.log('selectedVenueId state changed to:', selectedVenueId);
+  }, [selectedVenueId]);
 
   // Handlers
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
+    
+    if (name === 'venue') {
+      console.log('Venue input changed:', value);
+    }
     
     if (type === 'file') {
       if (name === 'certificate_template') {
@@ -643,40 +617,33 @@ function CreateEvent() {
 
   // Handle venue selection
   const handleVenueSelection = (venueId) => {
+    console.log('handleVenueSelection called with:', venueId);
+    console.log('Before update - selectedVenueId:', selectedVenueId);
     setSelectedVenueId(venueId);
+    setIsCustomVenueChecked(venueId === 'custom');
+    console.log('After setSelectedVenueId called with:', venueId);
+    
     const selectedVenue = venues.find(v => v.venue_id === venueId);
     if (selectedVenue) {
+      console.log('Setting venue from list:', selectedVenue);
       setForm(prev => ({
         ...prev,
         venue_id: venueId,
-        venue: selectedVenue.venue_name + ' - ' + selectedVenue.location
+        venue: selectedVenue.name + ' - ' + selectedVenue.location
       }));
     } else if (venueId === 'custom') {
+      console.log('Setting custom venue mode');
       setForm(prev => ({
         ...prev,
         venue_id: '',
         venue: ''
       }));
     } else {
+      console.log('Clearing venue selection');
       setForm(prev => ({
         ...prev,
         venue_id: '',
         venue: ''
-      }));
-    }
-    setShowVenueAvailability(venueId !== '' && venueId !== 'custom');
-  };
-
-  // Handle date range change for venue booking
-  const handleBookingDateChange = (startDate, endDate) => {
-    setBookingDateRange({ start: startDate, end: endDate });
-    
-    if (startDate && endDate) {
-      // Update form dates to match the selected booking range
-      setForm(prev => ({
-        ...prev,
-        start_date: formatDateToLocal(startDate),
-        end_date: formatDateToLocal(endDate)
       }));
     }
   };
@@ -1512,34 +1479,89 @@ function CreateEvent() {
                   {form.mode === 'offline' || form.mode === 'hybrid' ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Venue Selection<span className="text-red-500">*</span>
+                        Venue/Location<span className="text-red-500">*</span>
                       </label>
                       
-                      {/* Venue Selection */}
-                      <div className="mb-4">
-                        <select 
-                          value={selectedVenueId} 
-                          onChange={(e) => handleVenueSelection(e.target.value)}
-                          className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
-                        >
-                          <option value="">Select a venue...</option>
-                          {venues.filter(v => v.is_active).map((venue) => (
-                            <option key={venue.venue_id} value={venue.venue_id}>
-                              {venue.venue_name} - {venue.location} (Capacity: {venue.capacity || 'N/A'})
-                            </option>
-                          ))}
-                        </select>
-                        {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                      {/* Venue Search Box */}
+                      <div className="relative venue-search-container">
+                        <input 
+                          type="text"
+                          name="venue"
+                          value={form.venue}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setForm(prev => ({ ...prev, venue: value }));
+                            
+                            // Show dropdown if there's text and matching venues
+                            if (value.trim()) {
+                              const filteredVenues = venues.filter(v => 
+                                v.is_active && 
+                                (v.name.toLowerCase().includes(value.toLowerCase()) || 
+                                 v.location.toLowerCase().includes(value.toLowerCase()))
+                              );
+                              setFilteredVenues(filteredVenues);
+                              setShowVenueDropdown(filteredVenues.length > 0);
+                            } else {
+                              setShowVenueDropdown(false);
+                              setSelectedVenueId('');
+                            }
+                          }}
+                          placeholder="Search for a venue or enter custom location..."
+                          className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
+                          required
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                        
+                        {/* Venue Dropdown Results */}
+                        {showVenueDropdown && filteredVenues.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            {filteredVenues.map((venue) => (
+                              <div
+                                key={venue.venue_id}
+                                onClick={() => {
+                                  setSelectedVenueId(venue.venue_id);
+                                  setForm(prev => ({
+                                    ...prev,
+                                    venue_id: venue.venue_id,
+                                    venue: venue.name + ' - ' + venue.location
+                                  }));
+                                  setShowVenueDropdown(false);
+                                }}
+                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{venue.name}</p>
+                                    <p className="text-xs text-gray-500">{venue.location}</p>
+                                  </div>
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    Capacity: {venue.capacity || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                      
+                      {errors.venue && <p className="text-xs text-red-500 mt-1">{errors.venue}</p>}
+                      
+                      <p className="text-xs text-gray-500 mt-2">
+                        Start typing to search for existing venues, or enter a custom location name
+                      </p>
 
                       {/* Selected Venue Details */}
-                      {selectedVenueId && selectedVenueId !== 'custom' && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      {selectedVenueId && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                           {(() => {
                             const selectedVenue = venues.find(v => v.venue_id === selectedVenueId);
                             return selectedVenue ? (
                               <div>
-                                <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.venue_name}</h4>
+                                <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.name}</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
                                   <div>
                                     <p><strong>Location:</strong> {selectedVenue.location}</p>
@@ -1574,88 +1596,16 @@ function CreateEvent() {
                         </div>
                       )}
 
-                      {/* Date Range Selection for Venue Booking */}
-                      {selectedVenueId && selectedVenueId !== 'custom' && (
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-3">
-                            Select Booking Date Range<span className="text-red-500">*</span>
-                          </label>
-                          <DateRangePicker
-                            startDate={bookingDateRange.start}
-                            endDate={bookingDateRange.end}
-                            onDateChange={handleBookingDateChange}
-                            bookedDates={venueAvailability}
-                            minDate={formatDateToLocal(new Date())}
-                            className="w-full"
-                          />
-                          <p className="text-xs text-gray-500 mt-2">
-                            {checkingAvailability ? 'Checking availability...' : 'Red dates are already booked. Select available dates for your event.'}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Venue Availability Status */}
-                      {showVenueAvailability && venueBookings.length > 0 && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                          <h5 className="font-semibold text-gray-900 mb-3">
-                            <i className="fas fa-info-circle mr-2"></i>
-                            Current Bookings for This Venue
-                          </h5>
-                          <div className="space-y-2">
-                            {venueBookings.slice(0, 3).map((booking, idx) => (
-                              <div key={idx} className="bg-red-100 border border-red-200 rounded-lg p-3">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <p className="font-medium text-red-900">{booking.event_name}</p>
-                                    <p className="text-sm text-red-700">
-                                      {new Date(booking.start_datetime).toLocaleDateString()} - {new Date(booking.end_datetime).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs">
-                                    Booked
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                            {venueBookings.length > 3 && (
-                              <p className="text-sm text-gray-600 mt-2">
-                                And {venueBookings.length - 3} more bookings...
-                              </p>
-                            )}
+                      {/* Custom Venue Indicator */}
+                      {form.venue && !selectedVenueId && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-map-marker-alt text-green-600"></i>
+                            <span className="text-green-800 font-medium">Custom Location</span>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Manual venue entry for custom locations */}
-                      <div className="mt-4">
-                        <label className="flex items-center text-sm text-gray-600">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedVenueId === 'custom'}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                handleVenueSelection('custom');
-                                setForm(prev => ({ ...prev, venue: '' }));
-                              } else {
-                                handleVenueSelection('');
-                              }
-                            }}
-                            className="mr-2"
-                          />
-                          Use custom venue/location (not in the venue list)
-                        </label>
-                      </div>
-
-                      {selectedVenueId === 'custom' && (
-                        <div className="mt-3">
-                          <input 
-                            type="text" 
-                            name="venue" 
-                            value={form.venue} 
-                            onChange={handleChange} 
-                            placeholder="Enter custom venue or location"
-                            className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
-                          />
+                          <p className="text-green-700 text-sm mt-1">
+                            Using custom venue: <strong>{form.venue}</strong>
+                          </p>
                         </div>
                       )}
                     </div>

@@ -230,6 +230,12 @@ export const authAPI = {
   adminLogin: (credentials) => api.post('/api/v1/auth/admin/login', credentials),
   adminLogout: () => api.post('/api/v1/auth/admin/logout'),
   adminStatus: () => api.get('/api/v1/auth/admin/status'),
+
+  // Password Reset APIs
+  forgotPasswordStudent: (data) => api.post('/api/v1/auth/forgot-password/student', data),
+  forgotPasswordFaculty: (data) => api.post('/api/v1/auth/forgot-password/faculty', data),
+  validateResetToken: (token) => api.get(`/api/v1/auth/validate-reset-token/${token}`),
+  resetPassword: (token, data) => api.post(`/api/v1/auth/reset-password/${token}`, data),
 };
 
 export const clientAPI = {
@@ -388,10 +394,12 @@ export const adminAPI = {
   
   // Venue Management
   getVenues: (filters) => api.get('/api/v1/admin/venues', { params: filters }),
+  getAllVenues: (filters) => api.get('/api/v1/admin/venues/all', { params: filters }),
   getVenue: (venueId) => api.get(`/api/v1/admin/venues/${venueId}`),
   createVenue: (venueData) => api.post('/api/v1/admin/venues', venueData),
   updateVenue: (venueId, venueData) => api.put(`/api/v1/admin/venues/${venueId}`, venueData),
   deleteVenue: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}`),
+  restoreVenue: (venueId) => api.post(`/api/v1/admin/venues/${venueId}/restore`),
   getVenueStatistics: () => api.get('/api/v1/admin/venues/stats/overview'),
   getVenueBookings: (venueId, filters) => api.get(`/api/v1/admin/venues/${venueId}/bookings`, { params: filters }),
   bookVenue: (venueId, bookingData) => api.post(`/api/v1/admin/venues/${venueId}/book`, bookingData),

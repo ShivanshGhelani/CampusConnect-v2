@@ -59,7 +59,6 @@ class Event(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     venue: str
-    venue_id: Optional[str] = None  # Link to venue management system
     mode: str
     status: str = "upcoming"  # Values: "upcoming", "ongoing", "completed"
     sub_status: Optional[str] = "registration_not_started"  # Detailed status
@@ -268,7 +267,6 @@ class CreateEvent(BaseModel):
     # Venue and mode
     mode: str = Field(..., description="Event mode: online, offline, hybrid")
     venue: str = Field(..., description="Venue name or platform link")
-    venue_id: Optional[str] = Field(default=None, description="Venue ID from venue management")
     
     # New targeting fields
     target_audience: str = Field(..., description="student, faculty, or both")
@@ -318,7 +316,6 @@ class UpdateEvent(BaseModel):
     certificate_end_time: Optional[str] = None
     mode: Optional[str] = None
     venue: Optional[str] = None
-    venue_id: Optional[str] = None
     target_audience: Optional[str] = None
     is_xenesis_event: Optional[bool] = None
     organizers: Optional[List[str]] = None
@@ -343,7 +340,6 @@ class EventResponse(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     venue: str
-    venue_id: Optional[str] = None
     mode: str
     status: str
     sub_status: Optional[str] = None

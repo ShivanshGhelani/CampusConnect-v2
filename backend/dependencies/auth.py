@@ -127,16 +127,6 @@ async def require_organizer_admin_access(request: Request):
         )
     return admin
 
-async def require_venue_admin_access(request: Request):
-    """Dependency to require venue admin authentication"""
-    admin = await require_admin(request)
-    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.VENUE_ADMIN]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Venue admin access required"
-        )
-    return admin
-
 async def require_content_admin_or_higher(request: Request):
     """Dependency to require content admin, executive admin, or super admin authentication"""
     admin = await require_admin(request)

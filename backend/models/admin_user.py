@@ -8,7 +8,6 @@ class AdminRole(str, Enum):
     SUPER_ADMIN = "super_admin"       # Full access to everything
     EXECUTIVE_ADMIN = "executive_admin"  # Create events and manage certificates
     ORGANIZER_ADMIN = "organizer_admin"  # Manage assigned events only
-    VENUE_ADMIN = "venue_admin"       # Approve venue bookings and manage venues
     EVENT_ADMIN = "event_admin"       # Legacy role - access to specific events only (deprecated)
     CONTENT_ADMIN = "content_admin"   # Manage content and announcements
 

@@ -23,13 +23,6 @@ class PermissionManager:
             "admin.students.read",
             "admin.students.update",
             "admin.students.delete",
-            "admin.venues.create",
-            "admin.venues.read",
-            "admin.venues.update",
-            "admin.venues.delete",
-            "admin.venue_bookings.approve",
-            "admin.venue_bookings.reject",
-            "admin.venue_bookings.view_all",
             "admin.dashboard.view",
             "admin.analytics.view",
             "admin.settings.manage",
@@ -53,22 +46,9 @@ class PermissionManager:
             "admin.events.read.assigned",
             "admin.events.update.assigned",
             "admin.events.delete.request",  # Can request deletion, not delete directly
-            "admin.venue_bookings.create",
-            "admin.venue_bookings.view.own",
             "admin.students.read",
             "admin.notifications.view",
             "admin.dashboard.view.assigned_events"
-        ],
-        AdminRole.VENUE_ADMIN: [
-            "admin.venues.read",
-            "admin.venues.update",
-            "admin.venues.maintenance.schedule",
-            "admin.venue_bookings.view_all",
-            "admin.venue_bookings.approve",
-            "admin.venue_bookings.reject",
-            "admin.venue_bookings.manage",
-            "admin.notifications.view",
-            "admin.dashboard.view.venue_stats"
         ],
         # Legacy roles for backward compatibility
         AdminRole.EVENT_ADMIN: [
@@ -87,7 +67,7 @@ class PermissionManager:
     }
     
     @classmethod
-    def has_permission(cls, admin: AdminUser, permission: str, event_id: Optional[str] = None, venue_id: Optional[str] = None) -> bool:
+    def has_permission(cls, admin: AdminUser, permission: str, event_id: Optional[str] = None) -> bool:
         """Check if admin has a specific permission"""
         if not admin.is_active:
             return False
@@ -126,11 +106,6 @@ class PermissionManager:
             return event_id in (admin.assigned_events or [])
             
         return False
-    
-    @classmethod
-    def can_approve_venue_booking(cls, admin: AdminUser) -> bool:
-        """Check if admin can approve venue bookings"""
-        return admin.role in [AdminRole.SUPER_ADMIN, AdminRole.VENUE_ADMIN]
     
     @classmethod
     def can_request_event_deletion(cls, admin: AdminUser, event_id: str) -> bool:

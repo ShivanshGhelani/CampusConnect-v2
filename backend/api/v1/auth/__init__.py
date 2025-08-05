@@ -228,8 +228,7 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
             AdminRole.EXECUTIVE_ADMIN: "/admin/events/create",
             AdminRole.EVENT_ADMIN: "/admin/events",
             AdminRole.CONTENT_ADMIN: "/admin/events",
-            AdminRole.ORGANIZER_ADMIN: "/admin/events",
-            AdminRole.VENUE_ADMIN: "/admin/venue"
+            AdminRole.ORGANIZER_ADMIN: "/admin/events"
         }
         
         response_data = {

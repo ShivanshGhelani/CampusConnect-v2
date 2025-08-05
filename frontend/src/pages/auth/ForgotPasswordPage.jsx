@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { authAPI } from '../../api/axios';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function ForgotPasswordPage() {
@@ -45,47 +46,32 @@ function ForgotPasswordPage() {
     setMessage('');
 
     try {
-      let requestData;
-      let endpoint;
+      let response;
 
       if (activeTab === 'student') {
-        requestData = {
+        const requestData = {
           enrollment_no: formData.enrollment_no,
           email: formData.email,
         };
-        endpoint = '/api/v1/auth/forgot-password/student';
+        response = await authAPI.forgotPasswordStudent(requestData);
       } else {
-        requestData = {
+        const requestData = {
           employee_id: formData.employee_id,
           email: formData.faculty_email,
         };
-        endpoint = '/api/v1/auth/forgot-password/faculty';
+        response = await authAPI.forgotPasswordFaculty(requestData);
       }
 
-      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
+      setMessage(response.data.message || 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions.');
+      setFormData({
+        enrollment_no: '',
+        email: '',
+        employee_id: '',
+        faculty_email: '',
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage(data.message || 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions.');
-        setFormData({
-          enrollment_no: '',
-          email: '',
-          employee_id: '',
-          faculty_email: '',
-        });
-      } else {
-        setError(data.detail || 'Failed to send reset link. Please try again.');
-      }
     } catch (error) {
       console.error('Forgot password error:', error);
-      setError('Network error. Please check your connection and try again.');
+      setError(error.response?.data?.detail || 'Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
