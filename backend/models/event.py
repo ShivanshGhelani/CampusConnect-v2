@@ -267,6 +267,8 @@ class CreateEvent(BaseModel):
     # Venue and mode
     mode: str = Field(..., description="Event mode: online, offline, hybrid")
     venue: str = Field(..., description="Venue name or platform link")
+    venue_id: Optional[str] = Field(default=None, description="Venue ID if selecting existing venue")
+    venue_type: Optional[str] = Field(default=None, description="Type of venue: existing or custom")
     
     # New targeting fields
     target_audience: str = Field(..., description="student, faculty, or both")

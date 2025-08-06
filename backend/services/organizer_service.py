@@ -147,6 +147,22 @@ class OrganizerService:
         organizers_data = await self.db.find_many(self.collection_name, query, skip=skip, limit=limit)
         return [OrganizerResponse(**org) for org in organizers_data]
     
+    async def get_organizer_by_id(self, organizer_id: str) -> Optional[OrganizerResponse]:
+        """Get organizer by ID (alias for get_organizer)"""
+        return await self.get_organizer(organizer_id)
+    
+    async def deactivate_organizer(self, organizer_id: str) -> bool:
+        """Deactivate organizer (soft delete by marking as inactive)"""
+        update_data = UpdateOrganizer(is_active=False)
+        result = await self.update_organizer(organizer_id, update_data)
+        return result is not None
+    
+    async def activate_organizer(self, organizer_id: str) -> bool:
+        """Activate organizer (mark as active)"""
+        update_data = UpdateOrganizer(is_active=True)
+        result = await self.update_organizer(organizer_id, update_data)
+        return result is not None
+
     async def get_unique_departments(self) -> List[str]:
         """Get list of unique departments from all organizers"""
         # Get all organizers and extract unique departments
@@ -156,3 +172,6 @@ class OrganizerService:
             if "department" in org and org["department"]:
                 departments.add(org["department"])
         return sorted(list(departments))
+
+# Create singleton instance
+organizer_service = OrganizerService()

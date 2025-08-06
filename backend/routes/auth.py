@@ -22,8 +22,60 @@ async def get_password_hash(password: str) -> str:
 
 async def authenticate_admin(username: str, password: str) -> Union[AdminUser, None]:
     """Authenticate admin using username and password"""
-    # Check if admin exists in the users collection
+    
+    # First check admin_users collection (existing super admins, executive admins, etc.)
     admin = await DatabaseOperations.find_one(
+        "admin_users", 
+        {
+            "username": username,
+            "is_active": True
+        }
+    )
+    
+    if admin and await verify_password(password, admin.get("password", "")):
+        logger.info(f"Admin authenticated from admin_users collection: {username}")
+        return AdminUser(**admin)
+    
+    # If not found in admin_users, check users collection for organizers
+    organizer = await DatabaseOperations.find_one(
+        "users",
+        {
+            "username": username,
+            "user_type": "organizer",  # Check for organizer user type
+            "is_active": True
+        }
+    )
+    
+    if organizer:
+        logger.info(f"Found organizer in users collection: {username}")
+        try:
+            if await verify_password(password, organizer.get("password", "")):
+                logger.info(f"Organizer password verified successfully: {username}")
+                # Convert organizer data to AdminUser format for compatibility
+                admin_data = {
+                    "fullname": organizer.get("fullname"),
+                    "username": organizer.get("username"),
+                    "email": organizer.get("email"),
+                    "password": organizer.get("password"),
+                    "is_active": organizer.get("is_active"),
+                    "role": organizer.get("role", "organizer_admin"),  # Default to organizer_admin
+                    "created_at": organizer.get("created_at"),
+                    "last_login": organizer.get("last_login"),
+                    "created_by": organizer.get("created_by"),
+                    "assigned_events": organizer.get("assigned_events", []),
+                    "permissions": organizer.get("permissions", [])
+                }
+                return AdminUser(**admin_data)
+            else:
+                logger.warning(f"Password verification failed for organizer: {username}")
+        except Exception as e:
+            logger.error(f"Password verification error for organizer {username}: {str(e)}")
+            logger.error(f"Stored password hash: {organizer.get('password', 'No password field')[:20]}...")
+    else:
+        logger.info(f"No organizer found with username: {username}")
+    
+    # Also check legacy users collection with is_admin flag (for backward compatibility)
+    legacy_admin = await DatabaseOperations.find_one(
         "users", 
         {
             "username": username,
@@ -32,8 +84,8 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
         }
     )
     
-    if admin and await verify_password(password, admin.get("password", "")):
-        return AdminUser(**admin)
+    if legacy_admin and await verify_password(password, legacy_admin.get("password", "")):
+        return AdminUser(**legacy_admin)
     
     return None
 
@@ -160,12 +212,22 @@ async def admin_login(request: Request):
     admin = await authenticate_admin(username, password)
     if not admin:
         return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Invalid username or password", status_code=302)
-      # Update last login time
-    await DatabaseOperations.update_one(
-        "users",
+      
+    # Update last login time in the correct collection
+    # First try admin_users collection
+    admin_users_result = await DatabaseOperations.update_one(
+        "admin_users",
         {"username": username},
         {"$set": {"last_login": datetime.utcnow()}}
     )
+    
+    # If not updated in admin_users, try users collection (for organizers)
+    if not admin_users_result:
+        await DatabaseOperations.update_one(
+            "users",
+            {"username": username},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
     
     # Store admin in session with serialized datetime values and login time
     admin_data = admin.model_dump()

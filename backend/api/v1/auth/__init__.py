@@ -180,6 +180,8 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
         password = login_data.password
         remember_me = login_data.remember_me
         
+        logger.info(f"Admin login attempt via API: {username}")
+        
         if not all([username, password]):
             return JSONResponse(
                 status_code=400,
@@ -188,17 +190,29 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
         
         admin = await authenticate_admin(username, password)
         if not admin:
+            logger.warning(f"Authentication failed for user: {username}")
             return JSONResponse(
                 status_code=401,
                 content={"success": False, "message": "Invalid username or password"}
             )
         
-        # Update last login time
-        await DatabaseOperations.update_one(
-            "users",
+        logger.info(f"Authentication successful for user: {username}, role: {admin.role}")
+        
+        # Update last login time in the correct collection
+        # First try admin_users collection
+        admin_users_result = await DatabaseOperations.update_one(
+            "admin_users",
             {"username": username},
             {"$set": {"last_login": datetime.utcnow()}}
         )
+        
+        # If not updated in admin_users, try users collection (for organizers)
+        if not admin_users_result:
+            await DatabaseOperations.update_one(
+                "users",
+                {"username": username},
+                {"$set": {"last_login": datetime.utcnow()}}
+            )
         
         # Prepare user data for token
         admin_data = admin.model_dump()

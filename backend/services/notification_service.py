@@ -325,26 +325,31 @@ class NotificationService:
                     message=f"Unknown action type: {notification.action_type}"
                 )
             
-            # Mark notification as read and update metadata, then archive for event actions
+            # For event approval/rejection notifications, DELETE the original notification instead of archiving
+            # This prevents the accumulation of old approval notifications
             current_time = datetime.utcnow()
-            update_data = {
-                "status": NotificationStatus.READ.value,
-                "read_at": current_time,
-                f"metadata.action_taken": action,
-                f"metadata.action_reason": reason,
-                f"metadata.action_timestamp": current_time.isoformat()
-            }
             
-            # Archive event approval/rejection notifications after processing
             if notification.action_type in ["approve_event"]:
-                update_data["status"] = NotificationStatus.ARCHIVED.value
-                update_data["archived_at"] = current_time
-                logger.info(f"🗂️ Archiving notification {notification_id} after event action")
-            
-            await db[self.collection_name].update_one(
-                {"id": notification_id},
-                {"$set": update_data}
-            )
+                # DELETE the notification completely for event approval/rejection actions
+                delete_result = await db[self.collection_name].delete_one({"id": notification_id})
+                if delete_result.deleted_count > 0:
+                    logger.info(f"🗑️ Deleted original approval notification {notification_id} after event action: {action}")
+                else:
+                    logger.warning(f"⚠️ Failed to delete notification {notification_id}")
+            else:
+                # For other notification types, keep the existing archive behavior
+                update_data = {
+                    "status": NotificationStatus.READ.value,
+                    "read_at": current_time,
+                    f"metadata.action_taken": action,
+                    f"metadata.action_reason": reason,
+                    f"metadata.action_timestamp": current_time.isoformat()
+                }
+                
+                await db[self.collection_name].update_one(
+                    {"id": notification_id},
+                    {"$set": update_data}
+                )
             
             logger.info(f"Handled notification action: {notification_id} - {action} by {username}")
             return NotificationResponse(
@@ -465,6 +470,7 @@ class NotificationService:
         from database.operations import DatabaseOperations
         from services.email.service import EmailService
         from models.admin_user import AdminUser, AdminRole
+        from routes.auth import get_password_hash  # Import password hashing function
         import secrets
         import string
         
@@ -514,9 +520,9 @@ class NotificationService:
                             logger.warning(f"No email found for organizer: {organizer_name}")
                             continue
                         
-                        # Check if organizer already has an admin account
-                        existing_admin = await db["admin_users"].find_one({"email": organizer_email})
-                        is_new_organizer = existing_admin is None
+                        # Check if organizer already has a user account in users collection
+                        existing_user = await db["users"].find_one({"email": organizer_email})
+                        is_new_organizer = existing_user is None
                         
                         username = None
                         temporary_password = None
@@ -524,37 +530,58 @@ class NotificationService:
                         if is_new_organizer:
                             # Generate username and temporary password
                             username = organizer_employee_id or f"org_{organizer_email.split('@')[0]}"
-                            # Ensure username is unique
-                            existing_username = await db["admin_users"].find_one({"username": username})
+                            # Ensure username is unique in users collection
+                            existing_username = await db["users"].find_one({"username": username})
                             if existing_username:
                                 username = f"{username}_{secrets.token_hex(3)}"
                             
                             # Generate temporary password
                             temporary_password = self._generate_secure_password()
                             
-                            # Create admin account for organizer
-                            new_admin = AdminUser(
-                                fullname=organizer_name,
-                                username=username,
-                                email=organizer_email,
-                                password=temporary_password,
-                                role=AdminRole.ORGANIZER_ADMIN,
-                                is_active=True,
-                                created_by=notification.recipient_username
-                            )
+                            # Hash the password before storing
+                            hashed_password = await get_password_hash(temporary_password)
                             
-                            # Insert new admin user
-                            admin_dict = new_admin.dict()
-                            # Add extra fields that are not in the Pydantic model but needed in database
-                            admin_dict["employee_id"] = organizer_employee_id
-                            admin_dict["department"] = event_data.get("organizing_department", "")
-                            admin_dict["must_change_password"] = True
-                            await db["admin_users"].insert_one(admin_dict)
+                            # Create user account for organizer in 'users' collection (not admin_users as requested by user)
+                            new_organizer_user = {
+                                "fullname": organizer_name,
+                                "username": username,
+                                "email": organizer_email,
+                                "password": hashed_password,  # Store hashed password
+                                "user_type": "organizer",  # Specify user type as organizer
+                                "role": "organizer_admin",
+                                "is_active": True,
+                                "requires_password_change": True,
+                                "created_by": notification.recipient_username,
+                                "created_at": datetime.utcnow(),
+                                "employee_id": organizer_employee_id,
+                                "department": event_data.get("organizing_department", ""),
+                                "assigned_events": [event_id]
+                            }
                             
-                            logger.info(f"✅ Created new organizer admin account: {username}")
+                            # Insert organizer into users collection (as requested by user)
+                            await db["users"].insert_one(new_organizer_user)
+                            
+                            # Also add to dedicated organizers collection for super admin management
+                            organizer_record = {
+                                "id": f"org_{username}_{secrets.token_hex(4)}",
+                                "name": organizer_name,
+                                "email": organizer_email,
+                                "employee_id": organizer_employee_id,
+                                "department": event_data.get("organizing_department", ""),
+                                "phone": organizer.get("phone", ""),
+                                "user_account_username": username,  # Link to users collection
+                                "created_at": datetime.utcnow(),
+                                "updated_at": datetime.utcnow(),
+                                "is_active": True,
+                                "created_via_event": event_id
+                            }
+                            await db["organizers"].insert_one(organizer_record)
+                            
+                            logger.info(f"✅ Created new organizer account in 'users' collection: {username}")
+                            logger.info(f"✅ Added organizer record to 'organizers' collection for super admin management")
                         else:
-                            username = existing_admin["username"]
-                            logger.info(f"ℹ️ Using existing admin account: {username}")
+                            username = existing_user["username"]
+                            logger.info(f"ℹ️ Using existing user account: {username}")
                         
                         # Send approval email with event template
                         try:

@@ -24,8 +24,6 @@ function CreateEvent() {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = steps.length;
   const [venues, setVenues] = useState([]);
-  const [selectedVenueId, setSelectedVenueId] = useState('');
-  const [isCustomVenueChecked, setIsCustomVenueChecked] = useState(false);
   const [filteredVenues, setFilteredVenues] = useState([]);
   const [showVenueDropdown, setShowVenueDropdown] = useState(false);
   
@@ -208,25 +206,34 @@ function CreateEvent() {
   const [errors, setErrors] = useState({});
   const [existingEventIds, setExistingEventIds] = useState([]);
   const [checkingEventId, setCheckingEventId] = useState(false);
-  const [userClickedSubmit, setUserClickedSubmit] = useState(false);
-  const [justArrivedAtReview, setJustArrivedAtReview] = useState(false);
 
   // Load venues on component mount, but only after authentication is checked
   useEffect(() => {
+    console.log('🔧 COMPONENT MOUNTED - Authentication check:', { isAuthenticated, userType });
     if (isAuthenticated && userType === 'admin') {
       loadVenues();
       loadExistingEventIds();
     }
+    
+    // Cleanup function to log when component unmounts
+    return () => {
+      console.log('🚨 COMPONENT UNMOUNTING - This should not happen during step navigation!');
+    };
   }, [isAuthenticated, userType]);
 
   // Initialize event creator session for Executive Admin
   useEffect(() => {
+    console.log('🔧 Executive Admin Session Check:', { isAuthenticated, userType, userRole: user?.role });
+    
     if (isAuthenticated && userType === 'admin' && user && user.role === 'executive_admin') {
       // Check if there's an existing valid session
       const existingSession = getEventCreatorSession();
       
+      console.log('🔍 Existing Session:', existingSession);
+      
       if (!existingSession) {
         // Show modal to ask for creator name
+        console.log('🔔 Showing creator modal for Executive Admin');
         setShowCreatorModal(true);
       }
     }
@@ -271,25 +278,6 @@ function CreateEvent() {
       return () => clearInterval(timer);
     }
   }, [eventCreatorSession, user]);
-
-  // Track when we arrive at step 5 to prevent immediate auto-submission
-  useEffect(() => {
-    if (currentStep === totalSteps) {
-      console.log('🛡️ Arrived at review page - setting protection against auto-submission');
-      setJustArrivedAtReview(true);
-      setUserClickedSubmit(false);
-      
-      // Reset the protection after 2 seconds
-      const timer = setTimeout(() => {
-        console.log('🛡️ Auto-submission protection disabled after delay');
-        setJustArrivedAtReview(false);
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setJustArrivedAtReview(false);
-    }
-  }, [currentStep, totalSteps]);
 
   const loadExistingEventIds = async () => {
     try {
@@ -476,11 +464,6 @@ function CreateEvent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeOrganizerDropdown, showVenueDropdown]);
 
-  // Debug useEffect for selectedVenueId changes
-  useEffect(() => {
-    console.log('selectedVenueId state changed to:', selectedVenueId);
-  }, [selectedVenueId]);
-
   // Handlers
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -615,39 +598,6 @@ function CreateEvent() {
     setForm((prev) => ({ ...prev, contacts: newContacts }));
   };
 
-  // Handle venue selection
-  const handleVenueSelection = (venueId) => {
-    console.log('handleVenueSelection called with:', venueId);
-    console.log('Before update - selectedVenueId:', selectedVenueId);
-    setSelectedVenueId(venueId);
-    setIsCustomVenueChecked(venueId === 'custom');
-    console.log('After setSelectedVenueId called with:', venueId);
-    
-    const selectedVenue = venues.find(v => v.venue_id === venueId);
-    if (selectedVenue) {
-      console.log('Setting venue from list:', selectedVenue);
-      setForm(prev => ({
-        ...prev,
-        venue_id: venueId,
-        venue: selectedVenue.name + ' - ' + selectedVenue.location
-      }));
-    } else if (venueId === 'custom') {
-      console.log('Setting custom venue mode');
-      setForm(prev => ({
-        ...prev,
-        venue_id: '',
-        venue: ''
-      }));
-    } else {
-      console.log('Clearing venue selection');
-      setForm(prev => ({
-        ...prev,
-        venue_id: '',
-        venue: ''
-      }));
-    }
-  };
-
   // Dynamic fields for registration/fee/team
   const showFeeFields = form.registration_type === 'paid';
   const showTeamFields = form.registration_mode === 'team';
@@ -743,152 +693,429 @@ function CreateEvent() {
   // Navigation with validation
   const nextStep = () => {
     console.log('🔄 NEXT STEP CLICKED');
-    console.log('Current Step:', currentStep, 'Moving to:', currentStep + 1);
-    
-    // Reset submit click tracking when moving steps
-    setUserClickedSubmit(false);
+    console.log('Current Step Before:', currentStep);
+    console.log('Validation Result:', validateStep(currentStep));
     
     if (validateStep(currentStep)) {
       const newStep = Math.min(currentStep + 1, totalSteps);
-      console.log('✅ Validation passed, moving to step:', newStep);
+      console.log('✅ Moving to step:', newStep);
+      
+      // Special logging for step 5
+      if (newStep === 5) {
+        console.log('🎯 NAVIGATING TO REVIEW STEP (5) - This is where the issue might occur');
+      }
+      
       setCurrentStep(newStep);
     } else {
       console.log('❌ Validation failed, staying on step:', currentStep);
     }
   };
   const prevStep = () => {
-    // Reset submit click tracking when moving steps
-    setUserClickedSubmit(false);
     setCurrentStep((s) => Math.max(s - 1, 1));
   };
 
   // Review summary
   const renderReview = () => (
-    <div className="space-y-6 max-h-96 overflow-y-auto">
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Basic Information</h3>
-        <p><strong>Event ID:</strong> {form.event_id}</p>
-        <p><strong>Event Name:</strong> {form.event_name}</p>
-        <p><strong>Event Type:</strong> {form.event_type}</p>
-        <p><strong>Short Description:</strong> {form.short_description}</p>
-        <p><strong>Detailed Description:</strong> {form.detailed_description}</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+        <div className="flex items-center space-x-3">
+          <div className="flex-shrink-0">
+            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Review Your Event</h2>
+            <p className="text-sm text-gray-600 mt-1">Please review all details before creating your event</p>
+          </div>
+        </div>
       </div>
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Organizer Information</h3>
-        <p><strong>Department/Club:</strong> {form.organizing_department}</p>
-        <p><strong>Organizers:</strong> {form.organizers.filter(org => org.selected && org.name.trim() !== '').map(org => org.name).join(', ')}</p>
-        <p><strong>Contacts:</strong> {form.contacts.map((c) => `${c.name} (${c.contact})`).join(', ')}</p>
-      </div>
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Schedule</h3>
-        <p><strong>Start:</strong> {form.start_date} at {form.start_time}</p>
-        <p><strong>End:</strong> {form.end_date} at {form.end_time}</p>
-        <p><strong>Registration Period:</strong> {form.registration_start_date} at {form.registration_start_time} to {form.registration_end_date} at {form.registration_end_time}</p>
-        <p><strong>Certificate Available Until:</strong> {form.certificate_end_date} at {form.certificate_end_time}</p>
-      </div>
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Venue</h3>
-        <p><strong>Mode:</strong> {form.mode}</p>
-        <p><strong>Location/Platform:</strong> {form.venue}</p>
-      </div>
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Registration Details</h3>
-        <p><strong>Registration Type:</strong> {form.registration_type}</p>
-        {showFeeFields && <p><strong>Registration Fee:</strong> ₹{form.registration_fee}</p>}
-        {form.fee_description && <p><strong>Fee Description:</strong> {form.fee_description}</p>}
-        <p><strong>Registration Mode:</strong> {form.registration_mode}</p>
-        {showTeamFields && (
-          <>
-            <p><strong>Min Team Size:</strong> {form.team_size_min}</p>
-            <p><strong>Max Team Size:</strong> {form.team_size_max}</p>
-            <p><strong>Multiple Teams Allowed:</strong> {form.allow_multiple_team_registrations ? 'Yes (with approval)' : 'No'}</p>
-          </>
-        )}
-        {form.max_participants && <p><strong>Max Participants:</strong> {form.max_participants}</p>}
-        <p><strong>Min Participants:</strong> {form.min_participants}</p>
-      </div>
-      <div>
-        <h3 className="font-semibold text-lg mb-2">Certificate Template</h3>
-        <p>{form.certificate_template ? form.certificate_template.name : 'No file selected'}</p>
-        <p>{form.assets.length ? `${form.assets.length} asset(s) selected` : 'No assets uploaded'}</p>
-      </div>
-      
-      {/* Event Creator Information for Executive Admin */}
-      {user?.role === 'executive_admin' && (
-        <div>
-          <h3 className="font-semibold text-lg mb-2">Event Creator</h3>
-          {eventCreatorSession && getTimeRemaining() > 0 ? (
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <p><strong>Created By:</strong> {eventCreatorSession.creatorName}</p>
-              <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                Session Active
-              </span>
+
+      {/* Review Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Basic Information
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(1)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
             </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-              <p><strong>Created By:</strong> {user.fullname || user.username || 'Executive Admin'}</p>
-              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                No Active Session
-              </span>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Event ID:</span>
+                <span className="text-sm text-gray-900 font-mono bg-gray-50 px-2 py-1 rounded">{form.event_id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Event Name:</span>
+                <span className="text-sm text-gray-900 font-medium">{form.event_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Type:</span>
+                <span className="text-sm text-gray-900 capitalize">{form.event_type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Audience:</span>
+                <span className="text-sm text-gray-900 capitalize">{form.target_audience}</span>
+              </div>
+              {form.is_xenesis_event && (
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">Category:</span>
+                  <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded-full">Xenesis Event</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-gray-100">
+                <span className="text-sm font-medium text-gray-600">Description:</span>
+                <p className="text-sm text-gray-900 mt-1">{form.short_description}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Schedule & Timeline
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(3)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center mb-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                  <span className="text-sm font-medium text-green-800">Registration Period</span>
+                </div>
+                <p className="text-sm text-green-700 ml-5">
+                  {new Date(`${form.registration_start_date}T${form.registration_start_time}`).toLocaleString()} 
+                  <br />to {new Date(`${form.registration_end_date}T${form.registration_end_time}`).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center mb-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                  <span className="text-sm font-medium text-blue-800">Event Duration</span>
+                </div>
+                <p className="text-sm text-blue-700 ml-5">
+                  {new Date(`${form.start_date}T${form.start_time}`).toLocaleString()} 
+                  <br />to {new Date(`${form.end_date}T${form.end_time}`).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-center mb-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                  <span className="text-sm font-medium text-purple-800">Certificate Available Until</span>
+                </div>
+                <p className="text-sm text-purple-700 ml-5">
+                  {new Date(`${form.certificate_end_date}T${form.certificate_end_time}`).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Event Creator Information for Executive Admin */}
+          {user?.role === 'executive_admin' && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
+                <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Event Creator
+              </h3>
+              {eventCreatorSession && getTimeRemaining() > 0 ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{eventCreatorSession.creatorName}</p>
+                      <p className="text-xs text-green-600">Active Session</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    Time: {formatTimeRemaining(getTimeRemaining())}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{user.fullname || user.username || 'Executive Admin'}</p>
+                    <p className="text-xs text-amber-600">No Active Session</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Organizer Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Organizer Details
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(2)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <span className="text-sm font-medium text-gray-600">Department/Club:</span>
+                <p className="text-sm text-gray-900 mt-1">{form.organizing_department}</p>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-600">Organizers:</span>
+                <div className="mt-2 space-y-2">
+                  {form.organizers.filter(org => org.selected && org.name.trim() !== '').map((org, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{org.name}</p>
+                        <p className="text-xs text-gray-600">{org.email}</p>
+                        <p className="text-xs text-gray-500">ID: {org.employee_id}</p>
+                      </div>
+                      {org.isNew && (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">New</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-600">Contacts:</span>
+                <div className="mt-2 space-y-1">
+                  {form.contacts.map((c, idx) => (
+                    <div key={idx} className="text-sm text-gray-900 bg-gray-50 rounded px-3 py-2">
+                      {c.name} ({c.contact})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Venue Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Venue & Location
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(2)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Mode:</span>
+                <span className="text-sm text-gray-900 capitalize bg-gray-50 px-2 py-1 rounded">{form.mode}</span>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-600">
+                  {form.mode === 'online' ? 'Platform/Link:' : 'Venue/Location:'}
+                </span>
+                <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">{form.venue}</p>
+                {form.venue_id ? (
+                  <div className="flex items-center mt-2">
+                    <svg className="w-4 h-4 text-green-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs text-green-600 font-medium">Existing venue selected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center mt-2">
+                    <svg className="w-4 h-4 text-amber-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs text-amber-600 font-medium">Custom venue will be created</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Registration Details */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Registration Settings
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(3)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Type:</span>
+                <span className="text-sm text-gray-900 capitalize">{form.registration_type}</span>
+              </div>
+              {showFeeFields && (
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">Fee:</span>
+                  <span className="text-sm text-gray-900 font-medium">₹{form.registration_fee}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Mode:</span>
+                <span className="text-sm text-gray-900 capitalize">{form.registration_mode}</span>
+              </div>
+              {showTeamFields && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium text-blue-800">Team Size:</span>
+                    <span className="text-blue-700">{form.team_size_min} - {form.team_size_max} members</span>
+                  </div>
+                  {form.allow_multiple_team_registrations && (
+                    <p className="text-xs text-blue-600 mt-1">Multiple teams allowed (with approval)</p>
+                  )}
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Max Participants:</span>
+                <span className="text-sm text-gray-900">{form.max_participants || 'Unlimited'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium text-gray-600">Min Participants:</span>
+                <span className="text-sm text-gray-900">{form.min_participants}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Certificate Template */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Certificate Template
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(4)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm text-gray-900">{form.certificate_template?.name || 'No template selected'}</span>
+              </div>
+              {form.assets.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm text-gray-900">{form.assets.length} asset file(s)</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={prevStep}
+            className="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Certificate
+          </button>
+          
+          <div className="flex items-center space-x-4">
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Ready to create your event?</p>
+              <p className="text-xs text-gray-500">This will submit your event for approval</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Create Event
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
-  // Form submission (optional backend integration)
+  // Form submission (simplified)
   const handleSubmit = async (e) => {
-    console.log('🚨 FORM SUBMIT TRIGGERED!');
+    // If this is a form event, prevent default submission
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
+    console.log('🚨 Form Submit Triggered!');
     console.log('Current Step:', currentStep, 'Total Steps:', totalSteps);
-    console.log('Event target:', e.target.tagName, e.target.type);
-    console.log('Event submitter:', e.nativeEvent?.submitter?.textContent);
-    console.log('Event type:', e.type);
-    console.log('Event isTrusted:', e.isTrusted);
+    console.log('Event target:', e?.target, 'Event type:', e?.type);
     
-    e.preventDefault();
-    
-    // CRITICAL: Only allow submission if it's a trusted user event and on final step
-    if (!e.isTrusted) {
-      console.log('❌ BLOCKED: Event not trusted (programmatic submission)');
-      return false;
-    }
-    
-    // Only submit if we're on the final step (step 5) AND explicitly requested
+    // Only submit if we're on the final step (step 5)
     if (currentStep !== totalSteps) {
-      console.log('❌ BLOCKED: Not on final step');
-      return false;
+      console.log('❌ Not on final step, preventing submission');
+      return;
     }
     
-    // Additional check: ensure submitter is the actual submit button
-    if (!e.nativeEvent?.submitter || e.nativeEvent.submitter.textContent !== 'Create Event') {
-      console.log('❌ BLOCKED: Invalid submitter');
-      return false;
-    }
-    
-    // Additional check: ensure user actually clicked the submit button
-    if (!userClickedSubmit) {
-      console.log('❌ BLOCKED: User did not click submit button');
-      return false;
-    }
-    
-    // Additional check: prevent submission if we just arrived at review page
-    if (justArrivedAtReview) {
-      console.log('❌ BLOCKED: Just arrived at review page - auto-submission protection active');
-      return false;
-    }
-    
+    // Validate the current step
     if (!validateStep(currentStep)) {
-      console.log('❌ BLOCKED: Validation failed');
-      return false;
+      console.log('Validation failed');
+      return;
     }
     
-    // Check authentication before submitting
+    // Check authentication
     if (!isAuthenticated || userType !== 'admin') {
       alert('Authentication required. Please log in as admin first.');
-      return false;
+      return;
     }
     
     try {
@@ -922,10 +1149,8 @@ function CreateEvent() {
         certificate_end_time: form.certificate_end_time,
         mode: form.mode,
         venue: form.venue,
-        venue_id: form.venue_id || null,
-        target_outcomes: form.target_outcomes,
-        prerequisites: form.prerequisites || null,
-        what_to_bring: form.what_to_bring || null,
+        venue_id: form.venue_id || null, // Include venue_id for existing venues
+        venue_type: form.venue_id ? 'existing' : 'custom', // Add venue type for backend
         registration_type: form.registration_type,
         registration_fee: form.registration_fee ? parseFloat(form.registration_fee) : null,
         fee_description: form.fee_description || null,
@@ -935,53 +1160,38 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
-        // Always set status to pending approval for ALL events (universal approval required)
         status: 'pending_approval',
         approval_required: true
       };
 
-      // Note: All events require Super Admin approval regardless of organizer type
-      // New organizers will receive email notifications with login credentials if approved
-      // Existing organizers will only receive notifications in the notification center
-      console.log('All events require approval - status set to pending_approval');
-
-      // Add event_created_by for Executive Admin users with session
+      // Add event_created_by for Executive Admin users
       if (user.role === 'executive_admin' && eventCreatorSession) {
-        // Check if session is still valid (not expired due to inactivity)
         const timeRemaining = getTimeRemaining();
         if (timeRemaining > 0) {
           eventData.event_created_by = eventCreatorSession.creatorName;
-          console.log('Adding event_created_by:', eventCreatorSession.creatorName);
         } else {
-          // Session expired, clear it and use fallback
           clearEventCreatorSession();
           eventData.event_created_by = user.fullname || user.username || 'Executive Admin';
-          console.log('Session expired, using fallback for event_created_by:', eventData.event_created_by);
         }
       } else if (user.role === 'executive_admin') {
-        // Fallback if no session exists
         eventData.event_created_by = user.fullname || user.username || 'Executive Admin';
-        console.log('No session found, using fallback for event_created_by:', eventData.event_created_by);
       }
 
       console.log('Submitting event data:', eventData);
 
       const response = await adminAPI.createEvent(eventData);
-      console.log('Response:', response);
-
+      
       if (response.data && response.data.success) {
         // Clear the session after successful event creation
         if (user.role === 'executive_admin' && eventCreatorSession) {
-          console.log('Event request submitted successfully. Clearing creator session.');
           clearEventCreatorSession();
         }
         
-        // Determine success message based on user role
         const successMessage = user.role === 'executive_admin' 
           ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
           : 'Event created successfully! It is pending Super Admin approval.';
         
-        // Navigate to success page with event data
+        // Navigate to success page
         navigate('/admin/events/created-success', {
           state: { 
             eventData: eventData,
@@ -995,54 +1205,38 @@ function CreateEvent() {
     } catch (error) {
       console.error('Error submitting form:', error);
       
-      // Handle axios error responses
       if (error.response) {
-        // Server responded with error status
         const status = error.response.status;
         const data = error.response.data;
         
         if (status === 401) {
           alert('Authentication required. Please log in as admin first.');
-          window.location.href = '/auth/login?mode=admin';
         } else if (status === 403) {
           alert('Access denied. You do not have permission to create events.');
         } else if (status === 400 && data.detail && data.detail.includes('Event with this ID already exists')) {
-          // Handle duplicate event ID specifically
           const suggestedId = generateSuggestedEventId(form.event_id);
-          const message = `❌ Event ID "${form.event_id}" already exists!\n\n` +
-                         `Existing Event IDs: ${existingEventIds.join(', ')}\n\n` +
-                         `💡 Suggested alternative: "${suggestedId}"\n\n` +
-                         `Please go back and choose a unique Event ID.`;
-          alert(message);
-          
-          // Set the error in the form
+          alert(`Event ID "${form.event_id}" already exists! Try: ${suggestedId}`);
           setErrors(prev => ({
             ...prev,
             event_id: `This Event ID already exists. Try: ${suggestedId}`
           }));
-          
-          // Go back to step 1
           setCurrentStep(1);
-        } else if (status === 422) {
-          alert(`Validation error: ${data.detail || 'Please check your form data'}`);
-          console.error('Validation errors:', data.detail);
         } else {
-          alert(`Error creating event: ${data.message || data.detail || 'Unknown error'}`);
+          alert(`Error: ${data?.message || 'Failed to create event'}`);
         }
       } else if (error.request) {
-        // Network error
-        console.error('Network error details:', error.request);
-        alert('Network connection error. Please check if the backend server is running and accessible.');
+        alert('Network connection error. Please check if the backend server is running.');
       } else {
-        // Other error
-        console.error('Other error details:', error);
-        alert(`Unexpected error: ${error.message}. Please check the browser console for details.`);
+        alert(`Unexpected error: ${error.message}`);
       }
     }
   };
 
   // Render step content
   const renderStep = () => {
+    console.log('🎯 RENDERING STEP:', currentStep);
+    console.log('📋 Current Form State:', { event_id: form.event_id, event_name: form.event_name, venue: form.venue });
+    
     switch (currentStep) {
       case 1:
         return (
@@ -1478,11 +1672,10 @@ function CreateEvent() {
 
                   {form.mode === 'offline' || form.mode === 'hybrid' ? (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Venue/Location<span className="text-red-500">*</span>
                       </label>
                       
-                      {/* Venue Search Box */}
                       <div className="relative venue-search-container">
                         <input 
                           type="text"
@@ -1490,57 +1683,81 @@ function CreateEvent() {
                           value={form.venue}
                           onChange={(e) => {
                             const value = e.target.value;
-                            setForm(prev => ({ ...prev, venue: value }));
+                            setForm(prev => ({ 
+                              ...prev, 
+                              venue: value,
+                              venue_id: '' // Clear venue_id when manually typing
+                            }));
                             
-                            // Show dropdown if there's text and matching venues
+                            // Show autocomplete suggestions if there's text
                             if (value.trim()) {
-                              const filteredVenues = venues.filter(v => 
+                              const filtered = venues.filter(v => 
                                 v.is_active && 
                                 (v.name.toLowerCase().includes(value.toLowerCase()) || 
-                                 v.location.toLowerCase().includes(value.toLowerCase()))
+                                 v.location.toLowerCase().includes(value.toLowerCase()) ||
+                                 `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
                               );
-                              setFilteredVenues(filteredVenues);
-                              setShowVenueDropdown(filteredVenues.length > 0);
+                              setFilteredVenues(filtered);
+                              setShowVenueDropdown(filtered.length > 0);
                             } else {
+                              setFilteredVenues([]);
                               setShowVenueDropdown(false);
-                              setSelectedVenueId('');
                             }
                           }}
-                          placeholder="Search for a venue or enter custom location..."
+                          onFocus={() => {
+                            // Show dropdown on focus if there's text and matches
+                            if (form.venue.trim()) {
+                              const filtered = venues.filter(v => 
+                                v.is_active && 
+                                (v.name.toLowerCase().includes(form.venue.toLowerCase()) || 
+                                 v.location.toLowerCase().includes(form.venue.toLowerCase()) ||
+                                 `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
+                              );
+                              setFilteredVenues(filtered);
+                              setShowVenueDropdown(filtered.length > 0);
+                            }
+                          }}
+                          placeholder="Enter venue name or location (e.g., Main Auditorium, Room 101, Conference Hall)"
                           className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
                           required
                         />
+                        
+                        {/* Search Icon */}
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                         </div>
                         
-                        {/* Venue Dropdown Results */}
+                        {/* Autocomplete Dropdown */}
                         {showVenueDropdown && filteredVenues.length > 0 && (
                           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                             {filteredVenues.map((venue) => (
                               <div
                                 key={venue.venue_id}
                                 onClick={() => {
-                                  setSelectedVenueId(venue.venue_id);
                                   setForm(prev => ({
                                     ...prev,
                                     venue_id: venue.venue_id,
-                                    venue: venue.name + ' - ' + venue.location
+                                    venue: `${venue.name} - ${venue.location}`
                                   }));
                                   setShowVenueDropdown(false);
                                 }}
                                 className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                               >
                                 <div className="flex justify-between items-center">
-                                  <div>
+                                  <div className="flex-1">
                                     <p className="text-sm font-medium text-gray-900">{venue.name}</p>
                                     <p className="text-xs text-gray-500">{venue.location}</p>
+                                    {venue.venue_type && (
+                                      <p className="text-xs text-blue-600 capitalize">{venue.venue_type.replace('_', ' ')}</p>
+                                    )}
                                   </div>
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    Capacity: {venue.capacity || 'N/A'}
-                                  </span>
+                                  <div className="text-right">
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      Capacity: {venue.capacity || 'N/A'}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -1550,62 +1767,31 @@ function CreateEvent() {
                       
                       {errors.venue && <p className="text-xs text-red-500 mt-1">{errors.venue}</p>}
                       
-                      <p className="text-xs text-gray-500 mt-2">
-                        Start typing to search for existing venues, or enter a custom location name
+                      <p className="text-xs text-gray-500 mt-1">
+                        Start typing to see suggestions from existing venues, or enter a custom venue name.
                       </p>
-
-                      {/* Selected Venue Details */}
-                      {selectedVenueId && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                          {(() => {
-                            const selectedVenue = venues.find(v => v.venue_id === selectedVenueId);
-                            return selectedVenue ? (
-                              <div>
-                                <h4 className="font-semibold text-blue-900 mb-2">Selected Venue: {selectedVenue.name}</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-                                  <div>
-                                    <p><strong>Location:</strong> {selectedVenue.location}</p>
-                                    <p><strong>Capacity:</strong> {selectedVenue.capacity || 'N/A'} people</p>
-                                    {selectedVenue.contact_person?.name && (
-                                      <p><strong>Contact:</strong> {selectedVenue.contact_person.name}</p>
-                                    )}
-                                  </div>
-                                  <div>
-                                    {selectedVenue.facilities?.additional_facilities && selectedVenue.facilities.additional_facilities.length > 0 && (
-                                      <div>
-                                        <p><strong>Facilities:</strong></p>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                          {selectedVenue.facilities.additional_facilities.slice(0, 3).map((facility, idx) => (
-                                            <span key={idx} className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
-                                              {facility}
-                                            </span>
-                                          ))}
-                                          {selectedVenue.facilities.additional_facilities.length > 3 && (
-                                            <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
-                                              +{selectedVenue.facilities.additional_facilities.length - 3} more
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ) : null;
-                          })()}
+                      
+                      {/* Display selected venue confirmation */}
+                      {form.venue_id && (
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-green-800 font-medium">Existing venue selected</span>
+                          </div>
                         </div>
                       )}
-
-                      {/* Custom Venue Indicator */}
-                      {form.venue && !selectedVenueId && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                      
+                      {/* Display custom venue confirmation */}
+                      {form.venue && !form.venue_id && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
                           <div className="flex items-center gap-2">
-                            <i className="fas fa-map-marker-alt text-green-600"></i>
-                            <span className="text-green-800 font-medium">Custom Location</span>
+                            <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-amber-800 font-medium">Custom venue will be created</span>
                           </div>
-                          <p className="text-green-700 text-sm mt-1">
-                            Using custom venue: <strong>{form.venue}</strong>
-                          </p>
                         </div>
                       )}
                     </div>
@@ -1967,23 +2153,6 @@ function CreateEvent() {
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Review</h2>
               <p className="text-sm text-gray-600">Review all event details before submission</p>
-              
-              {/* Auto-submission protection indicator */}
-              {justArrivedAtReview && (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm text-yellow-800 font-medium">
-                      Auto-submission protection active
-                    </span>
-                  </div>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    Please wait a moment before clicking "Create Event" to prevent accidental submission.
-                  </p>
-                </div>
-              )}
             </div>
             {renderReview()}
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -2165,38 +2334,9 @@ function CreateEvent() {
                       </svg>
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        console.log('🖱️ Submit button clicked by user');
-                        setUserClickedSubmit(true);
-                        
-                        // Create a synthetic event with the required properties
-                        const syntheticEvent = {
-                          preventDefault: () => {},
-                          isTrusted: true,
-                          type: 'submit',
-                          target: e.target.closest('form'),
-                          nativeEvent: {
-                            submitter: e.target
-                          }
-                        };
-                        
-                        // Call handleSubmit directly
-                        await handleSubmit(syntheticEvent);
-                      }}
-                      disabled={justArrivedAtReview}
-                      className={`inline-flex items-center px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                        justArrivedAtReview 
-                          ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                      </svg>
-                      {justArrivedAtReview ? 'Please wait...' : 'Create Event'}
-                    </button>
+                    <div className="text-sm text-gray-600">
+                      Use the "Create Event" button in the review section below
+                    </div>
                   )}
                 </div>
               </div>
