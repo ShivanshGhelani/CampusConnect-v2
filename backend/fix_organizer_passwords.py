@@ -8,7 +8,7 @@ import sys
 from pymongo import MongoClient
 
 # MongoDB Atlas connection from .env
-MONGODB_URL = "mongodb+srv://autobotmyra:autobotmyra28@autobotmyra.matjavv.mongodb.net/?retryWrites=true&w=majority&appName=autobotmyra"
+MONGODB_URL = ""
 DB_NAME = "CampusConnect"
 
 try:
