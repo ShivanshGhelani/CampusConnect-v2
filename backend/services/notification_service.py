@@ -515,6 +515,10 @@ class NotificationService:
                         organizer_email = organizer.get("email")
                         organizer_name = organizer.get("name", "Unknown Organizer")
                         organizer_employee_id = organizer.get("employee_id")
+                        frontend_is_new = organizer.get("isNew", False)  # Get frontend's isNew flag
+                        
+                        logger.info(f"🔄 Processing organizer: {organizer_name} ({organizer_email})")
+                        logger.info(f"🏷️ Frontend marked as: {'NEW' if frontend_is_new else 'EXISTING'}")
                         
                         if not organizer_email:
                             logger.warning(f"No email found for organizer: {organizer_name}")
@@ -522,44 +526,91 @@ class NotificationService:
                         
                         # Check if organizer already has a user account in users collection
                         existing_user = await db["users"].find_one({"email": organizer_email})
-                        is_new_organizer = existing_user is None
+                        database_has_user = existing_user is not None
+                        
+                        if existing_user:
+                            logger.info(f"🔍 Found existing user for {organizer_email}:")
+                            logger.info(f"   - Username: {existing_user.get('username')}")
+                            logger.info(f"   - Role: {existing_user.get('role')}")
+                            logger.info(f"   - User Type: {existing_user.get('user_type')}")
+                            logger.info(f"   - Assigned Events: {existing_user.get('assigned_events', [])}")
+                        else:
+                            logger.info(f"🆕 No existing user found for {organizer_email} - will create NEW organizer account")
+                        
+                        # Determine if this should be treated as a new organizer
+                        # Priority: If frontend says NEW, treat as NEW regardless of database state
+                        is_new_organizer = frontend_is_new or (not database_has_user)
+                        
+                        if frontend_is_new and database_has_user:
+                            logger.warning(f"⚠️ CONFLICT: Frontend says NEW but database has user for {organizer_email}")
+                            logger.warning(f"⚠️ Will treat as NEW organizer as requested by frontend")
+                        
+                        logger.info(f"👤 Final decision - Organizer {organizer_name}: {'NEW' if is_new_organizer else 'EXISTING'}")
                         
                         username = None
                         temporary_password = None
                         
                         if is_new_organizer:
                             # Generate username and temporary password
-                            username = organizer_employee_id or f"org_{organizer_email.split('@')[0]}"
-                            # Ensure username is unique in users collection
-                            existing_username = await db["users"].find_one({"username": username})
-                            if existing_username:
-                                username = f"{username}_{secrets.token_hex(3)}"
+                            if database_has_user and frontend_is_new:
+                                # Use existing user's username but generate new password for organizer role
+                                username = existing_user["username"]
+                                logger.info(f"🔄 Using existing username {username} but treating as NEW organizer")
+                            else:
+                                # Generate new username for completely new user
+                                username = organizer_employee_id or f"org_{organizer_email.split('@')[0]}"
+                                # Ensure username is unique in users collection
+                                existing_username = await db["users"].find_one({"username": username})
+                                if existing_username:
+                                    username = f"{username}_{secrets.token_hex(3)}"
                             
                             # Generate temporary password
                             temporary_password = self._generate_secure_password()
                             
+                            logger.info(f"🔑 Generated credentials for NEW organizer {organizer_name}: username={username}, password={'***' if temporary_password else 'FAILED'}")
+                            
                             # Hash the password before storing
                             hashed_password = await get_password_hash(temporary_password)
                             
-                            # Create user account for organizer in 'users' collection (not admin_users as requested by user)
-                            new_organizer_user = {
-                                "fullname": organizer_name,
-                                "username": username,
-                                "email": organizer_email,
-                                "password": hashed_password,  # Store hashed password
-                                "user_type": "organizer",  # Specify user type as organizer
-                                "role": "organizer_admin",
-                                "is_active": True,
-                                "requires_password_change": True,
-                                "created_by": notification.recipient_username,
-                                "created_at": datetime.utcnow(),
-                                "employee_id": organizer_employee_id,
-                                "department": event_data.get("organizing_department", ""),
-                                "assigned_events": [event_id]
-                            }
-                            
-                            # Insert organizer into users collection (as requested by user)
-                            await db["users"].insert_one(new_organizer_user)
+                            if not database_has_user:
+                                # Create completely new user account
+                                new_organizer_user = {
+                                    "fullname": organizer_name,
+                                    "username": username,
+                                    "email": organizer_email,
+                                    "password": hashed_password,  # Store hashed password
+                                    "user_type": "organizer",  # Specify user type as organizer
+                                    "role": "organizer_admin",
+                                    "is_active": True,
+                                    "requires_password_change": True,
+                                    "created_by": notification.recipient_username,
+                                    "created_at": datetime.utcnow(),
+                                    "employee_id": organizer_employee_id,
+                                    "department": event_data.get("organizing_department", ""),
+                                    "assigned_events": [event_id]
+                                }
+                                
+                                # Insert organizer into users collection (as requested by user)
+                                await db["users"].insert_one(new_organizer_user)
+                                logger.info(f"✅ Created new user account in 'users' collection: {username}")
+                            else:
+                                # Update existing user to be an organizer with new password and assigned events
+                                current_assigned_events = existing_user.get("assigned_events", [])
+                                updated_assigned_events = current_assigned_events + [event_id] if event_id not in current_assigned_events else current_assigned_events
+                                
+                                await db["users"].update_one(
+                                    {"email": organizer_email},
+                                    {"$set": {
+                                        "password": hashed_password,  # Update password
+                                        "role": "organizer_admin",    # Ensure organizer role
+                                        "user_type": "organizer",     # Ensure organizer type
+                                        "requires_password_change": True,
+                                        "assigned_events": updated_assigned_events,
+                                        "employee_id": organizer_employee_id,
+                                        "department": event_data.get("organizing_department", "")
+                                    }}
+                                )
+                                logger.info(f"✅ Updated existing user {username} to organizer with new credentials and event assignment")
                             
                             # Also add to dedicated organizers collection for super admin management
                             organizer_record = {
@@ -577,16 +628,29 @@ class NotificationService:
                             }
                             await db["organizers"].insert_one(organizer_record)
                             
-                            logger.info(f"✅ Created new organizer account in 'users' collection: {username}")
                             logger.info(f"✅ Added organizer record to 'organizers' collection for super admin management")
                         else:
                             username = existing_user["username"]
                             logger.info(f"ℹ️ Using existing user account: {username}")
+                            
+                            # Update existing organizer's assigned_events array to include this new event
+                            current_assigned_events = existing_user.get("assigned_events", [])
+                            if event_id not in current_assigned_events:
+                                updated_assigned_events = current_assigned_events + [event_id]
+                                await db["users"].update_one(
+                                    {"email": organizer_email},
+                                    {"$set": {"assigned_events": updated_assigned_events}}
+                                )
+                                logger.info(f"✅ Updated existing organizer {username} assigned_events: {updated_assigned_events}")
+                            else:
+                                logger.info(f"ℹ️ Event {event_id} already assigned to organizer {username}")
                         
                         # Send approval email with event template
                         try:
                             if is_new_organizer:
                                 # Send email with credentials for new organizers
+                                logger.info(f"🔑 Sending NEW organizer email with credentials to: {organizer_email}")
+                                logger.info(f"🔑 Username: {username}, Password: {'***' if temporary_password else 'NONE'}")
                                 success = await email_service.send_new_organizer_approval_notification(
                                     organizer_email=organizer_email,
                                     organizer_name=organizer_name,
@@ -600,6 +664,7 @@ class NotificationService:
                                 )
                             else:
                                 # Send approval email for existing organizers (without credentials)
+                                logger.info(f"📧 Sending EXISTING organizer email (no credentials) to: {organizer_email}")
                                 subject = f"🎉 Event Approved: {event_name}"
                                 html_content = email_service.render_template(
                                     'event_approved.html',
@@ -622,12 +687,14 @@ class NotificationService:
                                 success = await email_service.send_email_async(organizer_email, subject, html_content)
                             
                             if success:
-                                logger.info(f"✅ Sent approval email to {organizer_email}")
+                                logger.info(f"✅ Sent {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}")
                             else:
-                                logger.error(f"❌ Failed to send approval email to {organizer_email}")
+                                logger.error(f"❌ Failed to send {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}")
                             
                         except Exception as e:
-                            logger.error(f"Failed to send approval email to {organizer_email}: {e}")
+                            logger.error(f"❌ Exception sending {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}: {e}")
+                            import traceback
+                            logger.error(f"Full traceback: {traceback.format_exc()}")
                     
                     # Create success notification for event creator
                     await self.create_notification(

@@ -598,6 +598,14 @@ CampusConnect Team
     ) -> bool:
         """Send approval notification with login credentials to NEW organizers only"""
         try:
+            logger.info(f"🔑 NEW ORGANIZER EMAIL: Preparing credentials email for {organizer_email}")
+            logger.info(f"🔑 Username: {username}, Password: {'SET' if temporary_password else 'MISSING'}")
+            
+            # Validate that we have credentials for new organizers
+            if not username or not temporary_password:
+                logger.error(f"❌ MISSING CREDENTIALS for new organizer {organizer_email}: username={username}, password={'SET' if temporary_password else 'NONE'}")
+                return False
+            
             subject = f"🎉 Welcome as Event Organizer - Login Credentials for {event_data.get('event_name', 'Your Event')}"
             
             html_content = self.render_template(

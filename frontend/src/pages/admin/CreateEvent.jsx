@@ -464,13 +464,17 @@ function CreateEvent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeOrganizerDropdown, showVenueDropdown]);
 
+  // Handle checkbox changes with explicit state updates
+  const handleCheckboxChange = (name, checked) => {
+    setForm(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+  };
+
   // Handlers
   const handleChange = (e) => {
-    const { name, value, type, files } = e.target;
-    
-    if (name === 'venue') {
-      console.log('Venue input changed:', value);
-    }
+    const { name, value, type, files, checked } = e.target;
     
     if (type === 'file') {
       if (name === 'certificate_template') {
@@ -478,6 +482,8 @@ function CreateEvent() {
       } else if (name === 'assets') {
         setForm((prev) => ({ ...prev, assets: Array.from(files) }));
       }
+    } else if (type === 'checkbox') {
+      setForm((prev) => ({ ...prev, [name]: checked }));
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
@@ -1234,9 +1240,6 @@ function CreateEvent() {
 
   // Render step content
   const renderStep = () => {
-    console.log('🎯 RENDERING STEP:', currentStep);
-    console.log('📋 Current Form State:', { event_id: form.event_id, event_name: form.event_name, venue: form.venue });
-    
     switch (currentStep) {
       case 1:
         return (
@@ -1383,7 +1386,7 @@ function CreateEvent() {
                         type="checkbox"
                         name="is_xenesis_event"
                         checked={form.is_xenesis_event}
-                        onChange={(e) => setForm(prev => ({ ...prev, is_xenesis_event: e.target.checked }))}
+                        onChange={handleChange}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
                       />
                       <span className="text-sm text-gray-700">Xenesis Event</span>
@@ -2094,19 +2097,18 @@ function CreateEvent() {
                         {errors.team_size_max && <p className="text-xs text-red-500">{errors.team_size_max}</p>}
                       </div>
                       <div className="md:col-span-2">
-                        <label className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
                           <input
+                            id="multiple-team-checkbox"
                             type="checkbox"
-                            name="allow_multiple_team_registrations"
-                            checked={form.allow_multiple_team_registrations}
-                            onChange={handleChange}
+                            onChange={(e) => setForm(prev => ({ ...prev, allow_multiple_team_registrations: e.target.checked }))}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                           />
-                          <div>
+                          <label htmlFor="multiple-team-checkbox" className="cursor-pointer">
                             <span className="text-sm font-semibold text-gray-700">Allow Multiple Team Registrations</span>
                             <p className="text-xs text-gray-500">Allow students to be part of multiple teams for this event (requires approval)</p>
-                          </div>
-                        </label>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -2155,11 +2157,6 @@ function CreateEvent() {
               <p className="text-sm text-gray-600">Review all event details before submission</p>
             </div>
             {renderReview()}
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Once you submit this form, your event will be created and published. Please ensure all information is correct before proceeding.
-              </p>
-            </div>
           </div>
         );
       default:
