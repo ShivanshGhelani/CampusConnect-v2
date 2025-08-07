@@ -3,6 +3,7 @@ import { adminAPI } from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import StudentCard from '../../components/admin/StudentCard';
+import { Dropdown, SearchBox } from '../../components/ui';
 
 function Students() {
   const [students, setStudents] = useState([]);
@@ -16,6 +17,9 @@ function Students() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [availableDepartments, setAvailableDepartments] = useState([]);
+  
+  // Search suggestions
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -140,6 +144,26 @@ function Students() {
   };  // Handle search with instant filtering (no debounce)
   const handleSearchChange = (value) => {
     setSearchTerm(value);
+    
+    // Generate search suggestions based on current students
+    if (value.length > 0 && allStudents.length > 0) {
+      const suggestions = allStudents
+        .filter(student => 
+          student.full_name?.toLowerCase().includes(value.toLowerCase()) ||
+          student.email?.toLowerCase().includes(value.toLowerCase()) ||
+          student.enrollment_number?.toLowerCase().includes(value.toLowerCase())
+        )
+        .slice(0, 5)
+        .map(student => ({
+          label: student.full_name,
+          value: student.full_name,
+          subtitle: student.email,
+          icon: 'fas fa-user'
+        }));
+      setSearchSuggestions(suggestions);
+    } else {
+      setSearchSuggestions([]);
+    }
   };
 
   // Handle department filter change
@@ -304,58 +328,63 @@ function Students() {
           
           {/* Enhanced Search Bar with Filters */}
           <div className="mt-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Search Input */}
-              <div className="lg:col-span-6 relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i className="fas fa-search text-gray-400 text-lg"></i>
-                </div>
-                <input
-                  type="text"
+              <div className="lg:col-span-6">
+                <SearchBox
                   placeholder="Search students by name, email, or enrollment number..."
                   value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg placeholder-gray-500 shadow-sm"
+                  onChange={handleSearchChange}
+                  size="md"
+                  suggestions={searchSuggestions}
+                  filters={[
+                    {
+                      label: 'Active Only',
+                      value: 'active',
+                      active: statusFilter === 'active'
+                    },
+                    {
+                      label: 'Verified Only', 
+                      value: 'verified',
+                      active: statusFilter === 'verified'
+                    }
+                  ]}
                 />
               </div>
               
               {/* Department Filter */}
-              <div className="lg:col-span-3 relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i className="fas fa-building text-gray-400"></i>
-                </div>
-                <select
+              <div className="lg:col-span-3">
+                <Dropdown
+                  placeholder="All Departments"
                   value={departmentFilter}
-                  onChange={(e) => handleDepartmentChange(e.target.value)}
-                  className="block w-full pl-12 pr-10 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg shadow-sm appearance-none bg-white"
-                >
-                  <option value="">All Departments</option>
-                  {availableDepartments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <i className="fas fa-chevron-down text-gray-400"></i>
-                </div>
+                  onChange={handleDepartmentChange}
+                  clearable
+                  options={availableDepartments.map(dept => ({ 
+                    label: dept, 
+                    value: dept,
+                    icon: <i className="fas fa-building text-xs"></i>
+                  }))}
+                  icon={<i className="fas fa-building text-xs"></i>}
+                  size="md"
+                  className="h-full"
+                />
               </div>
               
               {/* Status Filter */}
-              <div className="lg:col-span-2 relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <i className="fas fa-toggle-on text-gray-400"></i>
-                </div>
-                <select
+              <div className="lg:col-span-2">
+                <Dropdown
+                  placeholder="All Status"
                   value={statusFilter}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="block w-full pl-12 pr-10 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg shadow-sm appearance-none bg-white"
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <i className="fas fa-chevron-down text-gray-400"></i>
-                </div>
+                  onChange={handleStatusChange}
+                  clearable
+                  options={[
+                    { label: 'Active', value: 'active', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
+                    { label: 'Inactive', value: 'inactive', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
+                  ]}
+                  icon={<i className="fas fa-toggle-on text-xs"></i>}
+                  size="md"
+                  className="h-full"
+                />
               </div>
               
               {/* Clear Filters Button */}

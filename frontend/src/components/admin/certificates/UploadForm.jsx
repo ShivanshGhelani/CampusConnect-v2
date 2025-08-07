@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { adminAPI } from '../../../api/axios';
+import { Dropdown } from '../../ui';
 
 const UploadForm = ({ onUploadSuccess, isUploading, setIsUploading, availableCategories }) => {
   const [formData, setFormData] = useState({
@@ -199,17 +200,16 @@ const UploadForm = ({ onUploadSuccess, isUploading, setIsUploading, availableCat
             </div>
             
             {!isNewCategory && (
-              <select
-                name="category"
+              <Dropdown
+                placeholder="Select a category..."
                 value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Select a category...</option>
-                {availableCategories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+                onChange={(value) => handleInputChange({ target: { name: 'category', value } })}
+                options={availableCategories.map(category => ({ 
+                  value: category, 
+                  label: category 
+                }))}
+                size="md"
+              />
             )}
             
             <div className="flex items-center">

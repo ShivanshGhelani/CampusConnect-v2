@@ -52,6 +52,7 @@ import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 import CertificateEditor from '../pages/admin/CertificateEditor';
+import ComponentShowcase from '../pages/ComponentShowcase';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -149,6 +150,7 @@ function AppRoutes() {
         
         {/* Development/Test Routes - Public (remove in production) */}
         <Route path="/dev" element={<TestIndex />} />
+        <Route path="/component-showcase" element={<ComponentShowcase />} />
         <Route path="/dev/event-registration/:eventId" element={<RegistrationRouter />} />
         <Route path="/dev/event-registration" element={<RegistrationRouter />} />
         <Route path="/dev/team-management" element={<TeamManagement />} />

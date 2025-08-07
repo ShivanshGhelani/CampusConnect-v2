@@ -6,6 +6,7 @@ import EditModal from '../../components/admin/certificates/EditModal';
 import PreviewModal from '../../components/admin/certificates/PreviewModal';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { adminAPI } from '../../api/axios';
+import { Dropdown, SearchBox } from '../../components/ui';
 
 function ManageCertificates() {
   const [templates, setTemplates] = useState([]);
@@ -293,44 +294,48 @@ function ManageCertificates() {
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Search & Filter Templates</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                    <SearchBox
                       placeholder="Search by name or tags..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      value={searchTerm}
+                      onChange={(value) => setSearchTerm(value)}
+                      showFilters={false}
+                      size="md"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select
+                    <Dropdown
+                      label="Category"
+                      placeholder="All Categories"
                       value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">All Categories</option>
-                      {availableCategories.map(category => (
-                        <option key={category} value={category}>{category}</option>
-                      ))}
-                    </select>
+                      onChange={setCategoryFilter}
+                      clearable
+                      options={availableCategories.map(category => ({ 
+                        label: category, 
+                        value: category,
+                        icon: <i className="fas fa-folder text-xs"></i>
+                      }))}
+                      icon={<i className="fas fa-layer-group text-xs"></i>}
+                    />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tag</label>
-                    <select
+                    <Dropdown
+                      label="Tag"
+                      placeholder="All Tags"
                       value={tagFilter}
-                      onChange={(e) => setTagFilter(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">All Tags</option>
-                      {availableTags.map(tag => (
-                        <option key={tag} value={tag}>{tag}</option>
-                      ))}
-                    </select>
+                      onChange={setTagFilter}
+                      clearable
+                      options={availableTags.map(tag => ({ 
+                        label: tag, 
+                        value: tag,
+                        icon: <i className="fas fa-tag text-xs"></i>
+                      }))}
+                      icon={<i className="fas fa-tags text-xs"></i>}
+                    />
                   </div>
                 </div>
                 

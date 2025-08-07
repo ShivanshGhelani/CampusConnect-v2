@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { venueApi } from '../../api/axios';
 import { adminAPI } from '../../api/axios';
 import { formatDateToLocal } from '../../utils/dateHelpers';
+import { Dropdown, SearchBox } from '../../components/ui';
 
 // Helper for step progress
 const steps = [
@@ -1333,25 +1334,23 @@ function CreateEvent() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Event Type <span className="text-red-500">*</span>
                   </label>
-                  <select 
-                    name="event_type" 
-                    value={form.event_type} 
-                    onChange={handleChange} 
-                    required 
-                    className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.event_type ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                    }`}
-                  >
-                    <option value="">Select Type</option>
-                    <option value="technical">Technical Event</option>
-                    <option value="cultural">Cultural Event</option>
-                    <option value="sports">Sports Event</option>
-                    <option value="workshop">Workshop/Training</option>
-                    <option value="seminar">Seminar/Conference</option>
-                    <option value="competition">Competition</option>
-                    <option value="hackathon">Hackathon</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "technical", label: "Technical Event" },
+                      { value: "cultural", label: "Cultural Event" },
+                      { value: "sports", label: "Sports Event" },
+                      { value: "workshop", label: "Workshop/Training" },
+                      { value: "seminar", label: "Seminar/Conference" },
+                      { value: "competition", label: "Competition" },
+                      { value: "hackathon", label: "Hackathon" },
+                      { value: "other", label: "Other" }
+                    ]}
+                    value={form.event_type}
+                    onChange={(value) => handleChange({ target: { name: 'event_type', value } })}
+                    placeholder="Select Type"
+                    required
+                    error={errors.event_type}
+                  />
                   {errors.event_type && <p className="text-xs text-red-600 mt-1">{errors.event_type}</p>}
                 </div>
                 
@@ -1359,20 +1358,18 @@ function CreateEvent() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Target Audience <span className="text-red-500">*</span>
                   </label>
-                  <select 
-                    name="target_audience" 
-                    value={form.target_audience} 
-                    onChange={handleChange} 
-                    required 
-                    className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.target_audience ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                    }`}
-                  >
-                    <option value="">Select Audience</option>
-                    <option value="student">Students Only</option>
-                    <option value="faculty">Faculty Only</option>
-                    <option value="both">Students & Faculty</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "student", label: "Students Only" },
+                      { value: "faculty", label: "Faculty Only" },
+                      { value: "both", label: "Students & Faculty" }
+                    ]}
+                    value={form.target_audience}
+                    onChange={(value) => handleChange({ target: { name: 'target_audience', value } })}
+                    placeholder="Select Audience"
+                    required
+                    error={errors.target_audience}
+                  />
                   {errors.target_audience && <p className="text-xs text-red-600 mt-1">{errors.target_audience}</p>}
                 </div>
                 
@@ -1496,19 +1493,14 @@ function CreateEvent() {
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">Select Organizer</label>
                               <div className="relative organizer-dropdown-container">
-                                <input
-                                  type="text"
-                                  value={organizer.searchQuery || ''}
-                                  onChange={(e) => handleOrganizerSearch(idx, e.target.value)}
+                                <SearchBox
                                   placeholder="Search existing organizers..."
-                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  value={organizer.searchQuery || ''}
+                                  onChange={(value) => handleOrganizerSearch(idx, value)}
+                                  showFilters={false}
+                                  size="md"
                                   onFocus={() => setActiveOrganizerDropdown(idx)}
                                 />
-                                <div className="absolute right-2 top-2">
-                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                  </svg>
-                                </div>
                                 
                                 {/* Dropdown Results */}
                                 {activeOrganizerDropdown === idx && (
@@ -1664,12 +1656,18 @@ function CreateEvent() {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Mode<span className="text-red-500">*</span></label>
-                    <select name="mode" value={form.mode} onChange={handleChange} required className={`mt-1 block w-full rounded-md border ${errors.mode ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2`}>
-                      <option value="">Select Mode</option>
-                      <option value="online">Online</option>
-                      <option value="offline">Offline</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
+                    <Dropdown
+                      options={[
+                        { value: "online", label: "Online" },
+                        { value: "offline", label: "Offline" },
+                        { value: "hybrid", label: "Hybrid" }
+                      ]}
+                      value={form.mode}
+                      onChange={(value) => handleChange({ target: { name: 'mode', value } })}
+                      placeholder="Select Mode"
+                      required
+                      error={errors.mode}
+                    />
                     {errors.mode && <p className="text-xs text-red-500">{errors.mode}</p>}
                   </div>
 
@@ -2047,22 +2045,34 @@ function CreateEvent() {
                       <label className="block text-sm font-semibold text-gray-700">
                         Registration Type<span className="text-red-500">*</span>
                       </label>
-                      <select name="registration_type" value={form.registration_type} onChange={handleChange} required className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.registration_type ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}>
-                        <option value="">Select Registration Type</option>
-                        <option value="free">Free Registration</option>
-                        <option value="paid">Paid Registration</option>
-                        <option value="sponsored">Sponsored Event</option>
-                      </select>
+                      <Dropdown
+                        options={[
+                          { value: "free", label: "Free Registration" },
+                          { value: "paid", label: "Paid Registration" },
+                          { value: "sponsored", label: "Sponsored Event" }
+                        ]}
+                        value={form.registration_type}
+                        onChange={(value) => handleChange({ target: { name: 'registration_type', value } })}
+                        placeholder="Select Registration Type"
+                        required
+                        error={errors.registration_type}
+                      />
                       <p className="helper-text text-xs text-gray-500 mt-1">Choose whether the event is free, paid, or sponsored</p>
                       {errors.registration_type && <p className="text-xs text-red-500">{errors.registration_type}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700">Registration Mode<span className="text-red-500">*</span></label>
-                      <select name="registration_mode" value={form.registration_mode} onChange={handleChange} required className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.registration_mode ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`}>
-                        <option value="">Select Registration Mode</option>
-                        <option value="individual">Individual Registration</option>
-                        <option value="team">Team Registration</option>
-                      </select>
+                      <Dropdown
+                        options={[
+                          { value: "individual", label: "Individual Registration" },
+                          { value: "team", label: "Team Registration" }
+                        ]}
+                        value={form.registration_mode}
+                        onChange={(value) => handleChange({ target: { name: 'registration_mode', value } })}
+                        placeholder="Select Registration Mode"
+                        required
+                        error={errors.registration_mode}
+                      />
                       <p className="helper-text text-xs text-gray-500 mt-1">Choose whether participants register individually or as teams</p>
                       {errors.registration_mode && <p className="text-xs text-red-500">{errors.registration_mode}</p>}
                     </div>

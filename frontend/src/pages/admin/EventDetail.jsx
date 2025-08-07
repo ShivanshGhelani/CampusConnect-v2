@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
+import { Dropdown, SearchBox } from '../../components/ui';
 
 function EventDetail() {
   const { eventId } = useParams();
@@ -1163,22 +1164,23 @@ function EventDetail() {
                 <div className="p-6 overflow-y-auto flex-grow">
                   <div className="mb-4 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                      <SearchBox
                         placeholder="Search registrations..."
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={searchTerm}
+                        onChange={(value) => setSearchTerm(value)}
+                        showFilters={false}
+                        size="md"
                       />
-                      <select
+                      <Dropdown
+                        options={[
+                          { value: "all", label: "All Registrations" },
+                          { value: "attended", label: "Attended Only" },
+                          { value: "not-attended", label: "Not Attended" }
+                        ]}
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="all">All Registrations</option>
-                        <option value="attended">Attended Only</option>
-                        <option value="not-attended">Not Attended</option>
-                      </select>
+                        onChange={(value) => setStatusFilter(value)}
+                        placeholder="Filter by status"
+                      />
                     </div>
                     <div className="text-gray-600 font-medium">
                       Total: <span>{filteredRegistrations.length}</span>

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { Dropdown } from '../../components/ui';
 
 function EditEvent() {
   const { eventId } = useParams();
@@ -372,18 +373,17 @@ function EditEvent() {
                 </div>
                 <div>
                   <label htmlFor="mode" className="block text-sm font-medium text-gray-700">Mode</label>
-                  <select 
-                    id="mode" 
-                    name="mode" 
+                  <Dropdown
+                    options={[
+                      { value: "Online", label: "Online" },
+                      { value: "Offline", label: "Offline" },
+                      { value: "Hybrid", label: "Hybrid" }
+                    ]}
                     value={formData.mode}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="Online">Online</option>
-                    <option value="Offline">Offline</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </select>
+                    onChange={(value) => handleInputChange({ target: { name: 'mode', value } })}
+                    placeholder="Select Mode"
+                    required
+                  />
                 </div>
               </div>
             </div>
@@ -473,30 +473,28 @@ function EditEvent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="registration_type" className="block text-sm font-medium text-gray-700">Registration Type</label>
-                  <select 
-                    id="registration_type" 
-                    name="registration_type" 
+                  <Dropdown
+                    options={[
+                      { value: "free", label: "Free Registration" },
+                      { value: "paid", label: "Paid Registration" },
+                      { value: "sponsored", label: "Sponsored Event" }
+                    ]}
                     value={formData.registration_type}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="free">Free Registration</option>
-                    <option value="paid">Paid Registration</option>
-                    <option value="sponsored">Sponsored Event</option>
-                  </select>
+                    onChange={(value) => handleInputChange({ target: { name: 'registration_type', value } })}
+                    placeholder="Select Registration Type"
+                  />
                 </div>
                 <div>
                   <label htmlFor="registration_mode" className="block text-sm font-medium text-gray-700">Registration Mode</label>
-                  <select 
-                    id="registration_mode" 
-                    name="registration_mode" 
+                  <Dropdown
+                    options={[
+                      { value: "individual", label: "Individual Registration" },
+                      { value: "team", label: "Team Registration" }
+                    ]}
                     value={formData.registration_mode}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="individual">Individual Registration</option>
-                    <option value="team">Team Registration</option>
-                  </select>
+                    onChange={(value) => handleInputChange({ target: { name: 'registration_mode', value } })}
+                    placeholder="Select Registration Mode"
+                  />
                 </div>
               </div>
 

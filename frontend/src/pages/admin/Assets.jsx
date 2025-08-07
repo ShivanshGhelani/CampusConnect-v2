@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { uploadAsset, listAssets, deleteAsset, getAssetUrl } from '../../lib/supabase';
 import AdminLayout from '../../components/admin/AdminLayout';
+import { Dropdown } from '../../components/ui';
 
 const Assets = () => {
   // State management
@@ -574,25 +575,27 @@ const Assets = () => {
                       {(selectedSubType === 'faculty' || selectedSubType === 'head-of-department') && (
                         <div className="mt-3">
                           <label className="font-semibold text-sm block mb-2">Department:</label>
-                          <select
-                            className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          <Dropdown
+                            options={[
+                              { value: "computer-science", label: "Computer Science" },
+                              { value: "electrical", label: "Electrical Engineering" },
+                              { value: "mechanical", label: "Mechanical Engineering" },
+                              { value: "civil", label: "Civil Engineering" },
+                              { value: "electronics", label: "Electronics & Communication" },
+                              { value: "information-technology", label: "Information Technology" },
+                              { value: "biotechnology", label: "Biotechnology" },
+                              { value: "mathematics", label: "Mathematics" },
+                              { value: "physics", label: "Physics" },
+                              { value: "chemistry", label: "Chemistry" },
+                              { value: "english", label: "English" },
+                              { value: "management", label: "Management Studies" }
+                            ]}
                             value={selectedDepartment}
-                            onChange={(e) => setSelectedDepartment(e.target.value)}
-                          >
-                            <option value="">Choose Department...</option>
-                            <option value="computer-science">Computer Science</option>
-                            <option value="electrical">Electrical Engineering</option>
-                            <option value="mechanical">Mechanical Engineering</option>
-                            <option value="civil">Civil Engineering</option>
-                            <option value="electronics">Electronics & Communication</option>
-                            <option value="information-technology">Information Technology</option>
-                            <option value="biotechnology">Biotechnology</option>
-                            <option value="mathematics">Mathematics</option>
-                            <option value="physics">Physics</option>
-                            <option value="chemistry">Chemistry</option>
-                            <option value="english">English</option>
-                            <option value="management">Management Studies</option>
-                          </select>
+                            onChange={(value) => setSelectedDepartment(value)}
+                            placeholder="Choose Department..."
+                            clearable
+                            size="md"
+                          />
                         </div>
                       )}
                     </div>

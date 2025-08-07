@@ -3,6 +3,7 @@ import { adminAPI } from '../../api/axios';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FacultyCard from '../../components/admin/FacultyCard';
+import { SearchBox, Dropdown } from '../../components/ui';
 
 function Faculty() {
   const [faculty, setFaculty] = useState([]);
@@ -11,6 +12,12 @@ function Faculty() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
+  
+  // Filter states
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedDesignation, setSelectedDesignation] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
     fetchFaculty();
@@ -35,18 +42,53 @@ function Faculty() {
     }
   };
 
-  const filteredFaculty = faculty.filter(facultyMember =>
-    facultyMember.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.designation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.qualification?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.employment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.contact_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    facultyMember.phone_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFaculty = faculty
+    .filter(facultyMember => {
+      // Text search filter
+      const matchesSearch = facultyMember.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.designation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.qualification?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.employment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.contact_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        facultyMember.phone_number?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Department filter
+      const matchesDepartment = !selectedDepartment || facultyMember.department === selectedDepartment;
+      
+      // Designation filter
+      const matchesDesignation = !selectedDesignation || facultyMember.designation === selectedDesignation;
+      
+      // Status filter
+      const matchesStatus = !selectedStatus || 
+        (selectedStatus === 'active' && facultyMember.is_active !== false) ||
+        (selectedStatus === 'inactive' && facultyMember.is_active === false);
+
+      return matchesSearch && matchesDepartment && matchesDesignation && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return (a.full_name || '').localeCompare(b.full_name || '');
+        case 'department':
+          return (a.department || '').localeCompare(b.department || '');
+        case 'designation':
+          return (a.designation || '').localeCompare(b.designation || '');
+        case 'experience':
+          return getExperienceYears(b) - getExperienceYears(a);
+        case 'joined':
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        default:
+          return 0;
+      }
+    });
+
+  // Get unique departments and designations for filters
+  const departments = [...new Set(faculty.map(f => f.department).filter(d => d))].sort();
+  const designations = [...new Set(faculty.map(f => f.designation).filter(d => d))].sort();
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -136,104 +178,208 @@ function Faculty() {
 
   return (
     <AdminLayout pageTitle="Faculty Management">
-      <div className="mx-24 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
+            <i className="fas fa-exclamation-circle mr-2"></i>
             {error}
           </div>
         )}
 
-        {/* Header with Search */}
-        <div className="flex justify-between items-center">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Faculty</h2>
-            <p className="text-gray-600">Manage faculty members and their profiles</p>
+            <h1 className="text-2xl font-bold text-gray-900">Faculty Management</h1>
+            <p className="text-gray-600 mt-1">Manage faculty members and their profiles</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button 
               onClick={fetchFaculty}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors flex items-center"
+              className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
             >
               <i className="fas fa-sync-alt mr-2"></i>
               Refresh
             </button>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+            <button className="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
               <i className="fas fa-plus mr-2"></i>
               Add Faculty
             </button>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+            <button className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
               <i className="fas fa-download mr-2"></i>
               Export
             </button>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <i className="fas fa-search text-gray-400"></i>
+        {/* Search and Filters */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Search Bar */}
+            <div className="flex-1">
+              <SearchBox
+                placeholder="Search faculty by name, email, employee ID..."
+                value={searchTerm}
+                onChange={(value) => setSearchTerm(value)}
+                showFilters={false}
+                size="md"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Search faculty by name, email, employee ID, department, designation..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-            />
+
+            {/* Filters Row */}
+            <div className="flex flex-col sm:flex-row gap-3 lg:w-auto">
+              <Dropdown
+                placeholder="All Departments"
+                value={selectedDepartment}
+                onChange={setSelectedDepartment}
+                clearable
+                options={departments.map(dept => ({ label: dept, value: dept }))}
+                icon={<i className="fas fa-building text-xs"></i>}
+                className="w-full sm:w-48"
+              />
+
+              <Dropdown
+                placeholder="All Designations"
+                value={selectedDesignation}
+                onChange={setSelectedDesignation}
+                clearable
+                options={designations.map(des => ({ label: des, value: des }))}
+                icon={<i className="fas fa-user-tie text-xs"></i>}
+                className="w-full sm:w-48"
+              />
+
+              <Dropdown
+                placeholder="All Status"
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                clearable
+                options={[
+                  { label: 'Active', value: 'active', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
+                  { label: 'Inactive', value: 'inactive', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
+                ]}
+                icon={<i className="fas fa-toggle-on text-xs"></i>}
+                className="w-full sm:w-32"
+              />
+
+              <Dropdown
+                placeholder="Sort by"
+                value={sortBy}
+                onChange={setSortBy}
+                options={[
+                  { label: 'Name', value: 'name' },
+                  { label: 'Department', value: 'department' },
+                  { label: 'Designation', value: 'designation' },
+                  { label: 'Experience', value: 'experience' },
+                  { label: 'Joined Date', value: 'joined' }
+                ]}
+                icon={<i className="fas fa-sort text-xs"></i>}
+                className="w-full sm:w-40"
+              />
+            </div>
           </div>
+
+          {/* Active Filters */}
+          {(selectedDepartment || selectedDesignation || selectedStatus || searchTerm) && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-600">Active filters:</span>
+                {searchTerm && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Search: "{searchTerm}"
+                    <button onClick={() => setSearchTerm('')} className="ml-1 text-blue-600 hover:text-blue-800">
+                      <i className="fas fa-times text-xs"></i>
+                    </button>
+                  </span>
+                )}
+                {selectedDepartment && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    Department: {selectedDepartment}
+                    <button onClick={() => setSelectedDepartment('')} className="ml-1 text-purple-600 hover:text-purple-800">
+                      <i className="fas fa-times text-xs"></i>
+                    </button>
+                  </span>
+                )}
+                {selectedDesignation && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Designation: {selectedDesignation}
+                    <button onClick={() => setSelectedDesignation('')} className="ml-1 text-green-600 hover:text-green-800">
+                      <i className="fas fa-times text-xs"></i>
+                    </button>
+                  </span>
+                )}
+                {selectedStatus && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    Status: {selectedStatus}
+                    <button onClick={() => setSelectedStatus('')} className="ml-1 text-orange-600 hover:text-orange-800">
+                      <i className="fas fa-times text-xs"></i>
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedDepartment('');
+                    setSelectedDesignation('');
+                    setSelectedStatus('');
+                  }}
+                  className="text-xs text-gray-600 hover:text-gray-800 underline"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+              <div className="p-3 rounded-lg bg-blue-100 text-blue-600">
                 <i className="fas fa-user-tie text-xl"></i>
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Total Faculty</h3>
-                <p className="text-2xl font-semibold text-gray-900">{faculty.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{faculty.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
+              <div className="p-3 rounded-lg bg-green-100 text-green-600">
                 <i className="fas fa-user-check text-xl"></i>
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Active Faculty</h3>
-                <p className="text-2xl font-semibold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900">
                   {faculty.filter(f => f.is_active !== false).length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+              <div className="p-3 rounded-lg bg-purple-100 text-purple-600">
                 <i className="fas fa-building text-xl"></i>
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Departments</h3>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {new Set(faculty.map(f => f.department).filter(d => d)).size}
+                <p className="text-2xl font-bold text-gray-900">
+                  {departments.length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-orange-100 text-orange-600">
+              <div className="p-3 rounded-lg bg-orange-100 text-orange-600">
                 <i className="fas fa-clock text-xl"></i>
               </div>
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Avg. Experience</h3>
-                <p className="text-2xl font-semibold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900">
                   {faculty.length > 0 ? Math.round((faculty.reduce((acc, f) => acc + getExperienceYears(f), 0) / faculty.length) * 10) / 10 : 0} yrs
                 </p>
               </div>
@@ -242,11 +388,23 @@ function Faculty() {
         </div>
 
         {/* Faculty Table */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              All Faculty ({filteredFaculty.length})
-            </h3>
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Faculty Directory
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {filteredFaculty.length} of {faculty.length} faculty members
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-600">
+                  Showing {filteredFaculty.length} results
+                </span>
+              </div>
+            </div>
           </div>
           
           {filteredFaculty.length > 0 ? (
@@ -254,94 +412,142 @@ function Faculty() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Employee ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Faculty Details
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Department & Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Experience
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredFaculty.map((facultyMember) => (
-                    <tr key={facultyMember.user_id || facultyMember._id || facultyMember.employee_id} className="hover:bg-gray-50">
+                    <tr key={facultyMember.user_id || facultyMember._id || facultyMember.employee_id} className="hover:bg-gray-50 transition-colors">
+                      {/* Faculty Details */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-indigo-600 font-medium text-sm">
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                            <span className="text-white font-semibold text-sm">
                               {facultyMember.full_name?.charAt(0)?.toUpperCase() || 'F'}
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-semibold text-gray-900">
                               {facultyMember.full_name || 'N/A'}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {facultyMember.qualification || 'No Qualification'}
+                            <div className="text-xs text-gray-500">
+                              ID: {facultyMember.employee_id || 'N/A'}
                             </div>
+                            {facultyMember.qualification && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {facultyMember.qualification}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {facultyMember.employee_id || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {facultyMember.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatPhoneNumber(facultyMember.phone_number)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {facultyMember.department || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {facultyMember.designation || 'N/A'}
-                      </td>
+
+                      {/* Contact */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          facultyMember.is_active !== false 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {facultyMember.is_active !== false ? 'Active' : 'Inactive'}
-                        </span>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm text-gray-900">
+                            <i className="fas fa-envelope text-gray-400 text-xs mr-2"></i>
+                            <span className="truncate max-w-[200px]" title={facultyMember.email}>
+                              {facultyMember.email}
+                            </span>
+                          </div>
+                          {facultyMember.phone_number && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <i className="fas fa-phone text-gray-400 text-xs mr-2"></i>
+                              <span>{formatPhoneNumber(facultyMember.phone_number)}</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+
+                      {/* Department & Role */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="flex items-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <i className="fas fa-building mr-1"></i>
+                              {facultyMember.department || 'N/A'}
+                            </span>
+                          </div>
+                          {facultyMember.designation && (
+                            <div className="text-sm text-gray-600 font-medium">
+                              {facultyMember.designation}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            facultyMember.is_active !== false 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              facultyMember.is_active !== false ? 'bg-green-500' : 'bg-red-500'
+                            }`}></div>
+                            {facultyMember.is_active !== false ? 'Active' : 'Inactive'}
+                          </span>
+                          {facultyMember.created_at && (
+                            <div className="text-xs text-gray-500">
+                              <i className="fas fa-calendar mr-1"></i>
+                              Joined {formatDate(facultyMember.created_at)}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Experience */}
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                             <i className="fas fa-clock mr-1"></i>
                             {getExperienceYears(facultyMember)} yrs
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {facultyMember.created_at ? formatDate(facultyMember.created_at) : 'N/A'}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex space-x-2 justify-end">
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex justify-end space-x-2">
                           <button 
-                            className="text-blue-600 hover:text-blue-900 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
-                            title="View Faculty Details"
+                            className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View Details"
                             onClick={() => handleViewFacultyDetails(facultyMember)}
                           >
                             <i className="fas fa-eye mr-1"></i>
-                            
+                            View
                           </button>
                           <button 
-                            className={`${
+                            className={`inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
                               facultyMember.is_active !== false 
-                                ? 'text-red-600 hover:text-red-900 hover:bg-red-50' 
-                                : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                            } transition-colors px-2 py-1 rounded-md`}
-                            title={facultyMember.is_active !== false ? 'Deactivate Faculty' : 'Activate Faculty'}
+                                ? 'text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700' 
+                                : 'text-green-600 bg-green-50 hover:bg-green-100 hover:text-green-700'
+                            }`}
+                            title={facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
                             onClick={() => toggleFacultyStatus(facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
                           >
                             <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} mr-1`}></i>
-                            {facultyMember.is_active !== false ? '' : ''}
+                            {facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
                           </button>
                         </div>
                       </td>
@@ -351,25 +557,31 @@ function Faculty() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-user-tie text-2xl text-gray-400"></i>
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-user-tie text-3xl text-gray-400"></i>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? 'No Faculty Found' : 'No Faculty Registered'}
+                {searchTerm || selectedDepartment || selectedDesignation || selectedStatus ? 'No Faculty Found' : 'No Faculty Registered'}
               </h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm 
-                  ? 'Try adjusting your search terms.' 
-                  : 'Faculty members will appear here once they register.'
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                {searchTerm || selectedDepartment || selectedDesignation || selectedStatus
+                  ? 'Try adjusting your search criteria or filters to find what you\'re looking for.' 
+                  : 'Faculty members will appear here once they register in the system.'
                 }
               </p>
-              {searchTerm && (
+              {(searchTerm || selectedDepartment || selectedDesignation || selectedStatus) && (
                 <button 
-                  onClick={() => setSearchTerm('')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedDepartment('');
+                    setSelectedDesignation('');
+                    setSelectedStatus('');
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                 >
-                  Clear Search
+                  <i className="fas fa-times mr-2"></i>
+                  Clear All Filters
                 </button>
               )}
             </div>

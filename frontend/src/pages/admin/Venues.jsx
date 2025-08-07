@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminAPI } from '../../api/axios';
+import { Dropdown, SearchBox } from '../../components/ui';
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -383,57 +384,52 @@ const Venues = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Search Input */}
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search Venues</label>
-              <div className="relative">
-                <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name or location..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search Venues</label>
+              <SearchBox
+                placeholder="Search by name or location..."
+                value={searchTerm}
+                onChange={(value) => setSearchTerm(value)}
+                showFilters={false}
+                size="md"
+              />
             </div>
 
             {/* Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Venue Type</label>
-              <div className="relative">
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
-                >
-                  <option value="">All Types</option>
-                  {venueTypes.map(type => (
-                    <option key={type} value={type}>
-                      {formatVenueType(type)}
-                    </option>
-                  ))}
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-              </div>
+              <Dropdown
+                label="Venue Type"
+                placeholder="All Types"
+                value={selectedType}
+                onChange={setSelectedType}
+                clearable
+                options={venueTypes.map(type => ({ 
+                  label: formatVenueType(type), 
+                  value: type,
+                  icon: <i className="fas fa-tag text-xs"></i>
+                }))}
+                icon={<i className="fas fa-building text-xs"></i>}
+                size="md"
+              />
             </div>
 
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <div className="relative">
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
-                >
-                  <option value="">All Status</option>
-                  <option value="active">✅ Active</option>
-                  <option value="inactive">❌ Inactive (Deleted)</option>
-                </select>
-                <i className="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-              </div>
+              <Dropdown
+                label="Status"
+                placeholder="All Status"
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                clearable
+                options={[
+                  { label: '✅ Active', value: 'active', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
+                  { label: '❌ Inactive (Deleted)', value: 'inactive', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
+                ]}
+                icon={<i className="fas fa-toggle-on text-xs"></i>}
+                size="md"
+              />
             </div>
           </div>
         </div>
@@ -799,19 +795,19 @@ const Venues = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Venue Type *
                       </label>
-                      <select
-                        required
+                      <Dropdown
+                        placeholder="Select Type"
                         value={newVenue.venue_type}
-                        onChange={(e) => setNewVenue({...newVenue, venue_type: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      >
-                        <option value="">Select Type</option>
-                        {venueTypes.map(type => (
-                          <option key={type} value={type}>
-                            {formatVenueType(type)}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(value) => setNewVenue({...newVenue, venue_type: value})}
+                        required
+                        options={venueTypes.map(type => ({ 
+                          label: formatVenueType(type), 
+                          value: type,
+                          icon: <i className="fas fa-tag text-xs"></i>
+                        }))}
+                        icon={<i className="fas fa-building text-xs"></i>}
+                        size="md"
+                      />
                     </div>
                   </div>
 
@@ -923,19 +919,13 @@ const Venues = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Venue Type *
                       </label>
-                      <select
+                      <Dropdown
                         required
+                        options={venueTypes.map(type => ({ value: type, label: formatVenueType(type) }))}
                         value={newVenue.venue_type}
-                        onChange={(e) => setNewVenue({...newVenue, venue_type: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                      >
-                        <option value="">Select Type</option>
-                        {venueTypes.map(type => (
-                          <option key={type} value={type}>
-                            {formatVenueType(type)}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(value) => setNewVenue({...newVenue, venue_type: value})}
+                        placeholder="Select Type"
+                      />
                     </div>
                   </div>
 
