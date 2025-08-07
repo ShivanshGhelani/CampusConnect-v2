@@ -142,11 +142,11 @@ function ClientNavigation() {
                     <span className="text-sm font-semibold">Live</span>
                   </div>
                 </Link>
-              </div>              
+              </div>
               {isAuthenticated ? (
                 /* User Profile Button */
-                <div className="relative flex items-center space-x-4 mt-1 ml-2 pl-0 h-10 border-l border-gray-300" ref={dropdownRef}>                  
-                {/* Profile Button with Hover Card */}
+                <div className="relative flex items-center space-x-4 mt-1 ml-2 pl-0 h-10 border-l border-gray-300" ref={dropdownRef}>
+                  {/* Profile Button with Hover Card */}
                   <div
                     className="relative"
                     onMouseEnter={() => setIsProfileDropdownOpen(true)}
@@ -154,7 +154,7 @@ function ClientNavigation() {
                   >                    <Link
                     to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
                     className="flex items-center space-x-3 rounded-lg px-4 py-2.5 transition-colors min-w-0"
-                  >                      <Avatar 
+                  >                      <Avatar
                         src={avatarUrl}
                         size="md"
                         name={user?.full_name || user?.enrollment_no}
@@ -179,18 +179,43 @@ function ClientNavigation() {
                         <div className="text-sm font-medium text-gray-900">{user?.full_name || 'Guest User'}</div>
                         <div className="text-xs text-gray-500">{user?.enrollment_no || user?.employee_id || 'No ID'}</div>
                       </div>{/* Menu Items */}
-                      <div className="py-2">                        <Link
-                        to={userType === 'faculty' ? '/faculty/profile/edit' : '/client/profile/edit'}
-                        className="flex items-center pl-4 pr-8 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                          <i className="fas fa-cog text-purple-600 text-sm"></i>
-                        </div>
-                        <div>
-                          <div className="font-medium">Edit Profile</div>
-                          <div className="text-xs text-gray-500 whitespace-nowrap">Update your information</div>
-                        </div>
-                      </Link>
+                      <div className="py-2">
+                        {/* Organize Event - Faculty Only */}
+                        {userType === 'faculty' && (
+                          <Link
+                            to="/faculty/create-event"
+                            className="flex items-center pl-4 pr-8 py-3 text-sm text-white hover:bg-blue-600 transition-colors cursor-pointer relative overflow-hidden"
+                            style={{
+                              background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+                            }}
+                          >
+                            {/* Blue bubble background decorations */}
+                            <div className="absolute inset-0 opacity-20">
+                              <div className="absolute top-0 left-0 w-12 h-12 bg-white rounded-full -translate-x-6 -translate-y-6"></div>
+                              <div className="absolute top-1/2 right-0 w-8 h-8 bg-white rounded-full translate-x-4 -translate-y-4"></div>
+                              <div className="absolute bottom-0 left-1/3 w-6 h-6 bg-white rounded-full translate-y-3"></div>
+                            </div>
+                            <div className="w-8 h-8 bg-blue-300 bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
+                              <i className="fas fa-plus text-white  text-sm"></i>
+                            </div>
+                            <div className="relative z-10">
+                              <div className="font-medium">Organize Event</div>
+                              <div className="text-xs text-blue-100 whitespace-nowrap">Create new events</div>
+                            </div>
+                          </Link>
+                        )}
+                        <Link
+                          to={userType === 'faculty' ? '/faculty/profile/edit' : '/client/profile/edit'}
+                          className="flex items-center pl-4 pr-8 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                            <i className="fas fa-cog text-purple-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <div className="font-medium">Edit Profile</div>
+                            <div className="text-xs text-gray-500 whitespace-nowrap">Update your information</div>
+                          </div>
+                        </Link>
 
                         <Link
                           to="/client/certificates"
@@ -282,8 +307,7 @@ function ClientNavigation() {
           {isAuthenticated ? (
             <Link
               to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
-              className={`flex flex-col items-center justify-center ${
-                (userType === 'faculty' && location.pathname === '/faculty/profile') ||
+              className={`flex flex-col items-center justify-center ${(userType === 'faculty' && location.pathname === '/faculty/profile') ||
                 (userType === 'student' && location.pathname === '/client/profile')
                 ? 'text-indigo-600'
                 : 'text-gray-500'

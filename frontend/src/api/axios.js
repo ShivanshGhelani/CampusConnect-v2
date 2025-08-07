@@ -86,10 +86,13 @@ import axios from 'axios';
  * 
  * Venues:
  *   - GET    /api/v1/admin/venues                   - List all venues
+ *   - GET    /api/v1/admin/venues/all               - List all venues (including inactive)
  *   - GET    /api/v1/admin/venues/{id}              - Get venue details
  *   - POST   /api/v1/admin/venues                   - Create new venue
  *   - PUT    /api/v1/admin/venues/{id}              - Update venue
- *   - DELETE /api/v1/admin/venues/{id}              - Delete venue
+ *   - DELETE /api/v1/admin/venues/{id}              - Soft delete venue
+ *   - POST   /api/v1/admin/venues/{id}/restore      - Restore soft-deleted venue
+ *   - DELETE /api/v1/admin/venues/{id}/permanent    - Permanently delete venue
  *   - GET    /api/v1/admin/venues/stats/overview    - Venue statistics
  *   - GET    /api/v1/admin/venues/{id}/bookings     - Get venue bookings
  *   - POST   /api/v1/admin/venues/{id}/book         - Book venue
@@ -400,6 +403,7 @@ export const adminAPI = {
   updateVenue: (venueId, venueData) => api.put(`/api/v1/admin/venues/${venueId}`, venueData),
   deleteVenue: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}`),
   restoreVenue: (venueId) => api.post(`/api/v1/admin/venues/${venueId}/restore`),
+  deleteVenuePermanently: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}/permanent`),
   getVenueStatistics: () => api.get('/api/v1/admin/venues/stats/overview'),
   getVenueBookings: (venueId, filters) => api.get(`/api/v1/admin/venues/${venueId}/bookings`, { params: filters }),
   bookVenue: (venueId, bookingData) => api.post(`/api/v1/admin/venues/${venueId}/book`, bookingData),
