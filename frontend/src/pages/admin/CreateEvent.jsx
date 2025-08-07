@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { venueApi } from '../../api/axios';
 import { adminAPI } from '../../api/axios';
 import { formatDateToLocal } from '../../utils/dateHelpers';
-import { Dropdown, SearchBox } from '../../components/ui';
+import { Dropdown, SearchBox, Checkbox } from '../../components/ui';
 
 // Helper for step progress
 const steps = [
@@ -206,7 +206,6 @@ function CreateEvent() {
   });
   const [errors, setErrors] = useState({});
   const [existingEventIds, setExistingEventIds] = useState([]);
-  const [checkingEventId, setCheckingEventId] = useState(false);
 
   // Load venues on component mount, but only after authentication is checked
   useEffect(() => {
@@ -288,22 +287,6 @@ function CreateEvent() {
         const eventIds = response.data.events.map(event => event.event_id);
         setExistingEventIds(eventIds);
         console.log('📋 Loaded existing event IDs:', eventIds);
-        
-        // Clear any existing event_id errors since we've refreshed the list
-        if (form.event_id) {
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors.event_id;
-            return newErrors;
-          });
-          
-          // Re-check the current event ID against the fresh list
-          setTimeout(() => {
-            if (form.event_id && form.event_id.length >= 3) {
-              checkEventIdAvailability(form.event_id);
-            }
-          }, 100);
-        }
       }
     } catch (err) {
       console.error('Error loading existing event IDs:', err);
@@ -346,50 +329,6 @@ function CreateEvent() {
   };
 
   // Check for duplicate event ID
-  const checkEventIdAvailability = async (eventId) => {
-    if (!eventId || eventId.length < 3) return;
-    
-    console.log('🔍 Checking Event ID availability for:', eventId);
-    console.log('📋 Current existing IDs:', existingEventIds);
-    
-    setCheckingEventId(true);
-    try {
-      // Check against existing event IDs
-      const isDuplicate = existingEventIds.includes(eventId);
-      console.log('❓ Is duplicate?', isDuplicate);
-      
-      if (isDuplicate) {
-        console.log('❌ Event ID already exists!');
-        setErrors(prev => ({
-          ...prev,
-          event_id: 'This Event ID already exists. Please choose a different one.'
-        }));
-      } else {
-        console.log('✅ Event ID is available!');
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.event_id;
-          return newErrors;
-        });
-      }
-    } catch (err) {
-      console.error('Error checking event ID:', err);
-    } finally {
-      setCheckingEventId(false);
-    }
-  };
-
-  // Debounced event ID checking
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (form.event_id && form.event_id.length >= 3) {
-        checkEventIdAvailability(form.event_id);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [form.event_id, existingEventIds]);
-
   // Helper function to generate suggested event ID
   const generateSuggestedEventId = (originalId) => {
     const currentYear = new Date().getFullYear();
@@ -408,17 +347,60 @@ function CreateEvent() {
         return numbered;
       }
     }
-    
-    // Try with year and number
-    for (let i = 1; i <= 99; i++) {
-      const yearNumbered = `${baseId}${currentYear}_${i}`;
-      if (!existingEventIds.includes(yearNumbered)) {
-        return yearNumbered;
-      }
-    }
-    
+
     return `${baseId}${Date.now()}`;
   };
+
+  // Auto-generate event ID based on title, type, and audience
+  const generateEventId = (title, type, audience, isXenesisEvent = false) => {
+    if (!title || !type || !audience) return '';
+
+    // Create abbreviations
+    const titleWords = title.trim().split(/\s+/).filter(word => word.length > 0);
+    const titleAbbr = titleWords.length > 1 
+      ? titleWords.map(word => word[0].toUpperCase()).join('').slice(0, 4)
+      : title.slice(0, 4).toUpperCase();
+
+    const typeAbbr = type.slice(0, 2).toUpperCase();
+    const audienceAbbr = audience === 'students' ? 'STU' 
+                      : audience === 'faculty' ? 'FAC'
+                      : audience === 'both' ? 'ALL'
+                      : audience.slice(0, 3).toUpperCase();
+
+    const year = new Date().getFullYear();
+    
+    // Create continuous base ID without underscores
+    let baseId;
+    if (isXenesisEvent) {
+      baseId = `XEN${titleAbbr}${typeAbbr}${audienceAbbr}${year}`;
+    } else {
+      baseId = `${titleAbbr}${typeAbbr}${audienceAbbr}${year}`;
+    }
+    
+    // Clean up: remove special characters and ensure valid format
+    baseId = baseId.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    
+    // Check if this ID already exists, if so add a number
+    let finalId = baseId;
+    let counter = 1;
+    
+    while (existingEventIds.includes(finalId)) {
+      finalId = `${baseId}${counter}`;
+      counter++;
+    }
+    
+    return finalId;
+  };
+
+  // Auto-generate event ID when title, type, audience, or xenesis status changes
+  useEffect(() => {
+    if (form.event_name && form.event_type && form.target_audience) {
+      const generatedId = generateEventId(form.event_name, form.event_type, form.target_audience, form.is_xenesis_event);
+      if (generatedId && generatedId !== form.event_id) {
+        setForm(prev => ({ ...prev, event_id: generatedId }));
+      }
+    }
+  }, [form.event_name, form.event_type, form.target_audience, form.is_xenesis_event, existingEventIds]);
 
   // Load existing organizers on component mount
   useEffect(() => {
@@ -629,10 +611,7 @@ function CreateEvent() {
   const validateStep = (step) => {
     let stepErrors = {};
     if (step === 1) {
-      if (!form.event_id) stepErrors.event_id = 'Event ID is required';
-      if (form.event_id && existingEventIds.includes(form.event_id)) {
-        stepErrors.event_id = 'This Event ID already exists. Please choose a different one.';
-      }
+      // Event ID is auto-generated, so no validation needed
       if (!form.event_name) stepErrors.event_name = 'Event Title is required';
       if (!form.event_type) stepErrors.event_type = 'Event Type is required';
       if (!form.target_audience) stepErrors.target_audience = 'Target Audience is required';
@@ -1254,55 +1233,32 @@ function CreateEvent() {
               {/* Event ID and Event Title in same row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="mb-1">
                     <label className="block text-sm font-medium text-gray-700">
                       Event ID <span className="text-red-500">*</span>
                     </label>
-                    <button 
-                      type="button"
-                      onClick={loadExistingEventIds}
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-                      title="Refresh existing Event IDs from database"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      <span>Refresh IDs</span>
-                    </button>
                   </div>
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      name="event_id" 
-                      value={form.event_id} 
-                      onChange={handleChange} 
-                      required 
-                      pattern="[A-Za-z0-9_]+" 
-                      title="No spaces allowed. Use letters, numbers and underscores only." 
-                      placeholder="e.g., PYWS2025" 
-                      className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.event_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 
-                        form.event_id && !checkingEventId && !errors.event_id ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : 
-                        'border-gray-300 focus:border-blue-500'
-                      }`} 
-                    />
-                    {checkingEventId && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                      </div>
-                    )}
-                    {form.event_id && !checkingEventId && !errors.event_id && (
+                    <div className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm bg-gray-50 ${
+                      form.event_id ? 'border-green-300 text-gray-900' : 'border-gray-200 text-gray-500'
+                    }`}>
+                      {form.event_id || 'Event ID will be generated automatically'}
+                    </div>
+                    {form.event_id && (
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                         <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
+                        
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                    <span>Unique identifier for the event. Use letters, numbers, and underscores only.</span>
-                    <span className="text-gray-400">
-                      {existingEventIds.length} existing IDs loaded
+                  <div className="text-xs text-gray-500 mt-1">
+                    <span>
+                      {form.event_name && form.event_type && form.target_audience 
+                        ? `Preview: ${form.is_xenesis_event ? 'XEN' : ''}${form.event_name.slice(0,4).toUpperCase()}${form.event_type.slice(0,2).toUpperCase()}${form.target_audience === 'students' ? 'STU' : form.target_audience === 'faculty' ? 'FAC' : form.target_audience === 'both' ? 'ALL' : 'AUD'}${new Date().getFullYear()}`
+                        : 'Fill in Event Title, Type, and Target Audience to auto-generate ID'
+                      }
                     </span>
                   </div>
                   {errors.event_id && <p className="text-xs text-red-600 mt-1">{errors.event_id}</p>}
@@ -1377,19 +1333,24 @@ function CreateEvent() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Event Category
                   </label>
-                  <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md">
-                    <label className="flex items-center cursor-pointer">
+                  <div className="h-10 flex items-center">
+                    <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
+                        id="is_xenesis_event"
                         name="is_xenesis_event"
                         checked={form.is_xenesis_event}
                         onChange={handleChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                       />
-                      <span className="text-sm text-gray-700">Xenesis Event</span>
-                    </label>
+                      <label 
+                        htmlFor="is_xenesis_event" 
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        Xenesis Event
+                      </label>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Check if this is a Xenesis category event</p>
                 </div>
               </div>
               

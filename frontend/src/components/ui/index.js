@@ -1,6 +1,7 @@
 // UI Component Library Exports
 export { default as Dropdown } from './Dropdown';
 export { default as SearchBox } from './SearchBox';
+export { default as Checkbox } from './Checkbox';
 export { default as Modal, ConfirmModal } from './Modal';
 export { 
   default as Alert, 

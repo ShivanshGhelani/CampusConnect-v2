@@ -468,10 +468,10 @@ function Faculty() {
                               {facultyMember.email}
                             </span>
                           </div>
-                          {facultyMember.phone_number && (
+                          {facultyMember.contact_no && (
                             <div className="flex items-center text-sm text-gray-600">
                               <i className="fas fa-phone text-gray-400 text-xs mr-2"></i>
-                              <span>{formatPhoneNumber(facultyMember.phone_number)}</span>
+                              <span>{formatPhoneNumber(facultyMember.contact_no)}</span>
                             </div>
                           )}
                         </div>
