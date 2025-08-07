@@ -373,28 +373,6 @@ def generate_audit_id() -> str:
     return generate_base_id("AUD", 8)
 
 
-def generate_organizer_id(name: str = None, email: str = None) -> str:
-    """
-    Generate a unique organizer ID
-    
-    Args:
-        name: Organizer's name (optional, for context)
-        email: Organizer's email (optional, for context)
-    
-    Returns:
-        Unique organizer ID in format ORG{8-digit-code}
-    """
-    if name and email:
-        # Create a hash from name and email for more deterministic ID
-        combined = f"{name}_{email}_{datetime.now().isoformat()}"
-        hash_object = hashlib.md5(combined.encode())
-        hash_hex = hash_object.hexdigest()[:8].upper()
-        return f"ORG{hash_hex}"
-    else:
-        # Use random generation
-        return generate_base_id("ORG", 8)
-
-
 # Generic ID generator function for backwards compatibility
 def generate_id(prefix: str = "ID", length: int = 8) -> str:
     """

@@ -165,7 +165,7 @@ class VirtualAttendanceRequest(BaseModel):
 
 
 class PhysicalAttendanceRequest(BaseModel):
-    """Request model for marking physical attendance by organizer"""
+    """Request model for marking physical attendance by admin"""
     registration_id: str = Field(..., description="Registration ID to mark attendance for")
     notes: Optional[str] = Field(default=None, description="Optional notes about attendance marking")
 

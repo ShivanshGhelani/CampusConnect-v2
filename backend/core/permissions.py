@@ -42,14 +42,6 @@ class PermissionManager:
             "admin.dashboard.view.limited",
             "admin.notifications.view"
         ],
-        AdminRole.ORGANIZER_ADMIN: [
-            "admin.events.read.assigned",
-            "admin.events.update.assigned",
-            "admin.events.delete.request",  # Can request deletion, not delete directly
-            "admin.students.read",
-            "admin.notifications.view",
-            "admin.dashboard.view.assigned_events"
-        ],
         # Legacy roles for backward compatibility
         AdminRole.EVENT_ADMIN: [
             "admin.events.read",
@@ -80,16 +72,9 @@ class PermissionManager:
         role_permissions = cls.ROLE_PERMISSIONS.get(admin.role, [])
         
         # For event-specific permissions, check if admin has access to the event
-        if event_id and admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+        if event_id and admin.role == AdminRole.EVENT_ADMIN:
             if event_id not in (admin.assigned_events or []):
                 return False
-        
-        # Handle permission variants for organizer admins
-        if admin.role == AdminRole.ORGANIZER_ADMIN:
-            if permission == "admin.events.read" and "admin.events.read.assigned" in role_permissions:
-                return True
-            if permission == "admin.events.update" and "admin.events.update.assigned" in role_permissions:
-                return True
                 
         return permission in role_permissions
     
@@ -102,7 +87,7 @@ class PermissionManager:
         if admin.role == AdminRole.EXECUTIVE_ADMIN:
             return True  # Executive admins can access all events
             
-        if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+        if admin.role == AdminRole.EVENT_ADMIN:
             return event_id in (admin.assigned_events or [])
             
         return False
@@ -113,9 +98,6 @@ class PermissionManager:
         if admin.role == AdminRole.SUPER_ADMIN:
             return True  # Super admin can delete directly
             
-        if admin.role == AdminRole.ORGANIZER_ADMIN:
-            return event_id in (admin.assigned_events or [])
-            
         return False
     
     @classmethod
@@ -124,7 +106,7 @@ class PermissionManager:
         if admin.role in [AdminRole.SUPER_ADMIN, AdminRole.EXECUTIVE_ADMIN]:
             return all_events
             
-        if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+        if admin.role == AdminRole.EVENT_ADMIN:
             assigned_event_ids = admin.assigned_events or []
             return [event for event in all_events if event.get("event_id") in assigned_event_ids]
             

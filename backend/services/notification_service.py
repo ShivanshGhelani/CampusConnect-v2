@@ -379,13 +379,13 @@ class NotificationService:
             # await event_service.delete_event(event_id)
             logger.info(f"Event deletion approved for event_id: {event_id} (actual deletion pending event_service implementation)")
             
-            # Notify the organizer about approval
+            # Notify admin about approval
             await self.create_notification(
                 notification_type=NotificationType.EVENT_DELETION_APPROVED,
                 title="Event Deletion Approved",
                 message=f"Your request to delete event '{notification.action_data.get('event_name')}' has been approved and the event has been deleted.",
                 recipient_username=notification.action_data.get("requested_by"),
-                recipient_role="organizer_admin",
+                recipient_role="admin",
                 sender_username=notification.recipient_username,
                 sender_role="super_admin",
                 related_entity_type="event",
@@ -393,13 +393,13 @@ class NotificationService:
                 priority=NotificationPriority.HIGH
             )
         else:
-            # Notify the organizer about rejection
+            # Notify admin about rejection
             await self.create_notification(
                 notification_type=NotificationType.EVENT_DELETION_REJECTED,
                 title="Event Deletion Rejected",
                 message=f"Your request to delete event '{notification.action_data.get('event_name')}' has been rejected. Reason: {reason or 'No reason provided'}",
                 recipient_username=notification.action_data.get("requested_by"),
-                recipient_role="organizer_admin",
+                recipient_role="admin",
                 sender_username=notification.recipient_username,
                 sender_role="super_admin",
                 related_entity_type="event",
@@ -428,11 +428,11 @@ class NotificationService:
                 response = await self.create_notification(
                     notification_type=NotificationType.EVENT_DELETION_REQUEST,
                     title=f"Event Deletion Request: {event_name}",
-                    message=f"Organizer {requested_by} requests to delete event '{event_name}'. Reason: {reason}",
+                    message=f"Admin {requested_by} requests to delete event '{event_name}'. Reason: {reason}",
                     recipient_username=admin["username"],
                     recipient_role="super_admin",
                     sender_username=requested_by,
-                    sender_role="organizer_admin",
+                    sender_role="admin",
                     related_entity_type="event",
                     related_entity_id=event_id,
                     priority=NotificationPriority.HIGH,
@@ -466,19 +466,14 @@ class NotificationService:
             return NotificationResponse(success=False, message=str(e))
 
     async def _handle_event_approval(self, notification: Notification, approved: bool, reason: str = None, additional_data: dict = None):
-        """Handle event approval/rejection with email notifications and organizer account creation"""
+        """Handle event approval/rejection with email notifications"""
         from database.operations import DatabaseOperations
         from services.email.service import EmailService
-        from models.admin_user import AdminUser, AdminRole
-        from routes.auth import get_password_hash  # Import password hashing function
-        import secrets
-        import string
         
         try:
             event_id = notification.action_data.get("event_id")
             event_name = notification.action_data.get("event_name", "Unknown Event")
             created_by = notification.action_data.get("created_by", "Unknown User")
-            organizers = notification.action_data.get("organizers", [])
             event_data = notification.action_data  # Full event data for email templates
             
             if not event_id:
@@ -503,204 +498,23 @@ class NotificationService:
                 
                 if result.modified_count > 0:
                     logger.info(f"✅ Event {event_id} approved successfully")
-                    
-                    # Get super admin details for email template
-                    super_admin = await db["admin_users"].find_one({"username": notification.recipient_username})
-                    super_admin_name = super_admin.get("name", notification.recipient_username) if super_admin else notification.recipient_username
-                    super_admin_email = super_admin.get("email", "") if super_admin else ""
-                    super_admin_phone = super_admin.get("phone", "") if super_admin else ""
-                    
-                    # Process each organizer
-                    for organizer in organizers:
-                        organizer_email = organizer.get("email")
-                        organizer_name = organizer.get("name", "Unknown Organizer")
-                        organizer_employee_id = organizer.get("employee_id")
-                        frontend_is_new = organizer.get("isNew", False)  # Get frontend's isNew flag
-                        
-                        logger.info(f"🔄 Processing organizer: {organizer_name} ({organizer_email})")
-                        logger.info(f"🏷️ Frontend marked as: {'NEW' if frontend_is_new else 'EXISTING'}")
-                        
-                        if not organizer_email:
-                            logger.warning(f"No email found for organizer: {organizer_name}")
-                            continue
-                        
-                        # Check if organizer already has a user account in users collection
-                        existing_user = await db["users"].find_one({"email": organizer_email})
-                        database_has_user = existing_user is not None
-                        
-                        if existing_user:
-                            logger.info(f"🔍 Found existing user for {organizer_email}:")
-                            logger.info(f"   - Username: {existing_user.get('username')}")
-                            logger.info(f"   - Role: {existing_user.get('role')}")
-                            logger.info(f"   - User Type: {existing_user.get('user_type')}")
-                            logger.info(f"   - Assigned Events: {existing_user.get('assigned_events', [])}")
-                        else:
-                            logger.info(f"🆕 No existing user found for {organizer_email} - will create NEW organizer account")
-                        
-                        # Determine if this should be treated as a new organizer
-                        # Priority: If frontend says NEW, treat as NEW regardless of database state
-                        is_new_organizer = frontend_is_new or (not database_has_user)
-                        
-                        if frontend_is_new and database_has_user:
-                            logger.warning(f"⚠️ CONFLICT: Frontend says NEW but database has user for {organizer_email}")
-                            logger.warning(f"⚠️ Will treat as NEW organizer as requested by frontend")
-                        
-                        logger.info(f"👤 Final decision - Organizer {organizer_name}: {'NEW' if is_new_organizer else 'EXISTING'}")
-                        
-                        username = None
-                        temporary_password = None
-                        
-                        if is_new_organizer:
-                            # Generate username and temporary password
-                            if database_has_user and frontend_is_new:
-                                # Use existing user's username but generate new password for organizer role
-                                username = existing_user["username"]
-                                logger.info(f"🔄 Using existing username {username} but treating as NEW organizer")
-                            else:
-                                # Generate new username for completely new user
-                                username = organizer_employee_id or f"org_{organizer_email.split('@')[0]}"
-                                # Ensure username is unique in users collection
-                                existing_username = await db["users"].find_one({"username": username})
-                                if existing_username:
-                                    username = f"{username}_{secrets.token_hex(3)}"
-                            
-                            # Generate temporary password
-                            temporary_password = self._generate_secure_password()
-                            
-                            logger.info(f"🔑 Generated credentials for NEW organizer {organizer_name}: username={username}, password={'***' if temporary_password else 'FAILED'}")
-                            
-                            # Hash the password before storing
-                            hashed_password = await get_password_hash(temporary_password)
-                            
-                            if not database_has_user:
-                                # Create completely new user account
-                                new_organizer_user = {
-                                    "fullname": organizer_name,
-                                    "username": username,
-                                    "email": organizer_email,
-                                    "password": hashed_password,  # Store hashed password
-                                    "user_type": "organizer",  # Specify user type as organizer
-                                    "role": "organizer_admin",
-                                    "is_active": True,
-                                    "requires_password_change": True,
-                                    "created_by": notification.recipient_username,
-                                    "created_at": datetime.utcnow(),
-                                    "employee_id": organizer_employee_id,
-                                    "department": event_data.get("organizing_department", ""),
-                                    "assigned_events": [event_id]
-                                }
-                                
-                                # Insert organizer into users collection (as requested by user)
-                                await db["users"].insert_one(new_organizer_user)
-                                logger.info(f"✅ Created new user account in 'users' collection: {username}")
-                            else:
-                                # Update existing user to be an organizer with new password and assigned events
-                                current_assigned_events = existing_user.get("assigned_events", [])
-                                updated_assigned_events = current_assigned_events + [event_id] if event_id not in current_assigned_events else current_assigned_events
-                                
-                                await db["users"].update_one(
-                                    {"email": organizer_email},
-                                    {"$set": {
-                                        "password": hashed_password,  # Update password
-                                        "role": "organizer_admin",    # Ensure organizer role
-                                        "user_type": "organizer",     # Ensure organizer type
-                                        "requires_password_change": True,
-                                        "assigned_events": updated_assigned_events,
-                                        "employee_id": organizer_employee_id,
-                                        "department": event_data.get("organizing_department", "")
-                                    }}
-                                )
-                                logger.info(f"✅ Updated existing user {username} to organizer with new credentials and event assignment")
-                            
-                            # Also add to dedicated organizers collection for super admin management
-                            organizer_record = {
-                                "id": f"org_{username}_{secrets.token_hex(4)}",
-                                "name": organizer_name,
-                                "email": organizer_email,
-                                "employee_id": organizer_employee_id,
-                                "department": event_data.get("organizing_department", ""),
-                                "phone": organizer.get("phone", ""),
-                                "user_account_username": username,  # Link to users collection
-                                "created_at": datetime.utcnow(),
-                                "updated_at": datetime.utcnow(),
-                                "is_active": True,
-                                "created_via_event": event_id
-                            }
-                            await db["organizers"].insert_one(organizer_record)
-                            
-                            logger.info(f"✅ Added organizer record to 'organizers' collection for super admin management")
-                        else:
-                            username = existing_user["username"]
-                            logger.info(f"ℹ️ Using existing user account: {username}")
-                            
-                            # Update existing organizer's assigned_events array to include this new event
-                            current_assigned_events = existing_user.get("assigned_events", [])
-                            if event_id not in current_assigned_events:
-                                updated_assigned_events = current_assigned_events + [event_id]
-                                await db["users"].update_one(
-                                    {"email": organizer_email},
-                                    {"$set": {"assigned_events": updated_assigned_events}}
-                                )
-                                logger.info(f"✅ Updated existing organizer {username} assigned_events: {updated_assigned_events}")
-                            else:
-                                logger.info(f"ℹ️ Event {event_id} already assigned to organizer {username}")
-                        
-                        # Send approval email with event template
-                        try:
-                            if is_new_organizer:
-                                # Send email with credentials for new organizers
-                                logger.info(f"🔑 Sending NEW organizer email with credentials to: {organizer_email}")
-                                logger.info(f"🔑 Username: {username}, Password: {'***' if temporary_password else 'NONE'}")
-                                success = await email_service.send_new_organizer_approval_notification(
-                                    organizer_email=organizer_email,
-                                    organizer_name=organizer_name,
-                                    event_data=event_data,
-                                    super_admin_name=super_admin_name,
-                                    approval_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
-                                    username=username,
-                                    temporary_password=temporary_password,
-                                    portal_url="http://localhost:3000/admin",  # Update with actual URL
-                                    approval_message=reason
-                                )
-                            else:
-                                # Send approval email for existing organizers (without credentials)
-                                logger.info(f"📧 Sending EXISTING organizer email (no credentials) to: {organizer_email}")
-                                subject = f"🎉 Event Approved: {event_name}"
-                                html_content = email_service.render_template(
-                                    'event_approved.html',
-                                    organizer_name=organizer_name,
-                                    event_name=event_name,
-                                    super_admin_name=super_admin_name,
-                                    approval_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
-                                    event_id=event_id,
-                                    event_type=event_data.get("event_type", "N/A"),
-                                    organizing_department=event_data.get("organizing_department", "N/A"),
-                                    start_date=event_data.get("start_date", "TBD"),
-                                    end_date=event_data.get("end_date", "TBD"),
-                                    event_mode=event_data.get("mode", "N/A"),
-                                    is_new_organizer=False,
-                                    username=username,
-                                    portal_url="http://localhost:3000/admin",
-                                    approval_message=reason,
-                                    support_email="support@campusconnect.edu"
-                                )
-                                success = await email_service.send_email_async(organizer_email, subject, html_content)
-                            
-                            if success:
-                                logger.info(f"✅ Sent {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}")
-                            else:
-                                logger.error(f"❌ Failed to send {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}")
-                            
-                        except Exception as e:
-                            logger.error(f"❌ Exception sending {'NEW organizer credentials' if is_new_organizer else 'existing organizer approval'} email to {organizer_email}: {e}")
-                            import traceback
-                            logger.error(f"Full traceback: {traceback.format_exc()}")
+                else:
+                    logger.warning(f"⚠️ Event {event_id} not found or not updated")
+            else:
+                # Reject the event - update status to rejected
+                result = await db["events"].update_one(
+                    {"event_id": event_id},
+                    {"$set": {"status": "rejected", "declined_at": datetime.utcnow(), "decline_reason": reason}}
+                )
+                
+                if result.modified_count > 0:
+                    logger.info(f"✅ Event {event_id} approved successfully")
                     
                     # Create success notification for event creator
                     await self.create_notification(
                         notification_type=NotificationType.EVENT_APPROVED,
                         title="Event Approved",
-                        message=f"Your event '{event_name}' has been approved! All organizers have been notified and given admin access.",
+                        message=f"Your event '{event_name}' has been approved!",
                         recipient_username=created_by,
                         recipient_role="event_creator",
                         sender_username=notification.recipient_username,
@@ -711,70 +525,40 @@ class NotificationService:
                         action_required=False,
                         metadata={
                             "approval_reason": reason,
-                            "approved_by": notification.recipient_username,
-                            "organizers_count": len(organizers)
+                            "approved_by": notification.recipient_username
                         }
                     )
                 else:
-                    logger.warning(f"⚠️ Event {event_id} not found or already processed")
+                    logger.warning(f"⚠️ Event {event_id} not found or not updated")
             else:
-                # Reject the event - DELETE it from database
-                logger.info(f"🔄 Starting event rejection process for event_id: {event_id}")
-                logger.info(f"📧 Event has {len(organizers)} organizers to notify")
+                # Reject the event - update status to rejected
+                result = await db["events"].update_one(
+                    {"event_id": event_id},
+                    {"$set": {"status": "rejected", "declined_at": datetime.utcnow(), "decline_reason": reason}}
+                )
                 
-                result = await db["events"].delete_one({"event_id": event_id})
-                
-                if result.deleted_count > 0:
-                    logger.info(f"🗑️ Event {event_id} rejected and deleted successfully")
-                    
-                    # Get super admin details for email template
-                    super_admin = await db["admin_users"].find_one({"username": notification.recipient_username})
-                    super_admin_name = super_admin.get("name", notification.recipient_username) if super_admin else notification.recipient_username
-                    super_admin_email = super_admin.get("email", "") if super_admin else ""
-                    super_admin_phone = super_admin.get("phone", "") if super_admin else ""
-                    super_admin_office = super_admin.get("office", "") if super_admin else ""
-                    
-                    # Send rejection email to all organizers
-                    for organizer in organizers:
-                        organizer_email = organizer.get("email")
-                        organizer_name = organizer.get("name", "Unknown Organizer")
-                        
-                        if not organizer_email:
-                            logger.warning(f"No email found for organizer: {organizer_name}")
-                            continue
-                        
-                        try:
-                            logger.info(f"📧 Attempting to send rejection email to {organizer_email}")
-                            success = await email_service.send_new_organizer_declined_notification(
-                                organizer_email=organizer_email,
-                                organizer_name=organizer_name,
-                                event_data=event_data,
-                                super_admin_name=super_admin_name,
-                                super_admin_email=super_admin_email,
-                                decision_date=datetime.utcnow().strftime("%B %d, %Y at %I:%M %p"),
-                                reason=reason or "No specific reason provided",
-                                portal_url="http://localhost:3000/admin",  # Update with actual URL
-                                super_admin_phone=super_admin_phone,
-                                super_admin_office=super_admin_office
-                            )
-                            
-                            if success:
-                                logger.info(f"✅ Sent rejection email to {organizer_email}")
-                            else:
-                                logger.error(f"❌ Failed to send rejection email to {organizer_email}")
-                            
-                        except Exception as e:
-                            logger.error(f"❌ Exception sending rejection email to {organizer_email}: {e}")
-                            import traceback
-                            logger.error(f"Full traceback: {traceback.format_exc()}")
+                if result.modified_count > 0:
+                    logger.info(f"❌ Event {event_id} rejected successfully. Reason: {reason}")
                     
                     # Notify the event creator about rejection
                     await self.create_notification(
                         notification_type=NotificationType.EVENT_REJECTED,
                         title="Event Rejected",
-                        message=f"Your event '{event_name}' has been rejected and removed. Reason: {reason or 'No reason provided'}",
+                        message=f"Your event '{event_name}' has been rejected. Reason: {reason or 'No reason provided'}",
                         recipient_username=created_by,
-                        recipient_role="event_creator", 
+                        recipient_role="event_creator",
+                        sender_username=notification.recipient_username,
+                        sender_role="super_admin",
+                        related_entity_type="event",
+                        related_entity_id=event_id,
+                        priority=NotificationPriority.HIGH,
+                        metadata={
+                            "rejection_reason": reason,
+                            "rejected_by": notification.recipient_username
+                        }
+                    )
+                else:
+                    logger.warning(f"⚠️ Event {event_id} not found or not updated") 
                         sender_username=notification.recipient_username,
                         sender_role="super_admin",
                         related_entity_type="event",

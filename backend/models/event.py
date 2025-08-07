@@ -36,14 +36,6 @@ class TeamRegistration(BaseModel):
     participants: List[str] = Field(..., description="List of participant enrollment numbers")
     registration_date: datetime = Field(default_factory=datetime.utcnow, description="Date of team registration")
 
-class EventOrganizer(BaseModel):
-    """Event organizer information"""
-    id: Optional[str] = Field(default=None, description="Organizer ID (null for new organizers)")
-    name: str = Field(..., description="Organizer full name")
-    email: str = Field(..., description="Organizer email address")
-    employee_id: str = Field(..., description="Employee/Faculty ID")
-    isNew: bool = Field(default=False, description="Whether this is a new organizer requiring approval")
-
 class EventContact(BaseModel):
     """Event contact information"""
     name: str = Field(..., description="Contact person name")
@@ -68,7 +60,7 @@ class Event(BaseModel):
     is_xenesis_event: bool = Field(default=False, description="Whether this is a Xenesis event")
     
     # Additional event details
-    organizers: List[EventOrganizer] = Field(default=[], description="List of event organizers with details")
+    faculty_organizers: List[str] = Field(default=[], description="List of faculty employee IDs who are organizers")
     contacts: List[EventContact] = Field(default=[], description="Contact information")
     
     # Approval workflow fields
@@ -274,8 +266,8 @@ class CreateEvent(BaseModel):
     target_audience: str = Field(..., description="student, faculty, or both")
     is_xenesis_event: bool = Field(default=False, description="Xenesis event flag")
     
-    # Organizer information - updated to handle new structure
-    organizers: List[EventOrganizer] = Field(..., description="List of organizer objects with details")
+    # Contact information
+    faculty_organizers: List[str] = Field(..., description="List of faculty employee IDs who are organizers")
     contacts: List[EventContact] = Field(..., description="Contact information objects")
     
     # Registration settings
@@ -320,7 +312,7 @@ class UpdateEvent(BaseModel):
     venue: Optional[str] = None
     target_audience: Optional[str] = None
     is_xenesis_event: Optional[bool] = None
-    organizers: Optional[List[str]] = None
+    faculty_organizers: Optional[List[str]] = None
     contacts: Optional[List[Dict[str, str]]] = None
     registration_type: Optional[str] = None
     registration_fee: Optional[float] = None
@@ -347,7 +339,7 @@ class EventResponse(BaseModel):
     sub_status: Optional[str] = None
     target_audience: str
     is_xenesis_event: bool
-    organizers: List[str] = []
+    faculty_organizers: List[str] = []
     contacts: List[Dict[str, str]] = []
     registration_mode: str = "individual"
     team_size_min: Optional[int] = None

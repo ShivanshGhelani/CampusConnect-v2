@@ -241,7 +241,7 @@ class EventRegistrationService:
     
     async def mark_physical_attendance(self, request: PhysicalAttendanceRequest, marked_by: str) -> AttendanceResponse:
         """
-        Mark physical attendance for a student (admin/organizer action)
+        Mark physical attendance for a student (admin action)
         
         Args:
             request: Physical attendance request

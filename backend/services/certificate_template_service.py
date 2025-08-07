@@ -429,8 +429,8 @@ class CertificateTemplateService:
             tags.extend(['volunteer', 'service', 'community'])
         elif 'speaker' in name_lower:
             tags.extend(['speaker', 'presentation', 'expert'])
-        elif 'organizer' in name_lower:
-            tags.extend(['organizer', 'leadership', 'management'])
+        elif 'coordinator' in name_lower:
+            tags.extend(['coordinator', 'leadership', 'management'])
         elif 'topper' in name_lower:
             tags.extend(['topper', 'rank', 'performance'])
         

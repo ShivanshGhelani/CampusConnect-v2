@@ -206,7 +206,7 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
             {"$set": {"last_login": datetime.utcnow()}}
         )
         
-        # If not updated in admin_users, try users collection (for organizers)
+        # If not updated in admin_users, try users collection (for other user types)
         if not admin_users_result:
             await DatabaseOperations.update_one(
                 "users",
@@ -241,8 +241,7 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
             AdminRole.SUPER_ADMIN: "/admin/dashboard",
             AdminRole.EXECUTIVE_ADMIN: "/admin/events/create",
             AdminRole.EVENT_ADMIN: "/admin/events",
-            AdminRole.CONTENT_ADMIN: "/admin/events",
-            AdminRole.ORGANIZER_ADMIN: "/admin/events"
+            AdminRole.CONTENT_ADMIN: "/admin/events"
         }
         
         response_data = {

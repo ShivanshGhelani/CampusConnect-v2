@@ -34,9 +34,9 @@ class EventForm(BaseModel):
     short_description: str
     detailed_description: str
 
-    # Step 2: Organizer & Contact Info
+    # Step 2: Faculty Organizers & Contact Info
     organizing_department: str
-    organizers: List[str]
+    faculty_organizers: List[str]  # List of faculty employee IDs
     contacts: List[Contact]
 
     # Step 3: Date & Time
