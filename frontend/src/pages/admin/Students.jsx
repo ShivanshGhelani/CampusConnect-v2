@@ -327,117 +327,92 @@ function Students() {
           </div>
           
           {/* Enhanced Search Bar with Filters */}
-          <div className="mt-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Search Input */}
-              <div className="lg:col-span-6">
-                <SearchBox
-                  placeholder="Search students by name, email, or enrollment number..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  size="md"
-                  suggestions={searchSuggestions}
-                  filters={[
-                    {
-                      label: 'Active Only',
-                      value: 'active',
-                      active: statusFilter === 'active'
-                    },
-                    {
-                      label: 'Verified Only', 
-                      value: 'verified',
-                      active: statusFilter === 'verified'
-                    }
-                  ]}
-                />
-              </div>
-              
-              {/* Department Filter */}
-              <div className="lg:col-span-3">
-                <Dropdown
-                  placeholder="All Departments"
-                  value={departmentFilter}
-                  onChange={handleDepartmentChange}
-                  clearable
-                  options={availableDepartments.map(dept => ({ 
-                    label: dept, 
-                    value: dept,
-                    icon: <i className="fas fa-building text-xs"></i>
-                  }))}
-                  icon={<i className="fas fa-building text-xs"></i>}
-                  size="md"
-                  className="h-full"
-                />
-              </div>
-              
-              {/* Status Filter */}
-              <div className="lg:col-span-2">
-                <Dropdown
-                  placeholder="All Status"
-                  value={statusFilter}
-                  onChange={handleStatusChange}
-                  clearable
-                  options={[
-                    { label: 'Active', value: 'active', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
-                    { label: 'Inactive', value: 'inactive', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
-                  ]}
-                  icon={<i className="fas fa-toggle-on text-xs"></i>}
-                  size="md"
-                  className="h-full"
-                />
-              </div>
-              
-              {/* Clear Filters Button */}
-              <div className="lg:col-span-1">
-                <button
-                  onClick={clearAllFilters}
-                  className="w-full h-full px-4 py-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md"
-                  title="Clear all filters"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
+        {/* Search and Filters */}
+        <div className="bg-white p-6 rounded-xl">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Search Bar */}
+            <div className="flex-1">
+              <SearchBox
+                placeholder="Search students by name, email, or enrollment number..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                showFilters={false}
+                size="md"
+              />
             </div>
-            
-            {/* Active Filters Display */}
-            {(searchTerm || departmentFilter || statusFilter) && (
-              <div className="mt-4 flex flex-wrap gap-2">
+
+            {/* Filters Row */}
+            <div className="flex flex-col sm:flex-row gap-3 lg:w-auto">
+              <Dropdown
+                placeholder="All Departments"
+                value={departmentFilter}
+                onChange={handleDepartmentChange}
+                clearable
+                options={availableDepartments.map(dept => ({ 
+                  label: dept, 
+                  value: dept,
+                  icon: <i className="fas fa-building text-xs"></i>
+                }))}
+                icon={<i className="fas fa-building text-xs"></i>}
+                size="md"
+                className="w-full sm:w-48"
+              />
+
+              <Dropdown
+                placeholder="All Status"
+                value={statusFilter}
+                onChange={handleStatusChange}
+                clearable
+                options={[
+                  { label: 'Active', value: 'active', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
+                  { label: 'Inactive', value: 'inactive', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
+                ]}
+                icon={<i className="fas fa-toggle-on text-xs"></i>}
+                size="md"
+                className="w-full sm:w-32"
+              />
+            </div>
+          </div>
+
+          {/* Active Filters */}
+          {(searchTerm || departmentFilter || statusFilter) && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-600">Active filters:</span>
                 {searchTerm && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     Search: "{searchTerm}"
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="ml-2 hover:text-blue-600"
-                    >
-                      <i className="fas fa-times"></i>
+                    <button onClick={() => setSearchTerm('')} className="ml-1 text-blue-600 hover:text-blue-800">
+                      <i className="fas fa-times text-xs"></i>
                     </button>
                   </span>
                 )}
                 {departmentFilter && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                     Department: {departmentFilter}
-                    <button
-                      onClick={() => setDepartmentFilter('')}
-                      className="ml-2 hover:text-green-600"
-                    >
-                      <i className="fas fa-times"></i>
+                    <button onClick={() => setDepartmentFilter('')} className="ml-1 text-purple-600 hover:text-purple-800">
+                      <i className="fas fa-times text-xs"></i>
                     </button>
                   </span>
                 )}
                 {statusFilter && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     Status: {statusFilter === 'active' ? 'Active' : 'Inactive'}
-                    <button
-                      onClick={() => setStatusFilter('')}
-                      className="ml-2 hover:text-purple-600"
-                    >
-                      <i className="fas fa-times"></i>
+                    <button onClick={() => setStatusFilter('')} className="ml-1 text-green-600 hover:text-green-800">
+                      <i className="fas fa-times text-xs"></i>
                     </button>
                   </span>
                 )}
+                <button
+                  onClick={clearAllFilters}
+                  className="text-xs text-gray-600 hover:text-gray-800 underline"
+                >
+                  Clear all
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
         </div>
 
         {/* Enhanced Stats Summary */}
