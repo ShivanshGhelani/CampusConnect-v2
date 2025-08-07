@@ -1317,8 +1317,7 @@ function CreateEvent() {
                   <Dropdown
                     options={[
                       { value: "student", label: "Students Only" },
-                      { value: "faculty", label: "Faculty Only" },
-                      { value: "both", label: "Students & Faculty" }
+                      { value: "faculty", label: "Faculty Only" }
                     ]}
                     value={form.target_audience}
                     onChange={(value) => handleChange({ target: { name: 'target_audience', value } })}
