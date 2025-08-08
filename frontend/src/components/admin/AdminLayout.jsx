@@ -195,14 +195,14 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
             return (stats.upcomingEventsCount || 0) + (stats.totalStudents > 0 ? 1 : 0);
         } else if (user.role === 'executive_admin') {
             return stats.upcomingEventsCount || 0;
-        } else if (user.role === 'event_admin') {
+        } else if (user.role === 'organizer_admin') {
             return stats.totalEvents || 0;
         }
         return 0;
     };
 
-    // Determine if sidebar should be hidden (for event admins and executive admins)
-    const showSidebar = user && !['event_admin', 'executive_admin'].includes(user.role);
+    // Determine if sidebar should be hidden (for organizer admins and executive admins)
+    const showSidebar = user && !['organizer_admin', 'executive_admin'].includes(user.role);
 
     return (
         <div className={`h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${showSidebar ? 'grid grid-cols-[250px_1fr] grid-rows-1' : 'grid grid-cols-1 grid-rows-1'}`}
@@ -285,7 +285,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Students */}
-                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -310,7 +310,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Faculty */}
-                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -334,7 +334,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Events */}
-                        {user?.role !== 'event_admin' && (
+                        {user?.role !== 'organizer_admin' && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -402,7 +402,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Assets */}
-                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -426,7 +426,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Venues */}
-                        {user?.role && ['super_admin', 'executive_admin', 'content_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link

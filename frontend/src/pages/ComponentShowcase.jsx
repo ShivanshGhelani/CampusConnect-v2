@@ -188,8 +188,7 @@ const ComponentShowcase = () => {
               <div className="flex flex-wrap gap-2">
                 <RoleBadge role="super_admin" />
                 <RoleBadge role="executive_admin" />
-                <RoleBadge role="content_admin" />
-                <RoleBadge role="event_admin" />
+                <RoleBadge role="organizer_admin" />
                 <RoleBadge role="moderator" />
                 <RoleBadge role="user" />
               </div>

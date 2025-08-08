@@ -167,7 +167,7 @@ function SettingsProfile() {
     <AdminLayout pageTitle="Profile & Settings">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
-        {user?.role === 'event_admin' && (
+        {user?.role === 'organizer_admin' && (
           <div className="mb-6">
             <button
               onClick={() => window.history.back()}

@@ -88,11 +88,11 @@ async def require_admin(request: Request):
         raise e
 
 async def require_admin_with_refresh(request: Request):
-    """Dependency to require admin authentication with session refresh for Event Admins"""
+    """Dependency to require admin authentication with session refresh for Organizer Admins"""
     admin = await require_admin(request)
     
-    # For Event Admins, refresh session to get latest assigned events
-    if admin.role == AdminRole.EVENT_ADMIN:
+    # For Organizer Admins, refresh session to get latest assigned events
+    if admin.role == AdminRole.ORGANIZER_ADMIN:
         admin = await refresh_admin_session(request)
     
     return admin
@@ -127,22 +127,22 @@ async def require_organizer_admin_access(request: Request):
         )
     return admin
 
-async def require_content_admin_or_higher(request: Request):
-    """Dependency to require content admin, executive admin, or super admin authentication"""
+async def require_organizer_admin_or_higher(request: Request):
+    """Dependency to require organizer admin, executive admin, or super admin authentication"""
     admin = await require_admin(request)
-    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.EXECUTIVE_ADMIN, AdminRole.CONTENT_ADMIN]:
+    if admin.role not in [AdminRole.SUPER_ADMIN, AdminRole.EXECUTIVE_ADMIN, AdminRole.ORGANIZER_ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Content admin access or higher required"
+            detail="Organizer admin access or higher required"
         )
     return admin
 
-async def require_event_admin_access(request: Request, event_id: Optional[str] = None):
-    """Dependency for event admin access with event assignment check"""
+async def require_organizer_admin_access(request: Request, event_id: Optional[str] = None):
+    """Dependency for organizer admin access with event assignment check"""
     admin = await require_admin(request)
     
-    # For Event Admins and Organizer Admins, refresh session to get latest assigned events
-    if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+    # For Organizer Admins, refresh session to get latest assigned events
+    if admin.role == AdminRole.ORGANIZER_ADMIN:
         admin = await refresh_admin_session(request)
     
     # Super admins have access to everything
@@ -153,12 +153,8 @@ async def require_event_admin_access(request: Request, event_id: Optional[str] =
     if admin.role == AdminRole.EXECUTIVE_ADMIN:
         return admin
     
-    # Content admins have read-only access to all events
-    if admin.role == AdminRole.CONTENT_ADMIN:
-        return admin
-    
-    # Event admins and Organizer admins can only access assigned events
-    if admin.role in [AdminRole.EVENT_ADMIN, AdminRole.ORGANIZER_ADMIN]:
+    # Organizer admins can only access assigned events
+    if admin.role == AdminRole.ORGANIZER_ADMIN:
         if event_id and event_id not in (admin.assigned_events or []):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -337,7 +337,7 @@ function EventDetail() {
 
   const canEdit = user && ['super_admin', 'executive_admin'].includes(user.role);
   const canDelete = user && user.role === 'super_admin';
-  const isReadOnly = user && user.role === 'event_admin';
+  const isReadOnly = user && user.role === 'organizer_admin';
 
   if (isLoading) {
     return (

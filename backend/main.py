@@ -154,11 +154,13 @@ async def internal_server_error_handler(request: Request, exc):
 # Include routes
 from routes.admin import router as admin_router
 from routes.auth import router as auth_router
+from routes.organizer import router as organizer_router
 from api import router as api_router
 
 # Mount routes in correct order (most specific first)
 app.include_router(api_router)     # API routes at /api/...
 app.include_router(admin_router)   # Admin routes including /admin/...
+app.include_router(organizer_router)  # Organizer routes including /organizer/...
 app.include_router(auth_router)    # Auth routes at /auth/...
 
 # Global variable to keep scheduler task alive

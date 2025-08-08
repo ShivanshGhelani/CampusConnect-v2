@@ -240,8 +240,7 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
         redirect_urls = {
             AdminRole.SUPER_ADMIN: "/admin/dashboard",
             AdminRole.EXECUTIVE_ADMIN: "/admin/events/create",
-            AdminRole.EVENT_ADMIN: "/admin/events",
-            AdminRole.CONTENT_ADMIN: "/admin/events"
+            AdminRole.ORGANIZER_ADMIN: "/admin/events"
         }
         
         response_data = {

@@ -498,17 +498,6 @@ class NotificationService:
                 
                 if result.modified_count > 0:
                     logger.info(f"✅ Event {event_id} approved successfully")
-                else:
-                    logger.warning(f"⚠️ Event {event_id} not found or not updated")
-            else:
-                # Reject the event - update status to rejected
-                result = await db["events"].update_one(
-                    {"event_id": event_id},
-                    {"$set": {"status": "rejected", "declined_at": datetime.utcnow(), "decline_reason": reason}}
-                )
-                
-                if result.modified_count > 0:
-                    logger.info(f"✅ Event {event_id} approved successfully")
                     
                     # Create success notification for event creator
                     await self.create_notification(
@@ -558,20 +547,7 @@ class NotificationService:
                         }
                     )
                 else:
-                    logger.warning(f"⚠️ Event {event_id} not found or not updated") 
-                        sender_username=notification.recipient_username,
-                        sender_role="super_admin",
-                        related_entity_type="event",
-                        related_entity_id=event_id,
-                        priority=NotificationPriority.HIGH,
-                        action_required=False,
-                        metadata={
-                            "rejection_reason": reason,
-                            "rejected_by": notification.recipient_username
-                        }
-                    )
-                else:
-                    logger.warning(f"⚠️ Event {event_id} not found for deletion")
+                    logger.warning(f"⚠️ Event {event_id} not found or not updated")
                     
         except Exception as e:
             logger.error(f"Error handling event approval: {e}")

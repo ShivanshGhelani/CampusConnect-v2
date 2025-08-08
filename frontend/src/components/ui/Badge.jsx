@@ -248,15 +248,10 @@ export const RoleBadge = ({
       icon: <i className="fas fa-user-shield"></i>, 
       label: 'Executive Admin' 
     },
-    content_admin: { 
-      variant: 'info', 
-      icon: <i className="fas fa-edit"></i>, 
-      label: 'Content Admin' 
-    },
-    event_admin: { 
+    organizer_admin: { 
       variant: 'purple', 
       icon: <i className="fas fa-calendar"></i>, 
-      label: 'Event Admin' 
+      label: 'Organizer Admin' 
     },
     moderator: { 
       variant: 'warning', 

@@ -31,6 +31,10 @@ class Faculty(BaseModel):
     date_of_joining: Optional[datetime] = Field(None, description="Faculty joining date")
     is_active: bool = Field(default=True, description="Whether faculty account is active")
     event_participation: List[str] = Field(default_factory=list, description="List of event IDs faculty participated in")
+    # Organizer-specific fields
+    is_organizer: bool = Field(default=False, description="Whether faculty can act as organizer")
+    assigned_events: List[str] = Field(default_factory=list, description="List of event IDs faculty can organize")
+    organizer_permissions: List[str] = Field(default_factory=list, description="Specific organizer permissions")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
@@ -57,6 +61,7 @@ class FacultyCreate(BaseModel):
     date_of_birth: Optional[str] = Field(None, description="Faculty date of birth (YYYY-MM-DD)")
     date_of_joining: Optional[str] = Field(None, description="Faculty joining date (YYYY-MM-DD)")
     is_active: bool = Field(default=True, description="Whether faculty account is active")
+    is_organizer: bool = Field(default=False, description="Whether faculty can act as organizer")
 
 class FacultyUpdate(BaseModel):
     """Model for faculty updates"""
@@ -73,6 +78,7 @@ class FacultyUpdate(BaseModel):
     date_of_birth: Optional[str] = Field(None, description="Faculty date of birth (YYYY-MM-DD)")
     date_of_joining: Optional[str] = Field(None, description="Faculty joining date (YYYY-MM-DD)")
     is_active: Optional[bool] = Field(None, description="Whether faculty account is active")
+    is_organizer: Optional[bool] = Field(None, description="Whether faculty can act as organizer")
 
 class FacultyLogin(BaseModel):
     """Model for faculty login"""
@@ -94,8 +100,12 @@ class FacultyResponse(BaseModel):
     gender: str
     date_of_birth: Optional[datetime]
     date_of_joining: Optional[datetime]
-    is_active: bool
+    is_active: bool = Field(default=True, description="Whether faculty account is active")
     event_participation: List[str]
+    # Organizer-specific fields
+    is_organizer: bool
+    assigned_events: List[str]
+    organizer_permissions: List[str]
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime]

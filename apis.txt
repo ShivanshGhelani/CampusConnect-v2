@@ -1,568 +1,246 @@
 ============================================================================
                         CAMPUSCONNECT BACKEND API DOCUMENTATION
-                                    API v1 Reference
+                                   API v1 Reference
 ============================================================================
 
 BASE URL: /api/v1
 
-This document provides a complete categorized list of all available API endpoints
-in the CampusConnect backend system, organized by functionality and access level.
+Scope: This file documents all routers under backend/api/v1 (auth, client, admin) based on actual code.
 
 ============================================================================
-1. AUTHENTICATION APIs (/api/v1/auth)
+1) AUTHENTICATION (/api/v1/auth)
 ============================================================================
+• GET  /admin/status — Auth state for admins. Access: any (returns authenticated:false if not logged in).
+• POST /admin/login — Admin login. Body: { username, password, remember_me }. Sets tokens/cookies if available.
+• POST /admin/logout — Admin logout. Clears session/tokens.
 
-1.1 ADMIN AUTHENTICATION
-------------------------
-• GET    /api/v1/auth/admin/status
-  Purpose: Check if admin is authenticated
-  Access: Any admin
-  Returns: Authentication status and admin info
+• GET  /student/status — Auth state for students.
+• POST /student/login — Student login. Body: { enrollment_no, password, remember_me }.
+• POST /student/logout — Student logout.
+• POST /student/register — Student registration. Body includes: full_name, enrollment_no, email, mobile_no, gender, date_of_birth(YYYY-MM-DD), department, semester(int), password.
 
-• POST   /api/v1/auth/admin/login
-  Purpose: Admin login authentication
-  Access: Public
-  Body: { username, password }
-  Returns: Auth token and admin details
+• GET  /faculty/status — Auth state for faculty (session-based data).
+• POST /faculty/login — Faculty login. Body: { employee_id, password, remember_me }.
+• POST /faculty/logout — Faculty logout.
+• POST /faculty/register — Faculty registration. Body includes: employee_id, full_name, email, contact_no, department, designation, qualification, specialization?, experience_years, seating?, gender, date_of_birth, date_of_joining?, employment_type?, password.
 
-• POST   /api/v1/auth/admin/logout
-  Purpose: Admin logout
-  Access: Authenticated admin
-  Returns: Logout confirmation
+Password Reset (mounted under /auth)
+• POST /forgot-password/student — Start student reset flow. Body: { enrollment_no, email }.
+• POST /forgot-password/faculty — Start faculty reset flow. Body: { employee_id, email }.
+• GET  /validate-reset-token/{token} — Validate reset token.
+• POST /reset-password/{token} — Reset password. Body: { new_password }.
 
-1.2 STUDENT AUTHENTICATION
----------------------------
-• GET    /api/v1/auth/student/status
-  Purpose: Check if student is authenticated
-  Access: Any student
-  Returns: Authentication status and student info
-
-• POST   /api/v1/auth/student/login
-  Purpose: Student login authentication
-  Access: Public
-  Body: { enrollment_no, password }
-  Returns: Auth token and student details
-
-• POST   /api/v1/auth/student/logout
-  Purpose: Student logout
-  Access: Authenticated student
-  Returns: Logout confirmation
-
-• POST   /api/v1/auth/student/register
-  Purpose: Student account registration
-  Access: Public
-  Body: { full_name, enrollment_no, email, mobile_no, gender, date_of_birth, department, semester, password }
-  Returns: Registration confirmation
+Notes:
+- Token cookies set when Redis/token manager is available; session fallback otherwise.
+- Validation and error responses are JSON with success/message fields.
 
 ============================================================================
-2. ADMIN APIs (/api/v1/admin)
+2) CLIENT (/api/v1/client)
 ============================================================================
+Attendance (/attendance)
+• GET  /status/{event_id} — Attendance status for current student. Auth: student.
+• POST /mark/{event_id} — Mark attendance. Auth: student. Body: { registration_id, student_name, enrollment_no }.
+• GET  /validate-form/{event_id} — Prefill/validate form. Auth: student.
+• GET  /history — Attendance history. Auth: student.
 
-2.1 ADMIN ANALYTICS (/api/v1/admin/analytics)
----------------------------------------------
-• GET    /api/v1/admin/analytics/dashboard
-  Purpose: Get main dashboard analytics
-  Access: Admin (all roles)
-  Returns: Overall system statistics
+Certificates (/certificates)
+• POST /data — Get data for JS certificate generator. Auth: student. Body: { event_id, enrollment_no } (must match session).
+• POST /send-email — Queue email with provided PDF. Auth: student. Body: { event_id, enrollment_no, pdf_base64, file_name }.
+• GET  /status/{event_id} — Check certificate availability. Auth: student.
+• GET  /template/{event_id} — Get certificate template content/placeholders. Auth: student.
+• POST /validate-access — Validate eligibility. Auth: student. Body: { event_id }.
+• GET  /debug/{event_id}/{enrollment_no} — Debug data (only when DEBUG enabled).
 
-• GET    /api/v1/admin/analytics/events
-  Purpose: Get event-specific analytics
-  Access: Admin (all roles)
-  Query: event_id, date_range
-  Returns: Event performance metrics
+Events (/events)
+• GET  /list — Paginated events with filters. Query: status=all|upcoming|ongoing|completed, category?, page=1, limit=10, force_refresh?. Auth: optional (filters by target audience when logged in).
+• GET  /details/{event_id} — Event details (adds user_registration_status when logged in).
+• GET  /categories — Unique event categories.
+• GET  /search — Query search across name/description/category. Query: q(required), status, category, page, limit.
+• GET  /upcoming — Quick upcoming events. Query: limit.
 
-• GET    /api/v1/admin/analytics/students
-  Purpose: Get student analytics
-  Access: Admin (all roles)
-  Returns: Student engagement statistics
+Feedback (/feedback)
+• GET  /status/{event_id} — Can submit feedback? Requires attendance. Auth: student.
+• POST /submit/{event_id} — Submit feedback. Auth: student. Body includes rating fields.
+• GET  /form-data/{event_id} — Prefill feedback form. Auth: student.
+• GET  /history — Feedback history. Auth: student.
+• GET  /analytics/{event_id} — Aggregated feedback summary (basic). Auth: student with attendance.
 
-• GET    /api/v1/admin/analytics/registrations
-  Purpose: Get registration analytics
-  Access: Admin (all roles)
-  Query: event_id, date_range
-  Returns: Registration trends and metrics
+Profile (/profile)
+• GET  /info — Current student profile. Auth: student.
+• PUT  /update — Update student profile. Auth: student. Body: subset of profile fields; null allowed for avatar_url.
+• GET  /dashboard-stats — Personal metrics. Auth: student.
+• GET  /event-history — Participation history. Auth: student.
+• POST /change-password — Change student password. Auth: student. Body: { current_password, new_password, confirm_password }.
+• GET  /faculty/info — Current faculty profile. Auth: faculty.
+• PUT  /faculty/update — Update faculty profile (optional password change). Auth: faculty.
+• GET  /faculty/dashboard-stats — Faculty metrics. Auth: faculty.
+• GET  /team-details/{event_id}/{team_id} — Team member info (student auth). Auth: student.
+• GET  /team-info/{event_id}/{team_id} — Team info (auth optional; attempts student context).
+• GET  /team-info-debug/{event_id}/{team_id} — Team info (debug, no auth).
+• GET  /test-auth — Simple student auth check.
 
-• GET    /api/v1/admin/analytics/certificates
-  Purpose: Get certificate issuance analytics
-  Access: Admin (all roles)
-  Returns: Certificate statistics
-
-• GET    /api/v1/admin/analytics/export
-  Purpose: Export analytics data
-  Access: Admin (all roles)
-  Query: format, date_range, type
-  Returns: Downloadable analytics report
-
-• GET    /api/v1/admin/analytics/dashboard-stats
-  Purpose: Get real-time dashboard statistics
-  Access: Admin (all roles)
-  Returns: Live system metrics
-
-2.2 ADMIN CERTIFICATE MANAGEMENT (/api/v1/admin/certificates)
--------------------------------------------------------------
-• GET    /api/v1/admin/certificates/list
-  Purpose: Get list of all certificates
-  Access: Admin (all roles)
-  Query: page, limit, event_id, status
-  Returns: Paginated certificate list
-
-• GET    /api/v1/admin/certificates/event/{event_id}
-  Purpose: Get certificates for specific event
-  Access: Admin (all roles)
-  Returns: Event-specific certificates
-
-• POST   /api/v1/admin/certificates/bulk-issue
-  Purpose: Issue certificates in bulk
-  Access: Executive Admin or higher
-  Body: { event_id, participant_list }
-  Returns: Bulk issuance result
-
-• POST   /api/v1/admin/certificates/revoke/{certificate_id}
-  Purpose: Revoke a certificate
-  Access: Executive Admin or higher
-  Returns: Revocation confirmation
-
-• GET    /api/v1/admin/certificates/templates
-  Purpose: Get available certificate templates
-  Access: Admin (all roles)
-  Returns: Template list
-
-• GET    /api/v1/admin/certificates/statistics
-  Purpose: Get certificate issuance statistics
-  Access: Admin (all roles)
-  Returns: Certificate metrics
-
-2.3 ADMIN EVENT MANAGEMENT (/api/v1/admin/events)
--------------------------------------------------
-• GET    /api/v1/admin/events/list
-  Purpose: Get paginated list of events for admin management
-  Access: Admin (all roles, filtered by role)
-  Query: status, page, limit
-  Returns: Events with admin statistics
-
-• GET    /api/v1/admin/events/details/{event_id}
-  Purpose: Get detailed event information
-  Access: Admin (access controlled by role)
-  Returns: Complete event details with admin metrics
-
-• POST   /api/v1/admin/events/create
-  Purpose: Create new event
-  Access: Executive Admin or higher
-  Body: Complete event data
-  Returns: Created event details
-
-• PUT    /api/v1/admin/events/update/{event_id}
-  Purpose: Update existing event
-  Access: Admin (with event access)
-  Body: Updated event data
-  Returns: Updated event details
-
-• DELETE /api/v1/admin/events/delete/{event_id}
-  Purpose: Delete event
-  Access: Executive Admin or higher
-  Returns: Deletion confirmation
-
-• GET    /api/v1/admin/events/registrations/{event_id}
-  Purpose: Get event registrations
-  Access: Admin (with event access)
-  Query: page, limit, type
-  Returns: Event registration details
-
-• POST   /api/v1/admin/events/bulk-update-status
-  Purpose: Update multiple event statuses
-  Access: Executive Admin or higher
-  Body: { event_ids, new_status }
-  Returns: Bulk update result
-
-2.4 ADMIN PROFILE MANAGEMENT (/api/v1/admin/profile)
-----------------------------------------------------
-• GET    /api/v1/admin/profile/data
-  Purpose: Get admin profile information
-  Access: Authenticated admin
-  Returns: Admin profile data
-
-• PUT    /api/v1/admin/profile/update
-  Purpose: Update admin profile
-  Access: Authenticated admin
-  Body: { fullname, email, phone, preferences }
-  Returns: Updated profile
-
-• PUT    /api/v1/admin/profile/update-username
-  Purpose: Update admin username
-  Access: Authenticated admin
-  Body: { new_username, current_password }
-  Returns: Username update confirmation
-
-• PUT    /api/v1/admin/profile/update-password
-  Purpose: Change admin password
-  Access: Authenticated admin
-  Body: { current_password, new_password }
-  Returns: Password change confirmation
-
-• PUT    /api/v1/admin/profile/update-settings
-  Purpose: Update admin settings/preferences
-  Access: Authenticated admin
-  Body: { settings_object }
-  Returns: Settings update confirmation
-
-2.5 ADMIN STUDENT MANAGEMENT (/api/v1/admin/students)
------------------------------------------------------
-• GET    /api/v1/admin/students/list
-  Purpose: Get paginated list of students
-  Access: Admin (Content Admin or higher)
-  Query: page, limit, department, status, search
-  Returns: Student list with statistics
-
-• GET    /api/v1/admin/students/details/{enrollment_no}
-  Purpose: Get detailed student information
-  Access: Admin (Content Admin or higher)
-  Returns: Complete student profile and activity
-
-• PUT    /api/v1/admin/students/update/{enrollment_no}
-  Purpose: Update student information
-  Access: Admin (Content Admin or higher)
-  Body: Updated student data
-  Returns: Updated student details
-
-• POST   /api/v1/admin/students/create
-  Purpose: Create new student account
-  Access: Admin (Content Admin or higher)
-  Body: Complete student data
-  Returns: Created student details
-
-• POST   /api/v1/admin/students/bulk-import
-  Purpose: Import students in bulk
-  Access: Admin (Content Admin or higher)
-  Body: CSV/Excel file or student array
-  Returns: Import results
-
-• GET    /api/v1/admin/students/statistics
-  Purpose: Get student statistics
-  Access: Admin (Content Admin or higher)
-  Returns: Student metrics and analytics
-
-• PUT    /api/v1/admin/students/toggle-status/{enrollment_no}
-  Purpose: Enable/disable student account
-  Access: Admin (Content Admin or higher)
-  Returns: Status change confirmation
-
-• PUT    /api/v1/admin/students/update-status/{student_id}
-  Purpose: Update student status
-  Access: Admin (Content Admin or higher)
-  Body: { status, reason }
-  Returns: Status update confirmation
-
-2.6 ADMIN USER MANAGEMENT (/api/v1/admin/users)
------------------------------------------------
-• GET    /api/v1/admin/users/list
-  Purpose: Get list of admin users
-  Access: Super Admin only
-  Query: page, limit, role, status
-  Returns: Admin users list
-
-• GET    /api/v1/admin/users/details/{username}
-  Purpose: Get admin user details
-  Access: Super Admin only
-  Returns: Complete admin user information
-
-• POST   /api/v1/admin/users/create
-  Purpose: Create new admin user
-  Access: Super Admin only
-  Body: { username, fullname, email, role, permissions }
-  Returns: Created admin user
-
-• PUT    /api/v1/admin/users/update/{username}
-  Purpose: Update admin user
-  Access: Super Admin only
-  Body: Updated admin data
-  Returns: Updated admin user
-
-• DELETE /api/v1/admin/users/delete/{username}
-  Purpose: Delete admin user
-  Access: Super Admin only
-  Returns: Deletion confirmation
-
-• POST   /api/v1/admin/users/assign-events/{username}
-  Purpose: Assign events to event admin
-  Access: Super Admin only
-  Body: { event_ids }
-  Returns: Assignment confirmation
-
-• PUT    /api/v1/admin/users/toggle-status/{username}
-  Purpose: Enable/disable admin user
-  Access: Super Admin only
-  Returns: Status change confirmation
-
-• GET    /api/v1/admin/users/roles
-  Purpose: Get available admin roles
-  Access: Admin (all roles)
-  Returns: Role definitions and permissions
-
-• GET    /api/v1/admin/users/statistics
-  Purpose: Get admin user statistics
-  Access: Super Admin only
-  Returns: Admin user metrics
+Registration (/registration)
+• POST /register/{event_id} — Register for event. Auth: student. Handles individual and team (generates IDs).
+• GET  /validate — Validate own registration ID. Auth: student. Query: registration_id, event_id.
+• GET  /validate-participant — Validate student by enrollment_no (for teams).
+• GET  /validate-faculty-participant — Validate faculty by employee_id (for teams with faculty?).
+• POST /check-conflicts — Check if enrollment_nos already registered. Body: { event_id, enrollment_numbers[] }.
+• POST /check-enhanced-conflicts — Same with approval support; may return pending_approvals.
+• POST /send-team-approval-request — Team leader requests approval. Auth: student.
+• POST /respond-team-approval — Respond approve/reject. Auth: student.
+• GET  /pending-team-requests — List pending requests. Auth: student.
+• GET  /status/{event_id} — Registration status with team details. Auth: student.
+• POST /cancel/{event_id} — Cancel registration (varies by type/time). Auth: student.
+• POST /add-team-member — Add member by leader with DB consistency. Auth: student.
+• POST /remove-team-member — Remove member by leader with cleanup. Auth: student.
+• POST /add-team-member-fixed — Alternate add (team_management_fixed). Auth: student.
+• POST /remove-team-member-fixed — Alternate remove (team_management_fixed). Auth: student.
+• GET  /validate-team-data/{event_id} — Team data consistency report. Auth: student.
 
 ============================================================================
-3. CLIENT APIs (/api/v1/client)
+3) ADMIN (/api/v1/admin)
 ============================================================================
+Analytics (/analytics)
+• GET  /dashboard — Overview counts, recent activity, status distribution, monthly trends. Auth: admin.
+• GET  /events — Events analytics with distributions and popular events. Auth: admin (EVENT_ADMIN scoped by assigned_events).
+• GET  /students — Department/semester distribution, engagement metrics, top students. Auth: admin.
+• GET  /registrations — Trends over period days (7/30/90/365). Auth: admin.
+• GET  /certificates — Issuance analytics and rates. Auth: admin.
+• GET  /export — Export analytics. Query: report_type, format. Auth: super-admin.
+• GET  /dashboard-stats — Real-time dashboard stats mirroring dashboard.py. Auth: admin.
 
-3.1 CLIENT ATTENDANCE (/api/v1/client/attendance)
--------------------------------------------------
-• GET    /api/v1/client/attendance/status/{event_id}
-  Purpose: Check attendance status for event
-  Access: Authenticated student
-  Returns: Attendance status and eligibility
+Certificates (/certificates)
+• GET  /list — List certificates (filters supported). Auth: admin.
+• GET  /event/{event_id} — Event certificate info. Auth: admin.
+• POST /bulk-issue — Bulk issue. Auth: executive or higher.
+• POST /revoke/{certificate_id} — Revoke certificate. Auth: executive or higher.
+• GET  /templates — Templates listing. Auth: admin.
+• GET  /statistics — Issuance stats. Auth: admin.
 
-• POST   /api/v1/client/attendance/mark/{event_id}
-  Purpose: Mark attendance for event
-  Access: Authenticated student
-  Body: { location_data, timestamp }
-  Returns: Attendance confirmation
+Certificate Templates (/certificate-templates)
+• GET  /dashboard — Template dashboard. Auth: admin.
+• GET  /statistics — Template stats. Auth: admin.
+• POST /upload — Upload HTML template. Auth: admin.
+• DELETE /{template_id} — Delete template. Auth: admin.
+• GET  /{template_id}/preview — Preview template. Auth: admin.
+• POST /migrate — Migrate legacy templates. Auth: admin.
 
-• GET    /api/v1/client/attendance/validate-form/{event_id}
-  Purpose: Validate attendance form/requirements
-  Access: Authenticated student
-  Returns: Form validation status
+Events (/events) — Very large module; highlights only
+• POST /create — Create event. Auth: executive or higher.
+• PUT  /update/{event_id} — Update event. Auth: admin with access.
+• GET  /list — Admin list with filters. Auth: admin.
+• GET  /pending-approval — List pending approval. Auth: admin.
+• POST /approve/{event_id} — Approve event. Auth: executive or higher.
+• POST /decline/{event_id} — Decline event. Auth: executive or higher.
+• GET  /details/{event_id} — Event details with admin metrics. Auth: admin.
+• GET  /stats — Stats (by event_id query). Auth: admin.
+• DELETE /delete/{event_id} — Delete event. Auth: executive or higher.
+• GET  /registrations/{event_id} — Registrations. Auth: admin with access.
+• POST /bulk-update-status — Bulk status update. Auth: executive or higher.
+• GET  /attendance/{event_id} — Attendance overview. Auth: admin.
+• POST /export/{event_id} — Export data. Auth: admin.
+• GET  /debug-event/{event_id} — Debug. Auth: admin.
+• POST /trigger-pending-notifications — Trigger pending notifications. Note: appears twice in code (duplication).
+• Events/faculty_organizers:
+  - GET /faculty-organizers — Queryable list. Auth: admin.
+  - GET /faculty-organizers/{employee_id} — Details. Auth: admin.
 
-• GET    /api/v1/client/attendance/history
-  Purpose: Get student's attendance history
-  Access: Authenticated student
-  Query: page, limit
-  Returns: Complete attendance record
+Event Registration (/event-registration)
+• GET  /event/{event_id} — Registrations with filters/pagination. Auth: admin.
+• PATCH /attendance/physical/{registration_id} — Mark physical attendance. Auth: admin.
+• POST /attendance/physical/bulk — Bulk physical attendance. Auth: admin.
+• GET  /attendance/stats/{event_id} — Attendance stats. Auth: admin.
+• GET  /lookup/{student_enrollment}/{event_id} — Lookup a registration. Auth: admin.
+• POST /attendance/virtual — Mark virtual attendance. Auth: admin.
 
-3.2 CLIENT CERTIFICATES (/api/v1/client/certificates)
------------------------------------------------------
-• POST   /api/v1/client/certificates/data
-  Purpose: Get certificate data for student
-  Access: Authenticated student
-  Body: { event_id }
-  Returns: Certificate information and download link
+Notifications (/notifications)
+• POST / — Create notification. Auth: admin.
+• GET  / — List notifications. Auth: admin.
+• GET  /unread — List unread. Auth: admin.
+• POST /mark-read — Mark many as read. Auth: admin.
+• POST /{notification_id}/mark-read — Mark one as read. Auth: admin.
+• POST /{notification_id}/action — Take action on notification. Auth: admin.
+• DELETE /{notification_id} — Delete. Auth: admin.
+• GET  /stats — Notification stats. Auth: admin.
 
-• POST   /api/v1/client/certificates/send-email
-  Purpose: Send certificate via email
-  Access: Authenticated student
-  Body: { event_id, email }
-  Returns: Email sending confirmation
+Audit Logs (/audit-logs)
+• GET  / — Get logs with filters. Auth: admin.
+• GET  /{admin_username} — Logs by admin. Auth: admin.
+• GET  /stats/overview — Overview stats. Auth: admin.
+• DELETE /cleanup — Cleanup logs. Auth: super-admin.
+• GET  /actions/types — Action types. Auth: admin.
+• GET  /severities/types — Severity types. Auth: admin.
+• GET  /recent/summary — Recent summary. Auth: admin.
 
-• GET    /api/v1/client/certificates/status/{event_id}
-  Purpose: Check certificate availability
-  Access: Authenticated student
-  Returns: Certificate generation status
+Students (/students)
+• GET  /list — Paginated list with filters. Auth: content admin or higher.
+• GET  /details/{enrollment_no} — Student details. Auth: content admin or higher.
+• PUT  /update/{enrollment_no} — Update student. Auth: content admin or higher.
+• POST /create — Create student. Auth: content admin or higher.
+• POST /bulk-import — Bulk import. Auth: content admin or higher.
+• GET  /statistics — Student stats. Auth: content admin or higher.
+• PUT  /toggle-status/{enrollment_no} — Enable/disable. Auth: content admin or higher.
+• PUT  /update-status/{student_id} — Update status. Auth: content admin or higher.
 
-• GET    /api/v1/client/certificates/template/{event_id}
-  Purpose: Get certificate template preview
-  Access: Authenticated student
-  Returns: Certificate template data
+Users (/users) — Admin management (mounted also as /admin-users)
+• GET  /list — List admin users. Auth: super-admin.
+• GET  /details/{username} — Admin details. Auth: super-admin.
+• POST /create — Create admin. Auth: super-admin.
+• PUT  /update/{username} — Update admin. Auth: super-admin.
+• DELETE /delete/{username} — Delete admin. Auth: super-admin.
+• POST /assign-events/{username} — Assign events to event admin. Auth: super-admin.
+• PUT  /toggle-status/{username} — Enable/disable admin user. Auth: super-admin.
+• GET  /roles — List roles. Auth: admin.
+• GET  /statistics — Admin metrics. Auth: super-admin.
 
-• POST   /api/v1/client/certificates/validate-access
-  Purpose: Validate certificate access
-  Access: Authenticated student
-  Body: { event_id }
-  Returns: Access validation result
+Faculty (/faculty)
+• GET  /list — Paginated list. Auth: admin.
+• GET  /details/{employee_id} — Faculty details. Auth: admin.
+• POST /create — Create faculty. Auth: admin.
+• PUT  /update/{employee_id} — Update faculty. Auth: admin.
+• DELETE /delete/{employee_id} — Delete faculty. Auth: admin.
+• GET  /statistics — Faculty stats. Auth: admin.
+• PUT  /toggle-status/{employee_id} — Enable/disable faculty. Auth: admin.
+• POST /bulk-import — Bulk import. Auth: admin.
+• PUT  /update-status/{faculty_id} — Update status. Auth: admin.
 
-• GET    /api/v1/client/certificates/debug/{event_id}/{enrollment_no}
-  Purpose: Debug certificate generation (development)
-  Access: Public (debug only)
-  Returns: Debug information
+Assets (/assets)
+• GET  /dashboard — Assets dashboard. Auth: admin.
+• GET  /statistics — Assets stats. Auth: admin.
+• POST /upload — Upload asset. Auth: admin.
+• DELETE /{asset_id} — Delete asset. Auth: admin.
 
-3.3 CLIENT EVENTS (/api/v1/client/events)
------------------------------------------
-• GET    /api/v1/client/events/list
-  Purpose: Get list of available events for students
-  Access: Public/Authenticated student
-  Query: status, category, page, limit
-  Returns: Public event information
+Profile (/profile)
+• GET  /data — Admin profile. Auth: admin.
+• PUT  /update — Update profile. Auth: admin.
+• PUT  /update-username — Change username. Auth: admin.
+• PUT  /update-password — Change password. Auth: admin.
+• PUT  /update-settings — Change settings. Auth: admin.
 
-• GET    /api/v1/client/events/details/{event_id}
-  Purpose: Get detailed event information
-  Access: Public/Authenticated student
-  Returns: Complete event details for students
-
-• GET    /api/v1/client/events/categories
-  Purpose: Get available event categories
-  Access: Public
-  Returns: Event category list
-
-• GET    /api/v1/client/events/search
-  Purpose: Search events
-  Access: Public
-  Query: query, category, date_range
-  Returns: Filtered event results
-
-• GET    /api/v1/client/events/upcoming
-  Purpose: Get upcoming events
-  Access: Public
-  Query: limit, days_ahead
-  Returns: Upcoming events list
-
-3.4 CLIENT FEEDBACK (/api/v1/client/feedback)
----------------------------------------------
-• GET    /api/v1/client/feedback/status/{event_id}
-  Purpose: Check feedback submission status
-  Access: Authenticated student
-  Returns: Feedback eligibility and status
-
-• POST   /api/v1/client/feedback/submit/{event_id}
-  Purpose: Submit event feedback
-  Access: Authenticated student
-  Body: { feedback_responses }
-  Returns: Submission confirmation
-
-• GET    /api/v1/client/feedback/form-data/{event_id}
-  Purpose: Get feedback form structure
-  Access: Authenticated student
-  Returns: Feedback form questions and format
-
-• GET    /api/v1/client/feedback/history
-  Purpose: Get student's feedback history
-  Access: Authenticated student
-  Query: page, limit
-  Returns: Previous feedback submissions
-
-• GET    /api/v1/client/feedback/analytics/{event_id}
-  Purpose: Get feedback analytics (for participants)
-  Access: Authenticated student
-  Returns: Public feedback insights
-
-3.5 CLIENT PROFILE (/api/v1/client/profile)
--------------------------------------------
-• GET    /api/v1/client/profile/info
-  Purpose: Get student profile information
-  Access: Authenticated student
-  Returns: Student profile data
-
-• PUT    /api/v1/client/profile/update
-  Purpose: Update student profile
-  Access: Authenticated student
-  Body: { full_name, email, mobile_no, department, semester }
-  Returns: Updated profile
-
-• GET    /api/v1/client/profile/dashboard-stats
-  Purpose: Get student dashboard statistics
-  Access: Authenticated student
-  Returns: Personal activity metrics
-
-• GET    /api/v1/client/profile/event-history
-  Purpose: Get student's event participation history
-  Access: Authenticated student
-  Query: page, limit, status
-  Returns: Complete event history
-
-• POST   /api/v1/client/profile/change-password
-  Purpose: Change student password
-  Access: Authenticated student
-  Body: { current_password, new_password }
-  Returns: Password change confirmation
-
-3.6 CLIENT REGISTRATION (/api/v1/client/registration)
------------------------------------------------------
-• GET    /api/v1/client/registration/validate
-  Purpose: Validate registration eligibility
-  Access: Public/Authenticated student
-  Query: event_id, enrollment_no
-  Returns: Registration validation result
-
-• GET    /api/v1/client/registration/validate-participant
-  Purpose: Validate participant details
-  Access: Public
-  Query: enrollment_no
-  Returns: Participant validation
-
-• POST   /api/v1/client/registration/check-conflicts
-  Purpose: Check for registration conflicts
-  Access: Public
-  Body: { event_id, participant_data }
-  Returns: Conflict check result
-
-• GET    /api/v1/client/registration/status/{event_id}
-  Purpose: Get registration status for event
-  Access: Authenticated student
-  Returns: Current registration status
-
-• POST   /api/v1/client/registration/cancel/{event_id}
-  Purpose: Cancel event registration
-  Access: Authenticated student
-  Returns: Cancellation confirmation
+Venues (/venues)
+• GET  / — List active venues. Auth: admin.
+• GET  /all — List all venues (includes inactive). Auth: admin (some endpoints may require higher role).
+• GET  /{venue_id} — Venue details. Auth: admin.
+• POST / — Create venue. Auth: admin.
+• PUT  /{venue_id} — Update venue. Auth: admin.
+• DELETE /{venue_id} — Soft delete. Auth: admin.
+• POST /{venue_id}/restore — Restore soft-deleted venue. Auth: admin.
+• DELETE /{venue_id}/permanent — Permanent delete. Auth: super-admin.
 
 ============================================================================
-4. API ACCESS LEVELS & PERMISSIONS
+4) AUTHZ & ROLES (summary)
 ============================================================================
-
-4.1 ADMIN ROLES HIERARCHY
--------------------------
-• Super Admin: Full system access, user management
-• Executive Admin: Event management, content management, analytics
-• Content Admin: Student management, content updates
-• Event Admin: Limited to assigned events only
-
-4.2 AUTHENTICATION REQUIREMENTS
--------------------------------
-• Public: No authentication required
-• Authenticated Student: Valid student session
-• Authenticated Admin: Valid admin session with appropriate role
-• Role-Specific: Additional role validation required
-
-4.3 RATE LIMITING & SECURITY
-----------------------------
-• All APIs implement proper authentication and authorization
-• Sensitive operations require password confirmation
-• File uploads are validated and secured
-• Rate limiting applied to prevent abuse
+- Admin roles (AdminRole): SUPER_ADMIN > EXECUTIVE_ADMIN > EVENT_ADMIN > CONTENT_ADMIN.
+- Dependencies used: require_admin, require_super_admin_access, require_executive_admin_or_higher, require_student_login, require_faculty_login, get_current_student(_optional), get_current_user.
+- Event Admins are scoped to assigned_events for relevant endpoints.
 
 ============================================================================
-5. API RESPONSE FORMATS
+5) NOTABLE NOTES / ANOMALIES
 ============================================================================
+- Admin events module defines /trigger-pending-notifications twice (possible duplication).
+- Client team info debug endpoints exist without auth; intended for development.
+- Certificates client router is present and functional; DEBUG-gated debug endpoint.
 
-5.1 STANDARD SUCCESS RESPONSE
------------------------------
-{
-  "success": true,
-  "message": "Operation completed successfully",
-  "data": { ... },
-  "pagination": { ... } // For paginated endpoints
-}
-
-5.2 STANDARD ERROR RESPONSE
----------------------------
-{
-  "success": false,
-  "message": "Error description",
-  "error_code": "ERROR_CODE",
-  "details": { ... } // Optional additional details
-}
-
-5.3 PAGINATION FORMAT
----------------------
-{
-  "current_page": 1,
-  "total_pages": 10,
-  "total_items": 100,
-  "items_per_page": 10,
-  "has_next": true,
-  "has_previous": false
-}
-
-============================================================================
-6. NOTES & CONVENTIONS
-============================================================================
-
-• All timestamps are in ISO 8601 format
-• Date ranges use 'start_date' and 'end_date' parameters
-• File uploads support multiple formats (CSV, Excel, PDF, Images)
-• All endpoints support CORS for frontend integration
-• API versioning allows for future compatibility
-• Comprehensive logging for all operations
-• Database operations are optimized for performance
-• Real-time updates available via WebSocket connections
-
-============================================================================
-END OF API DOCUMENTATION
-============================================================================
-
-Generated on: June 29, 2025
-API Version: v1.0
-Total Endpoints: 87+
-Documentation Status: Complete
-
-For technical support or API questions, contact the development team.
+Generated on: 2025-08-08
+API Version: v1 (code-derived)
+Status: Up-to-date with backend/api/v1 source

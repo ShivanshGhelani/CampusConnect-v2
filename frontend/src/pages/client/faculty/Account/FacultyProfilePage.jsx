@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
 import ClientLayout from '../../../../components/client/Layout';
@@ -8,6 +8,7 @@ import api from '../../../../api/axios';
 
 function FacultyProfilePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { avatarUrl, updateAvatar, forceRefreshAvatar } = useAvatar(user);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);

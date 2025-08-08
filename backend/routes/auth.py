@@ -51,6 +51,42 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
     
     return None
 
+async def authenticate_faculty_as_organizer(employee_id: str, password: str) -> Union[AdminUser, None]:
+    """Authenticate faculty as organizer admin using employee ID and password"""
+    from models.faculty import Faculty
+    
+    # Check faculty collection for organizer access
+    faculty = await DatabaseOperations.find_one(
+        "faculties", 
+        {
+            "employee_id": employee_id,
+            "is_active": True,
+            "is_organizer": True  # Only faculty marked as organizers can access
+        }
+    )
+    
+    if faculty and await verify_password(password, faculty.get("password", "")):
+        logger.info(f"Faculty authenticated as organizer: {employee_id}")
+        
+        # Convert faculty to AdminUser format for organizer portal
+        admin_data = {
+            "fullname": faculty.get("full_name", ""),
+            "username": employee_id,  # Use employee_id as username
+            "email": faculty.get("email", ""),
+            "password": faculty.get("password", ""),
+            "is_active": True,
+            "role": AdminRole.ORGANIZER_ADMIN,
+            "created_at": faculty.get("created_at"),
+            "last_login": faculty.get("last_login"),
+            "created_by": "system",  # Auto-created from faculty
+            "assigned_events": faculty.get("assigned_events", []),
+            "permissions": faculty.get("organizer_permissions", [])
+        }
+        
+        return AdminUser(**admin_data)
+    
+    return None
+
 async def get_current_admin(request: Request) -> AdminUser:
     """Get currently logged in admin from session"""
     admin_data = request.session.get("admin")
@@ -150,9 +186,7 @@ async def admin_login_page(request: Request):
             return RedirectResponse(url="/admin/dashboard", status_code=302)
         elif admin.role == AdminRole.EXECUTIVE_ADMIN:
             return RedirectResponse(url="/admin/events/create", status_code=302)
-        elif admin.role == AdminRole.EVENT_ADMIN:
-            return RedirectResponse(url="/admin/events", status_code=302)
-        elif admin.role == AdminRole.CONTENT_ADMIN:
+        elif admin.role == AdminRole.ORGANIZER_ADMIN:
             return RedirectResponse(url="/admin/events", status_code=302)
         else:
             return RedirectResponse(url="/admin/dashboard", status_code=302)
@@ -164,30 +198,52 @@ async def admin_login(request: Request):
     """Handle admin login"""
     form_data = await request.form()
     username = form_data.get("username")
-    password = form_data.get("password")    # Validate required fields
+    password = form_data.get("password")
+    login_type = form_data.get("login_type", "admin")  # "admin" or "organizer"
+    
+    # Validate required fields
     if not all([username, password]):
-        return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Both username and password are required", status_code=302)
+        error_url = "http://localhost:3000/login?tab=admin&error=Both username and password are required"
+        if login_type == "organizer":
+            error_url = "http://localhost:3000/login?tab=organizer&error=Employee ID and password are required"
+        return RedirectResponse(url=error_url, status_code=302)
     
-    # Authenticate admin
-    admin = await authenticate_admin(username, password)
-    if not admin:
-        return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Invalid username or password", status_code=302)
+    # Authenticate based on login type
+    admin = None
+    if login_type == "organizer":
+        # Faculty organizer login
+        admin = await authenticate_faculty_as_organizer(username, password)
+        if not admin:
+            return RedirectResponse(url="http://localhost:3000/login?tab=organizer&error=Invalid employee ID or password, or organizer access not granted", status_code=302)
+    else:
+        # Regular admin login
+        admin = await authenticate_admin(username, password)
+        if not admin:
+            return RedirectResponse(url="http://localhost:3000/login?tab=admin&error=Invalid username or password", status_code=302)
       
-    # Update last login time in the correct collection
-    # First try admin_users collection
-    admin_users_result = await DatabaseOperations.update_one(
-        "admin_users",
-        {"username": username},
-        {"$set": {"last_login": datetime.utcnow()}}
-    )
-    
-    # If not updated in admin_users, try users collection (for other user types)
-    if not admin_users_result:
+    # Update last login time in the appropriate collection
+    if login_type == "organizer":
+        # Update faculty collection
         await DatabaseOperations.update_one(
-            "users",
+            "faculties",
+            {"employee_id": username},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
+    else:
+        # Update admin collections
+        admin_users_result = await DatabaseOperations.update_one(
+            "admin_users",
             {"username": username},
             {"$set": {"last_login": datetime.utcnow()}}
         )
+        
+        # If not updated in admin_users, try users collection (for other user types)
+        if not admin_users_result:
+            await DatabaseOperations.update_one(
+                "users",
+                {"username": username},
+                {"$set": {"last_login": datetime.utcnow()}}
+            )
     
     # Store admin in session with serialized datetime values and login time
     admin_data = admin.model_dump()
@@ -198,6 +254,7 @@ async def admin_login(request: Request):
             admin_data[key] = value.isoformat()
       # Add login time for session expiration tracking        
     admin_data["login_time"] = current_time.isoformat()
+    admin_data["login_type"] = login_type  # Track login type
     
     request.session["admin"] = admin_data
     
@@ -208,12 +265,9 @@ async def admin_login(request: Request):
     elif admin.role == AdminRole.EXECUTIVE_ADMIN:
         # Executive Admin goes directly to create event page
         return RedirectResponse(url="http://localhost:3000/admin/events/create", status_code=303)
-    elif admin.role == AdminRole.EVENT_ADMIN:
-        # Event Admin goes to events page (filtered view)
-        return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)
-    elif admin.role == AdminRole.CONTENT_ADMIN:
-        # Content Admin goes to events page (read-only view)
-        return RedirectResponse(url="http://localhost:3000/admin/events", status_code=303)
+    elif admin.role == AdminRole.ORGANIZER_ADMIN:
+        # Organizer Admin (Faculty) goes to organizer portal
+        return RedirectResponse(url="http://localhost:3000/organizer/dashboard", status_code=303)
     else:
         # Default fallback to dashboard
         return RedirectResponse(url="http://localhost:3000/admin/dashboard", status_code=303)

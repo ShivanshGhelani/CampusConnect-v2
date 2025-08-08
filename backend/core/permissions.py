@@ -42,19 +42,20 @@ class PermissionManager:
             "admin.dashboard.view.limited",
             "admin.notifications.view"
         ],
-        # Legacy roles for backward compatibility
-        AdminRole.EVENT_ADMIN: [
-            "admin.events.read",
-            "admin.events.update", 
-            "admin.students.read",
-            "admin.dashboard.view"
-        ],
-        AdminRole.CONTENT_ADMIN: [
+        AdminRole.ORGANIZER_ADMIN: [
+            "admin.events.read",  # Only assigned events
             "admin.events.create",
-            "admin.events.read",
-            "admin.events.update",
+            "admin.events.update",  # Only assigned events
             "admin.students.read",
-            "admin.dashboard.view"
+            "admin.certificates.create",
+            "admin.certificates.read",
+            "admin.venues.read",
+            "admin.venues.create",
+            "admin.assets.read",  # Only own assets
+            "admin.assets.create",
+            "admin.feedback.read",
+            "admin.feedback.create",
+            "admin.dashboard.view.organizer"
         ]
     }
     
@@ -72,7 +73,7 @@ class PermissionManager:
         role_permissions = cls.ROLE_PERMISSIONS.get(admin.role, [])
         
         # For event-specific permissions, check if admin has access to the event
-        if event_id and admin.role == AdminRole.EVENT_ADMIN:
+        if event_id and admin.role == AdminRole.ORGANIZER_ADMIN:
             if event_id not in (admin.assigned_events or []):
                 return False
                 
@@ -87,7 +88,10 @@ class PermissionManager:
         if admin.role == AdminRole.EXECUTIVE_ADMIN:
             return True  # Executive admins can access all events
             
-        if admin.role == AdminRole.EVENT_ADMIN:
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
+            return event_id in (admin.assigned_events or [])
+        
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
             return event_id in (admin.assigned_events or [])
             
         return False
@@ -106,7 +110,7 @@ class PermissionManager:
         if admin.role in [AdminRole.SUPER_ADMIN, AdminRole.EXECUTIVE_ADMIN]:
             return all_events
             
-        if admin.role == AdminRole.EVENT_ADMIN:
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
             assigned_event_ids = admin.assigned_events or []
             return [event for event in all_events if event.get("event_id") in assigned_event_ids]
             
@@ -149,12 +153,17 @@ class PermissionManager:
         if admin.role == AdminRole.SUPER_ADMIN:
             return events
             
-        if admin.role == AdminRole.EVENT_ADMIN:
-            # Event admins can only see their assigned events
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
+            # Organizer admins can only see their assigned events
+            assigned_event_ids = admin.assigned_events or []
+            return [event for event in events if event.get("event_id") in assigned_event_ids]
+        
+        if admin.role == AdminRole.ORGANIZER_ADMIN:
+            # Organizer admins can only see their assigned events
             assigned_event_ids = admin.assigned_events or []
             return [event for event in events if event.get("event_id") in assigned_event_ids]
             
-        # Executive and Content admins can see all events
+        # Executive and Organizer admins can see all events
         return events
 
 def require_permission(permission: str, event_id: Optional[str] = None):

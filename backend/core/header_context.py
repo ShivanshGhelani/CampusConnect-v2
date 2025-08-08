@@ -33,10 +33,8 @@ async def get_header_context(current_user=None) -> Dict[str, Any]:
             header_context.update(await get_super_admin_metrics())
         elif current_user.role == 'executive_admin':
             header_context.update(await get_executive_admin_metrics())
-        elif current_user.role == 'content_admin':
-            header_context.update(await get_content_admin_metrics())
-        elif current_user.role == 'event_admin':
-            header_context.update(await get_event_admin_metrics(current_user))
+        elif current_user.role == 'organizer_admin':
+            header_context.update(await get_organizer_admin_metrics(current_user))
         
         # Add common metrics
         header_context.update({
@@ -99,32 +97,8 @@ async def get_executive_admin_metrics() -> Dict[str, Any]:
         logger.error(f"Error getting executive admin metrics: {str(e)}")
         return {}
 
-async def get_content_admin_metrics() -> Dict[str, Any]:
-    """Get metrics specific to content admin role"""
-    try:
-        # Student-related statistics
-        new_students_today = await DatabaseOperations.find_many(
-            "students",
-            {"created_at": {"$gte": datetime.now().replace(hour=0, minute=0, second=0)}}
-        )
-        
-        # Recent registrations
-        recent_registrations = await DatabaseOperations.find_many(
-            "registrations",
-            {"registration_date": {"$gte": datetime.now() - timedelta(days=1)}}
-        )
-        
-        return {
-            'new_students_today': len(new_students_today),
-            'recent_registrations': len(recent_registrations),
-            'student_activity': await get_student_activity()
-        }
-    except Exception as e:
-        logger.error(f"Error getting content admin metrics: {str(e)}")
-        return {}
-
-async def get_event_admin_metrics(current_user) -> Dict[str, Any]:
-    """Get metrics specific to event admin role"""
+async def get_organizer_admin_metrics(current_user) -> Dict[str, Any]:
+    """Get metrics specific to organizer admin role"""
     try:
         # Get events assigned to this admin
         assigned_events = await DatabaseOperations.find_many(
@@ -149,7 +123,7 @@ async def get_event_admin_metrics(current_user) -> Dict[str, Any]:
             'upcoming_deadlines': await get_upcoming_deadlines(event_ids)
         }
     except Exception as e:
-        logger.error(f"Error getting event admin metrics: {str(e)}")
+        logger.error(f"Error getting organizer admin metrics: {str(e)}")
         return {}
 
 async def get_today_registrations() -> int:

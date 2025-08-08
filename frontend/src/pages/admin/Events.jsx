@@ -98,10 +98,10 @@ const formatDate = (dateString) => {
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {user && user.role === 'event_admin' ? 'My Assigned Events' : 'Events Management'}
+                {user && user.role === 'organizer_admin' ? 'My Assigned Events' : 'Events Management'}
               </h1>
               <p className="text-gray-600">
-                {user && user.role === 'event_admin' 
+                {user && user.role === 'organizer_admin' 
                   ? 'Manage the events assigned to you' 
                   : 'Manage and monitor all campus events'
                 }
@@ -328,7 +328,7 @@ const formatDate = (dateString) => {
             <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
             </div>
-            {user && user.role === 'event_admin' ? (
+            {user && user.role === 'organizer_admin' ? (
               <>
                 <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Assigned</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
