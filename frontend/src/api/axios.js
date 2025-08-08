@@ -544,4 +544,15 @@ export const maintenanceAPI = {
     })
 };
 
+export const facultyOrganizerAPI = {
+  // Faculty Organizer transition
+  checkOrganizerAccess: () => api.get('/api/v1/faculty/organizer/access-check'),
+  accessOrganizerPortal: () => api.post('/api/v1/faculty/organizer/access-portal'),
+  
+  // Organizer management
+  requestOrganizerAccess: () => api.post('/api/v1/organizer/request-access'),
+  getOrganizerAccessStatus: () => api.get('/api/v1/organizer/access-status'),
+  getOrganizerDashboardStats: () => api.get('/api/v1/organizer/dashboard/stats'),
+};
+
 export default api;

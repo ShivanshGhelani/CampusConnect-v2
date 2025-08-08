@@ -897,7 +897,24 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "last_login": None,
-            "is_active": True
+            "is_active": True,
+            # Auto-grant organizer permissions for new faculty
+            "is_organizer": True,
+            "assigned_events": [],
+            "organizer_permissions": [
+                "admin.events.read",
+                "admin.events.create", 
+                "admin.events.update",
+                "admin.students.read",
+                "admin.certificates.create",
+                "admin.certificates.read",
+                "admin.venues.read",
+                "admin.venues.create",
+                "admin.assets.read",
+                "admin.assets.create",
+                "admin.feedback.read",
+                "admin.feedback.create"
+            ]
         }
         
         # Save to database

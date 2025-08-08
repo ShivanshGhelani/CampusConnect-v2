@@ -201,8 +201,8 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
         return 0;
     };
 
-    // Determine if sidebar should be hidden (for organizer admins and executive admins)
-    const showSidebar = user && !['organizer_admin', 'executive_admin'].includes(user.role);
+    // Determine if sidebar should be hidden (only executive admins have no sidebar)
+    const showSidebar = user && user.role !== 'executive_admin';
 
     return (
         <div className={`h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${showSidebar ? 'grid grid-cols-[250px_1fr] grid-rows-1' : 'grid grid-cols-1 grid-rows-1'}`}
@@ -239,7 +239,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     Campus<span className="text-blue-400">Connect</span>
                                 </span>
                                 <span className="text-xs text-left text-slate-300 font-medium uppercase tracking-widest">
-                                    Admin Portal
+                                    {user?.role === 'organizer_admin' ? 'Organizer Portal' : 'Admin Portal'}
                                 </span>
                             </div>
                         </div>
@@ -259,7 +259,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     </div>
                                 </div>
                             </div>
-                        </div>                        
+                        </div>
                         {/* Dashboard */}
                         {user?.role === 'super_admin' && (
                             <div className="mb-1">
@@ -284,8 +284,53 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                             </div>
                         )}
 
+
+
+                        {/* Events */}
+                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/events"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-white-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/events') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
+                                            }`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm flex-1">Events</span>
+                                        {isActive('/admin/events') && (
+                                            <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Create Event */}
+                        {user?.role && ['super_admin', 'organizer_admin'].includes(user.role) && (
+                            <div className="mb-1">
+                                <div className="mx-2 space-y-1">
+                                    <Link
+                                        to="/admin/create-event"
+                                        className="group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Create Event</span>
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                         {/* Students */}
-                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -332,53 +377,8 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                             </div>
                         )}
-
-                        {/* Events */}
-                        {user?.role !== 'organizer_admin' && (
-                            <div className="mb-1">
-                                <div className="mx-2 space-y-1">
-                                    <Link
-                                        to="/admin/events"
-                                        className={`group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-white-700 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/events') ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25' : ''
-                                            }`}
-                                        onClick={closeMobileMenu}
-                                    >
-                                        <div className="w-5 h-5 flex items-center justify-center">
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <span className="font-semibold text-sm flex-1">Events</span>
-                                        {isActive('/admin/events') && (
-                                            <div className="ml-2 w-2 h-2 bg-white rounded-full"></div>
-                                        )}
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Create Event */}
-                        {user?.role === 'super_admin' && (
-                            <div className="mb-1">
-                                <div className="mx-2 space-y-1">
-                                    <Link
-                                        to="/admin/create-event"
-                                        className="group flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02]"
-                                        onClick={closeMobileMenu}
-                                    >
-                                        <div className="w-5 h-5 flex items-center justify-center">
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <span className="font-semibold text-sm">Create Event</span>
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Manage Certificates */}
-                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -402,7 +402,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Assets */}
-                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -426,7 +426,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         )}
 
                         {/* Venues */}
-                        {user?.role && ['super_admin', 'executive_admin'].includes(user.role) && (
+                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -473,7 +473,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                     </div>
 
                     {/* User Profile Section */}
-                    <div 
+                    <div
                         className="p-3 border-t border-slate-200/50 bg-slate-50/50 relative profile-dropdown-container"
                         onMouseEnter={() => setIsProfileDropdownOpen(true)}
                         onMouseLeave={() => setIsProfileDropdownOpen(false)}
@@ -500,7 +500,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                             </div>
                                         </div>
                                         <Link
-                                            to="/admin/settings"
+                                            to={user?.role === 'organizer_admin' ? "/faculty/profile" : "/admin/settings"}
                                             onClick={() => {
                                                 setIsProfileDropdownOpen(false);
                                                 closeMobileMenu();
@@ -508,9 +508,13 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                             className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-200"
                                         >
                                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                                {user?.role === 'organizer_admin' ? (
+                                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                                ) : (
+                                                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                                                )}
                                             </svg>
-                                            <span className="text-sm font-medium">Settings</span>
+                                            <span className="text-sm font-medium">{user?.role === 'organizer_admin' ? 'Profile' : 'Settings'}</span>
                                         </Link>
                                         <button
                                             onClick={() => {
@@ -539,9 +543,9 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
 
                             {/* Notifications with Enhanced Styling */}
                             <div className="relative">
-                                <NotificationBell 
-                                  className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-105 shadow-sm" 
-                                  onTogglePanel={() => setShowNotificationPanel(!showNotificationPanel)}
+                                <NotificationBell
+                                    className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-105 shadow-sm"
+                                    onTogglePanel={() => setShowNotificationPanel(!showNotificationPanel)}
                                 />
                             </div>
                         </div>
@@ -565,10 +569,13 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 <h1 className="text-xl font-bold text-gray-900">
                                     Campus<span className="text-blue-600">Connect</span>
                                 </h1>
-                                <p className="text-sm text-gray-500">Executive Admin Panel</p>
+                                <p className="text-sm text-gray-500">
+                                    {user?.role === 'organizer_admin' ? 'Organizer Portal' :
+                                        user?.role === 'executive_admin' ? 'Executive Admin Panel' : 'Admin Panel'}
+                                </p>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-4">
                             {/* User Info */}
                             <div className="text-right">
@@ -579,7 +586,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     {user?.role?.replace('_', ' ') || 'executive admin'}
                                 </div>
                             </div>
-                            
+
                             {/* Logout Button */}
                             <button
                                 onClick={handleLogout}
@@ -591,7 +598,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         </div>
                     </header>
                 )}
-                
+
                 {/* Content Area */}
                 <div className="flex h-full">
                     {/* Main Content */}
@@ -599,11 +606,11 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         {children}
                     </div>
                 </div>
-                
+
                 {/* Gmail-style Notification Modal */}
-                <NotificationPanel 
+                <NotificationPanel
                     isOpen={showNotificationPanel}
-                    onClose={() => setShowNotificationPanel(false)} 
+                    onClose={() => setShowNotificationPanel(false)}
                 />
             </main>
         </div>

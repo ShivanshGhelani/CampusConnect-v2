@@ -56,6 +56,7 @@ import ComponentShowcase from '../pages/ComponentShowcase';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
+import SuperAdminRoute from '../components/SuperAdminRoute';
 import ScrollToTop from '../components/common/ScrollToTop';
 
 // Admin redirect component to handle role-based redirects
@@ -311,9 +312,9 @@ function AppRoutes() {
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute userType="admin">
+            <SuperAdminRoute>
               <AdminDashboard />
-            </ProtectedRoute>
+            </SuperAdminRoute>
           }
         />
         <Route

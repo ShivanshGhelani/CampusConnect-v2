@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axios';  // Import the axios instance
 import { useAvatar } from '../../hooks/useAvatar';
 import Avatar from '../common/Avatar';
 
 function ClientNavigation() {
-  const { user, userType, logout, isAuthenticated } = useAuth();
+  const { user, userType, logout, isAuthenticated, transitionToOrganizerAdmin } = useAuth();
   const { avatarUrl } = useAvatar(user);
   const location = useLocation();
   const navigate = useNavigate();
@@ -182,8 +183,31 @@ function ClientNavigation() {
                       <div className="py-2">
                         {/* Organize Event - Faculty Only */}
                         {userType === 'faculty' && (
-                          <Link
-                            to="/faculty/create-event"
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await api.post('/api/v1/faculty/organizer/access-portal');
+                                
+                                if (response.data.success) {
+                                  // Update auth context to reflect organizer admin role
+                                  await transitionToOrganizerAdmin(response.data);
+                                  
+                                  // Navigate to organizer portal (use the redirect URL from response)
+                                  navigate(response.data.redirect_url || '/admin/events');
+                                } else {
+                                  // Show specific error message
+                                  console.log('Access denied:', response.data);
+                                  alert(response.data.message || 'Unable to access organizer portal');
+                                }
+                              } catch (error) {
+                                console.error('Error accessing organizer portal:', error);
+                                if (error.response?.data?.message) {
+                                  alert(error.response.data.message);
+                                } else {
+                                  alert('Network error. Please try again.');
+                                }
+                              }
+                            }}
                             className="flex items-center pl-4 pr-8 py-3 text-sm text-white hover:bg-blue-600 transition-colors cursor-pointer relative overflow-hidden"
                             style={{
                               background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
@@ -196,13 +220,13 @@ function ClientNavigation() {
                               <div className="absolute bottom-0 left-1/3 w-6 h-6 bg-white rounded-full translate-y-3"></div>
                             </div>
                             <div className="w-8 h-8 bg-blue-300 bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 flex-shrink-0 relative z-10">
-                              <i className="fas fa-plus text-white  text-sm"></i>
+                              <i className="fas fa-plus text-white text-sm"></i>
                             </div>
                             <div className="relative z-10">
                               <div className="font-medium">Organize Event</div>
                               <div className="text-xs text-blue-100 whitespace-nowrap">Create new events</div>
                             </div>
-                          </Link>
+                          </button>
                         )}
                         <Link
                           to={userType === 'faculty' ? '/faculty/profile/edit' : '/client/profile/edit'}

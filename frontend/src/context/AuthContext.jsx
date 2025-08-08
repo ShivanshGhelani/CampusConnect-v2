@@ -268,6 +268,49 @@ export function AuthProvider({ children }) {
     dispatch({ type: authActions.CLEAR_ERROR });
   };
 
+  // Function to transition faculty to organizer admin
+  const transitionToOrganizerAdmin = async (organizerData) => {
+    // Update user data to reflect organizer admin role
+    const adminUser = {
+      username: organizerData.data.employee_id,
+      fullname: organizerData.data.organizer_name,
+      role: organizerData.data.role, // Should be "organizer_admin"
+      user_type: 'admin',
+      employee_id: organizerData.data.employee_id,
+      assigned_events: organizerData.data.assigned_events || []
+    };
+    
+    dispatch({
+      type: authActions.LOGIN_SUCCESS,
+      payload: {
+        user: adminUser,
+        userType: 'admin',
+      },
+    });
+    
+    // Update localStorage
+    localStorage.setItem('user_data', JSON.stringify(adminUser));
+    localStorage.setItem('user_type', 'admin');
+    
+    // Force refresh from backend to ensure session sync
+    try {
+      const response = await authAPI.adminStatus();
+      if (response && response.data.authenticated) {
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: {
+            user: response.data.user,
+            userType: 'admin',
+          },
+        });
+        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+        localStorage.setItem('user_type', 'admin');
+      }
+    } catch (error) {
+      console.error('Failed to sync admin status after transition:', error);
+    }
+  };
+
   const value = {
     ...state,
     login,
@@ -275,6 +318,7 @@ export function AuthProvider({ children }) {
     register,
     clearError,
     checkAuthStatus,
+    transitionToOrganizerAdmin,
   };
 
   return (

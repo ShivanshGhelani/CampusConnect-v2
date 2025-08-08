@@ -330,16 +330,22 @@ const formatDate = (dateString) => {
             </div>
             {user && user.role === 'organizer_admin' ? (
               <>
-                <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Assigned</h3>
+                <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Organized Yet</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  You don't have any events assigned to you yet. Please contact your administrator for event assignments.
+                  Ready to organize your first event? Create an event to get started with your organizer journey.
                 </p>
                 <div className="space-x-3">
                   <button
-                    onClick={() => navigate('/admin/dashboard')}
+                    onClick={handleCreateEvent}
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                   >
-                    <i className="fas fa-tachometer-alt mr-2"></i>Go to Dashboard
+                    <i className="fas fa-plus mr-2"></i>Create Event
+                  </button>
+                  <button
+                    onClick={() => navigate('/faculty/profile')}
+                    className="inline-block px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+                  >
+                    <i className="fas fa-user mr-2"></i>Go to Profile
                   </button>
                 </div>
               </>
