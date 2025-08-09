@@ -945,6 +945,68 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
             content={"success": False, "message": "Internal server error"}
         )
 
+@router.post("/validate-field")
+async def validate_field_api(request: Request):
+    """API endpoint to validate individual form fields (email, phone, enrollment_no, employee_id)"""
+    try:
+        data = await request.json()
+        field_name = data.get("field_name")
+        field_value = data.get("field_value", "").strip()
+        user_type = data.get("user_type", "student")  # student or faculty
+        
+        if not field_name or not field_value:
+            return {"success": True, "available": True, "message": ""}
+        
+        field_value_lower = field_value.lower()
+        
+        if user_type == "student":
+            # Check students collection
+            query = {}
+            if field_name == "email":
+                query = {"email": field_value_lower}
+            elif field_name == "mobile_no":
+                query = {"mobile_no": field_value}
+            elif field_name == "enrollment_no":
+                query = {"enrollment_no": field_value.upper()}
+            else:
+                return {"success": True, "available": True, "message": ""}
+            
+            existing_student = await DatabaseOperations.find_one("students", query)
+            if existing_student:
+                field_display = field_name.replace("_", " ").title()
+                return {
+                    "success": True,
+                    "available": False,
+                    "message": f"This {field_display} is already registered"
+                }
+                
+        elif user_type == "faculty":
+            # Check faculties collection
+            query = {}
+            if field_name == "email":
+                query = {"email": field_value_lower}
+            elif field_name == "contact_no":
+                query = {"contact_no": field_value}
+            elif field_name == "employee_id":
+                query = {"employee_id": field_value.upper()}
+            else:
+                return {"success": True, "available": True, "message": ""}
+            
+            existing_faculty = await DatabaseOperations.find_one("faculties", query)
+            if existing_faculty:
+                field_display = field_name.replace("_", " ").title()
+                return {
+                    "success": True,
+                    "available": False,
+                    "message": f"This {field_display} is already registered"
+                }
+        
+        return {"success": True, "available": True, "message": "Available"}
+        
+    except Exception as e:
+        logger.error(f"Error in field validation API: {str(e)}")
+        return {"success": False, "available": True, "message": "Validation check failed"}
+
 # Faculty Authentication Functions
 async def authenticate_faculty(employee_id: str, password: str):
     """Authenticate faculty using employee ID and password"""

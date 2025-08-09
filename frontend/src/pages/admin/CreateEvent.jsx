@@ -33,17 +33,10 @@ function CreateEvent() {
   const [creatorName, setCreatorName] = useState('');
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
 
-  // Organizer management states
-  const [showNewOrganizerModal, setShowNewOrganizerModal] = useState(false);
-  const [newOrganizerForm, setNewOrganizerForm] = useState({
-    name: '',
-    email: '',
-    employee_id: ''
-  });
+  // Organizer management states (removed new organizer modal - faculty accounts managed separately)
   const [activeOrganizerDropdown, setActiveOrganizerDropdown] = useState(null);
   const [existingOrganizers, setExistingOrganizers] = useState([]);
   const [filteredOrganizers, setFilteredOrganizers] = useState([]);
-  const [currentOrganizerIndex, setCurrentOrganizerIndex] = useState(null);
 
   // Session management functions
   const createEventCreatorSession = (name) => {
@@ -401,33 +394,46 @@ function CreateEvent() {
     }
   }, [form.event_name, form.event_type, form.target_audience, form.is_xenesis_event, existingEventIds]);
 
-  // Load existing organizers on component mount
+  // Load faculty organizers on component mount
   useEffect(() => {
-    const fetchExistingOrganizers = async () => {
+    const fetchFacultyOrganizers = async () => {
       try {
-        console.log('Loading existing organizers...');
+        console.log('Loading faculty organizers...');
         
-        const response = await adminAPI.getEventOrganizers();
-        console.log('Loaded organizers from API:', response.data);
-        setExistingOrganizers(response.data || []);
-        setFilteredOrganizers(response.data || []);
-      } catch (error) {
-        console.error('Error fetching organizers:', error);
-        if (error.response?.status === 404) {
-          // API endpoint doesn't exist yet - start with empty array
-          console.log('Organizers API not implemented yet - starting with empty array');
-        } else {
-          console.error('Error response from organizers API:', error.response?.status);
+        const response = await adminAPI.getFacultyOrganizers({ limit: 100 });
+        console.log('Loaded faculty organizers from API:', response.data);
+        setExistingOrganizers(response.data.faculty || []);
+        setFilteredOrganizers(response.data.faculty || []);
+        
+        // If current user is faculty/organizer, pre-select them
+        if (userType === 'admin' && user?.role === 'organizer_admin' && user?.employee_id) {
+          const currentFaculty = response.data.faculty?.find(f => f.employee_id === user.employee_id);
+          if (currentFaculty) {
+            setForm(prev => ({
+              ...prev,
+              organizers: [{
+                id: currentFaculty.employee_id,
+                name: currentFaculty.full_name,
+                email: currentFaculty.email,
+                employee_id: currentFaculty.employee_id,
+                searchQuery: '',
+                selected: true,
+                isNew: false
+              }]
+            }));
+          }
         }
-        // Start with empty array - we'll build the database as we go
-        console.log('Starting with empty organizers database');
+      } catch (error) {
+        console.error('Error fetching faculty organizers:', error);
         setExistingOrganizers([]);
         setFilteredOrganizers([]);
       }
     };
 
-    fetchExistingOrganizers();
-  }, []);
+    if (isAuthenticated && userType) {
+      fetchFacultyOrganizers();
+    }
+  }, [isAuthenticated, userType, user]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -501,28 +507,33 @@ function CreateEvent() {
     const newOrganizers = [...form.organizers];
     newOrganizers[idx].searchQuery = searchQuery;
     setForm((prev) => ({ ...prev, organizers: newOrganizers }));
-    
-    // Filter existing organizers based on search
-    if (searchQuery.trim()) {
-      const filtered = existingOrganizers.filter(org => 
-        org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.employee_id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredOrganizers(filtered);
-    } else {
+
+    // Show all organizers if search is empty
+    if (!searchQuery || !searchQuery.trim()) {
       setFilteredOrganizers(existingOrganizers);
+      return;
     }
+
+    // Filter existing faculty organizers based on search
+    const filtered = existingOrganizers.filter(faculty => 
+      faculty.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      faculty.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      faculty.employee_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      faculty.department?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredOrganizers(filtered);
   };
 
-  const selectExistingOrganizer = (idx, organizer) => {
+  const selectExistingOrganizer = (idx, faculty) => {
     const newOrganizers = [...form.organizers];
     newOrganizers[idx] = {
-      id: organizer.id,
-      name: organizer.name,
-      email: organizer.email,
-      employee_id: organizer.employee_id,
-      searchQuery: organizer.name,
+      id: faculty.employee_id,
+      name: faculty.full_name,
+      email: faculty.email,
+      employee_id: faculty.employee_id,
+      department: faculty.department,
+      designation: faculty.designation,
+      searchQuery: faculty.full_name,
       selected: true,
       isNew: false
     };
@@ -544,37 +555,8 @@ function CreateEvent() {
     setForm((prev) => ({ ...prev, organizers: newOrganizers }));
   };
 
-  const openNewOrganizerModal = (idx) => {
-    setCurrentOrganizerIndex(idx);
-    setShowNewOrganizerModal(true);
-    setActiveOrganizerDropdown(null);
-  };
+  // Remove unused organizer modal functions - faculty accounts managed separately
 
-  const closeNewOrganizerModal = () => {
-    setShowNewOrganizerModal(false);
-    setCurrentOrganizerIndex(null);
-    setNewOrganizerForm({ name: '', email: '', employee_id: '' });
-  };
-
-  const handleNewOrganizerSubmit = (e) => {
-    e.preventDefault();
-    
-    if (currentOrganizerIndex !== null) {
-      const newOrganizers = [...form.organizers];
-      newOrganizers[currentOrganizerIndex] = {
-        id: null, // Will be assigned after approval
-        name: newOrganizerForm.name,
-        email: newOrganizerForm.email,
-        employee_id: newOrganizerForm.employee_id,
-        searchQuery: newOrganizerForm.name,
-        selected: true,
-        isNew: true
-      };
-      setForm((prev) => ({ ...prev, organizers: newOrganizers }));
-    }
-    
-    closeNewOrganizerModal();
-  };
   const handleContactChange = (idx, field, value) => {
     const newContacts = [...form.contacts];
     newContacts[idx][field] = value;
@@ -1114,13 +1096,19 @@ function CreateEvent() {
         short_description: form.short_description,
         detailed_description: form.detailed_description,
         organizing_department: form.organizing_department,
-        organizers: form.organizers.filter(org => org.selected && org.name.trim() !== '').map(org => ({
-          id: org.id,
-          name: org.name,
-          email: org.email,
-          employee_id: org.employee_id,
-          isNew: org.isNew
-        })),
+        // Use faculty_organizers instead of organizers for the new system
+        faculty_organizers: (() => {
+          let facultyIds = form.organizers.filter(org => org.selected && org.employee_id).map(org => org.employee_id);
+          
+          // For organizer_admin role, ensure current user is included if they're faculty
+          if (user?.role === 'organizer_admin' && user?.employee_id) {
+            if (!facultyIds.includes(user.employee_id)) {
+              facultyIds.push(user.employee_id);
+            }
+          }
+          
+          return facultyIds;
+        })(),
         contacts: form.contacts.filter(contact => contact.name.trim() !== '' && contact.contact.trim() !== ''),
         start_date: form.start_date,
         start_time: form.start_time,
@@ -1145,8 +1133,9 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
-        status: 'pending_approval',
-        approval_required: true
+        // Set status and approval based on user role
+        status: user?.role === 'super_admin' || user?.role === 'organizer_admin' ? 'active' : 'pending_approval',
+        approval_required: user?.role !== 'super_admin' && user?.role !== 'organizer_admin'
       };
 
       // Add event_created_by for Executive Admin users
@@ -1172,18 +1161,41 @@ function CreateEvent() {
           clearEventCreatorSession();
         }
         
-        const successMessage = user.role === 'executive_admin' 
-          ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
-          : 'Event created successfully! It is pending Super Admin approval.';
+        let successMessage;
+        let redirectPath = '/admin/events';
         
-        // Navigate to success page
-        navigate('/admin/events/created-success', {
-          state: { 
-            eventData: eventData,
-            pendingApproval: true,
-            message: successMessage
-          }
-        });
+        // Different messages and redirects based on user role
+        if (user?.role === 'super_admin') {
+          successMessage = 'Event created and activated successfully! Faculty organizers have been assigned.';
+          redirectPath = '/admin/events';
+        } else if (user?.role === 'organizer_admin') {
+          successMessage = 'Event created successfully! You have been assigned as the primary organizer.';
+          redirectPath = '/admin/events';
+        } else {
+          successMessage = user.role === 'executive_admin' 
+            ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
+            : 'Event created successfully! It is pending Super Admin approval.';
+          redirectPath = '/admin/events/created-success';
+        }
+        
+        // Navigate based on user role
+        if (user?.role === 'super_admin' || user?.role === 'organizer_admin') {
+          navigate(redirectPath, {
+            state: { 
+              eventData: eventData,
+              pendingApproval: false,
+              message: successMessage
+            }
+          });
+        } else {
+          navigate(redirectPath, {
+            state: { 
+              eventData: eventData,
+              pendingApproval: true,
+              message: successMessage
+            }
+          });
+        }
       } else {
         alert(`Error creating event: ${response.data?.message || 'Unknown error'}`);
       }
@@ -1465,45 +1477,27 @@ function CreateEvent() {
                                 {activeOrganizerDropdown === idx && (
                                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {filteredOrganizers.length > 0 ? (
-                                      <>
-                                        {filteredOrganizers.map((org) => (
+                                        filteredOrganizers.map((faculty) => (
                                           <div
-                                            key={org.id}
-                                            onClick={() => selectExistingOrganizer(idx, org)}
+                                            key={faculty.employee_id}
+                                            onClick={() => selectExistingOrganizer(idx, faculty)}
                                             className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                                           >
                                             <div className="flex justify-between items-center">
                                               <div>
-                                                <p className="text-sm font-medium text-gray-900">{org.name}</p>
-                                                <p className="text-xs text-gray-500">{org.email}</p>
+                                                <p className="text-sm font-medium text-gray-900">{faculty.full_name}</p>
+                                                <p className="text-xs text-gray-500">{faculty.email}</p>
+                                                <p className="text-xs text-gray-400">{faculty.department} • {faculty.designation}</p>
                                               </div>
                                               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                EMP: {org.employee_id}
+                                                {faculty.employee_id}
                                               </span>
                                             </div>
                                           </div>
-                                        ))}
-                                        <div className="border-t border-gray-200">
-                                          <div
-                                            onClick={() => openNewOrganizerModal(idx)}
-                                            className="px-3 py-2 hover:bg-green-50 cursor-pointer text-green-700 font-medium text-sm flex items-center"
-                                          >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                            First time organizing / Not listed
-                                          </div>
-                                        </div>
-                                      </>
+                                        ))
                                     ) : (
-                                      <div
-                                        onClick={() => openNewOrganizerModal(idx)}
-                                        className="px-3 py-3 hover:bg-green-50 cursor-pointer text-green-700 font-medium text-sm flex items-center justify-center"
-                                      >
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                        </svg>
-                                        Create New Organizer Profile
+                                      <div className="px-3 py-3 text-gray-500 text-sm text-center">
+                                        No faculty found. Try a different search term.
                                       </div>
                                     )}
                                   </div>
@@ -1519,10 +1513,8 @@ function CreateEvent() {
                                     <p className="text-sm font-medium text-blue-900">{organizer.name}</p>
                                     <p className="text-xs text-blue-700">{organizer.email}</p>
                                     <p className="text-xs text-blue-600">Employee ID: {organizer.employee_id}</p>
-                                    {organizer.isNew && (
-                                      <span className="inline-block mt-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                                        New Organizer - Requires Approval
-                                      </span>
+                                    {organizer.department && (
+                                      <p className="text-xs text-blue-500">{organizer.department} • {organizer.designation}</p>
                                     )}
                                   </div>
                                   <button
@@ -1560,7 +1552,7 @@ function CreateEvent() {
                   {/* Contact Information */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Information <span className="text-red-500">*</span>
+                      Volunteer Contact Information <span className="text-red-500">*</span>
                     </label>
                     <div className="space-y-2">
                       {form.contacts.map((c, idx) => (
@@ -1570,7 +1562,7 @@ function CreateEvent() {
                             value={c.name} 
                             onChange={e => handleContactChange(idx, 'name', e.target.value)} 
                             required 
-                            placeholder="Contact Name"
+                            placeholder="Contact Name (E.g. Smriti Sharma)"
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                           />
                           <div className="flex gap-2">
@@ -1579,8 +1571,8 @@ function CreateEvent() {
                               value={c.contact} 
                               onChange={e => handleContactChange(idx, 'contact', e.target.value)} 
                               required 
-                              placeholder="Email/Phone"
-                              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                              placeholder="Email/Phone (E.g. smriti.sharma@college.edu / 9876543210)"
+                              className="flex w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                             />
                             {form.contacts.length > 1 && (
                               <button 
@@ -2358,106 +2350,6 @@ function CreateEvent() {
                 Start Session
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* New Organizer Modal */}
-      {showNewOrganizerModal && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Create New Organizer Profile
-              </h3>
-              <button
-                onClick={closeNewOrganizerModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form onSubmit={handleNewOrganizerSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newOrganizerForm.name}
-                  onChange={(e) => setNewOrganizerForm(prev => ({...prev, name: e.target.value}))}
-                  placeholder="Enter organizer's full name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={newOrganizerForm.email}
-                  onChange={(e) => setNewOrganizerForm(prev => ({...prev, email: e.target.value}))}
-                  placeholder="Enter official email address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Login credentials will be sent to this email
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Employee ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newOrganizerForm.employee_id}
-                  onChange={(e) => setNewOrganizerForm(prev => ({...prev, employee_id: e.target.value}))}
-                  placeholder="Enter employee ID"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="flex items-start">
-                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <div className="text-xs text-yellow-800">
-                    <p className="font-medium mb-1">Important Notes:</p>
-                    <ul className="space-y-1">
-                      <li>• Login credentials will be emailed automatically</li>
-                      <li>• Organizer can only manage their own events</li>
-                      <li>• Password change required on first login</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeNewOrganizerModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Create Profile
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

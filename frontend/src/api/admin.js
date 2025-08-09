@@ -105,6 +105,9 @@ export const adminAPI = {
   revokeOrganizerAccess: (facultyEmployeeId) => 
     api.post(`/api/v1/admin/organizer/revoke-access/${facultyEmployeeId}`),
   
+  // Faculty Organizers (for event creation)
+  getFacultyOrganizers: (params) => api.get('/api/v1/admin/events/faculty-organizers', { params }),
+  
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
   // with parameters to specify focus areas, maintaining your 62-endpoint optimization

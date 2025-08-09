@@ -208,7 +208,7 @@ function ClientNavigation() {
                                 }
                               }
                             }}
-                            className="flex items-center pl-4 pr-8 py-3 text-sm text-white hover:bg-blue-600 transition-colors cursor-pointer relative overflow-hidden"
+                            className="flex w-full items-center pl-4 py-3 text-sm text-white hover:bg-blue-600 transition-colors cursor-pointer relative overflow-hidden"
                             style={{
                               background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
                             }}

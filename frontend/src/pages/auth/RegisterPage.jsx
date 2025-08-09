@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { authAPI } from '../../api/auth';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast, ToastContainer } from '../../components/ui/Alert';
 // Phase 1 Integration: Enhanced Validation
 import { validators } from '../../utils/validators';
 
@@ -37,6 +39,8 @@ function RegisterPage() {
     confirm_password: false,
   });
   const [validationErrors, setValidationErrors] = useState({});
+  const [fieldValidation, setFieldValidation] = useState({}); // For real-time field validation
+  const [validationLoading, setValidationLoading] = useState({}); // Loading states for fields
   const [passwordStrength, setPasswordStrength] = useState({
     length: false,
     specialChar: false,
@@ -44,6 +48,7 @@ function RegisterPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const { register, error, clearError, isAuthenticated } = useAuth();
+  const { addToast, toasts, removeToast } = useToast();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -86,6 +91,7 @@ function RegisterPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log('🔵 handleChange called for field:', name, 'value:', value);
     let processedValue = value;
 
     // Auto-format specific fields
@@ -114,10 +120,15 @@ function RegisterPage() {
       }));
     }
 
-    clearError();
-
     // Real-time validation
     validateField(name, processedValue);
+
+    // Trigger real-time database validation for specific fields
+    const fieldsToValidateRealTime = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
+    if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
+      console.log('🚀 Triggering real-time validation for:', name, 'value:', processedValue);
+      debouncedValidation(name, processedValue);
+    }
 
     // Password strength check
     if (name === 'password' || name === 'faculty_password') {
@@ -149,31 +160,30 @@ function RegisterPage() {
 
     switch (name) {
       case 'enrollment_no': {
-        const enrollmentValidation = validators.enrollment(value);
-        if (!enrollmentValidation.isValid) {
-          error = enrollmentValidation.message;
+        if (!validators.enrollmentNumber(value)) {
+          error = 'Invalid enrollment number format (e.g., 21BECE40015)';
         }
         break;
       }
       case 'employee_id': {
-        const facultyValidation = validators.faculty(value);
-        if (!facultyValidation.isValid) {
-          error = facultyValidation.message;
+        if (!validators.facultyId(value)) {
+          error = 'Faculty ID must be 6-12 alphanumeric characters';
         }
         break;
       }
       case 'email': {
-        const emailValidation = validators.email(value);
-        if (!emailValidation.isValid) {
-          error = emailValidation.message;
+        if (!validators.email(value)) {
+          error = 'Please enter a valid email address';
         }
         break;
       }
       case 'mobile_no':
       case 'contact_no': {
-        const phoneValidation = validators.phone(value);
-        if (!phoneValidation.isValid) {
-          error = phoneValidation.message;
+        if (!validators.mobileNumber(value)) {
+          error = 'Mobile number must be exactly 10 digits';
+        }
+        if (!validators.mobileNumber(value)) {
+          error = 'Mobile number must be exactly 10 digits';
         }
         break;
       }
@@ -239,6 +249,78 @@ function RegisterPage() {
       number: /\d/.test(password),
     });
   };
+
+  // Debounced real-time field validation for database checks
+  const validateFieldRealTime = useCallback(
+    async (fieldName, fieldValue) => {
+      console.log('🎯 validateFieldRealTime CALLED with:', { fieldName, fieldValue, activeTab });
+      
+      // Only validate specific fields that need database checks
+      const fieldsToValidate = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
+      if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
+        console.log('❌ Validation skipped - field not in list or too short');
+        return;
+      }
+
+      console.log('✅ Validation proceeding for:', fieldName);
+      setValidationLoading(prev => ({ ...prev, [fieldName]: true }));
+
+      try {
+        const response = await authAPI.validateField(fieldName, fieldValue, activeTab);
+        console.log('🔍 Validation response for', fieldName, ':', response);
+        
+        if (response.data.success) {
+          setFieldValidation(prev => ({
+            ...prev,
+            [fieldName]: {
+              available: response.data.available,
+              message: response.data.message
+            }
+          }));
+
+          // Update validation errors with the real-time check
+          if (!response.data.available) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [fieldName]: response.data.message
+            }));
+          } else {
+            // Clear the error if field is available and no other validation errors
+            setValidationErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors[fieldName] === response.data.message || 
+                  newErrors[fieldName]?.includes('already registered')) {
+                delete newErrors[fieldName];
+              }
+              return newErrors;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Field validation error:', error);
+        // Don't show errors for network issues during real-time validation
+      } finally {
+        setValidationLoading(prev => ({ ...prev, [fieldName]: false }));
+      }
+    },
+    [activeTab]
+  );
+
+  // Debounce the validation to avoid too many API calls
+  const debouncedValidation = useCallback(
+    (() => {
+      const timers = {};
+      return (fieldName, fieldValue) => {
+        console.log('⏰ Debouncing validation for:', fieldName, 'value:', fieldValue);
+        clearTimeout(timers[fieldName]);
+        timers[fieldName] = setTimeout(() => {
+          console.log('✅ Executing debounced validation for:', fieldName);
+          validateFieldRealTime(fieldName, fieldValue);
+        }, 800); // Wait 800ms after user stops typing
+      };
+    })(),
+    [validateFieldRealTime]
+  );
 
   const validatePasswordMatch = (password, confirmPassword, userType = 'student') => {
     const confirmField = userType === 'faculty' ? 'faculty_confirm_password' : 'confirm_password';
@@ -369,6 +451,21 @@ function RegisterPage() {
     if (result.success) {
       const redirectPath = activeTab === 'faculty' ? '/faculty/profile' : '/client/dashboard';
       navigate(redirectPath, { replace: true });
+      addToast({
+        type: 'success',
+        title: 'Registration Successful!',
+        message: 'Welcome to CampusConnect. You have been automatically logged in.',
+        duration: 5000
+      });
+    } else {
+      // Don't clear form data on error - let user fix the issue
+      console.error('Registration failed:', result.error);
+      addToast({
+        type: 'error', 
+        title: 'Registration Failed',
+        message: result.error || 'Please check your information and try again.',
+        duration: 8000
+      });
     }
 
     setIsLoading(false);
@@ -488,19 +585,44 @@ function RegisterPage() {
                         type="text"
                         required
                         placeholder="e.g., 21BECE40015"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.enrollment_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                          }`}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.enrollment_no 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.enrollment_no?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.enrollment_no?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-green-500'
+                        }`}
                         value={formData.enrollment_no}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.enrollment_no && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.enrollment_no && (
                         <p className="mt-1 text-sm text-red-600">
                           <i className="fas fa-times mr-1"></i>
                           {validationErrors.enrollment_no}
                         </p>
                       )}
-                      {formData.enrollment_no && !validationErrors.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no) && (
+                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && fieldValidation.enrollment_no?.available === true && formData.enrollment_no && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Enrollment number is available
+                        </p>
+                      )}
+                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && fieldValidation.enrollment_no?.available === false && formData.enrollment_no && (
+                        <p className="mt-1 text-sm text-red-600">
+                          <i className="fas fa-times mr-1"></i>
+                          {fieldValidation.enrollment_no?.message || 'This enrollment number is already registered'}
+                        </p>
+                      )}
+                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && formData.enrollment_no && !fieldValidation.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no) && (
                         <p className="mt-1 text-sm text-green-600">
                           <i className="fas fa-check mr-1"></i>
                           Valid format
@@ -519,16 +641,35 @@ function RegisterPage() {
                         type="email"
                         required
                         placeholder="Enter your email address"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                          }`}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.email 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.email?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-green-500'
+                        }`}
                         value={formData.email}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.email && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.email && (
                         <p className="mt-1 text-sm text-red-600">
                           <i className="fas fa-times mr-1"></i>
                           {validationErrors.email}
+                        </p>
+                      )}
+                      {!validationErrors.email && !validationLoading.email && fieldValidation.email?.available === true && formData.email && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Email is available
                         </p>
                       )}
                     </div>
@@ -543,16 +684,41 @@ function RegisterPage() {
                         type="tel"
                         required
                         placeholder="10-digit mobile number"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.mobile_no ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                          }`}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.mobile_no 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.mobile_no?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.mobile_no?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-green-500'
+                        }`}
                         value={formData.mobile_no}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.mobile_no && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.mobile_no && (
                         <p className="mt-1 text-sm text-red-600">
                           <i className="fas fa-times mr-1"></i>
                           {validationErrors.mobile_no}
+                        </p>
+                      )}
+                      {!validationErrors.mobile_no && !validationLoading.mobile_no && fieldValidation.mobile_no?.available === true && formData.mobile_no && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Mobile number is available
+                        </p>
+                      )}
+                      {!validationErrors.mobile_no && !validationLoading.mobile_no && fieldValidation.mobile_no?.available === false && formData.mobile_no && (
+                        <p className="mt-1 text-sm text-red-600">
+                          <i className="fas fa-times mr-1"></i>
+                          {fieldValidation.mobile_no?.message || 'This mobile number is already registered'}
                         </p>
                       )}
                     </div>
@@ -832,13 +998,36 @@ function RegisterPage() {
                         type="text"
                         required
                         placeholder="e.g., EMP001"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.employee_id 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.employee_id?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.employee_id?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-blue-500'
+                        }`}
                         value={formData.employee_id}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.employee_id && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.employee_id && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.employee_id}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          <i className="fas fa-times mr-1"></i>
+                          {validationErrors.employee_id}
+                        </p>
+                      )}
+                      {!validationErrors.employee_id && !validationLoading.employee_id && fieldValidation.employee_id?.available === true && formData.employee_id && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Employee ID is available
+                        </p>
                       )}
                     </div>
 
@@ -875,13 +1064,36 @@ function RegisterPage() {
                         type="email"
                         required
                         placeholder="your.email@example.com"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.email 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.email?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-blue-500'
+                        }`}
                         value={formData.email}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.email && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.email && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          <i className="fas fa-times mr-1"></i>
+                          {validationErrors.email}
+                        </p>
+                      )}
+                      {!validationErrors.email && !validationLoading.email && fieldValidation.email?.available === true && formData.email && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Email is available
+                        </p>
                       )}
                     </div>
 
@@ -895,13 +1107,36 @@ function RegisterPage() {
                         type="tel"
                         required
                         placeholder="1234567890"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                          validationErrors.contact_no 
+                            ? 'border-red-400 focus:ring-red-500' 
+                            : fieldValidation.contact_no?.available === false
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.contact_no?.available === true
+                            ? 'border-green-400 focus:ring-green-500'
+                            : 'border-gray-200 focus:ring-blue-500'
+                        }`}
                         value={formData.contact_no}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
+                      {validationLoading.contact_no && (
+                        <p className="mt-1 text-sm text-blue-600">
+                          <i className="fas fa-spinner fa-spin mr-1"></i>
+                          Checking availability...
+                        </p>
+                      )}
                       {validationErrors.contact_no && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.contact_no}</p>
+                        <p className="mt-1 text-sm text-red-600">
+                          <i className="fas fa-times mr-1"></i>
+                          {validationErrors.contact_no}
+                        </p>
+                      )}
+                      {!validationErrors.contact_no && !validationLoading.contact_no && fieldValidation.contact_no?.available === true && formData.contact_no && (
+                        <p className="mt-1 text-sm text-green-600">
+                          <i className="fas fa-check mr-1"></i>
+                          Contact number is available
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1279,6 +1514,13 @@ function RegisterPage() {
           </div>
         </div>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer 
+        toasts={toasts} 
+        onRemove={removeToast}
+        position="top-right"
+      />
     </div>
   );
 }

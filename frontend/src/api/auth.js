@@ -28,6 +28,14 @@ export const authAPI = {
   validateResetToken: (token) => api.get(`/api/v1/auth/validate-reset-token/${token}`),
   resetPassword: (token, data) => api.post(`/api/v1/auth/reset-password/${token}`, data),
   
+  // Field validation for real-time checks
+  validateField: (fieldName, fieldValue, userType = 'student') => 
+    api.post('/api/v1/auth/validate-field', {
+      field_name: fieldName,
+      field_value: fieldValue,
+      user_type: userType
+    }),
+  
   // Token management (using optimized backend endpoints)
   refreshToken: (refreshToken) => api.post('/api/v1/auth/refresh-token', { refresh_token: refreshToken }),
 };

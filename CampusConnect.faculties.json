@@ -1,0 +1,280 @@
+[
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a2035"
+    },
+    "employee_id": "EMP002",
+    "full_name": "Nilam Thakkar",
+    "department": "Information Technology",
+    "designation": "Assistant Professor",
+    "qualification": "Ph.D.",
+    "specialization": "Machine Learning",
+    "experience_years": 13,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "nilamthakkar_ce@ldrp.ac.in",
+    "contact_no": "9876543204",
+    "seating": "Shift 2 Facultty Area",
+    "gender": "female",
+    "date_of_birth": "1990-09-28",
+    "date_of_joining": "2022-08-27",
+    "employment_type": null,
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-08-08T13:37:44.985Z"
+    },
+    "last_login": {
+      "$date": "2025-08-09T19:08:19.590Z"
+    },
+    "is_active": true,
+    "updated_by": "SHIV9090",
+    "avatar_url": "https://gygschntnaivagnbwmgw.supabase.co/storage/v1/object/public/campusconnect/faculties/EMP002/Nilam_Thakkar_1753457268331.png",
+    "assigned_events": [],
+    "is_organizer": true,
+    "organizer_permissions": [
+      "admin.events.read",
+      "admin.events.create",
+      "admin.events.update",
+      "admin.students.read",
+      "admin.certificates.create",
+      "admin.certificates.read",
+      "admin.venues.read",
+      "admin.venues.create",
+      "admin.assets.read",
+      "admin.assets.create",
+      "admin.feedback.read",
+      "admin.feedback.create"
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a2036"
+    },
+    "employee_id": "EMP003",
+    "full_name": "Dr. Rajesh Kumar Patel",
+    "department": "Information Technology",
+    "designation": "Professor",
+    "qualification": "Ph.D. in Computer Science",
+    "specialization": "Data Science and Analytics",
+    "experience_years": 18,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "rajeshpatel_it@ldrp.ac.in",
+    "contact_no": "9876543205",
+    "seating": "Shift 1 Faculty Area",
+    "gender": "male",
+    "date_of_birth": "1975-03-15",
+    "date_of_joining": "2015-07-01",
+    "employment_type": "Permanent",
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-08-07T13:36:12.548Z"
+    },
+    "last_login": {
+      "$date": "2025-08-06T14:30:15.403Z"
+    },
+    "is_active": true,
+    "updated_by": "SHIV9090",
+    "assigned_events": [],
+    "is_organizer": true,
+    "organizer_permissions": [
+      "admin.events.read",
+      "admin.events.create",
+      "admin.events.update",
+      "admin.students.read",
+      "admin.certificates.create",
+      "admin.certificates.read",
+      "admin.venues.read",
+      "admin.venues.create",
+      "admin.assets.read",
+      "admin.assets.create",
+      "admin.feedback.read",
+      "admin.feedback.create"
+    ]
+  },
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a2037"
+    },
+    "employee_id": "EMP004",
+    "full_name": "Priya Sharma",
+    "department": "Information Technology",
+    "designation": "Assistant Professor",
+    "qualification": "M.Tech in Software Engineering",
+    "specialization": "Web Development and Cloud Computing",
+    "experience_years": 8,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "priyasharma_it@ldrp.ac.in",
+    "contact_no": "9876543206",
+    "seating": "Shift 1 Faculty Area",
+    "gender": "female",
+    "date_of_birth": "1988-11-22",
+    "date_of_joining": "2019-08-15",
+    "employment_type": "Permanent",
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-07-25T15:52:32.928Z"
+    },
+    "last_login": {
+      "$date": "2025-08-07T08:45:22.403Z"
+    },
+    "is_active": true,
+    "updated_by": "ADMIN001"
+  },
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a2038"
+    },
+    "employee_id": "EMP005",
+    "full_name": "Amit Joshi",
+    "department": "Information Technology",
+    "designation": "Associate Professor",
+    "qualification": "Ph.D. in Artificial Intelligence",
+    "specialization": "Artificial Intelligence and Deep Learning",
+    "experience_years": 12,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "amitjoshi_it@ldrp.ac.in",
+    "contact_no": "9876543207",
+    "seating": "Shift 2 Faculty Area",
+    "gender": "male",
+    "date_of_birth": "1982-07-08",
+    "date_of_joining": "2017-06-20",
+    "employment_type": "Permanent",
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-07-25T15:52:32.928Z"
+    },
+    "last_login": {
+      "$date": "2025-08-06T16:20:10.403Z"
+    },
+    "is_active": true,
+    "updated_by": "ADMIN001"
+  },
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a2039"
+    },
+    "employee_id": "EMP006",
+    "full_name": "Sneha Desai",
+    "department": "Information Technology",
+    "designation": "Assistant Professor",
+    "qualification": "M.Tech in Cybersecurity",
+    "specialization": "Network Security and Ethical Hacking",
+    "experience_years": 6,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "snehadesai_it@ldrp.ac.in",
+    "contact_no": "9876543208",
+    "seating": "Shift 1 Faculty Area",
+    "gender": "female",
+    "date_of_birth": "1990-12-03",
+    "date_of_joining": "2021-01-10",
+    "employment_type": "Contract",
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-07-25T15:52:32.928Z"
+    },
+    "last_login": {
+      "$date": "2025-08-07T10:15:45.403Z"
+    },
+    "is_active": true,
+    "updated_by": "ADMIN001"
+  },
+  {
+    "_id": {
+      "$oid": "686962a6b9d77bfaa61a203a"
+    },
+    "employee_id": "EMP007",
+    "full_name": "Dr. Kiran Mehta",
+    "department": "Information Technology",
+    "designation": "Associate Professor",
+    "qualification": "Ph.D. in Computer Networks",
+    "specialization": "Internet of Things and Wireless Networks",
+    "experience_years": 15,
+    "password": "$2b$12$TawNXoz04m2b2i8.rXTnrecfgwLZTu2jzAMQ5oGYJh4x.YilrsrYO",
+    "email": "kiranmehta_it@ldrp.ac.in",
+    "contact_no": "9876543209",
+    "seating": "Shift 2 Faculty Area",
+    "gender": "male",
+    "date_of_birth": "1978-05-14",
+    "date_of_joining": "2016-03-25",
+    "employment_type": "Permanent",
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-07-05T17:36:38.239Z"
+    },
+    "updated_at": {
+      "$date": "2025-07-25T15:52:32.928Z"
+    },
+    "last_login": {
+      "$date": "2025-08-06T12:30:55.403Z"
+    },
+    "is_active": true,
+    "updated_by": "ADMIN001"
+  },
+  {
+    "_id": {
+      "$oid": "689795b0f2dc7db3447178c6"
+    },
+    "employee_id": "EMP231",
+    "full_name": "Prof. Neha Shah",
+    "department": "Information Technology",
+    "designation": "Lecturer",
+    "qualification": "M.Tech",
+    "specialization": "Machine Learning and Deep Learning",
+    "experience_years": 8,
+    "password": "$2b$12$/HluExswKV7DPTJiUv7POeTr1/wUEHSgJ6aDhpXKUfuNK3H4izMj.",
+    "email": "neha_shah_ce@ldrp.ac.in",
+    "contact_no": "9876543210",
+    "seating": "Shift 1 Faculty Area",
+    "gender": "female",
+    "date_of_birth": {
+      "$date": {
+        "$numberLong": "-609379200000"
+      }
+    },
+    "date_of_joining": {
+      "$date": "2014-08-15T00:00:00.000Z"
+    },
+    "employment_type": null,
+    "event_participation": [],
+    "created_at": {
+      "$date": "2025-08-09T18:38:40.420Z"
+    },
+    "updated_at": {
+      "$date": "2025-08-09T18:38:40.420Z"
+    },
+    "last_login": {
+      "$date": "2025-08-09T18:38:40.783Z"
+    },
+    "is_active": true,
+    "is_organizer": true,
+    "assigned_events": [],
+    "organizer_permissions": [
+      "admin.events.read",
+      "admin.events.create",
+      "admin.events.update",
+      "admin.students.read",
+      "admin.certificates.create",
+      "admin.certificates.read",
+      "admin.venues.read",
+      "admin.venues.create",
+      "admin.assets.read",
+      "admin.assets.create",
+      "admin.feedback.read",
+      "admin.feedback.create"
+    ]
+  }
+]

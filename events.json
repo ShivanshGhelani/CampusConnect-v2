@@ -1,0 +1,246 @@
+{
+  "events": [
+    {
+      "event_id": "EVT001TCH",
+      "event_name": "Tech Symposium 2025: AI & Machine Learning Workshop",
+      "event_type": "workshop",
+      "organizing_department": "Computer Science & Engineering",
+      "short_description": "Hands-on workshop on AI/ML fundamentals with practical implementation sessions",
+      "detailed_description": "Join us for an intensive 2-day workshop covering the fundamentals of Artificial Intelligence and Machine Learning. This workshop includes hands-on coding sessions, real-world case studies, and expert talks from industry professionals. Participants will work on practical projects using Python, TensorFlow, and scikit-learn. Topics covered: Introduction to AI/ML, Data Preprocessing, Supervised Learning, Neural Networks, and Model Deployment. Perfect for students looking to enhance their technical skills and gain practical experience in AI/ML.",
+      "start_date": "2025-08-25",
+      "start_time": "09:00",
+      "end_date": "2025-08-26",
+      "end_time": "17:00",
+      "venue": "Computer Lab 1, CSE Building",
+      "venue_id": "CSE_LAB_001",
+      "mode": "offline",
+      "status": "approved",
+      "target_audience": ["undergraduate", "postgraduate", "faculty"],
+      "faculty_organizers": ["FAC001", "FAC002"],
+      "contacts": [
+        {
+          "name": "Dr. Rajesh Kumar",
+          "designation": "Professor",
+          "email": "rajesh.kumar@college.edu",
+          "phone": "9876543210"
+        },
+        {
+          "name": "Prof. Sneha Patel",
+          "designation": "Assistant Professor",
+          "email": "sneha.patel@college.edu",
+          "phone": "9876543211"
+        }
+      ],
+      "registration_start_date": "2025-08-10",
+      "registration_end_date": "2025-08-23",
+      "certificate_end_date": "2025-08-30",
+      "registration_mode": "team",
+      "team_size_min": 2,
+      "team_size_max": 4,
+      "max_participants": 120,
+      "registration_type": "paid",
+      "registration_fee": 500.00,
+      "created_at": "2025-08-05T10:30:00Z",
+      "updated_at": "2025-08-10T14:20:00Z",
+      "created_by": "admin001",
+      "tags": ["technology", "AI", "machine learning", "workshop", "coding"],
+      "requirements": ["Laptop with Python installed", "Basic programming knowledge", "Jupyter Notebook setup"],
+      "certificates_available": true,
+      "attendance_required": true,
+      "feedback_enabled": true
+    },
+    {
+      "event_id": "EVT002CUL",
+      "event_name": "Cultural Fest 2025: Expressions Unlimited",
+      "event_type": "cultural",
+      "organizing_department": "Student Activities",
+      "short_description": "Annual cultural festival showcasing talent across dance, music, drama, and arts",
+      "detailed_description": "Expressions Unlimited is our flagship cultural event that celebrates the diverse talents of our college community. This 3-day extravaganza features competitions in classical and contemporary dance, vocal and instrumental music, drama, poetry, painting, and photography. The festival also includes food stalls representing different states of India, cultural exhibitions, and special performances by renowned artists. It's a platform for students to showcase their creativity, learn from each other, and celebrate the rich cultural heritage of our nation. Special guest performances and celebrity judges make this event truly memorable.",
+      "start_date": "2025-09-15",
+      "start_time": "10:00",
+      "end_date": "2025-09-17",
+      "end_time": "22:00",
+      "venue": "Main Auditorium & College Grounds",
+      "venue_id": "MAIN_AUD_001",
+      "mode": "offline",
+      "status": "approved",
+      "target_audience": ["undergraduate", "postgraduate", "faculty", "staff", "external"],
+      "faculty_organizers": ["FAC003", "FAC004", "FAC005"],
+      "contacts": [
+        {
+          "name": "Prof. Anita Sharma",
+          "designation": "Cultural Committee Head",
+          "email": "anita.sharma@college.edu",
+          "phone": "9876543212"
+        },
+        {
+          "name": "Mr. Vikram Singh",
+          "designation": "Event Coordinator",
+          "email": "vikram.singh@college.edu",
+          "phone": "9876543213"
+        }
+      ],
+      "registration_start_date": "2025-08-15",
+      "registration_end_date": "2025-09-10",
+      "certificate_end_date": "2025-09-25",
+      "registration_mode": "individual",
+      "team_size_min": 1,
+      "team_size_max": 1,
+      "max_participants": 500,
+      "registration_type": "free",
+      "registration_fee": 0.00,
+      "created_at": "2025-07-20T09:15:00Z",
+      "updated_at": "2025-08-08T16:45:00Z",
+      "created_by": "admin002",
+      "tags": ["cultural", "festival", "dance", "music", "arts", "competition"],
+      "requirements": ["Valid college ID", "Costume for performance", "Musical instruments (if applicable)"],
+      "certificates_available": true,
+      "attendance_required": false,
+      "feedback_enabled": true,
+      "special_notes": "Food and accommodation arrangements available for outstation participants"
+    },
+    {
+      "event_id": "EVT003SPT",
+      "event_name": "Inter-College Sports Championship 2025",
+      "event_type": "sports",
+      "organizing_department": "Physical Education",
+      "short_description": "Annual inter-college sports tournament featuring multiple indoor and outdoor games",
+      "detailed_description": "The Inter-College Sports Championship is our premier sporting event that brings together athletes from various colleges across the region. This comprehensive tournament spans 5 days and includes both indoor and outdoor sports: Cricket, Football, Basketball, Volleyball, Badminton, Table Tennis, Chess, Carrom, and Athletics (Track & Field events). The championship promotes sportsmanship, healthy competition, and physical fitness among students. Professional referees officiate all matches, and the event follows standard international rules for each sport. Winners receive trophies, medals, and certificates. The event also includes coaching clinics by professional athletes and sports nutrition workshops.",
+      "start_date": "2025-10-05",
+      "start_time": "06:00",
+      "end_date": "2025-10-09",
+      "end_time": "18:00",
+      "venue": "Sports Complex & Athletic Grounds",
+      "venue_id": "SPORTS_001",
+      "mode": "offline",
+      "status": "pending",
+      "target_audience": ["undergraduate", "postgraduate"],
+      "faculty_organizers": ["FAC006", "FAC007"],
+      "contacts": [
+        {
+          "name": "Coach Ramesh Verma",
+          "designation": "Sports Director",
+          "email": "ramesh.verma@college.edu",
+          "phone": "9876543214"
+        },
+        {
+          "name": "Dr. Priya Nair",
+          "designation": "Physical Education Head",
+          "email": "priya.nair@college.edu",
+          "phone": "9876543215"
+        }
+      ],
+      "registration_start_date": "2025-09-01",
+      "registration_end_date": "2025-09-28",
+      "certificate_end_date": "2025-10-15",
+      "registration_mode": "team",
+      "team_size_min": 8,
+      "team_size_max": 15,
+      "max_participants": 300,
+      "registration_type": "paid",
+      "registration_fee": 1000.00,
+      "created_at": "2025-08-01T08:00:00Z",
+      "updated_at": "2025-08-09T12:30:00Z",
+      "created_by": "admin003",
+      "tags": ["sports", "championship", "inter-college", "competition", "athletics"],
+      "requirements": ["Sports attire", "Valid medical certificate", "College sports kit", "Team registration form"],
+      "certificates_available": true,
+      "attendance_required": true,
+      "feedback_enabled": true,
+      "special_notes": "Medical team available on-site. Separate accommodation arranged for outstation teams."
+    },
+    {
+      "event_id": "EVT004BIZ",
+      "event_name": "Entrepreneurship Summit 2025: Innovation & Startups",
+      "event_type": "seminar",
+      "organizing_department": "Management Studies",
+      "short_description": "Business summit featuring startup pitches, entrepreneurship talks, and networking sessions",
+      "detailed_description": "The Entrepreneurship Summit 2025 is designed to inspire and educate the next generation of entrepreneurs and innovators. This prestigious event features keynote speakers who are successful entrepreneurs, venture capitalists, and industry experts. The summit includes startup pitch competitions where student entrepreneurs can present their business ideas to a panel of investors and mentors. Workshops cover topics like business plan development, funding strategies, digital marketing, and scaling operations. The event also includes networking sessions, panel discussions on emerging technologies, and one-on-one mentoring opportunities. Participants will gain valuable insights into the startup ecosystem and receive practical guidance for their entrepreneurial journey.",
+      "start_date": "2025-11-20",
+      "start_time": "09:30",
+      "end_date": "2025-11-21",
+      "end_time": "17:30",
+      "venue": "Business School Auditorium",
+      "venue_id": "BIZ_AUD_001",
+      "mode": "hybrid",
+      "status": "draft",
+      "target_audience": ["undergraduate", "postgraduate", "faculty", "external", "alumni"],
+      "faculty_organizers": ["FAC008", "FAC009"],
+      "contacts": [
+        {
+          "name": "Prof. Suresh Gupta",
+          "designation": "Dean, Management Studies",
+          "email": "suresh.gupta@college.edu",
+          "phone": "9876543216"
+        },
+        {
+          "name": "Dr. Meera Joshi",
+          "designation": "Entrepreneurship Cell Head",
+          "email": "meera.joshi@college.edu",
+          "phone": "9876543217"
+        }
+      ],
+      "registration_start_date": "2025-10-15",
+      "registration_end_date": "2025-11-15",
+      "certificate_end_date": "2025-11-30",
+      "registration_mode": "individual",
+      "team_size_min": 1,
+      "team_size_max": 1,
+      "max_participants": 200,
+      "registration_type": "paid",
+      "registration_fee": 750.00,
+      "created_at": "2025-08-08T11:45:00Z",
+      "updated_at": "2025-08-10T09:20:00Z",
+      "created_by": "admin001",
+      "tags": ["entrepreneurship", "business", "startup", "innovation", "networking", "summit"],
+      "requirements": ["Business casual attire", "Laptop for workshops", "Business plan (for pitch competition)", "Valid ID proof"],
+      "certificates_available": true,
+      "attendance_required": true,
+      "feedback_enabled": true,
+      "special_notes": "Lunch and refreshments included. Live streaming available for virtual participants. Startup exhibition space available.",
+      "online_meeting_details": {
+        "platform": "Zoom",
+        "meeting_id": "1234567890",
+        "passcode": "SUMMIT2025",
+        "streaming_url": "https://youtube.com/live/entrepreneurship-summit-2025"
+      },
+      "prizes": {
+        "startup_pitch_winner": "₹50,000 seed funding",
+        "runner_up": "₹25,000 cash prize",
+        "third_place": "₹10,000 cash prize",
+        "best_innovation": "Incubation opportunity"
+      }
+    }
+  ],
+  "metadata": {
+    "total_events": 4,
+    "created_date": "2025-08-10T15:30:00Z",
+    "format_version": "v2.1",
+    "description": "Sample event data for CampusConnect system testing and development",
+    "departments_covered": [
+      "Computer Science & Engineering",
+      "Student Activities", 
+      "Physical Education",
+      "Management Studies"
+    ],
+    "event_types_included": [
+      "workshop",
+      "cultural", 
+      "sports",
+      "seminar"
+    ],
+    "status_distribution": {
+      "approved": 2,
+      "pending": 1,
+      "draft": 1
+    },
+    "registration_modes": {
+      "individual": 2,
+      "team": 2
+    },
+    "fee_structure": {
+      "free": 1,
+      "paid": 3
+    }
+  }
+}
