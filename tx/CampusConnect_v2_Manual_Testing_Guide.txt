@@ -1,0 +1,1055 @@
+============================================================================
+                 CAMPUSCONNECT V2 - COMPREHENSIVE MANUAL TESTING GUIDE
+                                  STEP-BY-STEP TESTING PROCEDURES
+                                    August 9, 2025 - Version 2.1
+============================================================================
+
+📋 TESTING OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 SYSTEM UNDER TEST: CampusConnect v2.1 (REST API + React Frontend)
+📊 TOTAL REST ENDPOINTS: 47 Active APIs
+🔧 TESTING TYPE: Manual Frontend Testing (No Code Required)
+👥 USER ROLES: Admin, Student, Faculty
+🌐 TESTING ENVIRONMENT: http://localhost:3000 (Frontend) + http://localhost:8000 (Backend)
+
+🎯 TESTING OBJECTIVES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Verify all user authentication flows work correctly
+✅ Test complete event management lifecycle (Create → Register → Attend → Certificate)
+✅ Validate file upload functionality (Profiles, Assets, Templates)
+✅ Ensure proper role-based access control
+✅ Test cross-browser compatibility and responsiveness
+✅ Identify bugs and document them for developer resolution
+
+============================================================================
+PRE-TESTING SETUP & REQUIREMENTS
+============================================================================
+
+🔧 ENVIRONMENT SETUP:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ REQUIRED SERVICES RUNNING:
+□ Backend Server: http://localhost:8000 (FastAPI)
+□ Frontend Server: http://localhost:3000 (React/Vite)
+□ MongoDB Database: Connected and accessible
+□ Supabase Storage: Profile pictures and assets
+□ Email Service: SMTP configured for notifications
+
+✅ BROWSER REQUIREMENTS:
+□ Chrome/Edge (Primary testing browser)
+□ Firefox (Secondary testing browser)
+□ Safari (macOS users)
+□ Mobile browsers (iOS Safari, Chrome Mobile)
+
+✅ TEST DATA PREPARATION:
+□ Create test users for each role (provided below)
+□ Prepare test files for uploads (images, HTML templates)
+□ Have multiple email addresses for testing
+
+✅ TESTING TOOLS:
+□ Browser Developer Tools (F12)
+□ Network tab for API monitoring
+□ Console for JavaScript errors
+□ Notepad for bug documentation
+
+============================================================================
+TEST USER ACCOUNTS
+============================================================================
+
+👨‍💼 ADMIN TEST ACCOUNTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 SUPER ADMIN:
+Username: admin
+Password: admin123
+Role: Super Admin
+Permissions: Full system access, event approval, user management
+
+🔑 EXECUTIVE ADMIN:
+Username: exec_admin
+Password: exec123
+Role: Executive Admin
+Permissions: Event management, bulk operations, reporting
+
+🔑 ORGANIZER ADMIN:
+Username: org_admin
+Password: org123
+Role: Organizer Admin
+Permissions: Event creation, registration management
+
+👨‍🎓 STUDENT TEST ACCOUNTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 STUDENT 1:
+Enrollment No: 21CS12345
+Password: student123
+Name: John Doe
+Department: Computer Science
+Email: john.doe@student.edu
+
+🔑 STUDENT 2:
+Enrollment No: 21IT54321
+Password: student456
+Name: Jane Smith
+Department: Information Technology
+Email: jane.smith@student.edu
+
+👨‍🏫 FACULTY TEST ACCOUNTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 FACULTY 1:
+Employee ID: FAC001
+Password: faculty123
+Name: Dr. Robert Johnson
+Department: Computer Science
+Email: robert.johnson@college.edu
+
+🔑 FACULTY 2:
+Employee ID: FAC002
+Password: faculty456
+Name: Prof. Sarah Wilson
+Department: Information Technology
+Email: sarah.wilson@college.edu
+
+============================================================================
+SECTION 1: AUTHENTICATION & ACCESS CONTROL TESTING
+============================================================================
+
+🔐 TEST CASE 1.1: ADMIN LOGIN FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Open browser and navigate to http://localhost:3000
+2. 🔍 Look for Admin Login option/link on homepage
+3. 🖱️ Click on "Admin Login" or navigate to admin section
+4. 📝 Enter credentials:
+   - Username: admin
+   - Password: admin123
+5. ✅ Click "Login" button
+6. 👁️ Observe redirection to admin dashboard
+
+EXPECTED RESULTS:
+✅ Login form accepts credentials without errors
+✅ Successful redirect to admin dashboard (URL: /admin or /admin/dashboard)
+✅ Admin user information displayed (username, role)
+✅ Admin navigation menu visible
+✅ No JavaScript errors in browser console
+
+WHAT TO CHECK:
+□ Login form validation (empty fields show errors)
+□ Incorrect credentials show appropriate error message
+□ "Remember Me" option works if available
+□ Session persistence across browser refresh
+□ Logout functionality works correctly
+
+🛠️ BUG REPORTING:
+If login fails, document:
+- Error message displayed
+- Network tab status codes
+- Console errors
+- Browser used
+- Steps to reproduce
+
+🔐 TEST CASE 1.2: STUDENT LOGIN FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Navigate to student login page
+2. 📝 Enter credentials:
+   - Enrollment No: 21CS12345
+   - Password: student123
+3. ✅ Click "Login" button
+4. 👁️ Verify redirect to student dashboard
+
+EXPECTED RESULTS:
+✅ Successful login and redirect to /client/dashboard
+✅ Student profile information displayed
+✅ Student-specific navigation menu
+✅ Access to student features (events, registrations, profile)
+
+🔐 TEST CASE 1.3: FACULTY LOGIN FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Navigate to faculty login page
+2. 📝 Enter credentials:
+   - Employee ID: FAC001
+   - Password: faculty123
+3. ✅ Click "Login" button
+4. 👁️ Verify redirect to faculty profile/dashboard
+
+EXPECTED RESULTS:
+✅ Successful login and redirect to /faculty/profile
+✅ Faculty profile information displayed
+✅ Faculty-specific navigation options
+✅ Organizer access status visible
+
+🔐 TEST CASE 1.4: ROLE-BASED ACCESS CONTROL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 👨‍🎓 Login as Student (21CS12345)
+2. 🔍 Try to access admin URLs directly:
+   - http://localhost:3000/admin
+   - http://localhost:3000/admin/events
+3. 👁️ Verify access is denied or redirected
+4. 🔄 Logout and login as Admin
+5. 🔍 Verify admin can access all admin features
+
+EXPECTED RESULTS:
+✅ Students cannot access admin pages
+✅ Proper error messages or redirects for unauthorized access
+✅ Each role sees only appropriate navigation options
+✅ API calls return 401/403 for unauthorized requests
+
+============================================================================
+SECTION 2: STUDENT REGISTRATION TESTING
+============================================================================
+
+📝 TEST CASE 2.1: NEW STUDENT REGISTRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Navigate to student registration page
+2. 📝 Fill out registration form with test data:
+   - Full Name: Test Student
+   - Enrollment No: 21CS99999
+   - Email: test.student@email.com
+   - Mobile: 9876543210
+   - Gender: Male
+   - Date of Birth: 2003-01-15
+   - Department: Computer Science
+   - Semester: 3
+   - Password: Test123!
+3. ✅ Submit registration form
+4. 👁️ Verify success message and redirect
+
+EXPECTED RESULTS:
+✅ Form validation works for all fields
+✅ Enrollment number format validation (##XX#####)
+✅ Email format validation
+✅ Password strength validation
+✅ Successful registration creates account
+✅ Success message displayed
+✅ Ability to login with new credentials
+
+📝 TEST CASE 2.2: FACULTY REGISTRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Navigate to faculty registration page
+2. 📝 Fill out faculty registration form:
+   - Employee ID: FAC999
+   - Full Name: Test Faculty
+   - Email: test.faculty@college.edu
+   - Contact: 9876543210
+   - Department: Computer Science
+   - Designation: Assistant Professor
+   - Qualification: PhD Computer Science
+   - Experience Years: 5
+   - Gender: Female
+   - Date of Birth: 1985-05-20
+   - Password: Faculty123!
+3. ✅ Submit registration
+4. 👁️ Verify account creation and login capability
+
+EXPECTED RESULTS:
+✅ All form validations work correctly
+✅ Faculty account created successfully
+✅ Auto-granted organizer permissions
+✅ Can login with new credentials
+✅ Faculty dashboard accessible
+
+============================================================================
+SECTION 3: EVENT MANAGEMENT TESTING (ADMIN)
+============================================================================
+
+🎯 TEST CASE 3.1: CREATE NEW EVENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Admin (username: admin)
+
+STEPS:
+1. 🖱️ Navigate to Admin Dashboard → Events → Create Event
+2. 📝 Fill out event creation form:
+   - Event ID: TEST-EVENT-001
+   - Event Name: Test Workshop on Web Development
+   - Event Type: Workshop
+   - Organizing Department: Computer Science
+   - Short Description: Learn modern web development
+   - Detailed Description: Comprehensive workshop covering HTML, CSS, JavaScript, and React
+   - Start Date: Tomorrow's date
+   - Start Time: 09:00
+   - End Date: Tomorrow's date
+   - End Time: 17:00
+   - Venue: Computer Lab 1
+   - Mode: Offline
+   - Status: Draft
+   - Target Audience: Students, Faculty
+   - Faculty Organizers: FAC001
+   - Registration Start Date: Today's date
+   - Registration End Date: Tomorrow's date - 1 hour
+   - Certificate End Date: Tomorrow's date + 1 day
+   - Registration Mode: Individual
+   - Max Participants: 50
+   - Registration Type: Free
+3. ✅ Submit event creation form
+4. 👁️ Verify event appears in events list
+
+EXPECTED RESULTS:
+✅ Form accepts all valid data
+✅ Date/time validation works correctly
+✅ Event ID uniqueness validation
+✅ Success message after creation
+✅ Event appears in admin events list
+✅ Event status shows as "Draft" or "Pending Approval"
+
+🎯 TEST CASE 3.2: EVENT APPROVAL WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Event created in Test Case 3.1, Login as Super Admin
+
+STEPS:
+1. 🖱️ Navigate to Admin → Events → Pending Approval
+2. 🔍 Find the test event (TEST-EVENT-001)
+3. 👁️ Review event details
+4. ✅ Click "Approve" button
+5. 📝 Verify approval confirmation
+6. 🔍 Check event status updated to "Approved"
+7. 🌐 Logout and check if event visible to students
+
+EXPECTED RESULTS:
+✅ Pending events list shows created event
+✅ Event details display correctly
+✅ Approval process works without errors
+✅ Event status updates to "Approved"
+✅ Event becomes visible in public event list
+✅ Students can see the event for registration
+
+🎯 TEST CASE 3.3: EVENT UPDATE/EDIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🖱️ Navigate to Admin → Events → Event List
+2. 🔍 Find TEST-EVENT-001
+3. ✏️ Click "Edit" or "Update" button
+4. 📝 Modify event details:
+   - Change event name to "Advanced Web Development Workshop"
+   - Update description
+   - Change max participants to 75
+5. ✅ Save changes
+6. 👁️ Verify updates appear correctly
+
+EXPECTED RESULTS:
+✅ Edit form pre-fills with existing data
+✅ All fields are editable
+✅ Changes save successfully
+✅ Updated information displays correctly
+✅ Event list reflects changes
+
+============================================================================
+SECTION 4: STUDENT EVENT INTERACTION TESTING
+============================================================================
+
+🎓 TEST CASE 4.1: EVENT DISCOVERY & VIEWING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Student (21CS12345)
+
+STEPS:
+1. 🌐 Navigate to student dashboard or events page
+2. 🔍 Browse available events list
+3. 🖱️ Click on TEST-EVENT-001 to view details
+4. 👁️ Review event information displayed
+5. 🔍 Check if registration button/option is available
+6. 📱 Test on mobile browser (responsive design)
+
+EXPECTED RESULTS:
+✅ Events list loads correctly
+✅ Event details page shows comprehensive information
+✅ Registration status clearly indicated
+✅ Event timing and venue visible
+✅ Mobile-responsive design works
+✅ No broken images or layout issues
+
+🎓 TEST CASE 4.2: INDIVIDUAL EVENT REGISTRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🖱️ From event details page, click "Register" button
+2. 📝 Fill out registration form (if additional fields required)
+3. ✅ Submit registration
+4. 👁️ Verify success message
+5. 🔍 Check registration status
+6. 📧 Verify confirmation email (if configured)
+
+EXPECTED RESULTS:
+✅ Registration form appears correctly
+✅ Registration submits without errors
+✅ Success confirmation message
+✅ Registration status shows "Registered"
+✅ Email confirmation sent (if SMTP configured)
+✅ Registration appears in "My Registrations"
+
+🎓 TEST CASE 4.3: TEAM REGISTRATION (if supported)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Create a team-based event first
+
+STEPS:
+1. 🎯 Create team event as Admin (Team size: 2-4 members)
+2. 👨‍🎓 Login as Student (21CS12345)
+3. 🖱️ Navigate to team event registration
+4. 📝 Fill team registration form:
+   - Team Name: Web Wizards
+   - Team Leader: 21CS12345 (auto-filled)
+   - Team Members:
+     * Member 1: 21IT54321 (Jane Smith)
+     * Member 2: Create test data
+5. ✅ Submit team registration
+6. 👁️ Verify team registration success
+
+EXPECTED RESULTS:
+✅ Team registration form works correctly
+✅ Team member validation (enrollment numbers)
+✅ Team size validation enforced
+✅ Team registration successful
+✅ All team members get registration confirmation
+
+============================================================================
+SECTION 5: FILE UPLOAD TESTING (SUPABASE INTEGRATION)
+============================================================================
+
+📸 TEST CASE 5.1: PROFILE PICTURE UPLOAD (STUDENT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Student (21CS12345)
+
+STEPS:
+1. 🖱️ Navigate to student profile/settings page
+2. 🔍 Find profile picture upload section
+3. 📁 Click "Upload" or "Change Profile Picture"
+4. 📎 Select test image file (JPG/PNG, <5MB)
+5. ⏳ Wait for upload progress
+6. 👁️ Verify image appears as profile picture
+7. 🔄 Refresh page to ensure persistence
+
+EXPECTED RESULTS:
+✅ File picker opens correctly
+✅ Upload progress indicator shows
+✅ Image uploads successfully to Supabase
+✅ Profile picture updates immediately
+✅ Image URL generates correctly
+✅ Profile picture persists after page refresh
+✅ Old profile picture gets replaced
+
+TEST FILES TO USE:
+□ Valid: profile.jpg (1MB)
+□ Valid: avatar.png (2MB)
+□ Invalid: large_image.jpg (>10MB) - should show error
+□ Invalid: document.pdf - should reject non-image files
+
+📸 TEST CASE 5.2: PROFILE PICTURE UPLOAD (FACULTY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Faculty (FAC001)
+
+STEPS:
+1. 🖱️ Navigate to faculty profile page
+2. 📎 Upload faculty profile picture
+3. 👁️ Verify upload to faculties/{employee_id}/ folder structure
+4. 🔍 Test image display across different pages
+
+EXPECTED RESULTS:
+✅ Faculty profile upload works
+✅ Correct folder structure (faculties/FAC001/)
+✅ Image displays consistently
+✅ No conflicts with student uploads
+
+🏢 TEST CASE 5.3: COLLEGE ASSETS UPLOAD (ADMIN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Admin (admin)
+
+STEPS:
+1. 🖱️ Navigate to Admin → Assets/Settings → College Assets
+2. 📎 Upload college logo:
+   - Asset Type: Logo
+   - Asset Name: College Main Logo
+   - File: college_logo.png
+3. ✅ Submit upload
+4. 📎 Upload faculty signature:
+   - Asset Type: Signature
+   - Sub Type: Faculty
+   - Department: Computer Science
+   - Asset Name: Dr. Robert Johnson Signature
+   - File: signature.png
+5. 👁️ Verify both uploads successful
+
+EXPECTED RESULTS:
+✅ Logo uploads to assets/logos/ folder
+✅ Signature uploads to assets/signatures/faculty/computer-science/
+✅ Assets list shows uploaded files
+✅ Public URLs generate correctly
+✅ Assets can be used in certificate templates
+
+📋 TEST CASE 5.4: CERTIFICATE TEMPLATE UPLOAD (ADMIN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Admin (admin)
+
+STEPS:
+1. 🖱️ Navigate to Admin → Certificate Templates
+2. 📎 Upload new template:
+   - Template Name: Workshop Completion Certificate
+   - Category: Events & Fests
+   - Description: Template for workshop completion
+   - Tags: workshop, completion, certificate
+   - File: workshop_template.html (create simple HTML file)
+3. ✅ Submit upload
+4. 👁️ Verify template appears in list
+5. 🔍 Test template preview functionality
+
+EXPECTED RESULTS:
+✅ Template uploads via backend API (not direct Supabase)
+✅ Template appears in admin template list
+✅ Preview functionality works
+✅ Template can be selected for events
+✅ Template metadata saved correctly
+
+HTML TEST TEMPLATE CONTENT:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Certificate Template</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding: 50px; }
+        .certificate { border: 2px solid #000; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="certificate">
+        <h1>Certificate of Completion</h1>
+        <p>This is to certify that</p>
+        <h2>{{student_name}}</h2>
+        <p>has successfully completed</p>
+        <h3>{{event_name}}</h3>
+        <p>Date: {{event_date}}</p>
+    </div>
+</body>
+</html>
+```
+
+============================================================================
+SECTION 6: ATTENDANCE & CERTIFICATE TESTING
+============================================================================
+
+✅ TEST CASE 6.1: ATTENDANCE MARKING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: 
+- Student registered for TEST-EVENT-001
+- Event date/time has arrived (or manually set for testing)
+
+STEPS:
+1. 👨‍🎓 Login as Student (21CS12345)
+2. 🖱️ Navigate to "My Events" or "Attendance"
+3. 🔍 Find TEST-EVENT-001
+4. ✅ Click "Mark Attendance" button
+5. 📝 Enter attendance code (if required) or confirm attendance
+6. 👁️ Verify attendance marked successfully
+7. 👨‍💼 Login as Admin to verify attendance in backend
+
+EXPECTED RESULTS:
+✅ Attendance marking option appears for registered events
+✅ Attendance confirmation works
+✅ Attendance status updates in student view
+✅ Admin can see attendance records
+✅ Attendance affects certificate eligibility
+
+🏆 TEST CASE 6.2: CERTIFICATE GENERATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES:
+- Student attended event (attendance marked)
+- Certificate template assigned to event
+- Certificate generation period active
+
+STEPS:
+1. 👨‍🎓 Login as Student (21CS12345)
+2. 🖱️ Navigate to "My Certificates" or "Certificates"
+3. 🔍 Find eligible events for certificate
+4. 🏆 Click "Generate Certificate" for TEST-EVENT-001
+5. ⏳ Wait for PDF generation (frontend process)
+6. 👁️ Verify certificate preview
+7. 💾 Download certificate PDF
+8. 📧 Test "Email Certificate" functionality
+
+EXPECTED RESULTS:
+✅ Certificate generation option available for attended events
+✅ PDF generates correctly with student data
+✅ Certificate template renders properly
+✅ Student name, event details populate correctly
+✅ Certificate downloads successfully
+✅ Email functionality works (if SMTP configured)
+✅ Certificate data persists in student records
+
+============================================================================
+SECTION 7: FEEDBACK & EVALUATION TESTING
+============================================================================
+
+⭐ TEST CASE 7.1: EVENT FEEDBACK SUBMISSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Student attended TEST-EVENT-001
+
+STEPS:
+1. 👨‍🎓 Login as Student (21CS12345)
+2. 🖱️ Navigate to event feedback section
+3. 🔍 Find TEST-EVENT-001 in completed events
+4. ⭐ Click "Submit Feedback"
+5. 📝 Fill feedback form:
+   - Rating: 4/5 stars
+   - Feedback Text: "Great workshop, learned a lot!"
+   - Suggestions: "More hands-on exercises"
+   - Would Recommend: Yes
+6. ✅ Submit feedback
+7. 👁️ Verify submission confirmation
+
+EXPECTED RESULTS:
+✅ Feedback form appears for attended events
+✅ Rating system works (stars/numbers)
+✅ Text areas accept feedback content
+✅ Form validation works correctly
+✅ Feedback submits successfully
+✅ Thank you message appears
+✅ Feedback appears in admin analytics
+
+============================================================================
+SECTION 8: ADMIN ANALYTICS & REPORTING TESTING
+============================================================================
+
+📊 TEST CASE 8.1: ADMIN DASHBOARD ANALYTICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITES: Login as Admin (admin)
+
+STEPS:
+1. 🖱️ Navigate to Admin Dashboard
+2. 👁️ Review dashboard statistics:
+   - Total Events
+   - Active Events
+   - Total Registrations
+   - Pending Approvals
+   - Certificates Generated
+3. 🔍 Check different time period filters (Week/Month/Year)
+4. 📊 Verify charts and graphs display correctly
+5. 🔄 Refresh and ensure data consistency
+
+EXPECTED RESULTS:
+✅ Dashboard loads without errors
+✅ Statistics show accurate numbers
+✅ Charts render correctly
+✅ Time period filters work
+✅ Data refreshes properly
+✅ Mobile-responsive dashboard
+
+📈 TEST CASE 8.2: EVENT ANALYTICS & EXPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🖱️ Navigate to Admin → Events → Event List
+2. 🔍 Find TEST-EVENT-001
+3. 📊 Click "View Statistics" or "Analytics"
+4. 👁️ Review event statistics:
+   - Total Registrations
+   - Attendance Rate
+   - Feedback Ratings
+   - Certificate Generation Rate
+5. 📄 Test export functionality:
+   - Export Registration List (PDF)
+   - Export Attendance Sheet (PDF)
+   - Export Custom Report
+6. 💾 Verify exports download correctly
+
+EXPECTED RESULTS:
+✅ Event statistics display accurately
+✅ Charts show registration/attendance trends
+✅ Export functions work without errors
+✅ PDF files generate correctly
+✅ Exported data matches displayed statistics
+
+============================================================================
+SECTION 9: CROSS-BROWSER & RESPONSIVE TESTING
+============================================================================
+
+🌐 TEST CASE 9.1: BROWSER COMPATIBILITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TESTING MATRIX:
+□ Chrome (Latest)
+□ Firefox (Latest)
+□ Safari (macOS)
+□ Edge (Latest)
+
+FOR EACH BROWSER:
+1. 🔐 Test login flows (Admin, Student, Faculty)
+2. 🎯 Test event creation and registration
+3. 📸 Test file uploads
+4. 🏆 Test certificate generation
+5. 📱 Test responsive design (resize window)
+
+EXPECTED RESULTS:
+✅ Consistent functionality across browsers
+✅ UI elements render correctly
+✅ No browser-specific JavaScript errors
+✅ File uploads work in all browsers
+✅ Responsive design adapts properly
+
+📱 TEST CASE 9.2: MOBILE DEVICE TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEVICES TO TEST:
+□ iOS Safari (iPhone)
+□ Chrome Mobile (Android)
+□ Tablet (iPad/Android)
+
+STEPS:
+1. 📱 Open http://localhost:3000 on mobile device (or use browser dev tools)
+2. 🔐 Test mobile login experience
+3. 🎯 Browse events on mobile
+4. 📝 Test mobile registration form
+5. 📸 Test mobile file upload
+6. 🖱️ Test touch interactions and gestures
+
+EXPECTED RESULTS:
+✅ Mobile-responsive design works
+✅ Touch targets are appropriately sized
+✅ Forms usable on mobile keyboards
+✅ File uploads work on mobile
+✅ No horizontal scrolling
+✅ Text is readable without zooming
+
+============================================================================
+SECTION 10: PERFORMANCE & ERROR TESTING
+============================================================================
+
+⚡ TEST CASE 10.1: PERFORMANCE TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🌐 Open browser Developer Tools (F12)
+2. 📊 Navigate to Network tab
+3. 🔄 Clear cache and reload pages
+4. ⏱️ Monitor page load times for:
+   - Homepage
+   - Login pages
+   - Dashboard pages
+   - Event list pages
+   - Registration forms
+5. 📈 Check largest contentful paint (LCP)
+6. 🎯 Test with slow 3G network simulation
+
+EXPECTED RESULTS:
+✅ Page load times under 3 seconds on normal connection
+✅ No excessive API calls or redundant requests
+✅ Images optimized and load efficiently
+✅ JavaScript bundle size reasonable
+✅ Works acceptably on slow connections
+
+❌ TEST CASE 10.2: ERROR HANDLING TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🔌 Test with backend server offline:
+   - Stop backend server
+   - Try to login/register
+   - Verify error messages
+2. 🌐 Test with poor network conditions:
+   - Simulate network throttling
+   - Test timeout scenarios
+3. 📝 Test invalid form inputs:
+   - Submit empty forms
+   - Enter invalid email formats
+   - Use invalid enrollment numbers
+4. 📸 Test file upload errors:
+   - Upload oversized files
+   - Upload invalid file types
+   - Test with network interruption during upload
+
+EXPECTED RESULTS:
+✅ Graceful error messages for offline scenarios
+✅ User-friendly validation messages
+✅ No white screen errors or crashes
+✅ Loading states show during operations
+✅ Retry mechanisms work where appropriate
+
+============================================================================
+SECTION 11: SECURITY TESTING
+============================================================================
+
+🔒 TEST CASE 11.1: SESSION SECURITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 🔐 Login as Student
+2. 🖱️ Open new tab/window
+3. 🌐 Navigate to admin URL directly
+4. 👁️ Verify access denied
+5. 🔄 Close browser and reopen
+6. 🔍 Check if session persists appropriately
+7. ⏰ Test session timeout (if configured)
+
+EXPECTED RESULTS:
+✅ Cross-role access properly blocked
+✅ Session security maintained
+✅ Timeout functionality works
+✅ Proper logout clears session
+
+🔒 TEST CASE 11.2: INPUT SECURITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEPS:
+1. 📝 Test XSS prevention:
+   - Enter <script>alert('xss')</script> in form fields
+   - Verify script doesn't execute
+2. 💉 Test SQL injection:
+   - Enter SQL commands in login fields
+   - Verify proper sanitization
+3. 📎 Test file upload security:
+   - Try to upload .exe, .js, .php files
+   - Verify rejection of dangerous files
+
+EXPECTED RESULTS:
+✅ No script execution from user inputs
+✅ Form inputs properly sanitized
+✅ File type restrictions enforced
+✅ No sensitive data exposed in errors
+
+============================================================================
+BUG REPORTING TEMPLATE
+============================================================================
+
+🐛 BUG REPORT FORM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 BUG INFORMATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏷️ Bug ID: [AUTO-GENERATED or MANUAL]
+📅 Date Found: [DATE]
+👤 Tester Name: [YOUR NAME]
+🔍 Test Case: [WHICH TEST CASE NUMBER]
+⚠️ Severity: [Critical/High/Medium/Low]
+
+📝 BUG DESCRIPTION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary: [Brief description of the bug]
+
+Expected Result: [What should have happened]
+
+Actual Result: [What actually happened]
+
+🔄 REPRODUCTION STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+4. [Result/Error occurs]
+
+🖥️ ENVIRONMENT DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Browser: [Chrome/Firefox/Safari/Edge + Version]
+Operating System: [Windows/macOS/Linux]
+Screen Resolution: [1920x1080/etc.]
+Device Type: [Desktop/Mobile/Tablet]
+Network: [WiFi/Mobile/Slow 3G/etc.]
+
+🔧 TECHNICAL DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Console Errors: [Copy any JavaScript errors from browser console]
+
+Network Errors: [HTTP status codes, failed API calls]
+
+Screenshots: [Attach screenshots if applicable]
+
+Additional Notes: [Any other relevant information]
+
+📊 IMPACT ASSESSMENT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+User Impact: [How many users affected]
+Workaround Available: [Yes/No - describe if yes]
+Business Impact: [Critical feature broken/Minor UI issue/etc.]
+
+============================================================================
+COMMON ISSUES & TROUBLESHOOTING
+============================================================================
+
+❗ COMMON PROBLEMS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚫 CORS ERRORS:
+Problem: API calls fail with CORS errors
+Solution: Ensure backend and frontend use same localhost configuration
+
+🔌 CONNECTION REFUSED:
+Problem: Cannot connect to backend
+Solution: Verify backend server running on http://localhost:8000
+
+📸 FILE UPLOAD FAILS:
+Problem: Supabase uploads timeout or fail
+Solution: Check Supabase credentials and bucket permissions
+
+🔐 LOGIN ISSUES:
+Problem: Authentication fails unexpectedly
+Solution: Clear browser cache, check MongoDB connection
+
+📧 EMAIL NOT SENDING:
+Problem: Registration/notification emails not received
+Solution: Verify SMTP configuration in backend .env file
+
+🎯 MISSING TEST DATA:
+Problem: No events to test with
+Solution: Create test events using admin account first
+
+============================================================================
+TESTING COMPLETION CHECKLIST
+============================================================================
+
+✅ AUTHENTICATION TESTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Admin login/logout works
+□ Student login/logout works  
+□ Faculty login/logout works
+□ Role-based access control enforced
+□ Registration flows complete successfully
+□ Session management works correctly
+
+✅ EVENT MANAGEMENT TESTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Event creation works
+□ Event approval workflow functions
+□ Event editing/updates work
+□ Event deletion works (where permitted)
+□ Event visibility controls work
+□ Student event discovery works
+
+✅ REGISTRATION TESTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Individual registration works
+□ Team registration works (if applicable)
+□ Registration limits enforced
+□ Registration status tracking works
+□ Registration confirmation emails work
+
+✅ FILE UPLOAD TESTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Student profile pictures upload
+□ Faculty profile pictures upload
+□ College assets upload (logos, signatures)
+□ Certificate templates upload
+□ File validation works correctly
+□ Supabase storage integration works
+
+✅ ATTENDANCE & CERTIFICATES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Attendance marking works
+□ Certificate generation works
+□ Certificate downloads work
+□ Certificate email functionality works
+□ Certificate templates render correctly
+
+✅ FEEDBACK & ANALYTICS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Event feedback submission works
+□ Admin analytics display correctly
+□ Export functionality works
+□ Dashboard statistics accurate
+
+✅ CROSS-BROWSER & MOBILE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Chrome compatibility verified
+□ Firefox compatibility verified
+□ Safari compatibility verified (if available)
+□ Mobile responsive design works
+□ Touch interactions work properly
+
+✅ PERFORMANCE & SECURITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Page load times acceptable
+□ Error handling works gracefully
+□ Input validation/sanitization works
+□ Session security enforced
+□ File upload security works
+
+============================================================================
+FINAL TESTING REPORT TEMPLATE
+============================================================================
+
+📊 TESTING SUMMARY REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 Testing Period: [START DATE] to [END DATE]
+👤 Lead Tester: [NAME]
+🎯 System Version: CampusConnect v2.1
+📋 Total Test Cases: 50+ test scenarios
+
+📈 RESULTS SUMMARY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Test Cases Passed: [NUMBER] / [TOTAL]
+❌ Test Cases Failed: [NUMBER] / [TOTAL]
+⚠️ Critical Issues Found: [NUMBER]
+🔧 Minor Issues Found: [NUMBER]
+
+🏆 OVERALL SYSTEM STATUS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+System Readiness: [Ready for Production / Needs Fixes / Major Issues]
+Recommendation: [Deploy / Fix Issues First / Major Refactoring Needed]
+
+📝 KEY FINDINGS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Strengths:
+- [List what works well]
+
+Areas for Improvement:
+- [List issues found]
+
+Critical Bugs (Must Fix):
+- [List showstopper issues]
+
+Minor Issues (Nice to Fix):
+- [List cosmetic/minor issues]
+
+🎯 NEXT STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. [Priority 1 fixes]
+2. [Priority 2 fixes]
+3. [Future enhancements]
+
+============================================================================
+TESTING GUIDE COMPLETE
+Status: Ready for Manual Testing
+Version: 2.1
+Test Coverage: Complete System End-to-End
+Report Generated: August 9, 2025
+============================================================================

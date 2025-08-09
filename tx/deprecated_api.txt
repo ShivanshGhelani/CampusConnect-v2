@@ -1,6 +1,6 @@
 ============================================================================
                         CAMPUSCONNECT BACKEND API DOCUMENTATION
-                                    API v1 Reference
+                                    API v1 Reference (Deprecated)
 ============================================================================
 
 BASE URL: /api/v1
