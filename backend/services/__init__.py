@@ -1,5 +1,5 @@
 # Services module for backend operations
-from .communication.email_service import CommunicationService
+# from .communication.email_service import CommunicationService
 from .audit_service import AuditLogService  
 from .certificate_template_service import CertificateTemplateService
 from .event_registration_service import EventRegistrationService
@@ -9,7 +9,7 @@ from .storage_service import SupabaseStorageService
 from .venue_service import VenueService
 
 __all__ = [
-    'CommunicationService',
+    # 'CommunicationService',
     'AuditLogService', 
     'CertificateTemplateService',
     'EventRegistrationService',

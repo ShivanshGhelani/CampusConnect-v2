@@ -1147,7 +1147,7 @@ function EventDetail() {
 
           {/* View All Registrations Modal */}
           {registrationsModalOpen && (
-            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 overflow-y-auto">
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
               <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
                 {/* Modal Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -1352,7 +1352,7 @@ function EventDetail() {
 
           {/* Attendees Modal */}
           {attendeesModalOpen && (
-            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[999999] animate-in fade-in duration-200">
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
               <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
                 {/* Modal Header */}
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">
@@ -1495,7 +1495,7 @@ function EventDetail() {
 
           {/* Attendance Breakdown Modal */}
           {attendanceStatsModalOpen && (
-            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
               <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
                 {/* Modal Header */}
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">

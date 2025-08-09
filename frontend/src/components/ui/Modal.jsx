@@ -72,7 +72,7 @@ const Modal = ({
 
   // Backdrop styles
   const backdropClasses = {
-    blur: 'backdrop-blur-sm bg-black bg-opacity-50',
+    blur: 'backdrop-blur-sm bg-black/30',
     dark: 'bg-black bg-opacity-75',
     light: 'bg-black bg-opacity-25',
     none: 'bg-transparent'
@@ -155,9 +155,9 @@ const Modal = ({
 
   const modalContent = (
     <div
-      className={`fixed inset-0 z-50 flex ${
+      className={`fixed inset-0 z-[99999] flex ${
         centered ? 'items-center justify-center' : 'items-start justify-center pt-16'
-      } p-4 transition-all duration-${animationDuration} ${backdropClasses[backdrop]}`}
+      } p-4 transition-all duration-${animationDuration} animate-in fade-in ${backdropClasses[backdrop]}`}
       onClick={handleBackdropClick}
       role="presentation"
     >

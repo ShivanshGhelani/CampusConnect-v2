@@ -295,6 +295,204 @@ async def admin_logout(request: Request):
     
     return response
 
+@router.get("/api/profile")
+async def get_admin_profile(request: Request):
+    """API endpoint to get admin profile data"""
+    try:
+        admin = await get_current_admin(request)
+        
+        # Get fresh data directly from database to ensure we have mobile_no
+        fresh_admin_data = await DatabaseOperations.find_one(
+            "users", 
+            {"username": admin.username}
+        )
+        
+        # Debug logging
+        print(f"Fresh admin data: {fresh_admin_data}")
+        print(f"Mobile no from DB: {fresh_admin_data.get('mobile_no') if fresh_admin_data else 'NOT_FOUND'}")
+        
+        return {
+            "success": True,
+            "profile": {
+                "username": admin.username,
+                "fullname": admin.fullname,
+                "email": getattr(admin, 'email', None),
+                "phone": fresh_admin_data.get('mobile_no') if fresh_admin_data else None,
+                "role": admin.role.value if admin.role else None,
+                "last_login": admin.last_login,
+                "created_at": admin.created_at
+            }
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error getting admin profile: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get profile")
+
+@router.put("/api/profile")
+async def update_admin_profile(request: Request):
+    """API endpoint to update admin profile"""
+    try:
+        admin = await get_current_admin(request)
+        data = await request.json()
+        
+        # Prepare update data with correct field mapping
+        update_data = {}
+        if "fullname" in data:
+            update_data["fullname"] = data["fullname"]
+        if "email" in data:
+            update_data["email"] = data["email"]
+        if "phone" in data:
+            # Map phone to mobile_no in database
+            update_data["mobile_no"] = data["phone"]
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Update in admin_users collection
+        result = await DatabaseOperations.update_one(
+            "admin_users",
+            {"username": admin.username},
+            {"$set": update_data}
+        )
+        
+        if not result:
+            # Try updating in legacy users collection
+            result = await DatabaseOperations.update_one(
+                "users",
+                {"username": admin.username, "is_admin": True},
+                {"$set": update_data}
+            )
+        
+        if result:
+            # Update session data
+            admin_session = request.session.get("admin", {})
+            for key, value in update_data.items():
+                if key == "mobile_no":
+                    # Map back to phone for session consistency
+                    admin_session["phone"] = value
+                else:
+                    admin_session[key] = value
+            request.session["admin"] = admin_session
+            
+            logger.info(f"Profile updated for admin: {admin.username}")
+            return {"success": True, "message": "Profile updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Admin not found")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error updating admin profile: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update profile")
+
+@router.put("/api/username")
+async def update_admin_username(request: Request):
+    """API endpoint to update admin username"""
+    try:
+        admin = await get_current_admin(request)
+        data = await request.json()
+        
+        new_username = data.get("username")
+        current_password = data.get("current_password")
+        
+        if not new_username or not current_password:
+            raise HTTPException(status_code=400, detail="Username and current password are required")
+        
+        # Verify current password
+        if not await verify_password(current_password, admin.password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        # Check if new username already exists
+        existing_admin = await DatabaseOperations.find_one(
+            "admin_users",
+            {"username": new_username}
+        )
+        
+        if existing_admin:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # Update username in admin_users collection
+        result = await DatabaseOperations.update_one(
+            "admin_users",
+            {"username": admin.username},
+            {"$set": {"username": new_username, "updated_at": datetime.utcnow()}}
+        )
+        
+        if not result:
+            # Try updating in legacy users collection
+            result = await DatabaseOperations.update_one(
+                "users",
+                {"username": admin.username, "is_admin": True},
+                {"$set": {"username": new_username, "updated_at": datetime.utcnow()}}
+            )
+        
+        if result:
+            # Update session data
+            admin_session = request.session.get("admin", {})
+            admin_session["username"] = new_username
+            request.session["admin"] = admin_session
+            
+            logger.info(f"Username updated from {admin.username} to {new_username}")
+            return {"success": True, "message": "Username updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Admin not found")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error updating admin username: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update username")
+
+@router.put("/api/password")
+async def update_admin_password(request: Request):
+    """API endpoint to update admin password"""
+    try:
+        admin = await get_current_admin(request)
+        data = await request.json()
+        
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+        
+        if not current_password or not new_password:
+            raise HTTPException(status_code=400, detail="Current password and new password are required")
+        
+        # Verify current password
+        if not await verify_password(current_password, admin.password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        # Hash new password
+        hashed_password = await get_password_hash(new_password)
+        
+        # Update password in admin_users collection
+        result = await DatabaseOperations.update_one(
+            "admin_users",
+            {"username": admin.username},
+            {"$set": {"password": hashed_password, "updated_at": datetime.utcnow()}}
+        )
+        
+        if not result:
+            # Try updating in legacy users collection
+            result = await DatabaseOperations.update_one(
+                "users",
+                {"username": admin.username, "is_admin": True},
+                {"$set": {"password": hashed_password, "updated_at": datetime.utcnow()}}
+            )
+        
+        if result:
+            logger.info(f"Password updated for admin: {admin.username}")
+            return {"success": True, "message": "Password updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Admin not found")
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error updating admin password: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update password")
+
 @router.get("/api/status")
 async def admin_auth_status(request: Request):
     """API endpoint to check if admin is authenticated"""

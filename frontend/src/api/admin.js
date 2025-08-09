@@ -37,10 +37,11 @@ export const adminAPI = {
   updateAdminUser: (username, adminData) => api.put('/api/v1/admin/users/list', { user_id: username, user_type: 'admin', ...adminData }),
   deleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/list/${adminId}?user_type=admin`),
   
-  // Profile Management (using user management endpoints)
-  updateProfile: (profileData) => api.put('/api/v1/admin/users/list', { user_type: 'admin', ...profileData }),
-  updateUsername: (usernameData) => api.put('/api/v1/admin/users/list', { user_type: 'admin', ...usernameData }),
-  updatePassword: (passwordData) => api.put('/api/v1/admin/users/list', { user_type: 'admin', ...passwordData }),
+  // Profile Management - FIXED to use correct auth endpoints
+  getProfile: () => api.get('/auth/api/profile'),
+  updateProfile: (profileData) => api.put('/auth/api/profile', profileData),
+  updateUsername: (usernameData) => api.put('/auth/api/username', usernameData),
+  updatePassword: (passwordData) => api.put('/auth/api/password', passwordData),
   
   // Venue Management - CORRECTED to use actual backend endpoints
   getVenues: (filters) => api.get('/api/v1/admin/venues/list', { params: filters }),
@@ -69,4 +70,34 @@ export const adminAPI = {
   getAssetShortUrl: (assetId) => api.get(`/api/v1/admin/assets/short-url/${assetId}`),
   getAssetImageTag: (assetId) => api.get(`/api/v1/admin/assets/image-tag/${assetId}`),
   getAssetStatistics: () => api.get('/api/v1/admin/assets/statistics'),
+  
+  // System Management (using existing optimized endpoints with system parameters)
+  getSystemHealth: () => api.get('/api/health'), // Direct health endpoint (not /api/v1/)
+  getSchedulerHealth: () => api.get('/health/scheduler'), // Direct scheduler endpoint
+  getSystemLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'system', include: 'logs' } }),
+  getAuditLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'audit' } }),
+  
+  // Debug endpoints (development only)
+  getDebugSession: () => api.get('/api/debug/session'), // Direct debug endpoint
+  setTestSession: (sessionData) => api.post('/api/debug/set-session', sessionData), // Direct debug endpoint
+  
+  // Notification Management (using existing optimized endpoints)
+  sendNotification: (notificationData) => api.post('/api/v1/admin/users/list', { 
+    action: 'send_notification', 
+    ...notificationData 
+  }),
+  getNotificationHistory: (filters) => api.get('/api/v1/admin/analytics/overview', { 
+    params: { ...filters, focus: 'notifications' } 
+  }),
+  
+  // Organizer Management (using existing optimized organizer endpoints)
+  getOrganizerRequests: () => api.get('/api/v1/admin/organizer/requests'),
+  grantOrganizerAccess: (facultyEmployeeId, assignedEvents = []) => 
+    api.post(`/api/v1/admin/organizer/grant-access/${facultyEmployeeId}`, { assigned_events: assignedEvents }),
+  revokeOrganizerAccess: (facultyEmployeeId) => 
+    api.post(`/api/v1/admin/organizer/revoke-access/${facultyEmployeeId}`),
+  
+  // DESIGN PRINCIPLE: 
+  // System management features implemented using existing optimized endpoints
+  // with parameters to specify focus areas, maintaining your 62-endpoint optimization
 };

@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Dropdown } from '../../components/ui';
+import Modal, { ConfirmModal } from '../../components/ui/Modal';
 
 function ManageAdmin() {
   const [admins, setAdmins] = useState([]);
@@ -570,126 +571,104 @@ function ManageAdmin() {
       )}
 
       {/* Edit Modal */}
-      {isEditModalOpen && createPortal(
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsEditModalOpen(false);
-            }
-          }}
-        >
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Edit Admin</h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditAdmin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={editAdminForm.fullname}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
-                />
-              </div>
-
-              <div>
-                <Dropdown
-                  label="Role"
-                  value={editAdminForm.role}
-                  onChange={(value) => setEditAdminForm(prev => ({ ...prev, role: value }))}
-                  options={[
-                    { label: 'Super Admin', value: 'super_admin', icon: <i className="fas fa-crown text-red-500 text-xs"></i> },
-                    { label: 'Executive Admin', value: 'executive_admin', icon: <i className="fas fa-user-shield text-blue-500 text-xs"></i> }
-                  ]}
-                  icon={<i className="fas fa-user-tag text-xs"></i>}
-                  size="md"
-                />
-              </div>
-
-              <div>
-                <Dropdown
-                  label="Status"
-                  value={editAdminForm.is_active ? 'true' : 'false'}
-                  onChange={(value) => setEditAdminForm(prev => ({ ...prev, is_active: value === 'true' }))}
-                  options={[
-                    { label: 'Active', value: 'true', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
-                    { label: 'Inactive', value: 'false', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
-                  ]}
-                  icon={<i className="fas fa-toggle-on text-xs"></i>}
-                  size="md"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Update Admin
-                </button>
-              </div>
-            </form>
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Admin"
+        backdrop="blur"
+        size="md"
+      >
+        <form onSubmit={handleEditAdmin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={editAdminForm.fullname}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
+            />
           </div>
-        </div>,
-        document.body
-      )}
+
+          <div>
+            <Dropdown
+              label="Role"
+              value={editAdminForm.role}
+              onChange={(value) => setEditAdminForm(prev => ({ ...prev, role: value }))}
+              options={[
+                { label: 'Super Admin', value: 'super_admin', icon: <i className="fas fa-crown text-red-500 text-xs"></i> },
+                { label: 'Executive Admin', value: 'executive_admin', icon: <i className="fas fa-user-shield text-blue-500 text-xs"></i> }
+              ]}
+              icon={<i className="fas fa-user-tag text-xs"></i>}
+              size="md"
+            />
+          </div>
+
+          <div>
+            <Dropdown
+              label="Status"
+              value={editAdminForm.is_active ? 'true' : 'false'}
+              onChange={(value) => setEditAdminForm(prev => ({ ...prev, is_active: value === 'true' }))}
+              options={[
+                { label: 'Active', value: 'true', icon: <i className="fas fa-check-circle text-green-500 text-xs"></i> },
+                { label: 'Inactive', value: 'false', icon: <i className="fas fa-times-circle text-red-500 text-xs"></i> }
+              ]}
+              icon={<i className="fas fa-toggle-on text-xs"></i>}
+              size="md"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+            >
+              Update Admin
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && createPortal(
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsDeleteModalOpen(false);
-            }
-          }}
-        >
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                <i className="fas fa-exclamation-triangle text-red-600"></i>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">Delete Admin</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete admin "<span className="font-medium">{deleteAdminData.name}</span>"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAdmin}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
-              >
-                Delete Admin
-              </button>
-            </div>
+      <Modal 
+        isOpen={isDeleteModalOpen} 
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Admin"
+        backdrop="blur"
+        size="md"
+      >
+        <div className="flex items-center mb-4">
+          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+            <i className="fas fa-exclamation-triangle text-red-600"></i>
           </div>
-        </div>,
-        document.body
-      )}
+          <span className="text-lg font-medium text-gray-900">Confirm Deletion</span>
+        </div>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete admin "<span className="font-medium">{deleteAdminData.name}</span>"? This action cannot be undone.
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={() => setIsDeleteModalOpen(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDeleteAdmin}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+          >
+            Delete Admin
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }

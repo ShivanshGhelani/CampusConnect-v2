@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminAPI } from '../../api/admin';
 import { Dropdown, SearchBox } from '../../components/ui';
+import Modal from '../../components/ui/Modal';
 import { 
   PlusIcon, 
   MagnifyingGlassIcon, 
@@ -770,11 +771,14 @@ const Venues = () => {
         )}
 
         {/* Create Venue Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Venue</h2>
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Add New Venue"
+          backdrop="blur"
+          size="lg"
+        >
+          <div className="max-h-[70vh] overflow-y-auto">
                 
                 <form onSubmit={handleCreateVenue} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -888,17 +892,29 @@ const Venues = () => {
                     </button>
                   </div>
                 </form>
-              </div>
             </div>
-          </div>
-        )}
+        </Modal>
 
         {/* Edit Venue Modal */}
-        {showEditModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Venue</h2>
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingVenue(null);
+            setNewVenue({
+              name: '',
+              location: '',
+              description: '',
+              capacity: '',
+              venue_type: '',
+              facilities: []
+            });
+          }}
+          title="Edit Venue"
+          backdrop="blur"
+          size="lg"
+        >
+          <div className="max-h-[70vh] overflow-y-auto">
                 
                 <form onSubmit={handleEditVenue} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1017,10 +1033,8 @@ const Venues = () => {
                     </button>
                   </div>
                 </form>
-              </div>
             </div>
-          </div>
-        )}
+        </Modal>
         </div>
       </div>
     </AdminLayout>

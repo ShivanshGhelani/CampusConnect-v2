@@ -2,6 +2,9 @@ import api from './base';
 
 // Auth API endpoints
 export const authAPI = {
+  // Unified authentication status (NEW - using optimized endpoint)
+  getStatus: (userType = null) => api.get('/api/v1/auth/status', { params: userType ? { user_type: userType } : {} }),
+  
   // Student authentication
   studentLogin: (credentials) => api.post('/api/v1/auth/student/login', credentials),
   studentRegister: (userData) => api.post('/api/v1/auth/student/register', userData),
@@ -24,4 +27,7 @@ export const authAPI = {
   forgotPasswordFaculty: (data) => api.post('/api/v1/auth/forgot-password/faculty', data),
   validateResetToken: (token) => api.get(`/api/v1/auth/validate-reset-token/${token}`),
   resetPassword: (token, data) => api.post(`/api/v1/auth/reset-password/${token}`, data),
+  
+  // Token management (using optimized backend endpoints)
+  refreshToken: (refreshToken) => api.post('/api/v1/auth/refresh-token', { refresh_token: refreshToken }),
 };

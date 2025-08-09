@@ -1,53 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/admin';
 import LoadingSpinner from '../LoadingSpinner';
+import Modal from '../ui/Modal';
 
 function StudentCard({ student, isOpen, onClose }) {
   const [studentDetails, setStudentDetails] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (isOpen && student) {
-      fetchStudentDetails();
+      // Debug log to see what data we receive
+      console.log('Student data received:', student);
+      
+      // Directly use the student data passed from the table
+      setStudentDetails(student);
+      setError('');
     }
   }, [isOpen, student]);
-  const fetchStudentDetails = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      
-      // Try to fetch detailed student data from API
-      if (student.enrollment_no) {
-        try {
-          const response = await adminAPI.getStudentDetails(student.enrollment_no);
-          if (response.data.success) {
-            // Handle different possible response structures
-            const studentData = response.data.student || response.data.student_data || response.data.data;
-            setStudentDetails(studentData);
-          } else {
-            // Fallback to the student data passed in
-            setStudentDetails(student);
-          }
-        } catch (apiError) {
-          console.log('API call failed, using passed student data:', apiError);
-          // Fallback to the student data passed in
-          setStudentDetails(student);
-        }
-      } else {
-        // Use the student data passed in
-        setStudentDetails(student);
-      }
-    } catch (error) {
-      console.error('Error fetching student details:', error);
-      setError('Failed to load student details');
-      // Fallback to the student data passed in
-      setStudentDetails(student);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Remove the fetchStudentDetails function since we're using data directly
+  
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -94,68 +65,51 @@ function StudentCard({ student, isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Student Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <i className="fas fa-times text-xl"></i>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <LoadingSpinner size="lg" />
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          ) : studentDetails ? (
-            <div className="space-y-6">
-              {/* Student Profile Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-                <div className="flex items-center space-x-6">
-                  {/* Avatar */}
-                  <div className="relative">
-                    <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                      {getInitials(studentDetails.full_name)}
-                    </div>
-                    <div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white ${
-                      studentDetails.is_active !== false ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
+    <Modal isOpen={isOpen} onClose={onClose} title="Student Details" size="4xl">
+      <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+        {error ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        ) : studentDetails ? (
+          <div className="space-y-6">
+            {/* Student Profile Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
+              <div className="flex items-center space-x-6">
+                {/* Avatar */}
+                <div className="relative">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                    {getInitials(studentDetails.full_name)}
                   </div>
-                  
-                  {/* Basic Info */}
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                      {studentDetails.full_name || 'N/A'}
-                    </h3>
-                    <p className="text-lg text-gray-600 mb-2">
-                      {studentDetails.enrollment_no || 'N/A'}
-                    </p>
-                    <div className="flex items-center space-x-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        studentDetails.is_active !== false 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        <i className={`fas ${studentDetails.is_active !== false ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
-                        {studentDetails.is_active !== false ? 'Active' : 'Inactive'}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        Member since {formatDate(studentDetails.created_at)}
-                      </span>
-                    </div>
+                  <div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white ${
+                    studentDetails.is_active !== false ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+                
+                {/* Basic Info */}
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                    {studentDetails.full_name || 'N/A'}
+                  </h3>
+                  <p className="text-lg text-gray-600 mb-2">
+                    {studentDetails.enrollment_no || 'N/A'}
+                  </p>
+                  <div className="flex items-center space-x-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      studentDetails.is_active !== false 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      <i className={`fas ${studentDetails.is_active !== false ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
+                      {studentDetails.is_active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Member since {formatDate(studentDetails.created_at)}
+                    </span>
                   </div>
                 </div>
               </div>
+            </div>
 
               {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -303,18 +257,7 @@ function StudentCard({ student, isOpen, onClose }) {
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

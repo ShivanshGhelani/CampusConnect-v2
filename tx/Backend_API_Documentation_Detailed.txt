@@ -1,10 +1,10 @@
 =====================================================================
-CAMPUSCONNECT BACKEND - DETAILED API DOCUMENTATION
+CAMPUSCONNECT BACKEND - DETAILED API DOCUMENTATION (FINAL)
 =====================================================================
 Generated: August 9, 2025
-Backend Version: Optimized v2.1
-Total Active APIs: 47 Endpoints
-Status: Production Ready
+Backend Version: Production v2.1
+Total Active APIs: 62 Endpoints
+Status: Production Ready & Fully Deployed
 
 =====================================================================
 📋 API SYSTEM OVERVIEW
@@ -17,14 +17,21 @@ AUTHENTICATION: JWT Tokens + Session-based (Hybrid)
 DATA FORMAT: JSON
 OPTIMIZATION LEVEL: Fully optimized (Phase 1-4 complete)
 
+SYSTEM ARCHITECTURE:
+• Main Router: /api/v1/ (unified API base)
+• Sub-modules: auth, client, admin, unified-organizer
+• Frontend Integration: React with Axios
+• Database: MongoDB with connection pooling
+• Cache Layer: Redis (optional fallback)
+
 OPTIMIZATION ACHIEVEMENTS:
 • Original API Count: 118+ endpoints
-• Current API Count: 47 endpoints  
-• Reduction Achieved: 60% optimization
+• Current API Count: 62 endpoints  
+• Reduction Achieved: 47% optimization with enhanced functionality
 • Performance Improvement: 200%+
 
 =====================================================================
-🔐 AUTHENTICATION SYSTEM APIS (12 ENDPOINTS)
+🔐 AUTHENTICATION SYSTEM APIS (15 ENDPOINTS)
 =====================================================================
 
 BASE PATH: /api/v1/auth
@@ -215,15 +222,21 @@ REQUEST:
   "password": string (min 6 chars, special char + number)
 }
 
-11-12. LEGACY STATUS ENDPOINTS (Backwards Compatibility)
+11-13. LEGACY STATUS ENDPOINTS (Backwards Compatibility)
 --------------------------------------------------------
 ENDPOINT: GET /api/v1/auth/admin/status
 ENDPOINT: GET /api/v1/auth/student/status  
 ENDPOINT: GET /api/v1/auth/faculty/status
 NOTE: Maintained for backwards compatibility, recommend using unified status
 
+14-15. PASSWORD RESET ENDPOINTS
+-------------------------------
+ENDPOINT: POST /api/v1/auth/password-reset/request
+ENDPOINT: POST /api/v1/auth/password-reset/confirm
+DESCRIPTION: Complete password reset workflow with email verification
+
 =====================================================================
-🏢 ADMIN EVENT MANAGEMENT APIS (15 ENDPOINTS)
+🏢 ADMIN EVENT MANAGEMENT APIS (17 ENDPOINTS)
 =====================================================================
 
 BASE PATH: /api/v1/admin/events
@@ -269,6 +282,7 @@ REQUEST BODY:
 ENDPOINT: PUT /api/v1/admin/events/update/{event_id}
 METHOD: PUT
 AUTHENTICATION: Admin role, organizer access check
+DESCRIPTION: Updates event with timezone conversion and faculty validation
 
 3. GET EVENTS LIST
 -----------------
@@ -285,6 +299,9 @@ QUERY PARAMETERS:
 ENDPOINT: GET /api/v1/admin/events/pending-approval
 METHOD: GET
 AUTHENTICATION: Super Admin only
+QUERY PARAMETERS:
+  - page: integer (default: 1)
+  - limit: integer (default: 20)
 
 5. APPROVE EVENT
 ---------------
@@ -297,6 +314,10 @@ AUTHENTICATION: Super Admin only
 ENDPOINT: POST /api/v1/admin/events/decline/{event_id}
 METHOD: POST
 AUTHENTICATION: Super Admin only
+REQUEST:
+{
+  "reason": string (required)
+}
 
 7. GET EVENT DETAILS
 -------------------
@@ -323,6 +344,9 @@ AUTHENTICATION: Executive Admin or higher
 ENDPOINT: GET /api/v1/admin/events/registrations/{event_id}
 METHOD: GET
 AUTHENTICATION: Admin role, organizer access
+QUERY PARAMETERS:
+  - page: integer (default: 1)
+  - limit: integer (default: 50)
 
 11. BULK UPDATE STATUS
 ---------------------
@@ -335,6 +359,9 @@ AUTHENTICATION: Executive Admin or higher
 ENDPOINT: GET /api/v1/admin/events/attendance/{event_id}
 METHOD: GET
 AUTHENTICATION: Admin role, organizer access
+QUERY PARAMETERS:
+  - page: integer (default: 1)
+  - limit: integer (default: 50)
 
 13. EXPORT EVENT DATA
 --------------------
@@ -342,21 +369,42 @@ ENDPOINT: POST /api/v1/admin/events/export/{event_id}
 METHOD: POST
 AUTHENTICATION: Admin role, organizer access
 RESPONSE: PDF file (binary)
+REQUEST:
+{
+  "type": "custom"|"quick-standard"|"sign-sheet",
+  "fields": array of field names (for custom export)
+}
 
 14. TRIGGER NOTIFICATIONS
 -------------------------
 ENDPOINT: POST /api/v1/admin/events/trigger-pending-notifications
 METHOD: POST
 AUTHENTICATION: Super Admin only
+DESCRIPTION: Manually trigger notifications for pending approval events
 
 15. DEBUG EVENT
 --------------
 ENDPOINT: GET /api/v1/admin/events/debug-event/{event_id}
 METHOD: GET
 AUTHENTICATION: Super Admin only
+DESCRIPTION: Debug endpoint to check event data structure
+
+16. FACULTY ORGANIZERS MANAGEMENT
+--------------------------------
+ENDPOINT: GET /api/v1/admin/events/faculty-organizers/list
+METHOD: GET
+AUTHENTICATION: Admin role
+DESCRIPTION: Get list of faculty organizers
+
+17. ASSIGN FACULTY ORGANIZER
+---------------------------
+ENDPOINT: POST /api/v1/admin/events/faculty-organizers/assign
+METHOD: POST
+AUTHENTICATION: Admin role
+DESCRIPTION: Assign faculty organizer to events
 
 =====================================================================
-👥 CLIENT OPERATIONS APIS (12 ENDPOINTS)
+👥 CLIENT OPERATIONS APIS (18 ENDPOINTS)
 =====================================================================
 
 BASE PATH: /api/v1/client
@@ -367,65 +415,147 @@ ENDPOINT: GET /api/v1/client/events/list
 METHOD: GET
 AUTHENTICATION: Optional (enhanced with login)
 QUERY PARAMETERS:
-  - status: string (optional)
+  - status: string (optional) - "all"|"upcoming"|"ongoing"|"completed"
   - category: string (optional)
   - page: integer (default: 1)
   - limit: integer (default: 10)
   - force_refresh: boolean (default: false)
 
-FEATURES: Redis caching for performance
+FEATURES: Redis caching for performance, user-specific registration status
 
 2. GET EVENT DETAILS
 -------------------
 ENDPOINT: GET /api/v1/client/events/details/{event_id}
 METHOD: GET
-AUTHENTICATION: Optional
+AUTHENTICATION: Optional (enhanced with login)
+RESPONSE: Complete event details with registration status for logged-in users
 
-3. INDIVIDUAL REGISTRATION
+3. SEARCH EVENTS
+---------------
+ENDPOINT: GET /api/v1/client/events/search
+METHOD: GET
+QUERY PARAMETERS:
+  - q: string (required, min 2 chars)
+  - status: string (optional)
+  - category: string (optional)
+  - page: integer (default: 1)
+  - limit: integer (default: 10)
+
+4. GET UPCOMING EVENTS
+---------------------
+ENDPOINT: GET /api/v1/client/events/upcoming
+METHOD: GET
+QUERY PARAMETERS:
+  - limit: integer (default: 5)
+
+5. GET EVENT CATEGORIES
+----------------------
+ENDPOINT: GET /api/v1/client/events/categories
+METHOD: GET
+DESCRIPTION: Get list of all available event categories
+
+6. INDIVIDUAL REGISTRATION
 -------------------------
-ENDPOINT: POST /api/v1/client/registration/individual
+ENDPOINT: POST /api/v1/client/registration/register/{event_id}
 METHOD: POST
 AUTHENTICATION: Student login required
 
 REQUEST:
 {
-  "event_id": string (required),
+  "registration_type": "individual",
+  "full_name": string (optional, defaults from profile),
+  "email": string (optional, defaults from profile),
+  "mobile_no": string (optional, defaults from profile),
+  "department": string (optional, defaults from profile),
+  "semester": integer (optional, defaults from profile),
   "additional_fields": object (optional)
 }
 
-4. TEAM REGISTRATION
--------------------
-ENDPOINT: POST /api/v1/client/registration/team
-METHOD: POST
-AUTHENTICATION: Student login required (team leader)
+7. REGISTRATION VALIDATION
+-------------------------
+ENDPOINT: GET /api/v1/client/registration/validate
+METHOD: GET
+AUTHENTICATION: Student login required
+QUERY PARAMETERS:
+  - registration_id: string (required)
+  - event_id: string (required)
 
+8. VALIDATE PARTICIPANT
+----------------------
+ENDPOINT: GET /api/v1/client/registration/validate-participant
+METHOD: GET
+QUERY PARAMETERS:
+  - enrollment_no: string (required)
+DESCRIPTION: Validate team participant enrollment number
+
+9. VALIDATE FACULTY PARTICIPANT
+------------------------------
+ENDPOINT: GET /api/v1/client/registration/validate-faculty-participant
+METHOD: GET
+QUERY PARAMETERS:
+  - faculty_id: string (required)
+
+10. CHECK REGISTRATION CONFLICTS
+-------------------------------
+ENDPOINT: POST /api/v1/client/registration/check-conflicts
+METHOD: POST
 REQUEST:
 {
   "event_id": string (required),
-  "team_name": string (required),
-  "team_members": array of member objects,
-  "additional_fields": object (optional)
+  "enrollment_numbers": array of strings (required)
 }
 
-5. REGISTRATION STATUS
+11. REGISTRATION STATUS
 ---------------------
 ENDPOINT: GET /api/v1/client/registration/status/{event_id}
 METHOD: GET
 AUTHENTICATION: Student login required
+RESPONSE: Complete registration details including team information
 
-6. MARK ATTENDANCE
+12. CANCEL REGISTRATION
+----------------------
+ENDPOINT: POST /api/v1/client/registration/cancel/{event_id}
+METHOD: POST
+AUTHENTICATION: Student login required
+
+13. ADD TEAM MEMBER
+------------------
+ENDPOINT: POST /api/v1/client/registration/add-team-member
+METHOD: POST
+AUTHENTICATION: Student login required (team leader)
+REQUEST:
+{
+  "event_id": string (required),
+  "team_id": string (optional),
+  "enrollment_no": string (required)
+}
+
+14. REMOVE TEAM MEMBER
+---------------------
+ENDPOINT: POST /api/v1/client/registration/remove-team-member
+METHOD: POST
+AUTHENTICATION: Student login required (team leader)
+
+15. MARK ATTENDANCE
 -----------------
-ENDPOINT: POST /api/v1/client/attendance/mark
+ENDPOINT: POST /api/v1/client/attendance/mark/{event_id}
 METHOD: POST
 AUTHENTICATION: Student login required
 
 REQUEST:
 {
-  "event_id": string (required),
-  "attendance_code": string (optional)
+  "registration_id": string (required),
+  "student_name": string (required),
+  "enrollment_no": string (required)
 }
 
-7. SUBMIT FEEDBACK
+16. GET ATTENDANCE STATUS
+------------------------
+ENDPOINT: GET /api/v1/client/attendance/status/{event_id}
+METHOD: GET
+AUTHENTICATION: Student login required
+
+17. SUBMIT FEEDBACK
 -----------------
 ENDPOINT: POST /api/v1/client/feedback/submit
 METHOD: POST
@@ -440,30 +570,22 @@ REQUEST:
   "would_recommend": boolean (optional)
 }
 
-8. GET CERTIFICATE DATA
+18. GET CERTIFICATE DATA
 ------------------------
-ENDPOINT: GET /api/v1/client/certificates/data/{event_id}
-METHOD: GET
+ENDPOINT: POST /api/v1/client/certificates/data
+METHOD: POST
 AUTHENTICATION: Student login required
 DESCRIPTION: Get certificate data for frontend PDF generation
 RESPONSE: JSON with certificate data and template content
 
-9. GET CERTIFICATE TEMPLATE
---------------------------
-ENDPOINT: GET /api/v1/client/certificates/template/{event_id}
-METHOD: GET
-AUTHENTICATION: Student login required
-DESCRIPTION: Get certificate HTML template for frontend rendering
-RESPONSE: JSON with template content and placeholder data
-
-10. VALIDATE CERTIFICATE ACCESS
+19. VALIDATE CERTIFICATE ACCESS
 ------------------------------
 ENDPOINT: POST /api/v1/client/certificates/validate-access
 METHOD: POST
 AUTHENTICATION: Student login required
 DESCRIPTION: Validate if student can access certificate for event
 
-11. SEND CERTIFICATE EMAIL
+20. SEND CERTIFICATE EMAIL
 -------------------------
 ENDPOINT: POST /api/v1/client/certificates/send-email
 METHOD: POST
@@ -477,19 +599,19 @@ REQUEST:
   "file_name": string (required)
 }
 
-10. STUDENT DASHBOARD
+21. STUDENT DASHBOARD
 --------------------
 ENDPOINT: GET /api/v1/client/profile/dashboard
 METHOD: GET
 AUTHENTICATION: Student login required
 
-11. UPDATE PROFILE
+22. UPDATE PROFILE
 -----------------
 ENDPOINT: PUT /api/v1/client/profile/update
 METHOD: PUT
 AUTHENTICATION: Student login required
 
-12. MY REGISTRATIONS
+23. MY REGISTRATIONS
 -------------------
 ENDPOINT: GET /api/v1/client/events/my-registrations
 METHOD: GET
@@ -516,6 +638,7 @@ OPTIMIZATION NOTE: Consolidated /organizer + /faculty_organizer routes
 ENDPOINT: POST /api/v1/organizer/request-access
 METHOD: POST
 AUTHENTICATION: Faculty login required
+DESCRIPTION: Faculty member requests organizer access from Super Admin
 
 2. GET ACCESS STATUS
 -------------------
@@ -548,6 +671,8 @@ DESCRIPTION: Creates admin session for faculty organizers
 ENDPOINT: POST /api/v1/admin/organizer/grant-access/{faculty_employee_id}
 METHOD: POST
 AUTHENTICATION: Super Admin only
+QUERY PARAMETERS:
+  - assigned_events: array of event IDs (optional)
 
 5. REVOKE ORGANIZER ACCESS (Admin)
 ---------------------------------
@@ -574,7 +699,7 @@ METHOD: GET
 AUTHENTICATION: Faculty login required
 
 =====================================================================
-📊 ADMIN SYSTEM MANAGEMENT APIS (5 ENDPOINTS - SECURITY ENHANCED)
+📊 ADMIN SYSTEM MANAGEMENT APIS (10 ENDPOINTS - SECURITY ENHANCED)
 =====================================================================
 
 BASE PATH: /api/v1/admin
@@ -623,7 +748,19 @@ QUERY PARAMETERS:
 
 DATABASE COLLECTION: "venues" (20 documents)
 
-4. CERTIFICATE TEMPLATES
+4. CREATE VENUE
+--------------
+ENDPOINT: POST /api/v1/admin/venues/create
+METHOD: POST
+AUTHENTICATION: Admin role required
+
+5. UPDATE VENUE
+--------------
+ENDPOINT: PUT /api/v1/admin/venues/update/{venue_id}
+METHOD: PUT
+AUTHENTICATION: Admin role required
+
+6. CERTIFICATE TEMPLATES
 ------------------------
 ENDPOINT: GET /api/v1/admin/certificate-templates/
 METHOD: GET
@@ -631,100 +768,153 @@ AUTHENTICATION: Admin role required (session-based)
 
 DATABASE COLLECTION: "certificate_templates" (1 document)
 
-5. EVENTS MANAGEMENT
--------------------
-ENDPOINT: GET /api/v1/admin/events/list
+7. ASSET MANAGEMENT
+------------------
+ENDPOINT: GET /api/v1/admin/assets/list
 METHOD: GET
-AUTHENTICATION: Admin role required (session-based)
+AUTHENTICATION: Admin role required
 
-DATABASE COLLECTION: "events" (0 documents - empty)
+8. UPLOAD ASSET
+--------------
+ENDPOINT: POST /api/v1/admin/assets/upload
+METHOD: POST
+AUTHENTICATION: Admin role required
+DESCRIPTION: File upload endpoint for assets
+
+9. ASSET DETAILS
+---------------
+ENDPOINT: GET /api/v1/admin/assets/details/{asset_id}
+METHOD: GET
+AUTHENTICATION: Admin role required
+
+10. DELETE ASSET
+---------------
+ENDPOINT: DELETE /api/v1/admin/assets/delete/{asset_id}
+METHOD: DELETE
+AUTHENTICATION: Admin role required
 
 =====================================================================
-🔧 ADDITIONAL ADMIN APIS (4 ENDPOINTS)
+🔧 ADDITIONAL SYSTEM APIS (4 ENDPOINTS)
 =====================================================================
 
-1. ASSET MANAGEMENT
+1. HEALTH CHECK
+--------------
+ENDPOINT: GET /api/health
+METHOD: GET
+AUTHENTICATION: None
+DESCRIPTION: API connectivity and system health check
+
+2. SCHEDULER HEALTH
 ------------------
-ENDPOINT: /api/v1/admin/assets/*
-AUTHENTICATION: Admin required
-DESCRIPTION: File upload and management
+ENDPOINT: GET /health/scheduler
+METHOD: GET
+AUTHENTICATION: None
+DESCRIPTION: Dynamic event scheduler health status
 
-2. CERTIFICATE TEMPLATES  
-------------------------
-ENDPOINT: /api/v1/admin/certificate-templates/*
-AUTHENTICATION: Admin required
-DESCRIPTION: Certificate template management
+3. DEBUG SESSION
+---------------
+ENDPOINT: GET /api/debug/session
+METHOD: GET
+AUTHENTICATION: None (Debug only)
+DESCRIPTION: Debug session state for development
 
-3. VENUE MANAGEMENT
+4. SET TEST SESSION
 ------------------
-ENDPOINT: /api/v1/admin/venues/*
-AUTHENTICATION: Admin required
-DESCRIPTION: Venue booking and management
-
-4. PASSWORD RESET
-----------------
-ENDPOINT: /api/v1/auth/password-reset/*
-AUTHENTICATION: Various (reset tokens)
-DESCRIPTION: Password reset functionality
+ENDPOINT: POST /api/debug/set-session
+METHOD: POST
+AUTHENTICATION: None (Debug only)
+DESCRIPTION: Set test session data for development
 
 =====================================================================
-🎯 API OPTIMIZATION SUMMARY
+🎯 API OPTIMIZATION SUMMARY (FINAL)
 =====================================================================
 
 PERFORMANCE IMPROVEMENTS:
-• Response Caching: Implemented for frequent read operations
+• Response Caching: Redis implementation with fallback support
 • Connection Pooling: SMTP connections optimized (4-6s saved per email)
 • Import Optimization: Reduced dependency overhead
 • Query Optimization: Efficient database query patterns
+• Frontend Certificate Generation: Moved PDF generation to client-side
 
 ARCHITECTURAL IMPROVEMENTS:
 • Unified Authentication: 3 endpoints → 1 intelligent endpoint
 • Consolidated Organizer Routes: 2 modules → 1 unified module
-• Simplified Directory Structure: 70% reduction in admin directories
-• Standardized Response Formats: Consistent API responses
+• Enhanced Registration System: Team management with conflict resolution
+• Advanced Attendance Tracking: Multi-format validation support
+• Certificate System: JavaScript-based frontend generation
 
 SECURITY ENHANCEMENTS:
-• JWT Token Management: Secure token handling
-• Role-based Access Control: Granular permissions
-• Session Security: Secure session management
-• Input Validation: Comprehensive validation
+• JWT Token Management: Secure token handling with refresh
+• Role-based Access Control: Granular permissions per endpoint
+• Session Security: Extended duration with auto-refresh
+• Input Validation: Comprehensive validation across all endpoints
+• CORS Configuration: Proper cross-origin resource sharing
 
 DEVELOPER EXPERIENCE:
 • Clear API Documentation: Comprehensive endpoint details
 • Consistent Error Handling: Standardized error responses
 • Backwards Compatibility: Legacy endpoints maintained
 • Intuitive Endpoint Structure: Logical API organization
+• Debug Endpoints: Development and troubleshooting support
+
+NEW FEATURES ADDED:
+• Team Registration Management: Add/remove team members
+• Enhanced Conflict Resolution: Multi-team registration support
+• Advanced Search: Event search with multiple filters
+• Export System: PDF generation with multiple formats
+• Notification System: Real-time approval notifications
+• Faculty Organizer Portal: Seamless transition to admin interface
+
+FRONTEND INTEGRATION:
+• React Frontend: Complete SPA with routing
+• Authentication: Session-based with token fallback
+• Certificate Generation: Client-side PDF creation
+• Real-time Updates: Dynamic status management
+• Responsive Design: Mobile-first approach
 
 =====================================================================
-📈 PRODUCTION DEPLOYMENT NOTES
+📈 PRODUCTION DEPLOYMENT NOTES (UPDATED)
 =====================================================================
 
 ENVIRONMENT VARIABLES REQUIRED:
 • DATABASE_URL: MongoDB connection string
-• REDIS_URL: Redis cache server URL
+• REDIS_URL: Redis cache server URL (optional)
 • SMTP_SERVER: Email server configuration
-• SUPABASE_URL: Storage service URL
+• SUPABASE_URL: Storage service URL (optional)
 • JWT_SECRET: Token signing secret
 • SESSION_SECRET: Session encryption key
+• CORS_ORIGINS: Allowed frontend origins
 
 DEPENDENCIES:
 • Python 3.9+
 • FastAPI framework
 • MongoDB database
-• Redis cache server
-• Supabase storage (optional)
+• Redis cache server (optional)
 • SMTP email server
+• Node.js (for frontend)
+• React.js framework
 
 MONITORING RECOMMENDATIONS:
 • API response times
 • Database query performance
-• Redis cache hit rates
+• Redis cache hit rates (if enabled)
 • Email delivery rates
 • Error rates and patterns
+• Session management metrics
+• Certificate generation success rates
+
+DEPLOYMENT ARCHITECTURE:
+• Backend: FastAPI with Uvicorn
+• Frontend: React with Vite build
+• Database: MongoDB with replica set
+• Cache: Redis cluster (optional)
+• Load Balancer: Nginx reverse proxy
+• SSL: Let's Encrypt certificates
 
 =====================================================================
 DOCUMENTATION COMPLETE
-Total API Endpoints: 47
-Status: Production Ready
+Total API Endpoints: 62
+Status: Production Ready & Fully Deployed
+Frontend Integration: Complete
 Last Updated: August 9, 2025
 =====================================================================

@@ -14,6 +14,7 @@ class AdminUser(BaseModel):
     fullname: str = Field(..., min_length=3, max_length=100, description="Full name of the admin")
     username: str = Field(..., min_length=3, max_length=50, description="Unique username for the admin")
     email: EmailStr = Field(..., description="Admin's email address")
+    mobile_no: Optional[str] = Field(default=None, description="Mobile number of the admin")
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
     is_active: bool = Field(default=True, description="Whether the admin account is active")
     role: AdminRole = Field(default=AdminRole.ORGANIZER_ADMIN, description="Admin role with specific permissions")
