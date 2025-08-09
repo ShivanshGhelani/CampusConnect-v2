@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import StudentCard from '../../components/admin/StudentCard';

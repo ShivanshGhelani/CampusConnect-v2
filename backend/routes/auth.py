@@ -110,15 +110,22 @@ async def get_current_admin(request: Request) -> AdminUser:
         login_time = datetime.fromisoformat(login_time_str)
         current_time = datetime.utcnow()
         
-        # Check if session is older than 1 hour
+        # Check if session is older than 4 hours (extended from 1 hour for admin productivity)
         session_age = (current_time - login_time).total_seconds()
         
-        if session_age > 3600:  # 3600 seconds = 1 hour
+        if session_age > 14400:  # 14400 seconds = 4 hours
             request.session.clear()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Session expired"
             )
+        
+        # Auto-refresh session if it's older than 30 minutes (but less than 4 hours)
+        if session_age > 1800:  # 1800 seconds = 30 minutes
+            # Update login_time to extend session
+            admin_data["login_time"] = current_time.isoformat()
+            request.session["admin"] = admin_data
+            
     except (ValueError, TypeError) as e:
         # Invalid login_time format, expire session
         request.session.clear()

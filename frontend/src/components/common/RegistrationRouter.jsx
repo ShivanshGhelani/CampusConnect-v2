@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { clientAPI } from '../../api/axios';
+import { clientAPI } from '../../api/client';
 import LoadingSpinner from '../LoadingSpinner';
 import StudentEventRegistration from '../../pages/client/student/EventRegistration/StudentEventRegistration';
 import AlreadyRegistered from '../../pages/client/student/EventRegistration/AlreadyRegistered';

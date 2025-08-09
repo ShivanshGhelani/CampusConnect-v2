@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAvatarUrl } from '../lib/supabase';
-import api from '../api/axios';
+import api from '../api/base';
 import { useAuth } from '../context/AuthContext';
 
 // Global avatar state

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { adminAPI } from '../../../api/axios';
+import { adminAPI } from '../../../api/admin';
 import { Dropdown } from '../../ui';
 
 const UploadForm = ({ onUploadSuccess, isUploading, setIsUploading, availableCategories }) => {

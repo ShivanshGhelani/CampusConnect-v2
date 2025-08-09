@@ -29,6 +29,11 @@ OPTIMIZATION ACHIEVEMENTS:
 
 BASE PATH: /api/v1/auth
 
+SECURITY NOTE: ALL ADMIN ENDPOINTS REQUIRE AUTHENTICATION
+- Session Duration: 4 hours (extended from 1 hour for productivity)
+- Auto-refresh: Sessions refresh automatically after 30 minutes of activity
+- Session Expiry: Automatically redirects to login when session expires
+
 1. UNIFIED AUTH STATUS (NEW - Phase 4 Optimization)
 ------------------------------------------------------
 ENDPOINT: GET /api/v1/auth/status
@@ -569,37 +574,70 @@ METHOD: GET
 AUTHENTICATION: Faculty login required
 
 =====================================================================
-📊 ADMIN SYSTEM MANAGEMENT APIS (3 ENDPOINTS)
+📊 ADMIN SYSTEM MANAGEMENT APIS (5 ENDPOINTS - SECURITY ENHANCED)
 =====================================================================
 
 BASE PATH: /api/v1/admin
+AUTHENTICATION: ALL endpoints require active admin session
+
+SECURITY IMPROVEMENTS (August 9, 2025):
+• Extended session duration: 4 hours (from 1 hour)
+• Automatic session refresh: Every 30 minutes of activity
+• Proper error handling: 401 errors redirect to appropriate login
+• Collection name fixes: Uses correct database collection names
+• Frontend session management: Improved token and session handling
 
 1. ANALYTICS OVERVIEW
 --------------------
 ENDPOINT: GET /api/v1/admin/analytics/overview
 METHOD: GET
-AUTHENTICATION: Admin role required
+AUTHENTICATION: Admin role required (session-based)
 QUERY PARAMETERS:
   - period: string ("week"|"month"|"year")
 
-2. USER MANAGEMENT
+2. USER MANAGEMENT  
 -----------------
 ENDPOINT: GET /api/v1/admin/users/list
 METHOD: GET
-AUTHENTICATION: Super Admin or Executive Admin
+AUTHENTICATION: Admin role required (session-based)
 QUERY PARAMETERS:
-  - user_type: string ("student"|"faculty"|"admin")
+  - user_type: string ("student"|"faculty"|"admin") - REQUIRED
   - page: integer (default: 1)
   - limit: integer (default: 50)
+  - include_all: boolean (default: false)
+  - user_id: string (optional)
+
+DATABASE COLLECTIONS:
+  - Students: "students" collection (3 documents)
+  - Faculty: "faculties" collection (6 documents) 
+  - Admins: "users" collection (2 documents)
 
 3. VENUE MANAGEMENT
 ------------------
 ENDPOINT: GET /api/v1/admin/venues/list
-METHOD: GET
-AUTHENTICATION: Admin role required
+METHOD: GET  
+AUTHENTICATION: Admin role required (session-based)
 QUERY PARAMETERS:
   - available_only: boolean (default: false)
   - date: string (YYYY-MM-DD)
+
+DATABASE COLLECTION: "venues" (20 documents)
+
+4. CERTIFICATE TEMPLATES
+------------------------
+ENDPOINT: GET /api/v1/admin/certificate-templates/
+METHOD: GET
+AUTHENTICATION: Admin role required (session-based)
+
+DATABASE COLLECTION: "certificate_templates" (1 document)
+
+5. EVENTS MANAGEMENT
+-------------------
+ENDPOINT: GET /api/v1/admin/events/list
+METHOD: GET
+AUTHENTICATION: Admin role required (session-based)
+
+DATABASE COLLECTION: "events" (0 documents - empty)
 
 =====================================================================
 🔧 ADDITIONAL ADMIN APIS (4 ENDPOINTS)

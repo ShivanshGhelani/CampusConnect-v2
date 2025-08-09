@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { adminAPI } from '../../../api/axios';
+import { adminAPI } from '../../../api/admin';
 import { 
   PlusIcon,
   BuildingOfficeIcon,

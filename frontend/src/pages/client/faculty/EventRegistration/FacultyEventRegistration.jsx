@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import { clientAPI } from '../../../../api/axios';
+import { clientAPI } from '../../../../api/client';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 // Phase 1 Integration: Validation & ID Generation

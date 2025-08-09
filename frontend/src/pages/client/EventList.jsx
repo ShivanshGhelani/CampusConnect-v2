@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
-import { clientAPI } from '../../api/axios';
+import { clientAPI } from '../../api/client';
 import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
 import LoadingSpinner from '../../components/LoadingSpinner';

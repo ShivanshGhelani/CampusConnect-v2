@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { clientAPI } from '../../api/axios';
+import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';

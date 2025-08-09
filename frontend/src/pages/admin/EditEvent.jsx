@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Dropdown } from '../../components/ui';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import LoadingSpinner from '../LoadingSpinner';
 
 function StudentCard({ student, isOpen, onClose }) {

@@ -5,7 +5,7 @@ import TemplateTable from '../../components/admin/certificates/TemplateTable';
 import EditModal from '../../components/admin/certificates/EditModal';
 import PreviewModal from '../../components/admin/certificates/PreviewModal';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import { Dropdown, SearchBox } from '../../components/ui';
 
 function ManageCertificates() {

@@ -5,8 +5,7 @@ import DateTimePicker from '../../components/common/DateTimePicker';
 import DateRangePicker from '../../components/common/DateRangePicker';
 import ClockPicker from '../../components/common/ClockPicker';
 import { useAuth } from '../../context/AuthContext';
-import { venueApi } from '../../api/axios';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import { formatDateToLocal } from '../../utils/dateHelpers';
 import { Dropdown, SearchBox, Checkbox } from '../../components/ui';
 
@@ -304,7 +303,7 @@ function CreateEvent() {
         return;
       }
       
-      const response = await venueApi.list();
+      const response = await adminAPI.getVenues();
       console.log('Venues API response:', response);
       
       if (response.data) {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { adminAPI } from '../api/axios';
+import { adminAPI } from '../api/admin';
 import { useAuth } from './AuthContext';
 
 // Notification context

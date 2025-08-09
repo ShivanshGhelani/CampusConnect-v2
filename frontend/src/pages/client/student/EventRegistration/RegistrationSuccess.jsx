@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-import { clientAPI } from '../../../../api/axios';
+import { clientAPI } from '../../../../api/client';
 
 const RegistrationSuccess = () => {
   const { eventId } = useParams();

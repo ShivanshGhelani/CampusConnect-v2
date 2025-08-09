@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { uploadAsset, listAssets, deleteAsset, getAssetUrl } from '../../lib/supabase';
+import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Dropdown } from '../../components/ui';
 
@@ -19,6 +19,8 @@ const Assets = () => {
   const [previewAsset, setPreviewAsset] = useState(null);
   const [galleryFilter, setGalleryFilter] = useState('all');
   const [statistics, setStatistics] = useState(null);
+  const [shortUrls, setShortUrls] = useState({});
+  const [imageTags, setImageTags] = useState({});
 
   // Effects
   useEffect(() => {
@@ -36,31 +38,74 @@ const Assets = () => {
     }
   }, [error, success]);
 
+  // Generate secure display URLs for assets
+  useEffect(() => {
+    assets.forEach(asset => {
+      if (!shortUrls[asset.id]) {
+        getShortUrl(asset.id);
+      }
+    });
+  }, [assets]);
+
   // Data loading functions
   const loadAssets = async () => {
     try {
-      const assetsList = await listAssets();
-      setAssets(assetsList);
+      const response = await adminAPI.getAssets();
+      if (response.data && response.data.success) {
+        setAssets(response.data.assets || []);
+      } else {
+        setAssets([]);
+      }
     } catch (error) {
       console.error('Error loading assets:', error);
       setError('Failed to load assets');
+      setAssets([]);
     }
   };
 
   const loadStatistics = async () => {
     try {
-      const assetsList = await listAssets();
-      const logoCount = assetsList.filter(asset => asset.type === 'logo').length;
-      const signatureCount = assetsList.filter(asset => asset.type === 'signature').length;
-      
-      setStatistics({
-        total_assets: assetsList.length,
-        logos: logoCount,
-        signatures: signatureCount
-      });
+      const response = await adminAPI.getAssetStatistics();
+      if (response.data && response.data.success) {
+        setStatistics(response.data.statistics);
+      }
     } catch (error) {
       console.error('Error loading statistics:', error);
     }
+  };
+
+  // Get short URL for asset
+  const getShortUrl = async (assetId) => {
+    if (shortUrls[assetId]) return shortUrls[assetId];
+    
+    try {
+      const response = await adminAPI.getAssetShortUrl(assetId);
+      if (response.data && response.data.success) {
+        const shortUrl = response.data.short_url;
+        setShortUrls(prev => ({ ...prev, [assetId]: shortUrl }));
+        return shortUrl;
+      }
+    } catch (error) {
+      console.error('Error getting short URL:', error);
+    }
+    return null;
+  };
+
+  // Get image tag for asset
+  const getImageTag = async (assetId) => {
+    if (imageTags[assetId]) return imageTags[assetId];
+    
+    try {
+      const response = await adminAPI.getAssetImageTag(assetId);
+      if (response.data && response.data.success) {
+        const imageTag = response.data.image_tag;
+        setImageTags(prev => ({ ...prev, [assetId]: imageTag }));
+        return imageTag;
+      }
+    } catch (error) {
+      console.error('Error getting image tag:', error);
+    }
+    return null;
   };
 
   // File handling functions
@@ -136,44 +181,58 @@ const Assets = () => {
     setError('');
 
     try {
-      const uploadedAsset = await uploadAsset(
-        selectedFile,
-        selectedAssetType,
-        selectedSubType,
-        selectedDepartment,
-        assetName.trim()
-      );
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('name', assetName.trim());
+      formData.append('asset_type', selectedAssetType);
+      if (selectedSubType) {
+        formData.append('signature_type', selectedSubType);
+      }
+      if (selectedDepartment) {
+        formData.append('department', selectedDepartment);
+      }
 
-      setSuccess('Asset uploaded successfully!');
-      resetForm();
-      loadAssets();
-      loadStatistics();
+      const response = await adminAPI.uploadAsset(formData);
+      
+      if (response.data && response.data.success) {
+        setSuccess('Asset uploaded successfully!');
+        resetForm();
+        loadAssets();
+        loadStatistics();
+      } else {
+        setError(response.data?.message || 'Upload failed');
+      }
     } catch (error) {
       console.error('Upload error:', error);
-      setError(error.message || 'Upload failed. Please try again.');
+      setError(error.response?.data?.message || 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }
   };
 
   // Delete function
-  const handleDelete = async (filename, assetType, signatureType, department) => {
+  const handleDelete = async (assetId) => {
     if (!window.confirm('Are you sure you want to delete this asset?')) {
       return;
     }
 
     try {
-      await deleteAsset(filename, assetType, signatureType, department);
-      setSuccess('Asset deleted successfully!');
-      loadAssets();
-      loadStatistics();
-      if (previewAsset && previewAsset.filename === filename) {
-        setPreviewModalOpen(false);
-        setPreviewAsset(null);
+      const response = await adminAPI.deleteAsset(assetId);
+      
+      if (response.data && response.data.success) {
+        setSuccess('Asset deleted successfully!');
+        loadAssets();
+        loadStatistics();
+        if (previewAsset && previewAsset.id === assetId) {
+          setPreviewModalOpen(false);
+          setPreviewAsset(null);
+        }
+      } else {
+        setError(response.data?.message || 'Failed to delete asset');
       }
     } catch (error) {
       console.error('Delete error:', error);
-      setError(error.message || 'Failed to delete asset');
+      setError(error.response?.data?.message || 'Failed to delete asset');
     }
   };
 
@@ -187,19 +246,20 @@ const Assets = () => {
   };
 
   // Copy to clipboard function
-  const copyAssetPath = (path) => {
+  const copyToClipboard = async (text, type = 'text') => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(path).then(() => {
-        setSuccess('Path copied to clipboard!');
-      }).catch(() => {
-        fallbackCopyTextToClipboard(path);
-      });
+      try {
+        await navigator.clipboard.writeText(text);
+        setSuccess(`${type} copied to clipboard!`);
+      } catch (err) {
+        fallbackCopyTextToClipboard(text, type);
+      }
     } else {
-      fallbackCopyTextToClipboard(path);
+      fallbackCopyTextToClipboard(text, type);
     }
   };
 
-  const fallbackCopyTextToClipboard = (text) => {
+  const fallbackCopyTextToClipboard = (text, type = 'text') => {
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
@@ -211,12 +271,31 @@ const Assets = () => {
     
     try {
       document.execCommand('copy');
-      setSuccess('Path copied to clipboard!');
+      setSuccess(`${type} copied to clipboard!`);
     } catch (err) {
-      console.error('Failed to copy path:', err);
-      setError('Failed to copy path to clipboard');
+      console.error('Failed to copy:', err);
+      setError(`Failed to copy ${type} to clipboard`);
     } finally {
       document.body.removeChild(textArea);
+    }
+  };
+
+  // Copy handlers for short URL and image tag
+  const handleCopyShortUrl = async (assetId) => {
+    const shortUrl = await getShortUrl(assetId);
+    if (shortUrl) {
+      copyToClipboard(shortUrl, 'Short URL');
+    } else {
+      setError('Failed to generate short URL');
+    }
+  };
+
+  const handleCopyImageTag = async (assetId) => {
+    const imageTag = await getImageTag(assetId);
+    if (imageTag) {
+      copyToClipboard(imageTag, 'Image tag');
+    } else {
+      setError('Failed to generate image tag');
     }
   };
 
@@ -234,28 +313,12 @@ const Assets = () => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  // Generate user-friendly path
-  const generateUserFriendlyPath = (asset) => {
-    if (asset.type === 'logo') {
-      return `/logo/${asset.filename}`;
-    } else if (asset.type === 'signature') {
-      if (asset.signature_type === 'principal') {
-        return `/signature/principal/${asset.filename}`;
-      } else if (asset.signature_type === 'faculty' && asset.department) {
-        return `/signature/faculty/${asset.department}/${asset.filename}`;
-      } else if (asset.signature_type === 'head-of-department' && asset.department) {
-        return `/signature/head-of-department/${asset.department}/${asset.filename}`;
-      } else {
-        return `static/${asset.path}`.replace(/\\/g, '/');
-      }
-    } else {
-      return `static/${asset.path}`.replace(/\\/g, '/');
-    }
-  };
-
   const openAssetPreview = (asset) => {
     setPreviewAsset(asset);
     setPreviewModalOpen(true);
+    // Preload short URL and image tag
+    getShortUrl(asset.id);
+    getImageTag(asset.id);
   };
 
   // Custom CSS styles matching the backend template
@@ -433,7 +496,7 @@ const Assets = () => {
                     <div style={styles.currentAssetsGrid}>
                       {assets.slice(0, 6).map((asset) => (
                         <div
-                          key={`${asset.filename}-${asset.path}`}
+                          key={asset.id}
                           style={styles.assetItem}
                           className="hover:shadow-lg hover:border-blue-500 transform hover:-translate-y-1"
                           onClick={() => openAssetPreview(asset)}
@@ -442,22 +505,53 @@ const Assets = () => {
                             className="absolute top-1 right-1 bg-red-500 text-white border-none rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(asset.filename, asset.type, asset.signature_type, asset.department);
+                              handleDelete(asset.id);
                             }}
                           >
                             <i className="fas fa-times"></i>
                           </button>
                           <img 
-                            src={asset.url} 
-                            alt={asset.name || asset.filename}
+                            src={shortUrls[asset.id] || asset.file_url} 
+                            alt={asset.name}
                             className="max-w-full max-h-15 rounded mb-2 object-contain block mx-auto"
                             style={{ maxHeight: '60px' }}
+                            onError={(e) => {
+                              // Fallback to loading secure URL if direct URL fails
+                              if (!shortUrls[asset.id]) {
+                                getShortUrl(asset.id).then(url => {
+                                  if (url) e.target.src = url;
+                                });
+                              }
+                            }}
                           />
-                          <div className="text-xs font-medium text-gray-700 truncate" title={asset.filename}>
-                            {asset.filename}
+                          <div className="text-xs font-medium text-gray-700 truncate" title={asset.original_filename}>
+                            {asset.name}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {asset.type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
+                            {asset.asset_type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
+                          </div>
+                          {/* Quick copy buttons */}
+                          <div className="flex gap-1 mt-1">
+                            <button
+                              className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded hover:bg-blue-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyShortUrl(asset.id);
+                              }}
+                              title="Copy short URL"
+                            >
+                              <i className="fas fa-link"></i>
+                            </button>
+                            <button
+                              className="bg-green-500 text-white text-xs px-1 py-0.5 rounded hover:bg-green-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyImageTag(asset.id);
+                              }}
+                              title="Copy image tag"
+                            >
+                              <i className="fas fa-code"></i>
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -768,7 +862,7 @@ const Assets = () => {
                   }`}
                   onClick={() => setGalleryFilter('logo')}
                 >
-                  Logos ({assets.filter(asset => asset.type === 'logo').length})
+                  Logos ({assets.filter(asset => asset.asset_type === 'logo').length})
                 </button>
                 <button
                   className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
@@ -778,34 +872,65 @@ const Assets = () => {
                   }`}
                   onClick={() => setGalleryFilter('signature')}
                 >
-                  Signatures ({assets.filter(asset => asset.type === 'signature').length})
+                  Signatures ({assets.filter(asset => asset.asset_type === 'signature').length})
                 </button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-2">
                 {assets
-                  .filter(asset => galleryFilter === 'all' || asset.type === galleryFilter)
+                  .filter(asset => galleryFilter === 'all' || asset.asset_type === galleryFilter)
                   .map((asset) => (
                     <div
-                      key={`${asset.filename}-${asset.path}`}
+                      key={asset.id}
                       className="bg-white border border-gray-200 rounded-lg p-4 text-center transition-all hover:shadow-lg hover:border-blue-500 cursor-pointer transform hover:-translate-y-1"
                       onClick={() => openAssetPreview(asset)}
                     >
                       <img
-                        src={asset.url}
-                        alt={asset.filename}
+                        src={shortUrls[asset.id] || asset.file_url}
+                        alt={asset.name}
                         className="max-w-full max-h-20 rounded mb-3 object-contain mx-auto"
+                        onError={(e) => {
+                          // Fallback to loading secure URL if direct URL fails
+                          if (!shortUrls[asset.id]) {
+                            getShortUrl(asset.id).then(url => {
+                              if (url) e.target.src = url;
+                            });
+                          }
+                        }}
                       />
-                      <div className="text-xs font-medium text-gray-700 truncate" title={asset.filename}>
-                        {asset.filename}
+                      <div className="text-xs font-medium text-gray-700 truncate" title={asset.name}>
+                        {asset.name}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {asset.type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
+                        {asset.asset_type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
                         {asset.department && asset.department !== 'college' ? ` (${asset.department})` : ''}
+                      </div>
+                      {/* Copy buttons */}
+                      <div className="flex gap-1 mt-2 justify-center">
+                        <button
+                          className="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyShortUrl(asset.id);
+                          }}
+                          title="Copy short URL"
+                        >
+                          <i className="fas fa-link mr-1"></i>URL
+                        </button>
+                        <button
+                          className="bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyImageTag(asset.id);
+                          }}
+                          title="Copy image tag"
+                        >
+                          <i className="fas fa-code mr-1"></i>Tag
+                        </button>
                       </div>
                     </div>
                   ))}
               </div>
-              {assets.filter(asset => galleryFilter === 'all' || asset.type === galleryFilter).length === 0 && (
+              {assets.filter(asset => galleryFilter === 'all' || asset.asset_type === galleryFilter).length === 0 && (
                 <p className="text-center text-gray-500">No assets found.</p>
               )}
             </div>
@@ -831,34 +956,76 @@ const Assets = () => {
             <div className="p-6 flex-1 overflow-y-auto">
               <div className="text-center bg-gray-50 rounded-lg p-8 mb-4">
                 <img
-                  src={previewAsset.url}
+                  src={shortUrls[previewAsset.id] || previewAsset.file_url}
                   alt="Asset Preview"
                   className="max-w-full max-h-72 rounded-lg shadow-lg object-contain mx-auto"
+                  onError={(e) => {
+                    // Fallback to loading secure URL if direct URL fails
+                    if (!shortUrls[previewAsset.id]) {
+                      getShortUrl(previewAsset.id).then(url => {
+                        if (url) e.target.src = url;
+                      });
+                    }
+                  }}
                 />
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-semibold text-gray-700 text-sm">Filename:</span>
-                  <span className="text-gray-600 text-sm">{previewAsset.filename}</span>
+                  <span className="font-semibold text-gray-700 text-sm">Name:</span>
+                  <span className="text-gray-600 text-sm">{previewAsset.name}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-semibold text-gray-700 text-sm">Path:</span>
+                  <span className="font-semibold text-gray-700 text-sm">Original Filename:</span>
+                  <span className="text-gray-600 text-sm">{previewAsset.original_filename}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="font-semibold text-gray-700 text-sm">File URL:</span>
                   <div className="flex items-center gap-2 max-w-xs">
                     <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
-                      {generateUserFriendlyPath(previewAsset)}
+                      {previewAsset.file_url}
                     </code>
                     <button
                       className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 flex-shrink-0"
-                      onClick={() => copyAssetPath(generateUserFriendlyPath(previewAsset))}
-                      title="Copy path"
+                      onClick={() => copyToClipboard(previewAsset.file_url, 'File URL')}
+                      title="Copy file URL"
                     >
                       <i className="fas fa-copy"></i>
                     </button>
                   </div>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="font-semibold text-gray-700 text-sm">Short URL:</span>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
+                      {shortUrls[previewAsset.id] || 'Loading...'}
+                    </code>
+                    <button
+                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 flex-shrink-0"
+                      onClick={() => handleCopyShortUrl(previewAsset.id)}
+                      title="Copy short URL"
+                    >
+                      <i className="fas fa-link"></i>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="font-semibold text-gray-700 text-sm">Image Tag:</span>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
+                      {imageTags[previewAsset.id] || 'Loading...'}
+                    </code>
+                    <button
+                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 flex-shrink-0"
+                      onClick={() => handleCopyImageTag(previewAsset.id)}
+                      title="Copy image tag"
+                    >
+                      <i className="fas fa-code"></i>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className="font-semibold text-gray-700 text-sm">Type:</span>
-                  <span className="text-gray-600 text-sm">{previewAsset.type}</span>
+                  <span className="text-gray-600 text-sm">{previewAsset.asset_type}</span>
                 </div>
                 {previewAsset.signature_type && (
                   <div className="flex justify-between py-2 border-b border-gray-200">
@@ -874,11 +1041,11 @@ const Assets = () => {
                 )}
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className="font-semibold text-gray-700 text-sm">Size:</span>
-                  <span className="text-gray-600 text-sm">{formatFileSize(previewAsset.size)}</span>
+                  <span className="text-gray-600 text-sm">{formatFileSize(previewAsset.file_size)}</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="font-semibold text-gray-700 text-sm">Modified:</span>
-                  <span className="text-gray-600 text-sm">{formatDate(previewAsset.modified)}</span>
+                  <span className="font-semibold text-gray-700 text-sm">Created:</span>
+                  <span className="text-gray-600 text-sm">{formatDate(previewAsset.created_at)}</span>
                 </div>
               </div>
             </div>
@@ -886,7 +1053,7 @@ const Assets = () => {
               <button
                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
                 onClick={() => {
-                  handleDelete(previewAsset.filename, previewAsset.type, previewAsset.signature_type, previewAsset.department);
+                  handleDelete(previewAsset.id);
                 }}
               >
                 <i className="fas fa-trash mr-2"></i>Delete Asset

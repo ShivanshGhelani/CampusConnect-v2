@@ -4,7 +4,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
 import ClientLayout from '../../../../components/client/Layout';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
-import api from '../../../../api/axios';
+import api from '../../../../api/base';
 
 function FacultyProfilePage() {
   const { user } = useAuth();

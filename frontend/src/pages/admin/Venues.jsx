@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import { Dropdown, SearchBox } from '../../components/ui';
 import { 
   PlusIcon, 

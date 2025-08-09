@@ -3,7 +3,7 @@ import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../api/axios';
+import api from '../../api/base';
 
 function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
   const { user } = useAuth();

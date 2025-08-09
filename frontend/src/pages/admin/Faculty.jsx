@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../api/axios';
+import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FacultyCard from '../../components/admin/FacultyCard';
@@ -424,10 +424,13 @@ function Faculty() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Events
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Experience
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -516,6 +519,13 @@ function Faculty() {
                         </div>
                       </td>
 
+                      {/* Organized Events */}
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-semibold shadow-sm">
+                          {facultyMember.organized_events_count || 0}
+                        </div>
+                      </td>
+
                       {/* Experience */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -527,27 +537,25 @@ function Faculty() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex justify-end space-x-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center space-x-1">
                           <button 
-                            className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                            title="View Details"
+                            className="w-8 h-8 flex items-center justify-center text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View Faculty Details"
                             onClick={() => handleViewFacultyDetails(facultyMember)}
                           >
-                            <i className="fas fa-eye mr-1"></i>
-                            View
+                            <i className="fas fa-eye text-xs"></i>
                           </button>
                           <button 
-                            className={`inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                            className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
                               facultyMember.is_active !== false 
                                 ? 'text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700' 
                                 : 'text-green-600 bg-green-50 hover:bg-green-100 hover:text-green-700'
                             }`}
-                            title={facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
+                            title={facultyMember.is_active !== false ? 'Deactivate Faculty' : 'Activate Faculty'}
                             onClick={() => toggleFacultyStatus(facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
                           >
-                            <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} mr-1`}></i>
-                            {facultyMember.is_active !== false ? 'Deactivate' : 'Activate'}
+                            <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} text-xs`}></i>
                           </button>
                         </div>
                       </td>

@@ -15,11 +15,12 @@ class Settings(BaseSettings):
     # Server Settings
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
+    BACKEND_URL: str = "http://localhost:8000"
 
     # Admin Settings
-    DEFAULT_ADMIN_USERNAME: str = "admin"
-    DEFAULT_ADMIN_EMAIL: str = "admin@campusconnect.edu"
-    DEFAULT_ADMIN_PASSWORD: str = "admin123"
+    DEFAULT_ADMIN_USERNAME: str = "ldrpadmin"
+    DEFAULT_ADMIN_EMAIL: str = "campusconnect_admin@ldrp.ac.in"
+    DEFAULT_ADMIN_PASSWORD: str = "ldrpadmin"
 
     # Email Settings
     SMTP_SERVER: str = "smtp.gmail.com"
@@ -33,6 +34,7 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_STORAGE_BUCKET: str = "campusconnect"
+    SUPABASE_ASSETS_BUCKET: str = "campusconnect-assets-private"
 
     class Config:
         env_file = ".env"

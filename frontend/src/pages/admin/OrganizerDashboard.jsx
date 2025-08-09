@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
-import api from '../../api/axios';
+import api from '../../api/base';
 
 const OrganizerDashboard = () => {
   const { user } = useAuth();

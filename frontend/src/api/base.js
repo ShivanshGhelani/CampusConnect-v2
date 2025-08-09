@@ -48,9 +48,17 @@ api.interceptors.response.use(
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
       
-      // Only redirect if not already on login page
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      // Check if user is on admin dashboard and redirect appropriately
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/admin')) {
+        // Redirect admin to admin login
+        window.location.href = '/auth/login?mode=admin&reason=session_expired';
+      } else if (currentPath.startsWith('/faculty')) {
+        // Redirect faculty to faculty login
+        window.location.href = '/auth/login?mode=faculty&reason=session_expired';
+      } else if (!currentPath.includes('/login')) {
+        // Redirect to general login for students or other users
+        window.location.href = '/login?reason=session_expired';
       }
     }
     

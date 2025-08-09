@@ -12,7 +12,4 @@ export const loadAdminAPI = () => import('./admin').then(m => m.adminAPI);
 // Direct exports for most commonly used APIs (smaller bundle impact)
 export { authAPI } from './auth';
 export { clientAPI } from './client';
-
-// Legacy export for backward compatibility - DO NOT USE IN NEW CODE
-// This loads the entire axios file and should be avoided
-export const legacyAxios = () => import('./axios').then(m => ({ ...m }));
+export { adminAPI } from './admin';

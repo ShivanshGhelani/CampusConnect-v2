@@ -23,7 +23,7 @@ import BulkMarkModal from './BulkMarkModal';
 import AttendanceStatsCard from './AttendanceStatsCard';
 import AttendanceStatusBadge from './AttendanceStatusBadge';
 import LoadingSpinner from '../../LoadingSpinner';
-import api from '../../../api/axios';
+import api from '../../../api/base';
 
 const PhysicalAttendancePortal = () => {
   const { eventId } = useParams();

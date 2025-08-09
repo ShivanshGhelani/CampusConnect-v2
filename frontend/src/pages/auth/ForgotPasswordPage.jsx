@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { authAPI } from '../../api/axios';
+import { authAPI } from '../../api/auth';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function ForgotPasswordPage() {

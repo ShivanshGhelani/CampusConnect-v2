@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminAPI } from '../../../api/axios';
+import { adminAPI } from '../../../api/admin';
 
 const EditModal = ({ template, isOpen, onClose, onUpdate, availableCategories }) => {
   const [formData, setFormData] = useState({
