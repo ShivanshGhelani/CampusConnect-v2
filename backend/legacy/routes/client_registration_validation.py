@@ -238,16 +238,9 @@ async def validate_registration_api(
         logger.error(f"Error in validate_registration_api: {str(e)}")
         return {"success": False, "message": f"Error validating registration: {str(e)}"}
 
-# PHASE 1 DEPRECATED: This endpoint has been replaced by frontend validation
-# TODO: Remove after Phase 1 integration is fully tested (estimated 2-4 weeks)
-# Replaced by: frontend/src/utils/validators.js - validators.enrollment()
 @router.get("/validate-participant")
 async def validate_participant(enrollment_no: str):
-    """
-    API endpoint to validate team participant enrollment number
-    DEPRECATED: Phase 1 - Now handled by frontend validation
-    This endpoint will be removed in a future release
-    """
+    """API endpoint to validate team participant enrollment number"""
     try:
         # Clean and validate enrollment number
         enrollment_no = enrollment_no.strip().upper()

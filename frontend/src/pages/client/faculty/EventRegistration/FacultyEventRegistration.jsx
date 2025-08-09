@@ -4,6 +4,14 @@ import { useAuth } from '../../../../context/AuthContext';
 import { clientAPI } from '../../../../api/axios';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
+// Phase 1 Integration: Validation & ID Generation
+import { validators, useValidation } from '../../../../utils/validators';
+import { 
+  generateTempRegistrationId, 
+  generateTempTeamId, 
+  generateSessionId,
+  idValidators 
+} from '../../../../utils/idGenerator';
 
 const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
@@ -38,6 +46,59 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const [teamSizeMin, setTeamSizeMin] = useState(2);
   const [teamSizeMax, setTeamSizeMax] = useState(5);
   const [participantCount, setParticipantCount] = useState(0);
+
+  // Phase 1 Integration: Validation & Session Management
+  const { validationErrors: formValidationErrors, validateForm: validateFormData, clearValidationError } = useValidation();
+  const [sessionId, setSessionId] = useState(null);
+  const [tempRegistrationId, setTempRegistrationId] = useState(null);
+  const [tempTeamId, setTempTeamId] = useState(null);
+  const [formSession, setFormSession] = useState(null);
+
+  // Initialize session and IDs for faculty
+  useEffect(() => {
+    const initializeSession = () => {
+      const newSessionId = generateSessionId();
+      setSessionId(newSessionId);
+      
+      // Generate temporary registration ID for faculty
+      if (user?.faculty_id && eventId) {
+        const tempRegId = generateTempRegistrationId(
+          user.faculty_id,
+          eventId,
+          user.full_name || 'Faculty'
+        );
+        setTempRegistrationId(tempRegId);
+        
+        // Store session data for persistence
+        const sessionData = {
+          sessionId: newSessionId,
+          tempRegistrationId: tempRegId,
+          eventId: eventId,
+          userId: user.faculty_id,
+          userType: 'faculty',
+          timestamp: Date.now()
+        };
+        localStorage.setItem(`faculty_registration_session_${eventId}`, JSON.stringify(sessionData));
+        setFormSession(sessionData);
+      }
+    };
+    
+    if (user && eventId) {
+      initializeSession();
+    }
+  }, [user, eventId]);
+
+  // Generate team ID when team registration is enabled for faculty
+  useEffect(() => {
+    if (isTeamRegistration && formData.team_name && eventId) {
+      const tempTeamIdValue = generateTempTeamId(
+        formData.team_name,
+        eventId,
+        user?.full_name || 'Faculty Leader'
+      );
+      setTempTeamId(tempTeamIdValue);
+    }
+  }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
 
   // Load event details and initialize form
   useEffect(() => {
@@ -252,8 +313,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     setParticipantCount(prev => prev - 1);
   };
 
-  // Form validation
-  const validateForm = () => {
+  // Legacy form validation (to be replaced by Phase 1)
+  const validateFormLegacy = () => {
     const errors = [];
     
     // Basic validation
@@ -289,9 +350,29 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       return;
     }
     
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join(', '));
+    // Phase 1: Use enhanced validation
+    const validationResult = validateFormData(formData, {
+      full_name: validators.required,
+      faculty_id: validators.faculty,
+      email: validators.email,
+      mobile_no: validators.phone,
+      department: validators.required,
+      designation: validators.required,
+      gender: validators.required,
+      date_of_birth: validators.required
+    });
+
+    if (!validationResult.isValid) {
+      setError(`Validation failed: ${validationResult.errors.join(', ')}`);
+      setSubmitting(false);
+      return;
+    }
+
+    // Legacy validation as fallback
+    const legacyValidationErrors = validateFormLegacy();
+    if (legacyValidationErrors.length > 0) {
+      setError(legacyValidationErrors.join(', '));
+      setSubmitting(false);
       return;
     }
     

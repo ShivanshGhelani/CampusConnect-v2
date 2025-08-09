@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+// Phase 1 Integration: Enhanced Validation
+import { validators } from '../../utils/validators';
 
 function RegisterPage() {
   const [activeTab, setActiveTab] = useState('student');
@@ -137,47 +139,59 @@ function RegisterPage() {
       }
     }
   };
+  // Phase 1 Integration: Enhanced validation using centralized validators
   const validateField = (name, value) => {
     let error = '';
 
+    if (!value || !value.trim()) {
+      return error; // Don't validate empty fields for real-time validation
+    }
+
     switch (name) {
-      case 'enrollment_no':
-        if (value && !/^\d{2}[A-Z]{2,4}\d{5}$/.test(value)) {
-          error = 'Invalid format. Example: 21BECE40015';
+      case 'enrollment_no': {
+        const enrollmentValidation = validators.enrollment(value);
+        if (!enrollmentValidation.isValid) {
+          error = enrollmentValidation.message;
         }
         break;
-      case 'employee_id':
-        if (value && !/^[A-Z0-9]{3,20}$/.test(value)) {
-          error = 'Invalid format. 3-20 alphanumeric characters required';
+      }
+      case 'employee_id': {
+        const facultyValidation = validators.faculty(value);
+        if (!facultyValidation.isValid) {
+          error = facultyValidation.message;
         }
         break;
-      case 'email':
-        if (value && !value.includes('@')) {
-          error = 'Could you double-check your email address?';
+      }
+      case 'email': {
+        const emailValidation = validators.email(value);
+        if (!emailValidation.isValid) {
+          error = emailValidation.message;
         }
         break;
+      }
       case 'mobile_no':
-      case 'contact_no':
-        if (value && !/^\d{10}$/.test(value)) {
-          error = 'Must be exactly 10 digits';
+      case 'contact_no': {
+        const phoneValidation = validators.phone(value);
+        if (!phoneValidation.isValid) {
+          error = phoneValidation.message;
         }
         break;
+      }
       case 'date_of_birth':
         if (value) {
           const birthDate = new Date(value);
           const today = new Date();
           let age = today.getFullYear() - birthDate.getFullYear();
           const monthDiff = today.getMonth() - birthDate.getMonth();
-
+          
           if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
             age--;
           }
-
-          const minAge = activeTab === 'faculty' ? 18 : 15;
-          if (age < minAge) {
-            error = `You must be at least ${minAge} years old`;
+          
+          if (age < 16) {
+            error = 'Must be at least 16 years old';
           } else if (age > 100) {
-            error = 'Please enter a valid date of birth';
+            error = 'Please enter a valid birth date';
           }
         }
         break;
@@ -198,22 +212,24 @@ function RegisterPage() {
         break;
       case 'experience_years':
         if (value && (isNaN(value) || value < 0 || value > 50)) {
-          error = 'Experience must be between 0 and 50 years';
+          error = 'Experience must be between 0-50 years';
         }
         break;
       case 'semester':
-        if (!value) {
-          error = 'Please select your current semester';
+        if (value && (isNaN(value) || value < 1 || value > 8)) {
+          error = 'Semester must be between 1-8';
         }
+        break;
+      default:
         break;
     }
 
-    if (error) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [name]: error
-      }));
-    }
+    setValidationErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+
+    return error;
   };
 
   const checkPasswordStrength = (password) => {

@@ -33,9 +33,6 @@ import NotRegistered from '../pages/client/student/NotRegistered';
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
 
-// Test components
-import TestIndex from '../pages/test/TestIndex';
-
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
@@ -149,8 +146,7 @@ function AppRoutes() {
         {/* Team Management Route - Public (accessible by team leaders) */}
         <Route path="/client/events/:eventId/manage-team" element={<TeamManagement />} />
         
-        {/* Development/Test Routes - Public (remove in production) */}
-        <Route path="/dev" element={<TestIndex />} />
+        {/* Development/Component Showcase Route - Public (remove in production) */}
         <Route path="/component-showcase" element={<ComponentShowcase />} />
         <Route path="/dev/event-registration/:eventId" element={<RegistrationRouter />} />
         <Route path="/dev/event-registration" element={<RegistrationRouter />} />
