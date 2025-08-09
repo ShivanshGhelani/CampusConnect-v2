@@ -49,7 +49,6 @@ import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 import CertificateEditor from '../pages/admin/CertificateEditor';
-import ComponentShowcase from '../pages/ComponentShowcase';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -147,7 +146,9 @@ function AppRoutes() {
         <Route path="/client/events/:eventId/manage-team" element={<TeamManagement />} />
         
         {/* Development/Component Showcase Route - Public (remove in production) */}
-        <Route path="/component-showcase" element={<ComponentShowcase />} />
+                {/* Public routes */}
+        <Route path="/" element={<Homepage />} />
+        <Route path="/events" element={<EventListPage />} />
         <Route path="/dev/event-registration/:eventId" element={<RegistrationRouter />} />
         <Route path="/dev/event-registration" element={<RegistrationRouter />} />
         <Route path="/dev/team-management" element={<TeamManagement />} />

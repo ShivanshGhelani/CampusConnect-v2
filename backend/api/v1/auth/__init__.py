@@ -19,8 +19,9 @@ import logging
 import re
 from passlib.context import CryptContext
 
-# Import password reset router
+# Import password reset router and unified status router
 from .password_reset import router as password_reset_router
+from .status import router as status_router
 
 # Password hashing context for faculty
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -966,5 +967,6 @@ async def authenticate_faculty(employee_id: str, password: str):
         logger.error(f"Error authenticating faculty: {str(e)}")
         return None
 
-# Include password reset routes
+# Include password reset routes and unified status routes
 router.include_router(password_reset_router)
+router.include_router(status_router)

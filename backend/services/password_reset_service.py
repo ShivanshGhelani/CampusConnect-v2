@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from core.logger import get_logger
 from config.database import Database
-from utils.email_service import email_service
+from services.communication.email_service import CommunicationService
 
 try:
     import redis
@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 class PasswordResetService:
     def __init__(self):
-        self.email_service = email_service
+        self.email_service = CommunicationService()
         self.token_expiry_minutes = 10  # Token expires in 10 minutes
         self.redis_client = None
         

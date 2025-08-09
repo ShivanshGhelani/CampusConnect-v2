@@ -8,7 +8,7 @@ from datetime import datetime
 from bson import ObjectId
 from database.operations import DatabaseOperations
 from models.certificate_template import CertificateTemplate
-from services.supabase_storage_service import supabase_storage
+from services.storage_service import supabase_storage
 from pathlib import Path
 import uuid
 import os

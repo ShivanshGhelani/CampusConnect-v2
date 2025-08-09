@@ -49,8 +49,8 @@ try:
     from .core.permissions import PermissionManager
     from .core.testing_utils import run_test, list_tests
     from .core.template_context import get_template_context
-    from .core.navigation_counts import get_navigation_counts
     from .core.header_context import get_header_context
+    from .core.context_manager import ContextManager
     from .core.js_certificate_generator import get_certificate_data_for_js
     
 except ImportError as e:

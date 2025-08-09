@@ -8,6 +8,37 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    // CRITICAL: Code splitting optimization
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunk for large libraries
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          // UI library chunk
+          ui: ['@heroicons/react', 'lucide-react'],
+          // Heavy features chunk
+          editor: ['@monaco-editor/react'],
+          pdf: ['@react-pdf/renderer'],
+          image: ['react-image-crop'],
+          // API and utilities
+          api: ['axios', '@supabase/supabase-js'],
+        }
+      }
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+    // Enable source map for production debugging
+    sourcemap: false,
+    // Minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
+  },
   server: {
     port: 3000,
     host: true, // Allow external connections

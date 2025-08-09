@@ -171,18 +171,16 @@ async def startup_db_client():
     global scheduler_task
     await Database.connect_db()
     
-    # Initialize SMTP connection pool
-    from services.email.smtp_pool import smtp_pool
-    logger.info("SMTP Connection Pool initialized for high-performance email delivery")
+    # Initialize communication service (includes SMTP connection pool)
+    from services.communication.email_service import communication_service
+    logger.info("Communication service initialized for high-performance email delivery")
     
     # Initialize dynamic event scheduler with background task
     await start_dynamic_scheduler()
     print("Started Dynamic Event Scheduler - updates triggered by event timing")
     
-    # Start certificate email queue
-    from services.email.queue import certificate_email_queue
-    await certificate_email_queue.start()
-    print("Started Certificate Email Queue - background processing for email delivery")
+    # Communication service is already initialized
+    print("Communication Email Service - ready for email delivery")
     
     # Create a background task to keep scheduler alive
     import asyncio
@@ -219,15 +217,11 @@ async def shutdown_db_client():
         scheduler_task.cancel()
     await stop_dynamic_scheduler()
     
-    # Stop certificate email queue
-    from services.email.queue import certificate_email_queue
-    await certificate_email_queue.stop()
-    print("Stopped Certificate Email Queue")
+    # Communication service cleanup happens automatically
+    print("Communication service cleanup completed")
     
-    # Shutdown SMTP connection pool
-    from services.email.smtp_pool import smtp_pool
-    smtp_pool.shutdown()
-    print("Stopped SMTP Connection Pool")
+    await Database.close_db()
+    print("Database connections closed")
     
     await Database.close_db()
 

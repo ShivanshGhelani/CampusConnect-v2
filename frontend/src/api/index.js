@@ -1,0 +1,18 @@
+// Optimized API exports with lazy loading support
+// Only load what you need to reduce initial bundle size
+
+// Re-export base axios instance
+export { default as api } from './base';
+
+// Lazy-loaded API modules
+export const loadAuthAPI = () => import('./auth').then(m => m.authAPI);
+export const loadClientAPI = () => import('./client').then(m => m.clientAPI);
+export const loadAdminAPI = () => import('./admin').then(m => m.adminAPI);
+
+// Direct exports for most commonly used APIs (smaller bundle impact)
+export { authAPI } from './auth';
+export { clientAPI } from './client';
+
+// Legacy export for backward compatibility - DO NOT USE IN NEW CODE
+// This loads the entire axios file and should be avoided
+export const legacyAxios = () => import('./axios').then(m => ({ ...m }));

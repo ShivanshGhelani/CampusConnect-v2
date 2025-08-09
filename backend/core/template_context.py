@@ -1,17 +1,18 @@
+"""
+Template context utility
+MIGRATED TO: core.context_manager.ContextManager
+This file provides backward compatibility during migration phase
+"""
 from fastapi import Request
-from database.operations import DatabaseOperations
+from core.context_manager import ContextManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def get_template_context(request: Request):
-    """Get common context data for templates"""
-    is_student_logged_in = "student" in request.session
-    student_data = request.session.get("student", None)
-    
-    # Get student count
-    students = await DatabaseOperations.find_many("students", {})
-    student_count = len(students)
-    
-    return {
-        "is_student_logged_in": is_student_logged_in,
-        "student_data": student_data,
-        "student_count": student_count  # Add this to context
-    }
+    """
+    DEPRECATED: Use ContextManager.get_template_context() instead
+    This function is maintained for backward compatibility during migration
+    """
+    logger.warning("template_context.get_template_context() is deprecated. Use ContextManager.get_template_context() instead.")
+    return await ContextManager.get_template_context(request)

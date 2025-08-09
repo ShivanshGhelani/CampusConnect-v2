@@ -204,3 +204,18 @@ async def require_faculty_login(request: Request):
                 detail="Faculty login required"
             )
         raise e
+
+async def get_optional_admin(request: Request) -> Optional[AdminUser]:
+    """Get currently logged in admin from session, return None if not logged in"""
+    try:
+        return await get_current_admin(request)
+    except HTTPException:
+        return None
+
+async def get_optional_student(request: Request) -> Optional[Student]:
+    """Get currently logged in student from session, return None if not logged in"""
+    return await get_current_student_optional(request)
+
+async def get_optional_faculty(request: Request) -> Optional[Faculty]:
+    """Get currently logged in faculty from session, return None if not logged in"""
+    return await get_current_faculty_optional(request)

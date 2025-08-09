@@ -6,8 +6,7 @@ from fastapi import APIRouter
 from .client import router as client_router
 from .admin import router as admin_router  
 from .auth import router as auth_router
-from .organizer import router as organizer_router
-from .faculty_organizer import router as faculty_organizer_router
+from .unified_organizer import router as unified_organizer_router
 # from .venues import router as venues_router
 
 router = APIRouter()
@@ -16,6 +15,8 @@ router = APIRouter()
 router.include_router(auth_router, prefix="/auth", tags=["auth-api"])
 router.include_router(client_router, prefix="/client", tags=["client-api"])
 router.include_router(admin_router, prefix="/admin", tags=["admin-api"])
-router.include_router(organizer_router, tags=["organizer-api"])  # No prefix as it's already in the router
-router.include_router(faculty_organizer_router, tags=["faculty-organizer-api"])  # Faculty organizer transition
+
+# Phase 4 Optimization: Unified organizer routes (replaces organizer + faculty_organizer)
+router.include_router(unified_organizer_router, tags=["unified-organizer-api"])
+
 # router.include_router(venues_router, prefix="/venues", tags=["venues-api"])
