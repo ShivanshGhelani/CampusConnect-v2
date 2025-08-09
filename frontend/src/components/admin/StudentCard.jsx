@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/admin';
 import LoadingSpinner from '../LoadingSpinner';
 import Modal from '../ui/Modal';
+import Avatar from '../ui/Avatar';
 
 function StudentCard({ student, isOpen, onClose }) {
   const [studentDetails, setStudentDetails] = useState(null);
@@ -78,9 +79,12 @@ function StudentCard({ student, isOpen, onClose }) {
               <div className="flex items-center space-x-6">
                 {/* Avatar */}
                 <div className="relative">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                    {getInitials(studentDetails.full_name)}
-                  </div>
+                  <Avatar
+                    src={studentDetails.avatar_url}
+                    name={studentDetails.full_name}
+                    size="2xl"
+                    className="shadow-lg"
+                  />
                   <div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white ${
                     studentDetails.is_active !== false ? 'bg-green-500' : 'bg-red-500'
                   }`}></div>

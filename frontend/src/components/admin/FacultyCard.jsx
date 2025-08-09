@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/admin';
 import LoadingSpinner from '../LoadingSpinner';
+import Avatar from '../ui/Avatar';
 
 function FacultyCard({ faculty, isOpen, onClose }) {
   const [facultyDetails, setFacultyDetails] = useState(null);
@@ -105,6 +106,21 @@ function FacultyCard({ faculty, isOpen, onClose }) {
             </div>
           ) : facultyDetails ? (
             <div className="space-y-6">
+              {/* Faculty Profile Header */}
+              <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <Avatar
+                  src={facultyDetails.avatar_url}
+                  name={facultyDetails.full_name}
+                  size="xl"
+                  className="shadow-lg"
+                />
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{facultyDetails.full_name || 'N/A'}</h2>
+                  <p className="text-lg text-gray-600">{facultyDetails.designation || 'Faculty Member'}</p>
+                  <p className="text-sm text-gray-500">{facultyDetails.department || 'N/A'}</p>
+                </div>
+              </div>
+
               {/* Basic Information */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

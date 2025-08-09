@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
+import Avatar from '../../components/ui/Avatar';
 
 function SettingsProfile() {
   const { user } = useAuth();
@@ -20,7 +21,8 @@ function SettingsProfile() {
   const [profileForm, setProfileForm] = useState({
     fullname: '',
     email: '',
-    phone: ''
+    phone: '',
+    avatar_url: ''
   });
 
   // Username form data
@@ -62,7 +64,8 @@ function SettingsProfile() {
         setProfileForm({
           fullname: profile.fullname || '',
           email: profile.email || '',
-          phone: profile.phone || ''
+          phone: profile.phone || '',
+          avatar_url: profile.avatar_url || ''
         });
 
         setUsernameForm(prev => ({
@@ -198,12 +201,15 @@ function SettingsProfile() {
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-8 text-white mb-8 shadow-lg">
             <div className="flex items-center space-x-6">
               {/* Avatar Circle */}
-              <div className="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-4 border-white border-opacity-30">
-                <span className="text-3xl font-bold text-black">
-                  {getInitials(profileForm.fullname || user?.fullname)}
-                </span>
+              <div className="relative">
+                <Avatar
+                  src={profileForm.avatar_url}
+                  name={profileForm.fullname || user?.fullname}
+                  size="3xl"
+                  className="border-4 border-white border-opacity-30 shadow-lg"
+                />
               </div>
-
+              
               {/* User Info */}
               <div>
                 <h1 className="mt-4 text-4xl font-bold mb-1">

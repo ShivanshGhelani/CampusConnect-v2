@@ -21,7 +21,15 @@ export const adminAPI = {
   
   // User Management - CONSOLIDATED
   getUsers: (filters) => api.get('/api/v1/admin/users/list', { params: filters }),
-  getStudents: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'student' } }),
+  // Get all students with filtering and pagination
+  getStudents: async (params = {}) => {
+    // Add user_type=student to the parameters
+    const queryParams = {
+      ...params,
+      user_type: 'student'
+    };
+    return await api.get('/api/v1/admin/users/list', { params: queryParams });
+  },
   getStudentDetails: (enrollmentNo) => api.get('/api/v1/admin/users/list', { params: { user_id: enrollmentNo, user_type: 'student' } }),
   updateStudent: (enrollmentNo, studentData) => api.put('/api/v1/admin/users/list', { user_id: enrollmentNo, ...studentData }),
   createStudent: (studentData) => api.post('/api/v1/admin/users/list', { ...studentData, user_type: 'student' }),

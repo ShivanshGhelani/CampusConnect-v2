@@ -318,6 +318,7 @@ async def get_admin_profile(request: Request):
                 "fullname": admin.fullname,
                 "email": getattr(admin, 'email', None),
                 "phone": fresh_admin_data.get('mobile_no') if fresh_admin_data else None,
+                "avatar_url": fresh_admin_data.get('avatar_url') if fresh_admin_data else None,
                 "role": admin.role.value if admin.role else None,
                 "last_login": admin.last_login,
                 "created_at": admin.created_at

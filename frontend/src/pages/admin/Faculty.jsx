@@ -4,6 +4,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FacultyCard from '../../components/admin/FacultyCard';
 import { SearchBox, Dropdown } from '../../components/ui';
+import Avatar from '../../components/ui/Avatar';
 
 function Faculty() {
   const [faculty, setFaculty] = useState([]);
@@ -441,11 +442,11 @@ function Faculty() {
                       {/* Faculty Details */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                            <span className="text-white font-semibold text-sm">
-                              {facultyMember.full_name?.charAt(0)?.toUpperCase() || 'F'}
-                            </span>
-                          </div>
+                          <Avatar
+                            src={facultyMember.avatar_url}
+                            name={facultyMember.full_name || 'Faculty'}
+                            size="lg"
+                          />
                           <div className="ml-4">
                             <div className="text-sm font-semibold text-gray-900">
                               {facultyMember.full_name || 'N/A'}

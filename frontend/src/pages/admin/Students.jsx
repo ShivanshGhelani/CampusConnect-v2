@@ -4,6 +4,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import StudentCard from '../../components/admin/StudentCard';
 import { Dropdown, SearchBox } from '../../components/ui';
+import Avatar from '../../components/ui/Avatar';
 
 function Students() {
   const [students, setStudents] = useState([]);
@@ -531,11 +532,11 @@ function Students() {
                         {/* Student Column - 30% */}
                         <td className="px-8 py-4">
                           <div className="flex items-center space-x-3">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-                              <span className="text-white font-semibold text-sm">
-                                {student.full_name?.charAt(0)?.toUpperCase() || 'S'}
-                              </span>
-                            </div>
+                            <Avatar
+                              src={student.avatar_url}
+                              name={student.full_name || 'Student'}
+                              size="md"
+                            />
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-semibold text-gray-900 truncate leading-tight">
                                 {student.full_name || 'N/A'}
