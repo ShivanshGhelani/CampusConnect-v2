@@ -305,6 +305,51 @@ class CommunicationService:
         logger.info(f"Bulk email results: {results['successful']}/{results['total']} successful")
         return results
     
+    async def send_password_reset_email(self, user_email: str, user_name: str, 
+                                       reset_url: str, timestamp: str, 
+                                       ip_address: str = None) -> bool:
+        """
+        Send password reset email using template
+        
+        Args:
+            user_email: Recipient email address
+            user_name: Name of the user
+            reset_url: Password reset URL with token
+            timestamp: When the reset was requested
+            ip_address: IP address of the requester (optional)
+            
+        Returns:
+            bool: True if email was sent successfully
+        """
+        try:
+            # Prepare template context
+            context = {
+                'user_name': user_name,
+                'user_email': user_email,
+                'reset_url': reset_url,
+                'timestamp': timestamp,
+                'ip_address': ip_address
+            }
+            
+            # Send email using template
+            success = await self.send_template_email(
+                to_email=user_email,
+                template_name="password_reset",
+                subject="🔐 Password Reset Request - CampusConnect",
+                context=context
+            )
+            
+            if success:
+                logger.info(f"Password reset email sent successfully to {user_email}")
+            else:
+                logger.error(f"Failed to send password reset email to {user_email}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error sending password reset email to {user_email}: {e}")
+            return False
+    
     def get_statistics(self) -> Dict[str, Any]:
         """Get service statistics"""
         pool_stats = self.smtp_pool.get_stats()

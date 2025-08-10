@@ -42,7 +42,8 @@ function Events() {
       ongoing: events.filter(event => event.status === 'ongoing').length,
       upcoming: events.filter(event => event.status === 'upcoming').length,
       completed: events.filter(event => event.status === 'completed').length,
-      cancelled: events.filter(event => event.status === 'cancelled').length
+      cancelled: events.filter(event => event.status === 'cancelled').length,
+      pending_approval: events.filter(event => event.status === 'pending_approval').length
     };
     return counts;
   };
@@ -77,6 +78,69 @@ const formatDate = (dateString) => {
 
   const handleCreateEvent = () => {
     navigate('/admin/create-event');
+  };
+
+  const handleApproveEvent = async (eventId, eventName) => {
+    if (!confirm(`Are you sure you want to approve "${eventName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await adminAPI.approveEvent(eventId);
+      if (response.data.success) {
+        alert(`Event "${eventName}" has been approved successfully!`);
+        // Refresh the events list
+        fetchEvents();
+      } else {
+        alert(`Failed to approve event: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error('Error approving event:', error);
+      alert(`Error approving event: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
+  const handleDeclineEvent = async (eventId, eventName) => {
+    const reason = prompt(`Please provide a reason for declining "${eventName}":`);
+    if (reason === null) {
+      return; // User cancelled
+    }
+    if (reason.trim() === '') {
+      alert('Please provide a reason for declining the event.');
+      return;
+    }
+
+    try {
+      const response = await adminAPI.declineEvent(eventId, { reason: reason.trim() });
+      if (response.data.success) {
+        alert(`Event "${eventName}" has been declined.`);
+        // Refresh the events list
+        fetchEvents();
+      } else {
+        alert(`Failed to decline event: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error('Error declining event:', error);
+      alert(`Error declining event: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
+  // Helper function to check if user can approve/decline events
+  const canApproveDecline = (event) => {
+    if (!user) return false;
+    
+    // Super Admin can approve/decline any pending event
+    if (user.role === 'super_admin') {
+      return true;
+    }
+    
+    // Organizer Admin can approve/decline events assigned to them
+    if (user.role === 'organizer_admin') {
+      const facultyOrganizers = event.faculty_organizers || [];
+      return user.employee_id && facultyOrganizers.includes(user.employee_id);
+    }
+    
+    return false;
   };
 
   const statusCounts = getStatusCounts();
@@ -140,6 +204,12 @@ const formatDate = (dateString) => {
                       <span className="text-blue-600 font-medium">{statusCounts.upcoming} Upcoming</span>
                     </div>
                   )}
+                  {statusCounts.pending_approval > 0 && (
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="text-orange-600 font-medium">{statusCounts.pending_approval} Pending</span>
+                    </div>
+                  )}
                   {statusCounts.completed > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
@@ -188,6 +258,16 @@ const formatDate = (dateString) => {
               <i className="fas fa-clock mr-1"></i> Upcoming
             </button>
             <button
+              onClick={() => setCurrentFilter('pending_approval')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                currentFilter === 'pending_approval' 
+                  ? 'bg-orange-600 text-white shadow-md' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <i className="fas fa-hourglass-half mr-1"></i> Pending Approval
+            </button>
+            <button
               onClick={() => setCurrentFilter('completed')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 currentFilter === 'completed' 
@@ -207,6 +287,7 @@ const formatDate = (dateString) => {
               const statusConfig = {
                 ongoing: { bgClass: 'bg-green-50', textClass: 'text-green-700', dotClass: 'bg-green-500 animate-pulse', label: 'LIVE NOW' },
                 upcoming: { bgClass: 'bg-blue-50', textClass: 'text-blue-700', dotClass: 'bg-blue-500', label: 'UPCOMING' },
+                pending_approval: { bgClass: 'bg-orange-50', textClass: 'text-orange-700', dotClass: 'bg-orange-500', label: 'PENDING APPROVAL' },
                 completed: { bgClass: 'bg-gray-50', textClass: 'text-gray-600', dotClass: 'bg-gray-400', label: 'COMPLETED' },
                 cancelled: { bgClass: 'bg-red-50', textClass: 'text-red-600', dotClass: 'bg-red-500', label: 'CANCELLED' }
               };
@@ -293,14 +374,46 @@ const formatDate = (dateString) => {
                     </div>
                       
                     
-                    {/* Action Button with consistent positioning */}
+                    {/* Action Buttons with conditional rendering based on event status and user permissions */}
                     <div className="mt-auto">
-                      <button
-                        onClick={() => handleViewEvent(event.event_id)}
-                        className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
-                      >
-                        View Details
-                      </button>
+                      {event.status === 'pending_approval' && canApproveDecline(event) ? (
+                        // Show approve/decline buttons for pending events that user can approve
+                        <div className="space-y-2">
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => handleViewEvent(event.event_id)}
+                            className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
+                          >
+                            View Details
+                          </button>
+                          
+                          {/* Approve and Decline Buttons */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => handleApproveEvent(event.event_id, event.event_name)}
+                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
+                            >
+                              <i className="fas fa-check mr-1"></i>
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleDeclineEvent(event.event_id, event.event_name)}
+                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
+                            >
+                              <i className="fas fa-times mr-1"></i>
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show only view details for other events
+                        <button
+                          onClick={() => handleViewEvent(event.event_id)}
+                          className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
+                        >
+                          View Details
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

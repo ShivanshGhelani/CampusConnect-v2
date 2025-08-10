@@ -14,10 +14,16 @@ export const adminAPI = {
   // Events Management - CORRECTED to use actual backend endpoints
   getEvents: (filters) => api.get('/api/v1/admin/events/list', { params: filters }),
   getEvent: (eventId) => api.get(`/api/v1/admin/events/details/${eventId}`),
+  getEventStats: (eventId) => api.get('/api/v1/admin/events/stats', { params: { event_id: eventId } }),
+  getAttendanceStatistics: (eventId) => api.get('/api/v1/admin/events/stats', { params: { event_id: eventId } }),
   createEvent: (eventData) => api.post('/api/v1/admin/events/create', eventData),
   updateEvent: (eventId, eventData) => api.put(`/api/v1/admin/events/update/${eventId}`, eventData),
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
   getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/events/registrations/${eventId}`, { params: filters }),
+  
+  // Event Approval Management
+  approveEvent: (eventId) => api.post(`/api/v1/admin/events/approve/${eventId}`),
+  declineEvent: (eventId, declineData) => api.post(`/api/v1/admin/events/decline/${eventId}`, declineData),
   
   // User Management - CONSOLIDATED
   getUsers: (filters) => api.get('/api/v1/admin/users/list', { params: filters }),

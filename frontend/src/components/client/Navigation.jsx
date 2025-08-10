@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/base';  // Import the axios instance
+import { organizerAPI } from '../../api/organizer';  // Import organizer API
 import { useAvatar } from '../../hooks/useAvatar';
 import Avatar from '../common/Avatar';
 
@@ -186,7 +187,7 @@ function ClientNavigation() {
                           <button
                             onClick={async () => {
                               try {
-                                const response = await api.post('/api/v1/faculty/organizer/access-portal');
+                                const response = await organizerAPI.accessOrganizerPortal();
                                 
                                 if (response.data.success) {
                                   // Update auth context to reflect organizer admin role

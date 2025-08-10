@@ -31,6 +31,7 @@ function CreateEvent() {
   const [eventCreatorSession, setEventCreatorSession] = useState(null);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
   const [creatorName, setCreatorName] = useState('');
+  const [creatorEmail, setCreatorEmail] = useState('');
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
 
   // Organizer management states (removed new organizer modal - faculty accounts managed separately)
@@ -38,14 +39,18 @@ function CreateEvent() {
   const [existingOrganizers, setExistingOrganizers] = useState([]);
   const [filteredOrganizers, setFilteredOrganizers] = useState([]);
 
+  // Notification state for duplicate selection alerts
+  const [organizerNotification, setOrganizerNotification] = useState(null);
+
   // Session management functions
-  const createEventCreatorSession = (name) => {
+  const createEventCreatorSession = (name, email) => {
     if (user && user.role === 'executive_admin') {
       // Create unique session key for this user
       const sessionKey = `eventCreatorSession_${user.username || user.id || 'default'}`;
       
       const sessionData = {
         creatorName: name || user.fullname || user.username || 'Executive Admin',
+        creatorEmail: email || '',
         createdAt: new Date().getTime(),
         lastActivity: new Date().getTime(),
         userId: user.username || user.id || 'default', // Track which user created this session
@@ -145,10 +150,11 @@ function CreateEvent() {
 
   // Handle creator modal submission
   const handleCreatorSubmit = () => {
-    if (creatorName.trim()) {
-      createEventCreatorSession(creatorName.trim());
+    if (creatorName.trim() && creatorEmail.trim()) {
+      createEventCreatorSession(creatorName.trim(), creatorEmail.trim());
       setShowCreatorModal(false);
       setCreatorName('');
+      setCreatorEmail('');
     }
   };
   // Form state (expanded for all fields) - Move this before useEffect that uses it
@@ -305,7 +311,10 @@ function CreateEvent() {
         const apiData = response.data.data || response.data;
         const venueArray = Array.isArray(apiData) ? apiData : [];
         setVenues(venueArray);
-        console.log(`Loaded ${venueArray.length} venues`);
+        // Initialize filteredVenues with all active venues
+        const activeVenues = venueArray.filter(v => v.is_active);
+        setFilteredVenues(activeVenues);
+        console.log(`Loaded ${venueArray.length} venues (${activeVenues.length} active)`);
       } else {
         console.error('No data received from venues API');
       }
@@ -401,13 +410,19 @@ function CreateEvent() {
         console.log('Loading faculty organizers...');
         
         const response = await adminAPI.getFacultyOrganizers({ limit: 100 });
-        console.log('Loaded faculty organizers from API:', response.data);
-        setExistingOrganizers(response.data.faculty || []);
-        setFilteredOrganizers(response.data.faculty || []);
+        console.log('✅ Loaded faculty organizers from API:', response.data);
+        console.log('🔍 Faculty data structure:', response.data.data);
+        console.log('🔍 Faculty count:', response.data.data?.length || 0);
+        
+        const facultyData = response.data.data || [];
+        setExistingOrganizers(facultyData);
+        setFilteredOrganizers(facultyData);
+        
+        console.log('✅ Set faculty organizers in state:', facultyData.length);
         
         // If current user is faculty/organizer, pre-select them
         if (userType === 'admin' && user?.role === 'organizer_admin' && user?.employee_id) {
-          const currentFaculty = response.data.faculty?.find(f => f.employee_id === user.employee_id);
+          const currentFaculty = facultyData.find(f => f.employee_id === user.employee_id);
           if (currentFaculty) {
             setForm(prev => ({
               ...prev,
@@ -424,7 +439,7 @@ function CreateEvent() {
           }
         }
       } catch (error) {
-        console.error('Error fetching faculty organizers:', error);
+        console.error('❌ Error fetching faculty organizers:', error);
         setExistingOrganizers([]);
         setFilteredOrganizers([]);
       }
@@ -484,6 +499,9 @@ function CreateEvent() {
   
   // New organizer management functions
   const addOrganizer = () => {
+    // Clear any existing notification when adding new organizer
+    setOrganizerNotification(null);
+    
     setForm(prev => ({ 
       ...prev, 
       organizers: [...prev.organizers, { 
@@ -499,6 +517,9 @@ function CreateEvent() {
   };
   
   const removeOrganizer = (idx) => {
+    // Clear any existing notification
+    setOrganizerNotification(null);
+    
     const newOrganizers = form.organizers.filter((_, i) => i !== idx);
     setForm((prev) => ({ ...prev, organizers: newOrganizers }));
   };
@@ -525,6 +546,31 @@ function CreateEvent() {
   };
 
   const selectExistingOrganizer = (idx, faculty) => {
+    // Check if this faculty is already selected in any other organizer slot
+    const isAlreadySelected = form.organizers.some((organizer, index) => 
+      index !== idx && organizer.employee_id === faculty.employee_id && organizer.selected
+    );
+
+    if (isAlreadySelected) {
+      // Show notification for duplicate selection
+      setOrganizerNotification({
+        type: 'warning',
+        message: `${faculty.full_name} is already selected as an organizer for this event.`,
+        faculty: faculty.full_name,
+        employeeId: faculty.employee_id
+      });
+
+      // Auto-hide notification after 4 seconds
+      setTimeout(() => {
+        setOrganizerNotification(null);
+      }, 4000);
+
+      return; // Prevent selection
+    }
+
+    // Clear any existing notification
+    setOrganizerNotification(null);
+
     const newOrganizers = [...form.organizers];
     newOrganizers[idx] = {
       id: faculty.employee_id,
@@ -542,6 +588,9 @@ function CreateEvent() {
   };
 
   const clearOrganizerSelection = (idx) => {
+    // Clear any existing notification
+    setOrganizerNotification(null);
+    
     const newOrganizers = [...form.organizers];
     newOrganizers[idx] = {
       id: null,
@@ -1134,21 +1183,28 @@ function CreateEvent() {
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
         // Set status and approval based on user role
-        status: user?.role === 'super_admin' || user?.role === 'organizer_admin' ? 'active' : 'pending_approval',
+        // Role-based event status and approval logic
+        // Super Admin & Organizer Admin: Direct approval - no approval needed
+        // Executive Admin: Requires approval
+        status: user?.role === 'super_admin' || user?.role === 'organizer_admin' ? 'upcoming' : 'pending_approval',
+        approval_required: !(user?.role === 'super_admin' || user?.role === 'organizer_admin'),
         approval_required: user?.role !== 'super_admin' && user?.role !== 'organizer_admin'
       };
 
-      // Add event_created_by for Executive Admin users
+      // Add event_created_by and event_creator_email for Executive Admin users
       if (user.role === 'executive_admin' && eventCreatorSession) {
         const timeRemaining = getTimeRemaining();
         if (timeRemaining > 0) {
           eventData.event_created_by = eventCreatorSession.creatorName;
+          eventData.event_creator_email = eventCreatorSession.creatorEmail;
         } else {
           clearEventCreatorSession();
           eventData.event_created_by = user.fullname || user.username || 'Executive Admin';
+          eventData.event_creator_email = ''; // No email if session expired
         }
       } else if (user.role === 'executive_admin') {
         eventData.event_created_by = user.fullname || user.username || 'Executive Admin';
+        eventData.event_creator_email = ''; // No email if no session
       }
 
       console.log('Submitting event data:', eventData);
@@ -1162,40 +1218,31 @@ function CreateEvent() {
         }
         
         let successMessage;
-        let redirectPath = '/admin/events';
+        let pendingApproval;
         
-        // Different messages and redirects based on user role
+        // Different messages based on user role - all go to success page
         if (user?.role === 'super_admin') {
           successMessage = 'Event created and activated successfully! Faculty organizers have been assigned.';
-          redirectPath = '/admin/events';
+          pendingApproval = false;
         } else if (user?.role === 'organizer_admin') {
           successMessage = 'Event created successfully! You have been assigned as the primary organizer.';
-          redirectPath = '/admin/events';
+          pendingApproval = false;
         } else {
           successMessage = user.role === 'executive_admin' 
             ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
             : 'Event created successfully! It is pending Super Admin approval.';
-          redirectPath = '/admin/events/created-success';
+          pendingApproval = true;
         }
         
-        // Navigate based on user role
-        if (user?.role === 'super_admin' || user?.role === 'organizer_admin') {
-          navigate(redirectPath, {
-            state: { 
-              eventData: eventData,
-              pendingApproval: false,
-              message: successMessage
-            }
-          });
-        } else {
-          navigate(redirectPath, {
-            state: { 
-              eventData: eventData,
-              pendingApproval: true,
-              message: successMessage
-            }
-          });
-        }
+        // All users go to the success page with different states
+        navigate('/admin/events/created-success', {
+          state: { 
+            eventData: eventData,
+            pendingApproval: pendingApproval,
+            message: successMessage,
+            userRole: user?.role
+          }
+        });
       } else {
         alert(`Error creating event: ${response.data?.message || 'Unknown error'}`);
       }
@@ -1443,6 +1490,40 @@ function CreateEvent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Event Organizers <span className="text-red-500">*</span>
                     </label>
+                    
+                    {/* Duplicate Selection Notification */}
+                    {organizerNotification && (
+                      <div className={`mb-4 p-3 rounded-lg border-l-4 ${
+                        organizerNotification.type === 'warning' 
+                          ? 'bg-amber-50 border-amber-400 text-amber-800' 
+                          : 'bg-red-50 border-red-400 text-red-800'
+                      }`}>
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3 flex-1">
+                            <p className="text-sm font-medium">Faculty Already Selected</p>
+                            <p className="text-sm mt-1">{organizerNotification.message}</p>
+                            <p className="text-xs mt-1 opacity-75">Employee ID: {organizerNotification.employeeId}</p>
+                          </div>
+                          <div className="flex-shrink-0 ml-4">
+                            <button
+                              type="button"
+                              onClick={() => setOrganizerNotification(null)}
+                              className="inline-flex text-amber-400 hover:text-amber-600 focus:outline-none focus:text-amber-600"
+                            >
+                              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="space-y-4">
                       {form.organizers.map((organizer, idx) => (
                         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" key={idx}>
@@ -1477,24 +1558,58 @@ function CreateEvent() {
                                 {activeOrganizerDropdown === idx && (
                                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {filteredOrganizers.length > 0 ? (
-                                        filteredOrganizers.map((faculty) => (
-                                          <div
-                                            key={faculty.employee_id}
-                                            onClick={() => selectExistingOrganizer(idx, faculty)}
-                                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                          >
-                                            <div className="flex justify-between items-center">
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-900">{faculty.full_name}</p>
-                                                <p className="text-xs text-gray-500">{faculty.email}</p>
-                                                <p className="text-xs text-gray-400">{faculty.department} • {faculty.designation}</p>
+                                        filteredOrganizers.map((faculty) => {
+                                          // Check if this faculty is already selected
+                                          const isAlreadySelected = form.organizers.some((organizer, index) => 
+                                            index !== idx && organizer.employee_id === faculty.employee_id && organizer.selected
+                                          );
+                                          
+                                          return (
+                                            <div
+                                              key={faculty.employee_id}
+                                              onClick={() => selectExistingOrganizer(idx, faculty)}
+                                              className={`px-3 py-2 border-b border-gray-100 last:border-b-0 transition-colors ${
+                                                isAlreadySelected 
+                                                  ? 'bg-amber-50 cursor-not-allowed' 
+                                                  : 'hover:bg-blue-50 cursor-pointer'
+                                              }`}
+                                            >
+                                              <div className="flex justify-between items-center">
+                                                <div className="flex-1">
+                                                  <div className="flex items-center space-x-2">
+                                                    <p className={`text-sm font-medium ${
+                                                      isAlreadySelected ? 'text-amber-700' : 'text-gray-900'
+                                                    }`}>
+                                                      {faculty.full_name}
+                                                    </p>
+                                                    {isAlreadySelected && (
+                                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                                        Already Selected
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className={`text-xs ${
+                                                    isAlreadySelected ? 'text-amber-600' : 'text-gray-500'
+                                                  }`}>
+                                                    {faculty.email}
+                                                  </p>
+                                                  <p className={`text-xs ${
+                                                    isAlreadySelected ? 'text-amber-500' : 'text-gray-400'
+                                                  }`}>
+                                                    {faculty.department} • {faculty.designation}
+                                                  </p>
+                                                </div>
+                                                <span className={`text-xs px-2 py-1 rounded ${
+                                                  isAlreadySelected 
+                                                    ? 'bg-amber-100 text-amber-800' 
+                                                    : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                  {faculty.employee_id}
+                                                </span>
                                               </div>
-                                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                {faculty.employee_id}
-                                              </span>
                                             </div>
-                                          </div>
-                                        ))
+                                          );
+                                        })
                                     ) : (
                                       <div className="px-3 py-3 text-gray-500 text-sm text-center">
                                         No faculty found. Try a different search term.
@@ -1556,7 +1671,7 @@ function CreateEvent() {
                     </label>
                     <div className="space-y-2">
                       {form.contacts.map((c, idx) => (
-                        <div className="grid grid-cols-2 gap-2" key={idx}>
+                        <div className="grid grid-cols-[0.65fr_1fr] gap-2" key={idx}>
                           <input 
                             type="text" 
                             value={c.name} 
@@ -1572,7 +1687,7 @@ function CreateEvent() {
                               onChange={e => handleContactChange(idx, 'contact', e.target.value)} 
                               required 
                               placeholder="Email/Phone (E.g. smriti.sharma@college.edu / 9876543210)"
-                              className="flex w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                              className="flex w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                             />
                             {form.contacts.length > 1 && (
                               <button 
@@ -1641,7 +1756,7 @@ function CreateEvent() {
                               venue_id: '' // Clear venue_id when manually typing
                             }));
                             
-                            // Show autocomplete suggestions if there's text
+                            // Show autocomplete suggestions - all venues if empty, filtered if has text
                             if (value.trim()) {
                               const filtered = venues.filter(v => 
                                 v.is_active && 
@@ -1650,14 +1765,16 @@ function CreateEvent() {
                                  `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
                               );
                               setFilteredVenues(filtered);
-                              setShowVenueDropdown(filtered.length > 0);
+                              setShowVenueDropdown(true);
                             } else {
-                              setFilteredVenues([]);
-                              setShowVenueDropdown(false);
+                              // Show all active venues when field is empty
+                              const allActiveVenues = venues.filter(v => v.is_active);
+                              setFilteredVenues(allActiveVenues);
+                              setShowVenueDropdown(allActiveVenues.length > 0);
                             }
                           }}
                           onFocus={() => {
-                            // Show dropdown on focus if there's text and matches
+                            // Show dropdown on focus - all venues if empty, filtered if has text
                             if (form.venue.trim()) {
                               const filtered = venues.filter(v => 
                                 v.is_active && 
@@ -1666,10 +1783,15 @@ function CreateEvent() {
                                  `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
                               );
                               setFilteredVenues(filtered);
-                              setShowVenueDropdown(filtered.length > 0);
+                              setShowVenueDropdown(true);
+                            } else {
+                              // Show all active venues when focused with empty field
+                              const allActiveVenues = venues.filter(v => v.is_active);
+                              setFilteredVenues(allActiveVenues);
+                              setShowVenueDropdown(allActiveVenues.length > 0);
                             }
                           }}
-                          placeholder="Enter venue name or location (e.g., Main Auditorium, Room 101, Conference Hall)"
+                          placeholder="Click to view all venues or type to search (e.g., Main Auditorium, Room 101)"
                           className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
                           required
                         />
@@ -2311,26 +2433,36 @@ function CreateEvent() {
               Who is creating this event?
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Since this is a universal Executive Admin account, please enter your actual name to track who is creating events.
+              Since this is a universal Executive Admin account, please enter your actual name and email to track who is creating events and for approval notifications.
             </p>
-            <input
-              type="text"
-              value={creatorName}
-              onChange={(e) => setCreatorName(e.target.value)}
-              placeholder="Enter your full name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleCreatorSubmit();
-                }
-              }}
-              autoFocus
-            />
-            <div className="flex justify-end space-x-3">
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={creatorName}
+                onChange={(e) => setCreatorName(e.target.value)}
+                placeholder="Enter your full name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <input
+                type="email"
+                value={creatorEmail}
+                onChange={(e) => setCreatorEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreatorSubmit();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={() => {
                   setShowCreatorModal(false);
                   setCreatorName('');
+                  setCreatorEmail('');
                   // If no session exists and user cancels, logout immediately
                   if (!eventCreatorSession) {
                     alert('Creator session is required for Executive Admin. Logging out...');
@@ -2344,7 +2476,7 @@ function CreateEvent() {
               </button>
               <button
                 onClick={handleCreatorSubmit}
-                disabled={!creatorName.trim()}
+                disabled={!creatorName.trim() || !creatorEmail.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 Start Session

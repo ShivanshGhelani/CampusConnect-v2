@@ -101,6 +101,68 @@ class FacultyOrganizerService:
                 "message": f"Failed to assign event to faculty: {str(e)}"
             }
     
+    async def remove_event_from_faculty(self, faculty_employee_ids: List[str], event_id: str) -> Dict[str, Any]:
+        """
+        Remove an event assignment from multiple faculty organizers
+        
+        Args:
+            faculty_employee_ids: List of faculty employee IDs
+            event_id: Event ID to remove
+            
+        Returns:
+            Dict with success status, removed count, and message
+        """
+        try:
+            db = await self.get_database()
+            removed_count = 0
+            failed_removals = []
+            
+            for employee_id in faculty_employee_ids:
+                try:
+                    # Remove event from faculty's assigned_events array
+                    result = await db.faculties.update_one(
+                        {"employee_id": employee_id},
+                        {
+                            "$pull": {"assigned_events": event_id},
+                            "$set": {"updated_at": datetime.utcnow()}
+                        }
+                    )
+                    
+                    if result.modified_count > 0:
+                        removed_count += 1
+                        logger.info(f"✅ Removed event {event_id} from faculty {employee_id}")
+                    else:
+                        # Faculty might not exist or event not assigned
+                        failed_removals.append(f"Faculty {employee_id} not found or event not assigned")
+                        
+                except Exception as e:
+                    failed_removals.append(f"Error removing from faculty {employee_id}: {str(e)}")
+                    logger.error(f"Error removing event {event_id} from faculty {employee_id}: {e}")
+            
+            success = removed_count > 0
+            message = f"Removed event from {removed_count} faculty organizers"
+            
+            if failed_removals:
+                message += f". Failures: {'; '.join(failed_removals)}"
+            
+            return {
+                "success": success,
+                "removed_count": removed_count,
+                "total_requested": len(faculty_employee_ids),
+                "failed_removals": failed_removals,
+                "message": message
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in remove_event_from_faculty: {e}")
+            return {
+                "success": False,
+                "removed_count": 0,
+                "total_requested": len(faculty_employee_ids),
+                "failed_removals": [f"Service error: {str(e)}"],
+                "message": f"Failed to remove event from faculty: {str(e)}"
+            }
+
     async def unassign_event_from_faculty(self, faculty_employee_ids: List[str], event_id: str) -> Dict[str, Any]:
         """
         Remove an event assignment from multiple faculty organizers

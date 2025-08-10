@@ -123,157 +123,68 @@ export function NotificationProvider({ children }) {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
   const { user, userType, isAuthenticated } = useAuth();
 
-  // Fetch notifications
+  // Fetch notifications (deprecated - notifications functionality removed)
   const fetchNotifications = useCallback(async (customFilters = {}) => {
     if (!isAuthenticated || userType !== 'admin') return;
 
-    dispatch({ type: ACTIONS.SET_LOADING, payload: true });
-
-    try {
-      const filters = { ...state.filters, ...customFilters };
-      const response = await adminAPI.getNotifications(filters);
-
-      if (response.data) {
-        dispatch({
-          type: ACTIONS.FETCH_SUCCESS,
-          payload: response.data
-        });
+    // Notifications feature is deprecated, return empty data
+    dispatch({
+      type: ACTIONS.FETCH_SUCCESS,
+      payload: {
+        notifications: [],
+        unread_count: 0,
+        total_count: 0
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      dispatch({
-        type: ACTIONS.FETCH_ERROR,
-        payload: error.response?.data?.message || 'Failed to fetch notifications'
-      });
-    }
-  }, [isAuthenticated, userType, state.filters]);
+    });
+  }, [isAuthenticated, userType]);
 
   // Update filters and fetch
   const updateFilters = useCallback((newFilters) => {
     dispatch({ type: ACTIONS.UPDATE_FILTERS, payload: newFilters });
   }, []);
 
-  // Mark notification as read/unread
+  // Mark notification as read/unread (deprecated - notifications functionality removed)
   const markAsRead = useCallback(async (notificationId, isRead = true) => {
-    try {
-      await adminAPI.markNotificationAsRead(notificationId, isRead);
-      dispatch({
-        type: ACTIONS.MARK_AS_READ,
-        payload: { notificationId, isRead }
-      });
-      return { success: true };
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Failed to update notification' 
-      };
-    }
+    // Notifications feature is deprecated, return success without action
+    return { success: true };
   }, []);
 
-  // Archive notification
+  // Archive notification (deprecated - notifications functionality removed)
   const archiveNotification = useCallback(async (notificationId) => {
-    try {
-      await adminAPI.archiveNotification(notificationId);
-      dispatch({
-        type: ACTIONS.ARCHIVE_NOTIFICATION,
-        payload: notificationId
-      });
-      return { success: true };
-    } catch (error) {
-      console.error('Error archiving notification:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to archive notification'
-      };
-    }
+    // Notifications feature is deprecated, return success without action
+    return { success: true };
   }, []);
 
-  // Handle notification action (approve/reject)
+  // Handle notification action (deprecated - notifications functionality removed)
   const handleNotificationAction = useCallback(async (notificationId, action, reason = null) => {
-    try {
-      const actionData = { action };
-      if (reason) actionData.reason = reason;
+    // Notifications feature is deprecated, return success without action
+    return { success: true };
+  }, []);
 
-      await adminAPI.handleNotificationAction(notificationId, actionData);
-      
-      // Mark as read after action
-      dispatch({
-        type: ACTIONS.MARK_AS_READ,
-        payload: { notificationId, isRead: true }
-      });
-
-      // Refresh notifications to get updated data
-      fetchNotifications();
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error handling notification action:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to handle notification action'
-      };
-    }
-  }, [fetchNotifications]);
-
-  // Create notification
+  // Create notification (deprecated - notifications functionality removed)
   const createNotification = useCallback(async (notificationData) => {
-    try {
-      const response = await adminAPI.createNotification(notificationData);
-      
-      if (response.data.success) {
-        // Optionally add to local state if it's for current user
-        // This would require checking if recipient matches current user
-        return { success: true, notificationId: response.data.notification_id };
-      }
-      
-      return { success: false, error: response.data.message };
-    } catch (error) {
-      console.error('Error creating notification:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to create notification'
-      };
-    }
+    // Notifications feature is deprecated, return success without action
+    return { success: true, notificationId: 'deprecated' };
   }, []);
 
-  // Fetch notification stats
+  // Fetch notification stats (deprecated - notifications functionality removed)
   const fetchStats = useCallback(async () => {
-    try {
-      const response = await adminAPI.getNotificationStats();
-      dispatch({
-        type: ACTIONS.UPDATE_STATS,
-        payload: response.data
-      });
-    } catch (error) {
-      console.error('Error fetching notification stats:', error);
-    }
+    // Notifications feature is deprecated, set empty stats
+    dispatch({
+      type: ACTIONS.UPDATE_STATS,
+      payload: null
+    });
   }, []);
 
-  // Trigger pending notifications (Super Admin only)
+  // Trigger pending notifications (deprecated - notifications functionality removed)
   const triggerPendingNotifications = useCallback(async () => {
-    try {
-      const response = await adminAPI.triggerPendingNotifications();
-      
-      if (response.data.success) {
-        // Refresh notifications after triggering
-        fetchNotifications();
-        return { 
-          success: true, 
-          message: response.data.message,
-          data: response.data
-        };
-      }
-      
-      return { success: false, error: response.data.message };
-    } catch (error) {
-      console.error('Error triggering pending notifications:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to trigger pending notifications'
-      };
-    }
-  }, [fetchNotifications]);
+    // Notifications feature is deprecated, return success without action
+    return { 
+      success: true, 
+      message: "Notifications feature is deprecated",
+      data: {}
+    };
+  }, []);
 
   // Clear error
   const clearError = useCallback(() => {

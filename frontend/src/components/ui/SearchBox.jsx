@@ -47,6 +47,9 @@ const SearchBox = ({
   
   // Accessibility
   'aria-label': ariaLabel = 'Search',
+  
+  // Remove non-DOM props to prevent React warnings
+  showFilters, // Remove this prop to prevent DOM warnings
   ...props
 }) => {
   const [localValue, setLocalValue] = useState(value);

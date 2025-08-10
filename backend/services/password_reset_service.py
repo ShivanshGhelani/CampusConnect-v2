@@ -201,7 +201,7 @@ class PasswordResetService:
                 raise Exception("Database connection failed")
             
             # Verify faculty exists with provided employee_id and email
-            faculty = await db['faculty'].find_one({
+            faculty = await db['faculties'].find_one({
                 'employee_id': employee_id.upper(),
                 'email': email.lower()
             })

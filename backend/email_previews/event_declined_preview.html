@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Declined - CampusConnect</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .logo-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        .content {
+            padding: 40px;
+        }
+        .status-badge {
+            background-color: #fed7d7;
+            color: #c53030;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 25px;
+            color: #4a5568;
+        }
+        .event-details {
+            background-color: #f7fafc;
+            border-left: 4px solid #fc8181;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .event-details h3 {
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+            min-width: 120px;
+        }
+        .detail-value {
+            color: #2d3748;
+        }
+        .decline-info {
+            background-color: #fef5e7;
+            border: 1px solid #f6e05e;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .decline-info h4 {
+            color: #c53030;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .decline-reason {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            font-style: italic;
+            color: #4a5568;
+        }
+        .next-steps {
+            background-color: #e6fffa;
+            border-left: 4px solid #38b2ac;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .next-steps h4 {
+            color: #2d3748;
+            margin: 0 0 15px 0;
+        }
+        .next-steps ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #4a5568;
+        }
+        .next-steps li {
+            margin-bottom: 8px;
+        }
+        .action-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .action-button:hover {
+            transform: translateY(-1px);
+        }
+        .footer {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 25px 40px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer-links {
+            margin-top: 15px;
+        }
+        .footer-links a {
+            color: #a0aec0;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        .support-section {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .content {
+                padding: 20px;
+            }
+            .header {
+                padding: 20px;
+            }
+            .detail-row {
+                flex-direction: column;
+            }
+            .detail-label {
+                min-width: auto;
+                margin-bottom: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header with Logo -->
+        <div class="header">
+            <div class="logo">CampusConnect</div>
+            <div class="logo-subtitle">Campus Event Management System</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <div class="status-badge">❌ EVENT DECLINED</div>
+            
+            <div class="greeting">
+                Dear John Smith,
+            </div>
+
+            <div class="message">
+                We're writing to inform you that your event submission has been reviewed and unfortunately was not approved for publication. Please see the details below.
+            </div>
+
+            <!-- Event Details -->
+            <div class="event-details">
+                <h3>📅 Event Information</h3>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Event Name:</div>
+                    <div class="detail-value">Tech Innovation Summit 2025</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Event ID:</div>
+                    <div class="detail-value">TECH_SUMMIT_20250810</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Event Type:</div>
+                    <div class="detail-value">Technical Workshop</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Proposed Date:</div>
+                    <div class="detail-value">February 15, 2025 at 10:00 AM</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Proposed Venue:</div>
+                    <div class="detail-value">Seminar Hall A, Main Building</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Submitted:</div>
+                    <div class="detail-value">January 15, 2025</div>
+                </div>
+            </div>
+
+            <!-- Decline Information -->
+            <div class="decline-info">
+                <h4>🔍 Review Details</h4>
+                <div class="detail-row">
+                    <div class="detail-label">Reviewed By:</div>
+                    <div class="detail-value">Dr. Rajesh Patel</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Review Date:</div>
+                    <div class="detail-value">January 20, 2025 at 2:30 PM UTC</div>
+                </div>
+                
+                
+                <div class="decline-reason">
+                    <strong>Reason for Decline:</strong><br>
+                    The proposed event date conflicts with an existing major conference. Please suggest alternative dates for consideration.
+                </div>
+                
+            </div>
+
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <h4>🚀 What You Can Do Next</h4>
+                <ul>
+                    <li><strong>Review the feedback</strong> and consider making adjustments to your event proposal</li>
+                    <li><strong>Contact the reviewer</strong> if you need clarification on the decline reason</li>
+                    <li><strong>Submit a revised proposal</strong> with the necessary changes addressed</li>
+                    <li><strong>Reach out to support</strong> if you believe this decision was made in error</li>
+                </ul>
+            </div>
+
+            <!-- Support Section -->
+            <div class="support-section">
+                <h4 style="margin-top: 0; color: #2d3748;">Need Help?</h4>
+                <p style="margin-bottom: 20px; color: #4a5568;">
+                    Our team is here to help you improve your event proposal and ensure it meets all requirements.
+                </p>
+                
+                <a href="https://campusconnect.edu/admin/events" class="action-button">
+                    📝 Create New Event
+                </a>
+            </div>
+
+            <div class="message" style="margin-top: 30px; font-size: 14px; color: #718096;">
+                <strong>Remember:</strong> This decline doesn't prevent you from submitting future events. We encourage you to review the feedback, make necessary adjustments, and try again. Our goal is to help you create successful campus events.
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>
+                <strong>CampusConnect</strong> - Campus Event Management System<br>
+                Making campus events seamless and organized
+            </div>
+            <div class="footer-links">
+                <a href="https://campusconnect.edu/help">Help Center</a>
+                <a href="https://campusconnect.edu/contact">Contact Support</a>
+                <a href="https://campusconnect.edu/guidelines">Event Guidelines</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
