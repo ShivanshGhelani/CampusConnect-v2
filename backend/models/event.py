@@ -285,6 +285,7 @@ class CreateEvent(BaseModel):
     approval_required: bool = Field(default=True, description="Whether event requires approval")
     status: str = Field(default="pending_approval", description="Event status")
     event_created_by: Optional[str] = Field(default=None, description="Who created the event (for Executive Admin sessions)")
+    event_creator_email: Optional[str] = Field(default=None, description="Email of the event creator (for notifications)")
     
     # Additional optional fields
     target_outcomes: Optional[str] = Field(default=None, description="Target outcomes for the event")

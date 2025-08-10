@@ -67,17 +67,20 @@ class EventStatusManager:
             
             if status_filter == "upcoming":
                 query["status"] = "upcoming"
+                query["event_approval_status"] = "approved"  # Only show approved events
             elif status_filter == "ongoing":
                 query["status"] = "ongoing"
+                query["event_approval_status"] = "approved"  # Only show approved events
             elif status_filter == "completed":
                 query["status"] = "completed"
+                query["event_approval_status"] = "approved"  # Only show approved events
             elif status_filter == "pending_approval":
-                query["status"] = "pending_approval"
+                query["event_approval_status"] = "pending_approval"
             else:
                 # For "all" filter, behavior depends on include_pending_approval
                 if not include_pending_approval:
                     # Only approved events should be visible in general listings
-                    query["status"] = {"$ne": "pending_approval"}
+                    query["event_approval_status"] = "approved"
                 # If include_pending_approval is True, no status filter (show all events)
             
             # Get events from database
@@ -92,7 +95,7 @@ class EventStatusManager:
             
             for event in events:
                 # Don't update status for pending approval events
-                if event.get('status') == 'pending_approval':
+                if event.get('event_approval_status') == 'pending_approval':
                     updated_events.append(event)
                     continue
                     
