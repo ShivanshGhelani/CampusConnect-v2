@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import UploadForm from '../../components/admin/certificates/UploadForm';
 import TemplateTable from '../../components/admin/certificates/TemplateTable';
@@ -12,6 +13,7 @@ function ManageCertificates() {
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,6 +29,35 @@ function ManageCertificates() {
     categoriesCount: 0,
     recentUploads: 0
   });
+
+  // Floating panel states for upload form
+  const [isFloatingPanelOpen, setIsFloatingPanelOpen] = useState(false);
+  const [isFloatingPanelMinimized, setIsFloatingPanelMinimized] = useState(false);
+
+  // Form data for new template upload
+  const [newTemplateForm, setNewTemplateForm] = useState({
+    name: '',
+    category: '',
+    newCategory: '',
+    tags: '',
+    file: null
+  });
+
+  // Add/remove modal backdrop blur class
+  useEffect(() => {
+    const isModalOpen = isEditModalOpen || isPreviewModalOpen;
+    
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isEditModalOpen, isPreviewModalOpen]);
 
   // Fetch templates on component mount
   useEffect(() => {
@@ -70,6 +101,22 @@ function ManageCertificates() {
     }
   };
 
+  const showNotification = (message, type = 'success') => {
+    if (type === 'success') {
+      setSuccessMessage(message);
+      setError('');
+    } else {
+      setError(message);
+      setSuccessMessage('');
+    }
+
+    // Auto clear after 5 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+      setError('');
+    }, 5000);
+  };
+
   const handleMigrateTemplates = async () => {
     if (window.confirm('This will migrate existing template files to the database. Continue?')) {
       try {
@@ -80,7 +127,7 @@ function ManageCertificates() {
         
         if (response.data.success) {
           const migratedCount = response.data.migrated_count || 0;
-          alert(`Successfully migrated ${migratedCount} certificate templates to database.`);
+          showNotification(`Successfully migrated ${migratedCount} certificate templates to database.`, 'success');
           // Refresh the templates list
           await fetchTemplates();
         } else {
@@ -103,6 +150,19 @@ function ManageCertificates() {
       recentUploads: prev.recentUploads + 1
     }));
     setIsUploading(false);
+    
+    // Reset form and close panel
+    setNewTemplateForm({
+      name: '',
+      category: '',
+      newCategory: '',
+      tags: '',
+      file: null
+    });
+    setIsFloatingPanelOpen(false);
+    setIsFloatingPanelMinimized(false);
+    
+    showNotification('Certificate template uploaded successfully!', 'success');
   };
 
   const handleEditTemplate = (template) => {
@@ -125,10 +185,10 @@ function ManageCertificates() {
           totalTemplates: prev.totalTemplates - 1
         }));
         
-        setError('');
+        showNotification('Certificate template deleted successfully!', 'success');
       } catch (error) {
         console.error('Error deleting template:', error);
-        setError('Failed to delete template. Please try again.');
+        showNotification('Failed to delete template. Please try again.', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -183,203 +243,250 @@ function ManageCertificates() {
   const availableTags = [...new Set(templates.flatMap(t => t.tags || []))];
 
   return (
-    <AdminLayout pageTitle="Certificate Template Manager">
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 text-white">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                </svg>
-              </div>
+    <>
+      <AdminLayout pageTitle="Certificate Template Manager">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                  Certificate Templates
-                </h1>
-                <p className="text-gray-600 mt-1 text-lg">Manage and organize certificate templates</p>
-              </div>
-            </div>
-            
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-              <div className="bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Templates</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalTemplates}</p>
-                  </div>
-                </div>
+                <h1 className="text-2xl font-semibold text-gray-900">Certificate Template Management</h1>
+                <p className="mt-1 text-sm text-gray-600">Manage and organize certificate templates</p>
               </div>
               
-              <div className="bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Categories</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Recent Uploads</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.recentUploads}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Migration Button */}
-            <div className="mt-6 flex justify-end">
+              {/* Upload Template Button */}
               <button
-                onClick={handleMigrateTemplates}
-                disabled={isLoading}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-md"
+                onClick={() => {
+                  setIsFloatingPanelOpen(true);
+                  setIsFloatingPanelMinimized(false);
+                }}
+                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/>
-                </svg>
-                <span>Migrate Existing Templates</span>
+                <i className="fas fa-plus mr-2"></i>
+                Upload Template
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-                </svg>
-                <p className="font-medium">{error}</p>
-              </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Upload Form */}
-            <div className="lg:col-span-1">
-              <UploadForm 
-                onUploadSuccess={handleUploadSuccess}
-                isUploading={isUploading}
-                setIsUploading={setIsUploading}
-                availableCategories={availableCategories}
-              />
-            </div>
-            
-            {/* Templates Table */}
-            <div className="lg:col-span-2">
-              {/* Search and Filters */}
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Search & Filter Templates</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                    <SearchBox
-                      placeholder="Search by name or tags..."
-                      value={searchTerm}
-                      onChange={(value) => setSearchTerm(value)}
-                      showFilters={false}
-                      size="md"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Dropdown
-                      label="Category"
-                      placeholder="All Categories"
-                      value={categoryFilter}
-                      onChange={setCategoryFilter}
-                      clearable
-                      options={availableCategories.map(category => ({ 
-                        label: category, 
-                        value: category,
-                        icon: <i className="fas fa-folder text-xs"></i>
-                      }))}
-                      icon={<i className="fas fa-layer-group text-xs"></i>}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Dropdown
-                      label="Tag"
-                      placeholder="All Tags"
-                      value={tagFilter}
-                      onChange={setTagFilter}
-                      clearable
-                      options={availableTags.map(tag => ({ 
-                        label: tag, 
-                        value: tag,
-                        icon: <i className="fas fa-tag text-xs"></i>
-                      }))}
-                      icon={<i className="fas fa-tags text-xs"></i>}
-                    />
-                  </div>
+          {/* Flash Messages */}
+          {(successMessage || error) && (
+            <div className="mb-6">
+              {successMessage && (
+                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md flex items-center">
+                  <i className="fas fa-check-circle mr-2 text-green-600"></i>
+                  {successMessage}
                 </div>
-                
-                {(searchTerm || categoryFilter || tagFilter) && (
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
-                      Showing {filteredTemplates.length} of {templates.length} templates
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSearchTerm('');
-                        setCategoryFilter('');
-                        setTagFilter('');
-                      }}
-                      className="text-sm text-purple-600 hover:text-purple-800"
-                    >
-                      Clear filters
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              {isLoading ? (
-                <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 text-center">
-                  <LoadingSpinner size="lg" />
-                  <p className="text-gray-600 mt-4">Loading templates...</p>
+              )}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md flex items-center">
+                  <i className="fas fa-exclamation-circle mr-2 text-red-600"></i>
+                  {error}
                 </div>
-              ) : (
-                <TemplateTable
-                  templates={filteredTemplates}
-                  onEdit={handleEditTemplate}
-                  onDelete={handleDeleteTemplate}
-                  onPreview={handlePreviewTemplate}
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                />
               )}
             </div>
+          )}
+
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-file-alt text-blue-600"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Total Templates</p>
+                  <p className="text-xl font-semibold text-gray-900">{stats.totalTemplates}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-layer-group text-green-600"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Categories</p>
+                  <p className="text-xl font-semibold text-gray-900">{stats.categoriesCount}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-clock text-purple-600"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Recent Uploads</p>
+                  <p className="text-xl font-semibold text-gray-900">{stats.recentUploads}</p>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Search and Filters */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <i className="fas fa-search mr-2 text-blue-600"></i>
+              Search & Filter Templates
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <SearchBox
+                  placeholder="Search by name or tags..."
+                  value={searchTerm}
+                  onChange={(value) => setSearchTerm(value)}
+                  showFilters={false}
+                  size="md"
+                />
+              </div>
+              
+              <div>
+                <Dropdown
+                  label="Category"
+                  placeholder="All Categories"
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                  clearable
+                  options={availableCategories.map(category => ({ 
+                    label: category, 
+                    value: category,
+                    icon: <i className="fas fa-folder text-xs"></i>
+                  }))}
+                  icon={<i className="fas fa-layer-group text-xs"></i>}
+                />
+              </div>
+              
+              <div>
+                <Dropdown
+                  label="Tag"
+                  placeholder="All Tags"
+                  value={tagFilter}
+                  onChange={setTagFilter}
+                  clearable
+                  options={availableTags.map(tag => ({ 
+                    label: tag, 
+                    value: tag,
+                    icon: <i className="fas fa-tag text-xs"></i>
+                  }))}
+                  icon={<i className="fas fa-tags text-xs"></i>}
+                />
+              </div>
+            </div>
+            
+            {(searchTerm || categoryFilter || tagFilter) && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Showing {filteredTemplates.length} of {templates.length} templates
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCategoryFilter('');
+                    setTagFilter('');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Templates Table */}
+          {isLoading ? (
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-8 text-center">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600 mt-4">Loading templates...</p>
+            </div>
+          ) : (
+            <TemplateTable
+              templates={filteredTemplates}
+              onEdit={handleEditTemplate}
+              onDelete={handleDeleteTemplate}
+              onPreview={handlePreviewTemplate}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+            />
+          )}
         </div>
-      </div>
+      </AdminLayout>
       
+      {/* Floating Upload Template Panel */}
+      {isFloatingPanelOpen && createPortal(
+        <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ease-in-out ${
+          isFloatingPanelMinimized 
+            ? 'w-80 h-12' 
+            : 'w-96 h-auto max-h-[80vh]'
+        }`}>
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden">
+            {/* Panel Header */}
+            <div className="bg-purple-600 text-white px-4 py-3 flex items-center justify-between cursor-pointer"
+                 onClick={() => setIsFloatingPanelMinimized(!isFloatingPanelMinimized)}>
+              <div className="flex items-center">
+                <i className="fas fa-upload mr-2"></i>
+                <span className="font-medium text-sm">Upload New Template</span>
+                {newTemplateForm.name && (
+                  <span className="ml-2 text-blue-200 text-xs">
+                    - {newTemplateForm.name}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFloatingPanelMinimized(!isFloatingPanelMinimized);
+                  }}
+                  className="text-blue-200 hover:text-white p-1"
+                  title={isFloatingPanelMinimized ? "Restore" : "Minimize"}
+                >
+                  <i className={`fas fa-${isFloatingPanelMinimized ? 'window-maximize' : 'window-minimize'} text-xs`}></i>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFloatingPanelOpen(false);
+                    setIsFloatingPanelMinimized(false);
+                    // Reset form when closing
+                    setNewTemplateForm({
+                      name: '',
+                      category: '',
+                      newCategory: '',
+                      tags: '',
+                      file: null
+                    });
+                  }}
+                  className="text-blue-200 hover:text-white p-1"
+                  title="Close"
+                >
+                  <i className="fas fa-times text-xs"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Panel Content */}
+            {!isFloatingPanelMinimized && (
+              <div className="max-h-[calc(80vh-48px)] overflow-y-auto">
+                <UploadForm 
+                  onUploadSuccess={handleUploadSuccess}
+                  isUploading={isUploading}
+                  setIsUploading={setIsUploading}
+                  availableCategories={availableCategories}
+                  formData={newTemplateForm}
+                  setFormData={setNewTemplateForm}
+                  isFloatingPanel={true}
+                />
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Edit Modal */}
       {isEditModalOpen && selectedTemplate && (
         <EditModal
@@ -403,7 +510,7 @@ function ManageCertificates() {
           setPreviewTemplate(null);
         }}
       />
-    </AdminLayout>
+    </>
   );
 }
 
