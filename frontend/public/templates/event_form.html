@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{DOCUMENT_TITLE}}</title>
+    <style>
+        @page {
+            margin: 0.5in;
+            size: A4;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            background: white;
+        }
+        
+        .page-header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+        }
+        
+        .header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .page-header h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        
+        .event-id-header {
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        
+        .page-header h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            padding: 12px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #666;
+            padding-bottom: 3px;
+        }
+        
+        .field {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            border-bottom: 1px dotted #999;
+            padding-bottom: 3px;
+            align-items: flex-start;
+        }
+        
+        .field-label {
+            font-weight: bold;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .field-value {
+            flex: 1;
+            text-align: right;
+            word-wrap: break-word;
+        }
+        
+        .event-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .event-title {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .event-badges {
+            margin-top: 10px;
+        }
+        
+        .badge {
+            display: inline-block;
+            border: 1px solid #333;
+            padding: 2px 6px;
+            margin: 0 2px;
+            font-size: 9pt;
+        }
+        
+        .two-column {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .column {
+            flex: 1;
+        }
+        
+        .description-box {
+            border: 1px solid #333;
+            padding: 8px;
+            margin-top: 5px;
+            min-height: 40px;
+            text-align: left;
+        }
+        
+        .organizer-item {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px dotted #999;
+        }
+        
+        .organizer-name {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 2px;
+        }
+        
+        .organizer-details {
+            font-size: 9pt;
+            color: #333;
+        }
+        
+        .contact-item {
+            margin-bottom: 4px;
+            font-size: 10pt;
+        }
+        
+        .certificate-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e5e5;
+        }
+        
+        .certificate-title {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 11pt;
+        }
+        
+        .approval-section {
+            margin-top: 30px;
+            border: 2px solid #000;
+            padding: 15px;
+            page-break-inside: avoid;
+        }
+        
+        .checkbox-line {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        
+        .signature-box {
+            flex: 1;
+            border: 2px solid #000;
+            padding: 20px 10px 8px;
+            text-align: center;
+            min-height: 80px;
+        }
+        
+        .signature-line {
+            font-weight: bold;
+        }
+        
+        .comments-section {
+            margin-top: 15px;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+        
+        .comment-line {
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 8px;
+            min-height: 25px;
+        }
+        
+        .status-pending {
+            background: #fff;
+            border: 2px solid #000;
+            padding: 3px 8px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+            font-size: 9pt;
+        }
+        
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-flex">
+            <h1>CampusConnect Event Management System</h1>
+            <div class="event-id-header">Event ID: {{EVENT_ID}}</div>
+        </div>
+        {{HEADER_CONTENT}}
+    </div>
+
+    {{REQUEST_SUMMARY}}
+
+    <!-- Event Header -->
+    <div class="event-header">
+        <div class="event-title">{{EVENT_NAME}}</div>
+        <div class="event-badges">
+            {{EVENT_BADGES}}
+        </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="two-column">
+        <!-- Left Column -->
+        <div class="column">
+            <!-- Basic Information -->
+            <div class="section">
+                <div class="section-title">1. Basic Information</div>
+                <div class="field">
+                    <span class="field-label">Event Type:</span>
+                    <span class="field-value">{{EVENT_TYPE}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Target Audience:</span>
+                    <span class="field-value">{{TARGET_AUDIENCE}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Short Description:</span>
+                    <span class="field-value">{{SHORT_DESCRIPTION}}</span>
+                </div>
+                {{DETAILED_DESCRIPTION}}
+            </div>
+
+            <!-- Schedule -->
+            <div class="section">
+                <div class="section-title">2. Schedule</div>
+                <div class="field">
+                    <span class="field-label">Event Start:</span>
+                    <span class="field-value">{{EVENT_START}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Event End:</span>
+                    <span class="field-value">{{EVENT_END}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Registration Opens:</span>
+                    <span class="field-value">{{REGISTRATION_START}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Registration Closes:</span>
+                    <span class="field-value">{{REGISTRATION_END}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="column">
+            <!-- Venue Information -->
+            <div class="section">
+                <div class="section-title">3. Venue & Location</div>
+                <div class="field">
+                    <span class="field-label">Event Mode:</span>
+                    <span class="field-value">{{EVENT_MODE}}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">{{VENUE_LABEL}}:</span>
+                    <span class="field-value">{{VENUE}}</span>
+                </div>
+            </div>
+
+            <!-- Organizer & Contact Information -->
+            <div class="section">
+                <div class="section-title">4. Organizer & Contact Information</div>
+                <div class="field">
+                    <span class="field-label">Organizing Department:</span>
+                    <span class="field-value">{{ORGANIZING_DEPARTMENT}}</span>
+                </div>
+                
+                {{ORGANIZERS_SECTION}}
+                
+                {{CONTACTS_SECTION}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration & Certificate Details -->
+    <div class="section">
+        <div class="section-title">5. Registration & Certificate Details</div>
+        
+        <!-- Registration Settings -->
+        <div class="field">
+            <span class="field-label">Registration Type:</span>
+            <span class="field-value">{{REGISTRATION_TYPE}}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Registration Mode:</span>
+            <span class="field-value">{{REGISTRATION_MODE}}</span>
+        </div>
+        {{REGISTRATION_FEE}}
+        {{FEE_DESCRIPTION}}
+        <div class="field">
+            <span class="field-label">Minimum Participants:</span>
+            <span class="field-value">{{MIN_PARTICIPANTS}}</span>
+        </div>
+        {{MAX_PARTICIPANTS}}
+        {{TEAM_SETTINGS}}
+        
+        <!-- Certificate Information -->
+        <div class="certificate-section">
+            <div class="certificate-title">Certificate Details:</div>
+            <div class="field">
+                <span class="field-label">Certificate Template:</span>
+                <span class="field-value">{{CERTIFICATE_TEMPLATE}}</span>
+            </div>
+            <div class="field">
+                <span class="field-label">Certificate Status:</span>
+                <span class="field-value">{{CERTIFICATE_STATUS}}</span>
+            </div>
+            {{ADDITIONAL_ASSETS}}
+            <div class="field">
+                <span class="field-label">Certificate Available Until:</span>
+                <span class="field-value">{{CERTIFICATE_AVAILABILITY}}</span>
+            </div>
+        </div>
+    </div>
+
+    {{REQUIREMENTS_SECTION}}
+
+    {{REQUEST_SUBMITTED_SECTION}}
+
+    {{ADMINISTRATIVE_SECTION}}
+
+    <!-- Footer -->
+    <div class="footer">
+        {{FOOTER_CONTENT}}
+    </div>
+</body>
+</html>

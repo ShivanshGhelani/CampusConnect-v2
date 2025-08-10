@@ -1187,7 +1187,6 @@ function CreateEvent() {
         // Super Admin & Organizer Admin: Direct approval - no approval needed
         // Executive Admin: Requires approval
         status: user?.role === 'super_admin' || user?.role === 'organizer_admin' ? 'upcoming' : 'pending_approval',
-        approval_required: !(user?.role === 'super_admin' || user?.role === 'organizer_admin'),
         approval_required: user?.role !== 'super_admin' && user?.role !== 'organizer_admin'
       };
 
@@ -1235,9 +1234,28 @@ function CreateEvent() {
         }
         
         // All users go to the success page with different states
+        // Add display data for the success page
+        const displayEventData = {
+          ...eventData,
+          // Add organizer details for display
+          organizers: form.organizers.filter(org => org.selected && org.name.trim() !== ''),
+          // Add certificate template info for display  
+          certificate_template: form.certificate_template,
+          certificate_template_name: form.certificate_template?.name,
+          // Add other form fields that might be needed for display
+          prerequisites: form.prerequisites,
+          what_to_bring: form.what_to_bring,
+          target_outcomes: form.target_outcomes,
+          assets: form.assets
+        };
+
+        console.log('CreateEvent - Sending displayEventData:', displayEventData);
+        console.log('CreateEvent - Filtered organizers:', displayEventData.organizers);
+        console.log('CreateEvent - Certificate template:', displayEventData.certificate_template);
+
         navigate('/admin/events/created-success', {
           state: { 
-            eventData: eventData,
+            eventData: displayEventData,
             pendingApproval: pendingApproval,
             message: successMessage,
             userRole: user?.role
