@@ -33,10 +33,21 @@ const RegistrationSuccess = () => {
           setEvent(eventData);
 
           console.log('Registration status API response:', statusResponse.data);
-          console.log('Registration data structure:', JSON.stringify(statusResponse.data.registration_data, null, 2));
+          console.log('Registration data structure:', JSON.stringify(statusResponse.data.full_registration_data, null, 2));
 
           if (statusResponse.data.success && statusResponse.data.registered) {
-            const regData = statusResponse.data.registration_data;
+            const regData = statusResponse.data.full_registration_data;
+            
+            // Add the top-level fields to the registration data for compatibility
+            regData.registration_id = statusResponse.data.registration_id;
+            regData.registration_type = statusResponse.data.registration_type;
+            regData.registration_datetime = statusResponse.data.registration_datetime;
+            
+            // Flatten student_data to top level for frontend compatibility
+            if (regData.student_data) {
+              Object.assign(regData, regData.student_data);
+            }
+            
             console.log('=== BACKEND DATA CHECK ===');
             console.log('Leader department from backend:', regData.department);
             console.log('Team members from backend:', regData.team_members);

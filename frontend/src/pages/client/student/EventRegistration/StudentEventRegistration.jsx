@@ -5,7 +5,7 @@ import { clientAPI } from '../../../../api/client';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 // Phase 1 Integration: Validation & ID Generation
-import { validators, useValidation } from '../../../../utils/validators';
+import { validators, useValidation, validateForm } from '../../../../utils/validators';
 import { 
   generateTempRegistrationId, 
   generateTempTeamId, 
@@ -54,7 +54,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const [participantCount, setParticipantCount] = useState(0);
 
   // Phase 1 Integration: Validation & Session Management
-  const { validationErrors, validateForm, clearValidationError } = useValidation();
+  const { validationErrors, validateForm: validateHookForm, clearValidationError } = useValidation();
   const [sessionId, setSessionId] = useState(null);
   const [tempRegistrationId, setTempRegistrationId] = useState(null);
   const [tempTeamId, setTempTeamId] = useState(null);
@@ -340,13 +340,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       
       switch(field) {
         case 'enrollment_no':
-          validationResult = validators.enrollment(value);
+          validationResult = validators.enrollmentNumber(value);
           break;
         case 'email':
           validationResult = validators.email(value);
           break;
         case 'mobile_no':
-          validationResult = validators.phone(value);
+          validationResult = validators.mobileNumber(value);
           break;
         case 'full_name':
           validationResult = validators.required(value, 'Full name');
@@ -414,7 +414,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         validateParticipantEnrollment(participantId, value.trim());
       }, 500);
     } else if (field === 'email' && value && value.trim()) {
-      const emailValidation = validators.email(value);
+      const emailValidation = validators.validationResult.email(value);
       if (!emailValidation.isValid) {
         setFormData(prev => ({
           ...prev,
@@ -426,7 +426,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }));
       }
     } else if (field === 'mobile_no' && value && value.trim()) {
-      const phoneValidation = validators.phone(value);
+      const phoneValidation = validators.validationResult.phone(value);
       if (!phoneValidation.isValid) {
         setFormData(prev => ({
           ...prev,
@@ -462,8 +462,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       )
     }));
 
-    // Phase 1: Use frontend validation instead of API calls
-    const enrollmentValidation = validators.enrollment(enrollmentNo);
+    // Phase 1: Use frontend validation for format check
+    const enrollmentValidation = validators.validationResult.enrollment(enrollmentNo);
     if (!enrollmentValidation.isValid) {
       setFormData(prev => ({
         ...prev,
@@ -520,29 +520,70 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
       }
 
-      // Phase 1: Mark as valid for frontend-only validation
-      // Note: Backend will still validate during final submission
-      return {
+      // If format is valid and no duplicates, fetch student data from API
+      return prev;
+    });
+
+    // Fetch student data from API for auto-fill
+    try {
+      const response = await clientAPI.lookupStudent(enrollmentNo);
+      
+      if (response.data.success && response.data.found) {
+        const studentData = response.data.student_data;
+        
+        // Update participant with fetched data
+        setFormData(prev => ({
+          ...prev,
+          participants: prev.participants.map(p => 
+            p.id === participantId 
+              ? { 
+                  ...p, 
+                  isValidating: false, 
+                  isValid: true,
+                  validationError: '',
+                  // Auto-fill with fetched data
+                  full_name: studentData.full_name || '',
+                  email: studentData.email || '',
+                  mobile_no: studentData.mobile_no || '',
+                  department: studentData.department || '',
+                  semester: studentData.semester || '',
+                  year: studentData.semester ? calculateYear(studentData.semester) : ''
+                }
+              : p
+          )
+        }));
+      } else {
+        // Student not found in database
+        setFormData(prev => ({
+          ...prev,
+          participants: prev.participants.map(p => 
+            p.id === participantId 
+              ? { 
+                  ...p, 
+                  isValidating: false, 
+                  isValid: false,
+                  validationError: 'Student not found in database'
+                }
+              : p
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+      setFormData(prev => ({
         ...prev,
         participants: prev.participants.map(p => 
           p.id === participantId 
             ? { 
                 ...p, 
                 isValidating: false, 
-                isValid: true,
-                validationError: '',
-                // Temporary data - will be populated from user input
-                full_name: p.full_name || '',
-                email: p.email || '',
-                mobile_no: p.mobile_no || '',
-                department: p.department || '',
-                semester: p.semester || '',
-                year: p.semester ? calculateYear(p.semester) : ''
+                isValid: false,
+                validationError: 'Error validating enrollment number'
               }
             : p
         )
-      };
-    });
+      }));
+    }
   };
 
   // Add participant
@@ -604,18 +645,20 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     try {
       // Phase 1: Frontend validation before submission
       const formValidation = validateForm(formData, {
-        full_name: validators.required,
-        enrollment_no: validators.enrollment,
-        email: validators.email,
-        mobile_no: validators.phone,
-        department: validators.required,
-        semester: validators.required,
-        gender: validators.required,
-        date_of_birth: validators.required
+        full_name: ['required', 'name'],
+        enrollment_no: ['required', 'enrollmentNumber'],
+        email: ['required', 'email'],
+        mobile_no: ['required', 'mobileNumber'],
+        department: ['required'],
+        semester: ['required', 'semester'],
+        gender: ['required'],
+        date_of_birth: ['required', 'dateFormat']
       });
 
       if (!formValidation.isValid) {
-        throw new Error(`Validation failed: ${formValidation.errors.join(', ')}`);
+        const errors = formValidation.errors || {};
+        const errorMessages = Object.entries(errors).map(([field, error]) => `${field}: ${error}`);
+        throw new Error(`Validation failed: ${errorMessages.join(', ')}`);
       }
 
       // Validate required fields
@@ -665,7 +708,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         // Phase 1: Enhanced participant validation
         const invalidParticipants = validParticipants.filter(p => {
           // Check both frontend validation and enrollment format
-          const enrollmentValidation = validators.enrollment(p.enrollment_no);
+          const enrollmentValidation = validators.validationResult.enrollment(p.enrollment_no);
           return !p.isValid || !enrollmentValidation.isValid;
         });
         
@@ -683,8 +726,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }));
       }
 
-      // Submit registration
-      const response = await clientAPI.registerForEvent(eventId, registrationData);
+      // Submit registration using appropriate API method
+      let response;
+      if (isTeamRegistration) {
+        response = await clientAPI.registerTeam(eventId, registrationData);
+      } else {
+        response = await clientAPI.registerIndividual(eventId, registrationData);
+      }
       
       console.log('Registration API response:', response);
       

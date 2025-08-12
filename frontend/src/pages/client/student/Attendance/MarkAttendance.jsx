@@ -72,7 +72,18 @@ function MarkAttendance() {
         console.log('Registration response:', registrationResponse.data);
         
         if (registrationResponse.data.success && registrationResponse.data.registered) {
-          const regData = registrationResponse.data.registration_data;
+          const regData = registrationResponse.data.full_registration_data;
+          
+          // Add the top-level fields to the registration data for compatibility
+          regData.registration_id = registrationResponse.data.registration_id;
+          regData.registration_type = registrationResponse.data.registration_type;
+          regData.registration_datetime = registrationResponse.data.registration_datetime;
+          
+          // Flatten student_data to top level for frontend compatibility
+          if (regData.student_data) {
+            Object.assign(regData, regData.student_data);
+          }
+          
           registrationData = regData;
           setRegistration(regData);
           setAutoFilled(true);

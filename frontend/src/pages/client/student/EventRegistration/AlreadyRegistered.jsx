@@ -39,12 +39,24 @@ const AlreadyRegistered = () => {
         // Load registration details
         const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
         if (registrationResponse.data.registered) {
-          setRegistration(registrationResponse.data.registration_data);
+          const regData = registrationResponse.data.full_registration_data;
+          
+          // Add the top-level fields to the registration data for compatibility
+          regData.registration_id = registrationResponse.data.registration_id;
+          regData.registration_type = registrationResponse.data.registration_type;
+          regData.registration_datetime = registrationResponse.data.registration_datetime;
+          
+          // Flatten student_data to top level for frontend compatibility
+          if (regData.student_data) {
+            Object.assign(regData, regData.student_data);
+          }
+          
+          setRegistration(regData);
           
           // If team registration, load team info
-          if (registrationResponse.data.registration_data.registration_type === 'team' ||
-              registrationResponse.data.registration_data.registration_type === 'team_leader' ||
-              registrationResponse.data.registration_data.registration_type === 'team_participant') {
+          if (regData.registration_type === 'team' ||
+              regData.registration_type === 'team_leader' ||
+              regData.registration_type === 'team_participant') {
             try {
               const teamResponse = await clientAPI.getTeamDetails(eventId);
               setTeamInfo(teamResponse.data);

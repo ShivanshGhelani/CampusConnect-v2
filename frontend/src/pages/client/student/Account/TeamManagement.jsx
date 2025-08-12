@@ -51,7 +51,17 @@ const TeamManagement = () => {
       const response = await clientAPI.getTeamDetails(eventId);
       
       if (response.data.success && response.data.registered) {
-        const registrationData = response.data.registration_data;
+        const registrationData = response.data.full_registration_data;
+        
+        // Add the top-level fields to the registration data for compatibility
+        registrationData.registration_id = response.data.registration_id;
+        registrationData.registration_type = response.data.registration_type;
+        registrationData.registration_datetime = response.data.registration_datetime;
+        
+        // Flatten student_data to top level for frontend compatibility
+        if (registrationData.student_data) {
+          Object.assign(registrationData, registrationData.student_data);
+        }
         
         // Fetch full event details to get status and substatus information
         let eventData;

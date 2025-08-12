@@ -64,8 +64,13 @@ const CertificateDownload = () => {
         try {
           const teamResponse = await clientAPI.getTeamDetails(eventId);
           if (teamResponse.data.success && teamResponse.data.registered) {
+            const regData = teamResponse.data.full_registration_data;
+            // Flatten student_data to top level for frontend compatibility
+            if (regData.student_data) {
+              Object.assign(regData, regData.student_data);
+            }
             teamData = {
-              team_name: teamResponse.data.registration_data.team_name
+              team_name: regData.team_name
             };
           }
         } catch (teamError) {

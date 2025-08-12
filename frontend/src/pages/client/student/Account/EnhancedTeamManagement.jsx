@@ -51,7 +51,18 @@ const EnhancedTeamManagement = () => {
       const teamResponse = await clientAPI.getTeamDetails(eventId);
       
       if (teamResponse.data.success && teamResponse.data.registered) {
-        const teamInfo = teamResponse.data.registration_data;
+        const teamInfo = teamResponse.data.full_registration_data;
+        
+        // Add the top-level fields to the registration data for compatibility
+        teamInfo.registration_id = teamResponse.data.registration_id;
+        teamInfo.registration_type = teamResponse.data.registration_type;
+        teamInfo.registration_datetime = teamResponse.data.registration_datetime;
+        
+        // Flatten student_data to top level for frontend compatibility
+        if (teamInfo.student_data) {
+          Object.assign(teamInfo, teamInfo.student_data);
+        }
+        
         setTeamData(teamInfo);
         
         const teamId = teamInfo.team_registration_id || teamInfo.registration_id;

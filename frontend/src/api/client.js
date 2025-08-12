@@ -11,9 +11,14 @@ export const clientAPI = {
   // getUpcomingEvents: (filters) => api.get('/api/v1/client/events/upcoming', { params: filters }),
   
   // Registration - CORRECTED to match actual backend endpoints
-  registerIndividual: (eventId, registrationData) => api.post('/api/v1/client/registration/individual', { event_id: eventId, ...registrationData }),
-  registerTeam: (eventId, registrationData) => api.post('/api/v1/client/registration/team', { event_id: eventId, ...registrationData }),
+  registerIndividual: (eventId, registrationData) => api.post(`/api/v1/client/registration/register/${eventId}`, { registration_type: 'individual', ...registrationData }),
+  registerTeam: (eventId, registrationData) => api.post(`/api/v1/client/registration/register/${eventId}`, { registration_type: 'team', ...registrationData }),
   getRegistrationStatus: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
+  lookupStudent: (enrollmentNo) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}`),
+  validateParticipant: (enrollmentNo, eventId, teamId) => api.get(`/api/v1/client/registration/validate-participant`, { params: { enrollment_no: enrollmentNo } }),
+  addTeamParticipant: (eventId, teamId, enrollmentNo) => api.post('/api/v1/client/registration/add-team-member', { event_id: eventId, team_id: teamId, enrollment_no: enrollmentNo }),
+  removeTeamParticipant: (eventId, teamId, enrollmentNo) => api.post('/api/v1/client/registration/remove-team-member', { event_id: eventId, team_id: teamId, enrollment_no: enrollmentNo }),
+  cancelRegistration: (eventId) => api.post(`/api/v1/client/registration/cancel/${eventId}`),
   // NOTE: Many validation endpoints removed in optimization
   
   // Attendance - CORRECTED
@@ -30,12 +35,12 @@ export const clientAPI = {
   // NOTE: Certificate generation moved to frontend, only email sending uses backend
   
   // Profile - CORRECTED to match actual backend endpoints  
-  getProfile: () => api.get('/api/v1/client/profile/dashboard'),
+  getProfile: () => api.get('/api/v1/client/profile/dashboard-stats'),
   updateProfile: (profileData) => api.put('/api/v1/client/profile/update', profileData),
   getMyRegistrations: (filters) => api.get('/api/v1/client/events/my-registrations', { params: filters }),
   
-  // Advanced Team Management (using existing optimized endpoints with team parameters)
-  getTeamDetails: (teamId) => api.get('/api/v1/client/registration/status/team', { params: { team_id: teamId } }),
+  // Advanced Team Management (using registration status endpoint)
+  getTeamDetails: (eventId) => api.get(`/api/v1/client/registration/status/${eventId}`),
   getTeamMembers: (teamId) => api.get('/api/v1/client/registration/status/team', { params: { team_id: teamId, details: 'members' } }),
   updateTeamInformation: (teamId, teamData) => api.put('/api/v1/client/registration/team', { team_id: teamId, ...teamData }),
   leaveTeam: (teamId) => api.delete(`/api/v1/client/registration/team/leave`, { data: { team_id: teamId } }),
@@ -52,7 +57,7 @@ export const clientAPI = {
   }),
   
   // Notification Management (using existing optimized backend endpoints)
-  getMyNotifications: (filters) => api.get('/api/v1/client/profile/dashboard', { params: { ...filters, include: 'notifications' } }),
+  getMyNotifications: (filters) => api.get('/api/v1/client/profile/dashboard-stats', { params: { ...filters, include: 'notifications' } }),
   markNotificationRead: (notificationId) => api.put('/api/v1/client/profile/update', { 
     action: 'mark_notification_read', 
     notification_id: notificationId 

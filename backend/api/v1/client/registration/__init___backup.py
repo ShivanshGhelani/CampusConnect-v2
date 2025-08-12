@@ -1,37 +1,18 @@
 """
-Client Registration API - Updated to use Normalized Storage
+Client Registration API
 Handles event registration validation and API endpoints for students
-Eliminates data duplication between student.event_participations and event.registrations
 """
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict
-from bson import ObjectId
+from datetime import datetime
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
 from database.operations import DatabaseOperations
 from core.id_generator import generate_registration_id, generate_team_registration_id
-from .normalized_registration import NormalizedRegistrationService
+from utils.timezone_helper import get_current_ist, ist_to_utc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-def serialize_mongo_data(data: Any) -> Any:
-    """
-    Recursively convert MongoDB data to JSON-serializable format
-    Handles ObjectId, datetime, and other non-serializable types
-    """
-    if isinstance(data, ObjectId):
-        return str(data)
-    elif isinstance(data, datetime):
-        return data.isoformat()
-    elif isinstance(data, dict):
-        return {key: serialize_mongo_data(value) for key, value in data.items()}
-    elif isinstance(data, list):
-        return [serialize_mongo_data(item) for item in data]
-    else:
-        return data
 
 @router.post("/register/{event_id}")
 async def register_for_event(
@@ -39,11 +20,7 @@ async def register_for_event(
     request: Request,
     student: Student = Depends(require_student_login)
 ):
-    """
-    Register a student for an event using normalized storage
-    - Full data stored in event.registrations (primary source)
-    - Reference data stored in student.event_participations (minimal metadata)
-    """
+    """Register a student for an event"""
     try:
         # Get registration data from request
         data = await request.json()
@@ -52,303 +29,6 @@ async def register_for_event(
         event = await DatabaseOperations.find_one("events", {"event_id": event_id})
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
-        
-        # Check if event is accepting registrations
-        if event.get("status") != "upcoming":
-            raise HTTPException(status_code=400, detail="Event is not accepting registrations")
-        
-        # Check if student is already registered
-        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
-        if not student_data:
-            raise HTTPException(status_code=404, detail="Student not found")
-        
-        event_participations = student_data.get('event_participations', {})
-        if event_id in event_participations:
-            raise HTTPException(status_code=400, detail="Already registered for this event")
-        
-        # Determine registration type
-        registration_type = data.get('registration_type', 'individual')
-        
-        if registration_type == 'individual':
-            result = await NormalizedRegistrationService.register_individual(
-                student=student,
-                event_id=event_id,
-                registration_data=data
-            )
-        
-        elif registration_type == 'team':
-            team_name = data.get('team_name')
-            team_members = data.get('team_members', [])
-            
-            if not team_name:
-                raise HTTPException(status_code=400, detail="Team name is required for team registration")
-            
-            if not team_members:
-                raise HTTPException(status_code=400, detail="Team members are required for team registration")
-            
-            result = await NormalizedRegistrationService.register_team(
-                leader=student,
-                event_id=event_id,
-                team_name=team_name,
-                team_members=team_members,
-                registration_data=data
-            )
-        
-        else:
-            raise HTTPException(status_code=400, detail="Invalid registration type")
-        
-        return {
-            "success": True,
-            "message": "Registration successful",
-            "registration_id": result.get("registration_id") or result.get("leader_registration_id"),
-            "data": result
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Registration error: {e}")
-        raise HTTPException(status_code=500, detail="Registration failed")
-
-
-@router.get("/my-registrations")
-async def get_my_registrations(
-    student: Student = Depends(require_student_login)
-):
-    """
-    Get student's registrations using normalized storage
-    Returns reference data from student.event_participations with option to resolve full data
-    """
-    try:
-        # Get student's registration references
-        registrations = await NormalizedRegistrationService.get_student_registrations(
-            student.enrollment_no
-        )
-        
-        # Optionally resolve full data for each registration
-        enriched_registrations = {}
-        
-        for event_id, reference_data in registrations.items():
-            if reference_data and "registration_id" in reference_data:
-                # Get event basic info
-                event = await DatabaseOperations.find_one(
-                    "events",
-                    {"event_id": event_id},
-                    {"event_name": 1, "event_date": 1, "event_time": 1, "venue": 1, "status": 1}
-                )
-                
-                enriched_registrations[event_id] = {
-                    **reference_data,
-                    "event_info": event
-                }
-        
-        return serialize_mongo_data({
-            "success": True,
-            "registrations": enriched_registrations
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting registrations: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get registrations")
-
-
-@router.get("/registration/{registration_id}/details")
-async def get_registration_details(
-    registration_id: str,
-    student: Student = Depends(require_student_login)
-):
-    """
-    Get full registration details from primary source (event.registrations)
-    """
-    try:
-        # First verify the registration belongs to this student
-        student_registrations = await NormalizedRegistrationService.get_student_registrations(
-            student.enrollment_no
-        )
-        
-        # Find which event this registration belongs to
-        event_id = None
-        for eid, ref_data in student_registrations.items():
-            if ref_data.get("registration_id") == registration_id:
-                event_id = eid
-                break
-        
-        if not event_id:
-            raise HTTPException(status_code=404, detail="Registration not found or not authorized")
-        
-        # Get full registration data from primary source
-        full_data = await NormalizedRegistrationService.get_full_registration_data(
-            registration_id, event_id
-        )
-        
-        if not full_data:
-            raise HTTPException(status_code=404, detail="Registration details not found")
-        
-        # Get event info
-        event = await DatabaseOperations.find_one(
-            "events",
-            {"event_id": event_id},
-            {"event_name": 1, "event_date": 1, "event_time": 1, "venue": 1, "status": 1}
-        )
-        
-        return serialize_mongo_data({
-            "success": True,
-            "registration": full_data,
-            "event": event
-        })
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting registration details: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get registration details")
-
-
-# Backward compatibility endpoints and other existing functionality below...
-# We'll add the remaining endpoints from the original file here to maintain compatibility
-
-@router.get("/validate")
-async def validate_registration_api(
-    request: Request, 
-    registration_id: str, 
-    event_id: str, 
-    student: Student = Depends(require_student_login)
-):
-    """API endpoint to validate registration ID and return student details for auto-filling"""
-    try:
-        # Get student data using normalized storage
-        student_registrations = await NormalizedRegistrationService.get_student_registrations(
-            student.enrollment_no
-        )
-        
-        # Check if student is registered for this event
-        if event_id not in student_registrations:
-            return {"success": False, "message": "You are not registered for this event"}
-        
-        # Get registration reference data
-        reference_data = student_registrations[event_id]
-        student_registration_id = reference_data.get('registration_id')
-        
-        # Verify registration_id matches
-        if not student_registration_id:
-            return {"success": False, "message": "Registration ID not found for this event"}
-        
-        if registration_id.upper() != student_registration_id.upper():
-            return {
-                "success": False, 
-                "message": f"Invalid registration ID. Your registration ID is: {student_registration_id}"
-            }
-        
-        # Get full registration data from primary source
-        full_data = await NormalizedRegistrationService.get_full_registration_data(
-            student_registration_id, event_id
-        )
-        
-        if not full_data:
-            return {"success": False, "message": "Registration details not found"}
-        
-        # Return validated student details for auto-filling
-        student_data = full_data.get('student_data', {})
-        return {
-            "success": True,
-            "message": "Registration ID validated successfully",
-            "student_data": {
-                "full_name": student_data.get('full_name', ''),
-                "enrollment_no": student_data.get('enrollment_no', ''),
-                "email": student_data.get('email', ''),
-                "mobile_no": student_data.get('mobile_no', ''),
-                "department": student_data.get('department', ''),
-                "semester": student_data.get('semester', ''),
-                "registration_id": student_registration_id,
-                "registration_type": reference_data.get('registration_type', 'individual')
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in validate_registration_api: {str(e)}")
-        return {"success": False, "message": "Validation failed"}
-
-
-@router.get("/status/{event_id}")
-async def get_registration_status(
-    event_id: str,
-    student: Student = Depends(require_student_login)
-):
-    """Get registration status for an event using normalized storage"""
-    try:
-        # Get student's registration references
-        student_registrations = await NormalizedRegistrationService.get_student_registrations(
-            student.enrollment_no
-        )
-        
-        # Check if registered for this event
-        if event_id not in student_registrations:
-            return {
-                "success": True,
-                "registered": False,
-                "message": "Not registered for this event"
-            }
-        
-        # Get registration reference data
-        reference_data = student_registrations[event_id]
-        registration_id = reference_data.get('registration_id')
-        
-        # Get full registration data
-        full_data = await NormalizedRegistrationService.get_full_registration_data(
-            registration_id, event_id
-        )
-        
-        if not full_data:
-            return {
-                "success": True,
-                "registered": False,
-                "message": "Registration data not found"
-            }
-        
-        # Get event info
-        event = await DatabaseOperations.find_one(
-            "events",
-            {"event_id": event_id},
-            {"event_name": 1, "event_date": 1, "event_time": 1, "venue": 1, "status": 1}
-        )
-        
-        # Serialize all data to avoid ObjectId serialization issues
-        return serialize_mongo_data({
-            "success": True,
-            "registered": True,
-            "registration_id": registration_id,
-            "registration_type": reference_data.get('registration_type', 'individual'),
-            "registration_datetime": reference_data.get('registration_datetime'),
-            "event": event,
-            "full_registration_data": full_data
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting registration status: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get registration status")
-
-
-# Migration endpoint for testing
-@router.post("/migrate-to-normalized")
-async def migrate_registrations_to_normalized():
-    """
-    Migration endpoint to convert existing duplicated data to normalized format
-    This should be run once to eliminate data duplication
-    """
-    try:
-        from .normalized_registration import migrate_existing_registrations
-        
-        migration_count = await migrate_existing_registrations()
-        
-        return {
-            "success": True,
-            "message": f"Migration completed successfully",
-            "migrated_count": migration_count
-        }
-        
-    except Exception as e:
-        logger.error(f"Migration error: {e}")
-        raise HTTPException(status_code=500, detail="Migration failed")
         
         # Check if registration is open
         if event.get('status') != 'upcoming' or event.get('sub_status') != 'registration_open':
@@ -947,7 +627,96 @@ async def get_pending_team_requests(student: Student = Depends(require_student_l
         logger.error(f"Error getting pending team requests: {str(e)}")
         return {"success": False, "message": f"Error getting pending requests: {str(e)}"}
 
-# Removed duplicate status endpoint - using normalized version above
+@router.get("/status/{event_id}")
+async def get_registration_status(event_id: str, student: Student = Depends(require_student_login)):
+    """Get registration status for a specific event"""
+    try:
+        # Get event data which contains the registrations
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if not event:
+            return {"success": False, "message": "Event not found"}
+        
+        # Check if registrations exist for this event
+        registrations = event.get('registrations', {})
+        
+        # Find registration for current student
+        student_registration = None
+        registration_id = None
+        
+        for reg_id, reg_data in registrations.items():
+            # Check if this registration belongs to the current student
+            student_data = reg_data.get('student_data', {})
+            if student_data.get('enrollment_no') == student.enrollment_no:
+                student_registration = reg_data
+                registration_id = reg_id
+                break
+        
+        if not student_registration:
+            return {
+                "success": True,
+                "registered": False,
+                "message": "Not registered for this event"
+            }
+        
+        # Get team members with complete data if it's a team registration
+        team_members_with_data = []
+        if student_registration.get('registration_type') == 'team':
+            team_members = student_registration.get('student_data', {}).get('team_members', [])
+            for member in team_members:
+                member_enrollment = member.get('enrollment_no')
+                if member_enrollment:
+                    # Get complete student data for team member from students collection
+                    member_student_data = await DatabaseOperations.find_one("students", {"enrollment_no": member_enrollment})
+                    if member_student_data:
+                        team_members_with_data.append({
+                            "enrollment_no": member_enrollment,
+                            "full_name": member_student_data.get('full_name', member.get('name', 'N/A')),
+                            "name": member_student_data.get('full_name', member.get('name', 'N/A')),  # Alias
+                            "department": member_student_data.get('department', 'N/A'),
+                            "semester": member_student_data.get('semester', 'N/A'),
+                            "email": member_student_data.get('email', member.get('email', 'N/A')),
+                            "mobile_no": member_student_data.get('mobile_no', member.get('mobile_no', 'N/A'))
+                        })
+                    else:
+                        # Fallback to stored data if student not found
+                        team_members_with_data.append({
+                            "enrollment_no": member_enrollment,
+                            "full_name": member.get('name', 'N/A'),
+                            "name": member.get('name', 'N/A'),
+                            "department": "N/A",  # Not available in stored data
+                            "semester": "N/A",
+                            "email": member.get('email', 'N/A'),
+                            "mobile_no": member.get('mobile_no', 'N/A')
+                        })
+
+        # Extract student data from the registration
+        reg_student_data = student_registration.get('student_data', {})
+
+        return {
+            "success": True,
+            "registered": True,
+            "registration_data": {
+                "registration_id": student_registration.get('registration_id'),
+                "registrar_id": student_registration.get('registration_id'),  # Alias for backward compatibility
+                "registration_type": student_registration.get('registration_type', 'individual'),
+                "registration_datetime": student_registration.get('registration_datetime'),
+                "team_name": reg_student_data.get('team_name'),
+                "team_registration_id": student_registration.get('team_registration_id'),
+                "team_members": team_members_with_data,  # Complete team member data with departments
+                # Leader data (current student) from the registration
+                "full_name": reg_student_data.get('full_name'),
+                "enrollment_no": reg_student_data.get('enrollment_no'),
+                "department": reg_student_data.get('department'),  # This should be available in stored registration
+                "semester": reg_student_data.get('semester'),
+                "email": reg_student_data.get('email'),
+                "mobile_no": reg_student_data.get('mobile_no'),
+                "payment_status": "free"  # Default value, can be updated based on event requirements
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting registration status: {str(e)}")
+        return {"success": False, "message": f"Error getting registration status: {str(e)}"}
 
 @router.post("/cancel/{event_id}")
 async def cancel_registration(event_id: str, student: Student = Depends(require_student_login)):
@@ -1127,7 +896,7 @@ async def add_team_member(
         for reg_id, reg_data in registrations.items():
             student_data = reg_data.get('student_data', {})
             if (student_data.get('enrollment_no') == student.enrollment_no and 
-                reg_data.get('registration_type') in ['team', 'team_leader']):
+                reg_data.get('registration_type') == 'team'):
                 team_registration = reg_data
                 team_reg_id = reg_id
                 team_registration_id = reg_data.get('team_registration_id')
@@ -1309,7 +1078,7 @@ async def remove_team_member(
         for reg_id, reg_data in registrations.items():
             student_data = reg_data.get('student_data', {})
             if (student_data.get('enrollment_no') == student.enrollment_no and 
-                reg_data.get('registration_type') in ['team', 'team_leader']):
+                reg_data.get('registration_type') == 'team'):
                 team_registration = reg_data
                 team_reg_id = reg_id
                 break
@@ -1418,46 +1187,3 @@ async def remove_team_member(
     except Exception as e:
         logger.error(f"Error removing team member: {str(e)}")
         return {"success": False, "message": f"Error removing team member: {str(e)}"}
-
-@router.get("/lookup/student/{enrollment_no}")
-async def lookup_student_details(
-    enrollment_no: str,
-    student: Student = Depends(require_student_login)
-):
-    """
-    Look up student details by enrollment number for auto-fill functionality
-    Returns basic student information for team registration forms
-    """
-    try:
-        # Find student in database
-        student_data = await DatabaseOperations.find_one(
-            "students",
-            {"enrollment_no": enrollment_no.upper()}
-        )
-        
-        if not student_data:
-            return {
-                "success": False,
-                "found": False,
-                "message": "Student not found"
-            }
-        
-        # Return basic student information (excluding sensitive data)
-        return serialize_mongo_data({
-            "success": True,
-            "found": True,
-            "student_data": {
-                "full_name": student_data.get("full_name"),
-                "enrollment_no": student_data.get("enrollment_no"),
-                "email": student_data.get("email"),
-                "mobile_no": student_data.get("mobile_no"),
-                "department": student_data.get("department"),
-                "semester": student_data.get("semester"),
-                "gender": student_data.get("gender"),
-                "date_of_birth": student_data.get("date_of_birth")
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Error looking up student {enrollment_no}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to lookup student details")

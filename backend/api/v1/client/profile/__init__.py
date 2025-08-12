@@ -778,7 +778,7 @@ async def get_team_info(
         # Find the team leader's registration to get team name
         for reg_id, reg_data in registrations.items():
             if (reg_data and 
-                reg_data.get('registration_type') == 'team' and
+                reg_data.get('registration_type') in ['team', 'team_leader'] and
                 reg_data.get('team_registration_id') == team_id):
                 team_registration = reg_data
                 team_leader_data = reg_data.get('student_data', {})
@@ -795,6 +795,18 @@ async def get_team_info(
         # Get all team members from the leader's team_members array
         team_members_array = team_leader_data.get('team_members', [])
         logger.info(f"Found {len(team_members_array)} team members in array")
+        
+        # Also get team members from separate registrations (normalized structure)
+        separate_team_members = []
+        for reg_id, reg_data in registrations.items():
+            if (reg_data and 
+                reg_data.get('registration_type') == 'team_member' and
+                reg_data.get('team_registration_id') == team_id):
+                separate_team_members.append({
+                    "reg_id": reg_id,
+                    "data": reg_data
+                })
+        logger.info(f"Found {len(separate_team_members)} team members as separate registrations")
         
         # Build complete team member list including leader
         team_members = []
@@ -863,6 +875,37 @@ async def get_team_info(
                     }
                 }
                 team_members.append(member_info)
+        
+        # Add team members from separate registrations (normalized structure)
+        for member_reg in separate_team_members:
+            reg_data = member_reg["data"]
+            student_data = reg_data.get("student_data", {})
+            
+            member_info = {
+                "enrollment_no": student_data.get("enrollment_no", "Unknown"),
+                "full_name": student_data.get("full_name", "Unknown"),
+                "registration_id": reg_data.get("registration_id", member_reg["reg_id"]),
+                "registration_type": "team_member",
+                "team_registration_id": team_id,
+                "email": student_data.get("email", ""),
+                "phone": student_data.get("mobile_no", ""),
+                "course": student_data.get("department", ""),
+                "semester": student_data.get("semester", ""),
+                "attendance": {
+                    "marked": False,
+                    "attendance_id": None,
+                    "attendance_date": None
+                },
+                "feedback": {
+                    "submitted": False,
+                    "feedback_id": None
+                },
+                "certificate": {
+                    "earned": False,
+                    "certificate_id": None
+                }
+            }
+            team_members.append(member_info)
         
         response = {
             "success": True,

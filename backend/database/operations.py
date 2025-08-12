@@ -5,20 +5,20 @@ import json
 
 class DatabaseOperations:
     @classmethod
-    async def find_one(cls, collection_name: str, query: Dict, db_name: str = "CampusConnect") -> Optional[Dict]:
+    async def find_one(cls, collection_name: str, query: Dict, projection: Optional[Dict] = None, db_name: str = "CampusConnect") -> Optional[Dict]:
         """Find a single document in the specified collection"""
         db = await Database.get_database(db_name)
         if db is None:
             return None
-        return await db[collection_name].find_one(query)
+        return await db[collection_name].find_one(query, projection)
 
     @classmethod
-    async def find_many(cls, collection_name: str, query: Dict = {}, limit: int = 0, skip: int = 0, sort_by: Optional[List] = None, db_name: str = "CampusConnect") -> List[Dict]:
+    async def find_many(cls, collection_name: str, query: Dict = {}, projection: Optional[Dict] = None, limit: int = 0, skip: int = 0, sort_by: Optional[List] = None, db_name: str = "CampusConnect") -> List[Dict]:
         """Find multiple documents in the specified collection"""
         db = await Database.get_database(db_name)
         if db is None:
             return []
-        cursor = db[collection_name].find(query)
+        cursor = db[collection_name].find(query, projection)
         
         if sort_by:
             cursor = cursor.sort(sort_by)
@@ -64,6 +64,15 @@ class DatabaseOperations:
             return False
         result = await db[collection_name].delete_one(query)
         return result.deleted_count > 0
+
+    @classmethod
+    async def delete_many(cls, collection_name: str, query: Dict, db_name: str = "CampusConnect") -> int:
+        """Delete multiple documents from the specified collection"""
+        db = await Database.get_database(db_name)
+        if db is None:
+            return 0
+        result = await db[collection_name].delete_many(query)
+        return result.deleted_count
 
     @classmethod
     async def find_by_id(cls, collection_name: str, document_id: ObjectId, db_name: str = "CampusConnect") -> Optional[Dict]:

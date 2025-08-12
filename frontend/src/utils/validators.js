@@ -197,6 +197,33 @@ export const validators = {
   documentFile: (file) => {
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     return validators.fileType(file, allowedTypes) && validators.fileSize(file, 10);
+  },
+
+  // Validation result wrappers for compatibility with components expecting {isValid, message} format
+  validationResult: {
+    enrollment: (value) => {
+      const isValid = validators.enrollmentNumber(value);
+      return {
+        isValid,
+        message: isValid ? '' : ERROR_MESSAGES.ENROLLMENT_NUMBER
+      };
+    },
+    
+    email: (value) => {
+      const isValid = validators.email(value);
+      return {
+        isValid,
+        message: isValid ? '' : ERROR_MESSAGES.EMAIL
+      };
+    },
+    
+    phone: (value) => {
+      const isValid = validators.mobileNumber(value);
+      return {
+        isValid,
+        message: isValid ? '' : ERROR_MESSAGES.MOBILE_NUMBER
+      };
+    }
   }
 };
 
@@ -249,11 +276,11 @@ export const validateForm = (formData, validationRules) => {
  * Returns validation state and helper functions
  */
 export const useValidation = (initialData = {}, validationRules = {}) => {
-  const [data, setData] = React.useState(initialData);
-  const [errors, setErrors] = React.useState({});
-  const [touched, setTouched] = React.useState({});
+  const [data, setData] = useState(initialData);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
-  const validateField = React.useCallback((fieldName, value) => {
+  const validateField = useCallback((fieldName, value) => {
     const rules = validationRules[fieldName];
     if (!rules) return true;
 
@@ -285,7 +312,7 @@ export const useValidation = (initialData = {}, validationRules = {}) => {
     return true;
   }, [validationRules]);
 
-  const handleChange = React.useCallback((fieldName, value) => {
+  const handleChange = useCallback((fieldName, value) => {
     setData(prev => ({ ...prev, [fieldName]: value }));
     
     if (touched[fieldName]) {
@@ -293,26 +320,43 @@ export const useValidation = (initialData = {}, validationRules = {}) => {
     }
   }, [touched, validateField]);
 
-  const handleBlur = React.useCallback((fieldName) => {
+  const handleBlur = useCallback((fieldName) => {
     setTouched(prev => ({ ...prev, [fieldName]: true }));
     validateField(fieldName, data[fieldName]);
   }, [data, validateField]);
 
-  const validateAll = React.useCallback(() => {
+  const validateAll = useCallback(() => {
     const { isValid, errors: allErrors } = validateForm(data, validationRules);
     setErrors(allErrors);
     setTouched(Object.keys(validationRules).reduce((acc, key) => ({ ...acc, [key]: true }), {}));
     return isValid;
   }, [data, validationRules]);
 
+  const clearValidationError = useCallback((fieldName) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[fieldName];
+      return newErrors;
+    });
+  }, []);
+
+  const clearAllErrors = useCallback(() => {
+    setErrors({});
+    setTouched({});
+  }, []);
+
   return {
     data,
     errors,
+    validationErrors: errors, // Alias for backward compatibility
     touched,
     handleChange,
     handleBlur,
     validateField,
     validateAll,
+    validateForm: validateAll, // Alias for backward compatibility
+    clearValidationError,
+    clearAllErrors,
     isValid: Object.keys(errors).length === 0,
     hasErrors: Object.keys(errors).length > 0
   };

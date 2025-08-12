@@ -355,7 +355,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       full_name: validators.required,
       faculty_id: validators.faculty,
       email: validators.email,
-      mobile_no: validators.phone,
+      mobile_no: validators.mobileNumber,
       department: validators.required,
       designation: validators.required,
       gender: validators.required,
