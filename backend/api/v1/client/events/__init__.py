@@ -101,9 +101,14 @@ async def get_events_list(
                 event for event in events 
                 if event.get('target_audience') in [user_type, 'both']
             ]
+            logger.info(f"Filtered events for logged-in {user_type}: {len(events)} events")
         else:
-            # For non-logged in users, show all events
-            pass
+            # For non-logged in users, show only student events (public events)
+            events = [
+                event for event in events 
+                if event.get('target_audience') == 'student'
+            ]
+            logger.info(f"Filtered events for non-logged users (student events only): {len(events)} events")
         
         # Filter by category if specified
         if category:
@@ -277,9 +282,9 @@ async def search_events(
     category: str = Query(None, description="Filter by event category"),
     page: int = Query(1, description="Page number for pagination"),
     limit: int = Query(10, description="Number of events per page"),
-    student: Student = Depends(get_current_student_optional)
+    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Search events by name, description, or category"""
+    """Search events by name, description, or category with target audience filtering"""
     try:
         if not q or len(q.strip()) < 2:
             return {"success": False, "message": "Search query must be at least 2 characters long"}
@@ -289,6 +294,20 @@ async def search_events(
             events = await EventStatusManager.get_available_events("all")
         else:
             events = await EventStatusManager.get_available_events(status)
+        
+        # Filter by target audience based on current user type
+        if current_user:
+            user_type = "student" if isinstance(current_user, Student) else "faculty"
+            events = [
+                event for event in events 
+                if event.get('target_audience') in [user_type, 'both']
+            ]
+        else:
+            # For non-logged in users, show only student events (public events)
+            events = [
+                event for event in events 
+                if event.get('target_audience') == 'student'
+            ]
         
         # Search in event name, description, and category
         search_query = q.lower().strip()
@@ -312,8 +331,8 @@ async def search_events(
             ]
         
         # Add registration status for logged-in students
-        if student:
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if current_user and isinstance(current_user, Student):
+            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
             if student_data:
                 event_participations = student_data.get('event_participations', {})
                 for event in matching_events:
@@ -359,12 +378,28 @@ async def search_events(
 @router.get("/upcoming")
 async def get_upcoming_events(
     limit: int = Query(5, description="Number of upcoming events to retrieve"),
-    student: Student = Depends(get_current_student_optional)
+    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Get upcoming events (quick access endpoint)"""
+    """Get upcoming events (quick access endpoint) with target audience filtering"""
     try:
         # Get upcoming events
         events = await EventStatusManager.get_available_events("upcoming")
+        
+        # Filter by target audience based on current user type
+        if current_user:
+            user_type = "student" if isinstance(current_user, Student) else "faculty"
+            events = [
+                event for event in events 
+                if event.get('target_audience') in [user_type, 'both']
+            ]
+            logger.info(f"Filtered upcoming events for logged-in {user_type}: {len(events)} events")
+        else:
+            # For non-logged in users, show only student events (public events)
+            events = [
+                event for event in events 
+                if event.get('target_audience') == 'student'
+            ]
+            logger.info(f"Filtered upcoming events for non-logged users (student events only): {len(events)} events")
         
         # Sort by start date
         events.sort(key=lambda x: x.get('start_datetime', ''))
@@ -372,9 +407,9 @@ async def get_upcoming_events(
         # Limit results
         limited_events = events[:limit]
         
-        # Add registration status for logged-in students
-        if student:
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        # Add registration status for logged-in users
+        if current_user and isinstance(current_user, Student):
+            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
             if student_data:
                 event_participations = student_data.get('event_participations', {})
                 for event in limited_events:

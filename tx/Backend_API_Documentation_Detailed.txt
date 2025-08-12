@@ -1,10 +1,10 @@
 =====================================================================
 CAMPUSCONNECT BACKEND - DETAILED API DOCUMENTATION (FINAL)
 =====================================================================
-Generated: August 9, 2025
-Backend Version: Production v2.1
+Generated: August 12, 2025
+Backend Version: Production v2.2 - Enhanced Dashboard Integration
 Total Active APIs: 62 Endpoints
-Status: Production Ready & Fully Deployed
+Status: Production Ready & Fully Deployed with Real-Time Analytics
 
 =====================================================================
 📋 API SYSTEM OVERVIEW
@@ -15,20 +15,30 @@ API VERSION: v1
 ARCHITECTURE: RESTful API with FastAPI framework
 AUTHENTICATION: JWT Tokens + Session-based (Hybrid)
 DATA FORMAT: JSON
-OPTIMIZATION LEVEL: Fully optimized (Phase 1-4 complete)
+OPTIMIZATION LEVEL: Fully optimized with Real-Time Analytics (Phase 1-5 complete)
 
 SYSTEM ARCHITECTURE:
 • Main Router: /api/v1/ (unified API base)
 • Sub-modules: auth, client, admin, unified-organizer
-• Frontend Integration: React with Axios
+• Frontend Integration: React with Axios + Redis Caching
 • Database: MongoDB with connection pooling
-• Cache Layer: Redis (optional fallback)
+• Cache Layer: Redis with TTL management and invalidation system
+• Real-Time Analytics: Dynamic Event Scheduler Integration
 
 OPTIMIZATION ACHIEVEMENTS:
 • Original API Count: 118+ endpoints
 • Current API Count: 62 endpoints  
 • Reduction Achieved: 47% optimization with enhanced functionality
 • Performance Improvement: 200%+
+• NEW: Multi-layer caching system (Redis + localStorage)
+• NEW: Real-time scheduler data integration
+
+LATEST ENHANCEMENTS (August 12, 2025):
+• Enhanced Dashboard Analytics with Real-Time Scheduler Data
+• Multi-Layer Caching System (Redis Backend + localStorage Frontend)
+• Dynamic Filter System with Client-Side Processing
+• Cache Invalidation System for Data Consistency
+• Real Trigger Queue and Recent Activity Integration
 
 =====================================================================
 🔐 AUTHENTICATION SYSTEM APIS (15 ENDPOINTS)
@@ -284,17 +294,115 @@ METHOD: PUT
 AUTHENTICATION: Admin role, organizer access check
 DESCRIPTION: Updates event with timezone conversion and faculty validation
 
-3. GET EVENTS LIST
+3. GET EVENTS LIST (ENHANCED with Redis Caching and Advanced Filtering)
 -----------------
 ENDPOINT: GET /api/v1/admin/events/list
 METHOD: GET
+AUTHENTICATION: Admin role required
+QUERY PARAMETERS:
+  - status: string ("live"|"upcoming"|"pending_approval"|"completed"|"all") [optional]
+  - audience: string ("faculty"|"student"|"all") [optional, default: "all"]
+
+REDIS CACHING SYSTEM:
+  - Cache TTL: 30 seconds for optimal performance/freshness balance
+  - Cache Keys: "admin_events_{admin_id}_{status}_{audience}"
+  - Auto-invalidation: On event CRUD operations, status changes, approvals
+  - Performance Logging: Cache hit/miss metrics for monitoring
+
+RESPONSE STRUCTURE:
+{
+  "success": true,
+  "data": {
+    "events": [array of event objects],
+    "metadata": {
+      "total_count": integer,
+      "filtered_count": integer,
+      "cache_hit": boolean,
+      "query_time": string,
+      "counts": {
+        "all": integer,         // Total events for all audiences
+        "live": integer,        // Currently ongoing events  
+        "upcoming": integer,    // Events not yet started
+        "pending_approval": integer, // Awaiting approval
+        "completed": integer,   // Finished events
+        "faculty": integer,     // Faculty-targeted events
+        "student": integer      // Student-targeted events
+      }
+    }
+  }
+}
+
+ENHANCED FILTERING LOGIC:
+  - Status Filter: Filters by event lifecycle status (live, upcoming, etc.)
+  - Audience Filter: Filters by target_audience field containing "Faculty" or "Students"
+  - Multi-layer Caching: Redis backend + localStorage frontend for optimal UX
+  - Smart Count Calculation: Real-time counts for all filter combinations
 AUTHENTICATION: Admin required
 QUERY PARAMETERS:
-  - status: string (optional, default: "all")
+  - status: string (optional, default: "all") - "all"|"ongoing"|"upcoming"|"pending_approval"|"completed"|"cancelled"
+  - target_audience: string (optional, default: "all") - "all"|"student"|"faculty"|"both"
   - page: integer (optional, default: 1)
   - limit: integer (optional, default: 20)
 
-4. GET PENDING APPROVAL
+CACHING SYSTEM:
+  - Redis TTL: 30 seconds
+  - Cache Key Pattern: admin_events:{role}:{username}:{status}:{audience}:{page}:{limit}
+  - Cache Invalidation: Automatic on event CRUD operations
+  - Fallback: Direct database query if Redis unavailable
+
+RESPONSE:
+{
+  "success": boolean,
+  "events": array of event objects,
+  "total": integer,
+  "page": integer,
+  "limit": integer,
+  "cache_hit": boolean,
+  "status_counts": {
+    "ongoing": integer,
+    "upcoming": integer,
+    "completed": integer,
+    "pending_approval": integer,
+    "cancelled": integer
+  },
+  "audience_counts": {
+    "student": integer,
+    "faculty": integer,
+    "both": integer
+  }
+}
+
+4. ENHANCED CACHING SYSTEM DETAILS
+-------------------------------------
+
+REDIS CACHE IMPLEMENTATION:
+  - Purpose: High-performance backend caching for admin operations
+  - TTL: 30 seconds for optimal balance of freshness and performance
+  - Key Patterns:
+    * "admin_events_{admin_id}_{status}_{audience}" - Filtered lists
+    * "admin_events_{admin_id}_all" - Complete event collections
+    * "admin_analytics_{admin_id}_{period}" - Dashboard data
+  
+CACHE INVALIDATION TRIGGERS:
+  - Event CRUD operations (create, update, delete, approve, decline)
+  - Status changes from dynamic scheduler
+  - Approval workflow modifications
+  - Registration updates affecting counts
+  - Manual cache clearing via admin actions
+
+CACHE HIT/MISS LOGGING:
+  - Performance monitoring through structured logging
+  - Cache effectiveness metrics for optimization
+  - Debug information for troubleshooting
+  - TTL expiration tracking
+
+FRONTEND LOCALSTORAGE CACHING:
+  - 30-second client-side data retention
+  - Automatic cache validation with timestamp comparison
+  - Seamless fallback to API calls when cache expires
+  - Improved user experience with instant filtering
+
+5. GET PENDING APPROVAL
 ----------------------
 ENDPOINT: GET /api/v1/admin/events/pending-approval
 METHOD: GET
@@ -302,8 +410,27 @@ AUTHENTICATION: Super Admin only
 QUERY PARAMETERS:
   - page: integer (default: 1)
   - limit: integer (default: 20)
+CACHE INTEGRATION: Uses Redis caching with automatic invalidation
 
-5. APPROVE EVENT
+6. APPROVE EVENT (Enhanced with Cache Invalidation)
+---------------
+ENDPOINT: POST /api/v1/admin/events/approve/{event_id}
+METHOD: POST
+AUTHENTICATION: Super Admin only
+CACHE BEHAVIOR: Automatically invalidates related cache entries
+POST-PROCESSING: Updates audit logs, sends notifications
+
+7. DECLINE EVENT (Enhanced with Cache Invalidation)
+---------------
+ENDPOINT: POST /api/v1/admin/events/decline/{event_id}
+METHOD: POST
+AUTHENTICATION: Super Admin only
+REQUEST:
+{
+  "reason": string (required)
+}
+CACHE BEHAVIOR: Automatically invalidates related cache entries
+POST-PROCESSING: Updates audit logs, sends decline notifications
 ---------------
 ENDPOINT: POST /api/v1/admin/events/approve/{event_id}
 METHOD: POST
@@ -712,13 +839,99 @@ SECURITY IMPROVEMENTS (August 9, 2025):
 • Collection name fixes: Uses correct database collection names
 • Frontend session management: Improved token and session handling
 
-1. ANALYTICS OVERVIEW
+1. ANALYTICS OVERVIEW (ENHANCED with Real-Time Scheduler Data)
 --------------------
 ENDPOINT: GET /api/v1/admin/analytics/overview
 METHOD: GET
 AUTHENTICATION: Admin role required (session-based)
 QUERY PARAMETERS:
   - period: string ("week"|"month"|"year")
+
+RESPONSE STRUCTURE (Enhanced):
+{
+  "success": boolean,
+  "data": {
+    "period": string,
+    "date_range": {
+      "start": string (ISO format),
+      "end": string (ISO format)
+    },
+    "server_time": string (ISO format),
+    
+    // Enhanced Event Statistics
+    "events": {
+      "total": integer,           // Total events count
+      "active": integer,          // upcoming + live events
+      "upcoming": integer,        // Events not yet started
+      "live": integer,           // Currently ongoing events
+      "pending": integer,         // Awaiting approval
+      "completed": integer,       // Finished events
+      "draft": integer,          // Draft events
+      "recent": integer          // Recent events in period
+    },
+    
+    // Real Scheduler Data Integration
+    "system_health": {
+      "scheduler_running": boolean,
+      "triggers_queued": integer,
+      "next_trigger": object
+    },
+    
+    // Direct API compatibility fields
+    "active_events_count": integer,    // upcoming + live
+    "total_events_count": integer,     // total events
+    "pending_jobs": integer,           // real scheduler queue length
+    "upcoming_events": integer,        // events not started
+    "ongoing_events": integer,         // currently live events
+    "completed_events": integer,       // finished events
+    "draft_events": integer,          // draft events
+    "triggers_queued": integer,       // scheduler trigger count
+    "system_status": string,          // "Online"|"Offline"
+    "scheduler_running": boolean,     // real scheduler status
+    
+    // Real-Time Trigger Data
+    "upcoming_triggers": [
+      {
+        "event_id": string,
+        "trigger_type": string,
+        "trigger_time": string (ISO),
+        "time_until_formatted": string,
+        "is_past_due": boolean
+      }
+    ],
+    
+    // Recent Activity from Audit Logs
+    "recent_activity": [
+      {
+        "event_id": string,
+        "old_status": string,
+        "new_status": string,
+        "trigger_type": string,
+        "timestamp": string (ISO),
+        "time_ago": string
+      }
+    ],
+    
+    // Other Statistics
+    "registrations": {
+      "total": integer,
+      "recent": integer
+    },
+    "users": {
+      "students": integer,
+      "faculty": integer
+    },
+    "venues": {
+      "total": integer
+    }
+  }
+}
+
+DATA SOURCES:
+  - Dynamic Event Scheduler: Real trigger queue and system status
+  - Audit Log System: Recent trigger execution history
+  - Enhanced Database Queries: Precise event status breakdown
+  - Real-Time Processing: Live data with temporal filtering
 
 2. USER MANAGEMENT  
 -----------------

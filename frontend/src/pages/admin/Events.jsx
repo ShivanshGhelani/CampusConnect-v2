@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -9,41 +9,171 @@ function Events() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [events, setEvents] = useState([]);
+  const [allEvents, setAllEvents] = useState([]); // Store all events for client-side filtering
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('all');
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
+  // Cache configuration
+  const CACHE_DURATION = 30000; // 30 seconds
+  const CACHE_KEY = `admin_events_${user?.username || 'anonymous'}`;
+
+  // Memoized filtered events for client-side filtering
+  const filteredEvents = useMemo(() => {
+    let filtered = [...allEvents];
+
+    // Apply status filter
+    if (currentFilter !== 'all') {
+      filtered = filtered.filter(event => event.status === currentFilter);
+    }
+
+    // Apply audience filter
+    if (audienceFilter !== 'all') {
+      filtered = filtered.filter(event => event.target_audience === audienceFilter);
+    }
+
+    return filtered;
+  }, [allEvents, currentFilter, audienceFilter]);
+
+  // Update events state when filtered events change
   useEffect(() => {
-    fetchEvents();
-  }, [currentFilter]);
+    setEvents(filteredEvents);
+  }, [filteredEvents]);
 
-  const fetchEvents = async () => {
+  // Debounced fetch function to prevent excessive API calls
+  const debouncedFetch = useCallback(
+    debounce(() => {
+      fetchEventsFromAPI();
+    }, 300),
+    []
+  );
+
+  // Check if we need to fetch fresh data
+  const shouldFetchFreshData = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTime;
+    return timeSinceLastFetch > CACHE_DURATION;
+  }, [lastFetchTime]);
+
+  // Load events from cache or API
+  const loadEvents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await adminAPI.getEvents({ status: currentFilter });
+      setError('');
+
+      // Try to load from localStorage first
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData && !shouldFetchFreshData()) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          if (parsed.events && parsed.timestamp) {
+            console.log('📱 Using cached events from localStorage');
+            setAllEvents(parsed.events);
+            setLastFetchTime(parsed.timestamp);
+            setIsLoading(false);
+            return;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse cached events:', parseError);
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+
+      // Fetch fresh data if cache is stale or missing
+      await fetchEventsFromAPI();
+    } catch (error) {
+      console.error('Error loading events:', error);
+      setError('Failed to load events');
+      setIsLoading(false);
+    }
+  }, [CACHE_KEY, shouldFetchFreshData]);
+
+  // Fetch events from API and cache the result
+  const fetchEventsFromAPI = async () => {
+    try {
+      console.log('🔄 Fetching fresh events from API');
+      const response = await adminAPI.getEvents({ status: 'all', target_audience: 'all' });
       
       if (response.data.success) {
         const eventsData = response.data.events || [];
-        setEvents(eventsData);
+        setAllEvents(eventsData);
         setError('');
+        
+        // Cache the data in localStorage
+        const cacheData = {
+          events: eventsData,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        setLastFetchTime(Date.now());
+        
+        console.log(`💾 Cached ${eventsData.length} events in localStorage`);
       } else {
         throw new Error(response.data.message || 'Failed to fetch events');
       }
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error fetching events from API:', error);
       setError('Failed to load events');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Refresh events (force fetch from API)
+  const refreshEvents = useCallback(async () => {
+    localStorage.removeItem(CACHE_KEY);
+    setLastFetchTime(0);
+    await loadEvents();
+  }, [CACHE_KEY, loadEvents]);
+
+  // Debounce utility function
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Initial load
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  // Reset filters if current selection results in no events
+  useEffect(() => {
+    if (events.length === 0 && !isLoading && !error && allEvents.length > 0) {
+      // If current filter combination results in no events, check if we should reset
+      if (currentFilter !== 'all' || audienceFilter !== 'all') {
+        // Don't reset immediately, but could add a "No events found" message with reset option
+      }
+    }
+  }, [events, isLoading, error, currentFilter, audienceFilter, allEvents.length]);
+
   const getStatusCounts = () => {
+    // Calculate counts from ALL events, not filtered events
     const counts = {
-      ongoing: events.filter(event => event.status === 'ongoing').length,
-      upcoming: events.filter(event => event.status === 'upcoming').length,
-      completed: events.filter(event => event.status === 'completed').length,
-      cancelled: events.filter(event => event.status === 'cancelled').length,
-      pending_approval: events.filter(event => event.status === 'pending_approval').length
+      ongoing: allEvents.filter(event => event.status === 'ongoing').length,
+      upcoming: allEvents.filter(event => event.status === 'upcoming').length,
+      completed: allEvents.filter(event => event.status === 'completed').length,
+      cancelled: allEvents.filter(event => event.status === 'cancelled').length,
+      pending_approval: allEvents.filter(event => event.status === 'pending_approval').length
+    };
+    return counts;
+  };
+
+  const getAudienceCounts = () => {
+    // Calculate counts from ALL events, not filtered events
+    const counts = {
+      student: allEvents.filter(event => event.target_audience === 'student').length,
+      faculty: allEvents.filter(event => event.target_audience === 'faculty').length,
+      both: allEvents.filter(event => event.target_audience === 'both').length
     };
     return counts;
   };
@@ -90,7 +220,7 @@ const formatDate = (dateString) => {
       if (response.data.success) {
         alert(`Event "${eventName}" has been approved successfully!`);
         // Refresh the events list
-        fetchEvents();
+        await refreshEvents();
       } else {
         alert(`Failed to approve event: ${response.data.message}`);
       }
@@ -115,7 +245,7 @@ const formatDate = (dateString) => {
       if (response.data.success) {
         alert(`Event "${eventName}" has been declined.`);
         // Refresh the events list
-        fetchEvents();
+        await refreshEvents();
       } else {
         alert(`Failed to decline event: ${response.data.message}`);
       }
@@ -144,6 +274,7 @@ const formatDate = (dateString) => {
   };
 
   const statusCounts = getStatusCounts();
+  const audienceCounts = getAudienceCounts();
   if (isLoading) {
     return (
       <AdminLayout>
@@ -187,44 +318,90 @@ const formatDate = (dateString) => {
           {/* Quick Stats */}
           {events.length > 0 && (
             <div className="mt-6 pt-6 border-t border-blue-200">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  Showing <span className="font-semibold text-gray-900">{events.length}</span> events
-                </span>
+              <div className="flex items-center justify-between text-sm mb-3">
+                <div className="flex items-center space-x-4">
+                  <span className="text-gray-600">
+                    Showing <span className="font-semibold text-gray-900">{events.length}</span> of <span className="font-semibold text-gray-900">{allEvents.length}</span> events
+                  </span>
+                  {/* Cache status indicator */}
+                  <div className="flex items-center space-x-1">
+                    <div className={`w-2 h-2 rounded-full ${shouldFetchFreshData() ? 'bg-orange-400' : 'bg-green-400'}`}></div>
+                    <span className="text-xs text-gray-500">
+                      {shouldFetchFreshData() ? 'Data may be stale' : 'Data fresh'}
+                    </span>
+                    <button
+                      onClick={refreshEvents}
+                      className="text-xs text-blue-600 hover:text-blue-800 ml-2"
+                      title="Refresh data"
+                    >
+                      <i className="fas fa-refresh"></i>
+                    </button>
+                  </div>
+                </div>
                 <div className="flex items-center space-x-6">
-                  {statusCounts.ongoing > 0 && (
+                  {events.filter(event => event.status === 'ongoing').length > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-green-600 font-medium">{statusCounts.ongoing} Live</span>
+                      <span className="text-green-600 font-medium">{events.filter(event => event.status === 'ongoing').length} Live</span>
                     </div>
                   )}
-                  {statusCounts.upcoming > 0 && (
+                  {events.filter(event => event.status === 'upcoming').length > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-blue-600 font-medium">{statusCounts.upcoming} Upcoming</span>
+                      <span className="text-blue-600 font-medium">{events.filter(event => event.status === 'upcoming').length} Upcoming</span>
                     </div>
                   )}
-                  {statusCounts.pending_approval > 0 && (
+                  {events.filter(event => event.status === 'pending_approval').length > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span className="text-orange-600 font-medium">{statusCounts.pending_approval} Pending</span>
+                      <span className="text-orange-600 font-medium">{events.filter(event => event.status === 'pending_approval').length} Pending</span>
                     </div>
                   )}
-                  {statusCounts.completed > 0 && (
+                  {events.filter(event => event.status === 'completed').length > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                      <span className="text-gray-600 font-medium">{statusCounts.completed} Completed</span>
+                      <span className="text-gray-600 font-medium">{events.filter(event => event.status === 'completed').length} Completed</span>
                     </div>
                   )}
                 </div>
               </div>
+              
+              {/* Audience Statistics - Only show if there are events with audience data */}
+              {(events.filter(event => event.target_audience === 'student').length > 0 || 
+                events.filter(event => event.target_audience === 'faculty').length > 0 || 
+                events.filter(event => event.target_audience === 'both').length > 0) && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Audience Distribution (filtered):</span>
+                  <div className="flex items-center space-x-6">
+                    {events.filter(event => event.target_audience === 'student').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        <span className="text-emerald-600 font-medium">{events.filter(event => event.target_audience === 'student').length} Student</span>
+                      </div>
+                    )}
+                    {events.filter(event => event.target_audience === 'faculty').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                        <span className="text-indigo-600 font-medium">{events.filter(event => event.target_audience === 'faculty').length} Faculty</span>
+                      </div>
+                    )}
+                    {events.filter(event => event.target_audience === 'both').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
+                        <span className="text-cyan-600 font-medium">{events.filter(event => event.target_audience === 'both').length} Both</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Filter Buttons */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filters */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <span className="text-sm font-medium text-gray-700 mr-2">Filter by Status:</span>
             <button
               onClick={() => setCurrentFilter('all')}
@@ -236,48 +413,121 @@ const formatDate = (dateString) => {
             >
               <i className="fas fa-list mr-1"></i> All Events
             </button>
-            <button
-              onClick={() => setCurrentFilter('ongoing')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                currentFilter === 'ongoing' 
-                  ? 'bg-green-600 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <i className={`fas fa-circle ${currentFilter === 'ongoing' ? 'text-white animate-pulse' : 'text-green-500'} mr-1`}></i> 
-              Live / Ongoing
-            </button>
-            <button
-              onClick={() => setCurrentFilter('upcoming')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                currentFilter === 'upcoming' 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <i className="fas fa-clock mr-1"></i> Upcoming
-            </button>
-            <button
-              onClick={() => setCurrentFilter('pending_approval')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                currentFilter === 'pending_approval' 
-                  ? 'bg-orange-600 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <i className="fas fa-hourglass-half mr-1"></i> Pending Approval
-            </button>
-            <button
-              onClick={() => setCurrentFilter('completed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                currentFilter === 'completed' 
-                  ? 'bg-gray-600 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <i className="fas fa-check-circle mr-1"></i> Completed
-            </button>
+            {statusCounts.ongoing > 0 && (
+              <button
+                onClick={() => setCurrentFilter('ongoing')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentFilter === 'ongoing' 
+                    ? 'bg-green-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className={`fas fa-circle ${currentFilter === 'ongoing' ? 'text-white animate-pulse' : 'text-green-500'} mr-1`}></i> 
+                Live / Ongoing ({statusCounts.ongoing})
+              </button>
+            )}
+            {statusCounts.upcoming > 0 && (
+              <button
+                onClick={() => setCurrentFilter('upcoming')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentFilter === 'upcoming' 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="fas fa-clock mr-1"></i> Upcoming ({statusCounts.upcoming})
+              </button>
+            )}
+            {statusCounts.pending_approval > 0 && (
+              <button
+                onClick={() => setCurrentFilter('pending_approval')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentFilter === 'pending_approval' 
+                    ? 'bg-orange-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="fas fa-hourglass-half mr-1"></i> Pending Approval ({statusCounts.pending_approval})
+              </button>
+            )}
+            {statusCounts.completed > 0 && (
+              <button
+                onClick={() => setCurrentFilter('completed')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentFilter === 'completed' 
+                    ? 'bg-gray-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="fas fa-check-circle mr-1"></i> Completed ({statusCounts.completed})
+              </button>
+            )}
+            {statusCounts.cancelled > 0 && (
+              <button
+                onClick={() => setCurrentFilter('cancelled')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentFilter === 'cancelled' 
+                    ? 'bg-red-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="fas fa-ban mr-1"></i> Cancelled ({statusCounts.cancelled})
+              </button>
+            )}
           </div>
+          
+          {/* Audience Filters - Only show if there are events with audience data */}
+          {(audienceCounts.student > 0 || audienceCounts.faculty > 0 || audienceCounts.both > 0) && (
+            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200">
+              <span className="text-sm font-medium text-gray-700 mr-2">Filter by Audience:</span>
+              <button
+                onClick={() => setAudienceFilter('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  audienceFilter === 'all' 
+                    ? 'bg-purple-600 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <i className="fas fa-users mr-1"></i> All Audiences
+              </button>
+              {audienceCounts.student > 0 && (
+                <button
+                  onClick={() => setAudienceFilter('student')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    audienceFilter === 'student' 
+                      ? 'bg-emerald-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <i className="fas fa-graduation-cap mr-1"></i> Student Events ({audienceCounts.student})
+                </button>
+              )}
+              {audienceCounts.faculty > 0 && (
+                <button
+                  onClick={() => setAudienceFilter('faculty')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    audienceFilter === 'faculty' 
+                      ? 'bg-indigo-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <i className="fas fa-chalkboard-teacher mr-1"></i> Faculty Events ({audienceCounts.faculty})
+                </button>
+              )}
+              {audienceCounts.both > 0 && (
+                <button
+                  onClick={() => setAudienceFilter('both')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    audienceFilter === 'both' 
+                      ? 'bg-cyan-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <i className="fas fa-user-friends mr-1"></i> Both ({audienceCounts.both})
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Enhanced Event Cards Grid */}
@@ -429,7 +679,7 @@ const formatDate = (dateString) => {
             <h3 className="text-xl font-bold text-red-700 mb-3">Error Loading Events</h3>
             <p className="text-red-600 mb-6 max-w-md mx-auto">{error}</p>
             <button
-              onClick={fetchEvents}
+              onClick={refreshEvents}
               className="inline-block px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
             >
               <i className="fas fa-sync mr-2"></i>Try Again
@@ -441,7 +691,34 @@ const formatDate = (dateString) => {
             <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
             </div>
-            {user && user.role === 'organizer_admin' ? (
+            {(currentFilter !== 'all' || audienceFilter !== 'all') ? (
+              /* No events found with current filters */
+              <>
+                <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Match Your Filters</h3>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  No events found for the selected filters. Try adjusting your filters or view all events.
+                </p>
+                <div className="space-x-3">
+                  <button
+                    onClick={() => {
+                      setCurrentFilter('all');
+                      setAudienceFilter('all');
+                    }}
+                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                  >
+                    <i className="fas fa-refresh mr-2"></i>Reset Filters
+                  </button>
+                  {user && ['super_admin', 'executive_admin'].includes(user.role) && (
+                    <button
+                      onClick={handleCreateEvent}
+                      className="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
+                    >
+                      <i className="fas fa-plus mr-2"></i>Create Event
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : user && user.role === 'organizer_admin' ? (
               <>
                 <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Organized Yet</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
@@ -469,12 +746,14 @@ const formatDate = (dateString) => {
                   No events have been created yet. Start by creating your first event to get started.
                 </p>
                 <div className="space-x-3">
-                  <button
-                    onClick={handleCreateEvent}
-                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                  >
-                    <i className="fas fa-plus mr-2"></i>Create First Event
-                  </button>
+                  {user && ['super_admin', 'executive_admin'].includes(user.role) && (
+                    <button
+                      onClick={handleCreateEvent}
+                      className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                    >
+                      <i className="fas fa-plus mr-2"></i>Create First Event
+                    </button>
+                  )}
                   <button
                     onClick={() => navigate('/admin/dashboard')}
                     className="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold"

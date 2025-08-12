@@ -67,20 +67,35 @@ class EventStatusManager:
             
             if status_filter == "upcoming":
                 query["status"] = "upcoming"
-                query["event_approval_status"] = "approved"  # Only show approved events
+                # Only show approved events OR events without approval status (legacy events)
+                query["$or"] = [
+                    {"event_approval_status": "approved"},
+                    {"event_approval_status": {"$exists": False}}
+                ]
             elif status_filter == "ongoing":
                 query["status"] = "ongoing"
-                query["event_approval_status"] = "approved"  # Only show approved events
+                # Only show approved events OR events without approval status (legacy events)
+                query["$or"] = [
+                    {"event_approval_status": "approved"},
+                    {"event_approval_status": {"$exists": False}}
+                ]
             elif status_filter == "completed":
                 query["status"] = "completed"
-                query["event_approval_status"] = "approved"  # Only show approved events
+                # Only show approved events OR events without approval status (legacy events)
+                query["$or"] = [
+                    {"event_approval_status": "approved"},
+                    {"event_approval_status": {"$exists": False}}
+                ]
             elif status_filter == "pending_approval":
                 query["event_approval_status"] = "pending_approval"
             else:
                 # For "all" filter, behavior depends on include_pending_approval
                 if not include_pending_approval:
-                    # Only approved events should be visible in general listings
-                    query["event_approval_status"] = "approved"
+                    # Only approved events OR events without approval status (legacy events) should be visible
+                    query["$or"] = [
+                        {"event_approval_status": "approved"},
+                        {"event_approval_status": {"$exists": False}}
+                    ]
                 # If include_pending_approval is True, no status filter (show all events)
             
             # Get events from database

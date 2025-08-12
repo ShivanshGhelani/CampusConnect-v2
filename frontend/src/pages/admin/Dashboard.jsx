@@ -104,10 +104,24 @@ function Dashboard() {
           completed_events: data.completed_events || 0,
           draft_events: data.draft_events || 0,
           triggers_queued: data.triggers_queued || 0,
-          scheduler_running: data.system_health?.scheduler_running !== false || data.scheduler_running !== false
+          scheduler_running: data.scheduler_running !== false
         });
 
-        // Format recent activity data to match backend template structure
+        // Use real trigger data from scheduler
+        const triggersData = data.upcoming_triggers || [];
+        const formattedJobs = triggersData.slice(0, 10).map((trigger, index) => ({
+          id: index + 1,
+          event_id: trigger.event_id || 'N/A',
+          trigger_type: trigger.trigger_type || 'unknown',
+          status: trigger.is_past_due ? 'past_due' : 'scheduled',
+          is_past_due: trigger.is_past_due || false,
+          trigger_time: trigger.trigger_time,
+          time_until_formatted: trigger.time_until_formatted || 'Unknown'
+        }));
+
+        setActiveJobs(formattedJobs);
+
+        // Use real recent activity data
         const recentActivityData = data.recent_activity || [];
         const formattedActivity = recentActivityData.map((activity, index) => ({
           id: index + 1,
@@ -120,20 +134,6 @@ function Dashboard() {
         }));
 
         setRecentActivity(formattedActivity);
-
-        // Format upcoming triggers data to match backend template structure
-        const triggersData = data.upcoming_triggers || [];
-        const formattedJobs = triggersData.slice(0, 10).map((trigger, index) => ({
-          id: index + 1,
-          event_id: trigger.event_id || 'N/A',
-          trigger_type: trigger.trigger_type || 'unknown',
-          status: trigger.status || 'scheduled',
-          is_past_due: trigger.is_past_due || false,
-          trigger_time: trigger.trigger_time,
-          time_until_formatted: trigger.time_until_formatted || 'Unknown'
-        }));
-
-        setActiveJobs(formattedJobs);
       } else {
         throw new Error(response.data.message || 'Failed to fetch dashboard data');
       }
@@ -176,7 +176,7 @@ function Dashboard() {
           completed_events: data.completed_events || 0,
           draft_events: data.draft_events || 0,
           triggers_queued: data.triggers_queued || 0,
-          scheduler_running: data.system_health?.scheduler_running !== false || data.scheduler_running !== false
+          scheduler_running: data.scheduler_running !== false
         }));
 
         setLastRefreshed(new Date());
@@ -363,11 +363,15 @@ function Dashboard() {
                   <i className="fas fa-calendar-check text-blue-600 text-xl"></i>
                 </div>
               </div>
-              <div className="mt-4 flex items-center">
-                <span className="text-blue-500 text-sm font-semibold">
-                  <i className="fas fa-arrow-up mr-1"></i>{stats.upcoming_events || 0} upcoming
-                </span>
-                <span className="text-gray-500 text-sm ml-2">{stats.ongoing_events || 0} ongoing</span>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-blue-500 text-sm font-semibold">
+                    <i className="fas fa-arrow-up mr-1"></i>{stats.upcoming_events || 0} upcoming
+                  </span>
+                  <span className="text-green-500 text-sm font-semibold">
+                    <i className="fas fa-circle mr-1 animate-pulse"></i>{stats.ongoing_events || 0} live
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -394,7 +398,7 @@ function Dashboard() {
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Pending Jobs</p>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Active Jobs</p>
                   <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending_jobs || 0}</p>
                 </div>
                 <div className="bg-yellow-100 rounded-full p-3">
@@ -403,7 +407,7 @@ function Dashboard() {
               </div>
               <div className="mt-4 flex items-center">
                 <span className="text-yellow-500 text-sm font-semibold">
-                  <i className="fas fa-hourglass-half mr-1"></i>{stats.triggers_queued || 0} queued
+                  <i className="fas fa-hourglass-half mr-1"></i>{stats.triggers_queued || 0} triggers
                 </span>
                 <span className="text-gray-500 text-sm ml-2">in scheduler</span>
               </div>
