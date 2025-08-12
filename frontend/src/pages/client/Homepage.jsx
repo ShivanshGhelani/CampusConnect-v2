@@ -4,6 +4,7 @@ import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import EventCard from '../../components/client/EventCard';
 
 function Homepage() {
   const { isAuthenticated } = useAuth();
@@ -90,47 +91,7 @@ function Homepage() {
     }
   };
 
-  const formatEventDate = (dateString) => {
-    const date = new Date(dateString);
-    return {
-      day: date.getDate(),
-      month: date.toLocaleDateString('en-US', { month: 'short' }),
-      fullDate: date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      time: date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    };
-  };
-
-  const getEventStatusBadge = (event) => {
-    if (event.status === 'upcoming' && event.sub_status === 'registration_open') {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          <span className="w-2 h-2 bg-blue-400 rounded-full mr-1.5 animate-pulse"></span>
-          Registration Open
-        </span>
-      );
-    }
-    if (event.status === 'ongoing') {
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <span className="w-2 h-2 bg-green-400 rounded-full mr-1.5 animate-pulse"></span>
-          Live
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-        Upcoming
-      </span>
-    );
-  };  return (
+  return (
     <ClientLayout noPadding={true}>
       <div className="overflow-x-hidden">
         {/* Hero Section */}
@@ -236,72 +197,9 @@ function Homepage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {upcomingEvents.length > 0 ? (
-                  upcomingEvents.map((event) => {
-                    const eventDate = formatEventDate(event.start_datetime);
-                    return (
-                      <article key={event.event_id} className="group bg-gradient-to-br from-sky-50 to-teal-50 rounded-2xl border border-sky-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                        {/* Event Header */}
-                        <div className="p-6 pb-4">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-shrink-0">
-                              <div className="w-12 h-12 bg-white rounded-xl flex flex-col items-center justify-center text-xs font-bold text-slate-700 border border-sky-200">
-                                <div className="text-lg">{eventDate.day}</div>
-                                <div className="text-xs uppercase">{eventDate.month}</div>
-                              </div>
-                            </div>
-                            <div className="ml-4 flex-1 min-w-0">
-                              <h3 className="text-lg font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                                {event.event_name}
-                              </h3>
-                              {getEventStatusBadge(event)}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Event Details */}
-                        <div className="px-6 pb-6">
-                          <p className="text-slate-600 text-sm mb-4 line-clamp-2">
-                            {event.description}
-                          </p>
-
-                          <div className="space-y-3 mb-6">
-                            <div className="flex items-center text-sm text-slate-500">
-                              <i className="fas fa-clock w-4 text-center mr-3 text-blue-500"></i>
-                              <span>{eventDate.fullDate} at {eventDate.time}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-slate-500">
-                              <i className="fas fa-map-marker-alt w-4 text-center mr-3 text-red-500"></i>
-                              <span>{event.venue}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-slate-500">
-                              <i className="fas fa-tag w-4 text-center mr-3 text-purple-500"></i>
-                              <span className="capitalize">{event.category}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            {event.user_registered ? (
-                              <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                ✓ Registered
-                              </span>
-                            ) : (
-                              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                Registration Open
-                              </span>
-                            )}
-
-                            <Link
-                              to={`/client/events/${event.event_id}`}
-                              className="inline-flex items-center px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors border border-slate-200"
-                            >
-                              View Details
-                              <i className="fas fa-arrow-right ml-2 text-xs"></i>
-                            </Link>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })
+                  upcomingEvents.map((event) => (
+                    <EventCard key={event.event_id} event={event} />
+                  ))
                 ) : (
                   <div className="col-span-full">
                     <div className="text-center py-16 bg-gradient-to-br from-sky-50 to-purple-50 rounded-2xl border border-sky-200">
@@ -502,16 +400,19 @@ function Homepage() {
       </div>
       
       {/* Full Width Floor Typography */}
-      <div className="w-screen bg-gradient-to-r from-teal-50 to-sky-50 m-0 p-0 overflow-hidden">
-        <div className="w-full text-center m-0 p-0">
-          <h2 className="font-pacifico-brand text-8xl md:text-9xl lg:text-[10rem] xl:text-[12rem] 2xl:text-[14rem] leading-none m-0 p-0 w-full font-black">
-            <span className="text-slate-800 font-black" style={{
-              textShadow: '3px 3px 6px rgba(0,0,0,0.3)'
+      <div className="w-screen bg-gradient-to-r from-teal-50 to-sky-50 m-0 p-0 overflow-hidden pb-20 md:pb-0">
+        <div className="w-full text-center m-0 p-0 py-4 sm:py-6 md:py-8 lg:py-12">
+          <h2 className="font-pacifico-brand text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] leading-tight sm:leading-tight md:leading-none m-0 p-0 w-full font-black px-2">
+            <span className="text-slate-800 font-black block sm:inline" style={{
+              textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
             }}>CAMPUS</span>
-            <span className="text-9xl  bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent font-black" style={{
-              textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+            <span className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent font-black block sm:inline" style={{
+              textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
             }}>CONNECT</span>
           </h2>
+          <p className="text-slate-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mt-2 sm:mt-3 md:mt-4 lg:mt-6 px-4 mb-4 sm:mb-6 md:mb-8">
+            Made with ❤️ by <span className="font-semibold text-slate-800">Shivansh Ghelani</span> & Team
+          </p>
         </div>
       </div>
     </ClientLayout>

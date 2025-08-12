@@ -75,26 +75,26 @@ function ClientNavigation() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg fixed top-8 left-0 right-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-17">
+      <nav className="bg-white shadow-lg fixed top-12 sm:top-10 md:top-8 left-0 right-0 z-40">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-3">
+            <div className="flex items-center flex-shrink-0">
+              <Link to="/" className="flex items-center space-x-2 sm:space-x-3">
                 <img
                   src="/logo/ksv.png"
                   alt="KSV Logo"
-                  className="h-10 w-10 object-contain"
+                  className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
                 />
-                <span className="text-3xl font-bold">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-bold">
                   <span className="text-slate-800">Campus</span>
                   <span className="bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent">Connect</span>
                 </span>
               </Link>
             </div>
 
-            {/* User Actions Section with Events Tabs */}
-            <div className="hidden md:flex items-center space-x-3 pt-1  ">
+            {/* Desktop Navigation - Hidden on mobile */}
+            <div className="hidden lg:flex items-center space-x-3">
               {/* Main Navigation Pills */}
               <div className="flex items-center backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-1">
                 <Link
@@ -102,7 +102,7 @@ function ClientNavigation() {
                   className={`group relative ${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'bg-white text-black hover:text-blue-600'
-                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                    } px-3 lg:px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <i className="fas fa-calendar text-sm group-hover:scale-110 transition-transform"></i>
                   <span className="text-sm font-semibold">All Events</span>
@@ -113,7 +113,7 @@ function ClientNavigation() {
                   className={`group relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'upcoming')
                     ? 'bg-blue-500 text-white shadow-md'
                     : 'bg-white text-black hover:text-blue-600'
-                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                    } px-3 lg:px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <i className="fas fa-clock text-sm group-hover:scale-110 transition-transform"></i>
                   <span className="text-sm font-semibold">Upcoming</span>
@@ -124,7 +124,7 @@ function ClientNavigation() {
                   className={`group relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing')
                     ? 'bg-green-500 text-white shadow-md'
                     : 'bg-white text-green-600'
-                    } px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+                    } px-3 lg:px-4 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
                 >
                   <div className="flex items-center space-x-2">
                     {/* Improved blinking dot with better positioning */}
@@ -145,24 +145,27 @@ function ClientNavigation() {
                   </div>
                 </Link>
               </div>
+
               {isAuthenticated ? (
                 /* User Profile Button */
-                <div className="relative flex items-center space-x-4 mt-1 ml-2 pl-0 h-10 border-l border-gray-300" ref={dropdownRef}>
+                <div className="relative flex items-center  space-x-4 ml-2 pl-2 h-10 border-l border-gray-300" ref={dropdownRef}>
                   {/* Profile Button with Hover Card */}
                   <div
                     className="relative"
                     onMouseEnter={() => setIsProfileDropdownOpen(true)}
                     onMouseLeave={() => setIsProfileDropdownOpen(false)}
-                  >                    <Link
-                    to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
-                    className="flex items-center space-x-3 rounded-lg px-4 py-2.5 transition-colors min-w-0"
-                  >                      <Avatar
+                  >
+                    <Link
+                      to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
+                      className="flex items-center pt-3 space-x-2 lg:space-x-3 rounded-lg px-3 lg:px-4 py-2.5 transition-colors min-w-0"
+                    >
+                      <Avatar
                         src={avatarUrl}
                         size="md"
                         name={user?.full_name || user?.enrollment_no}
                         className="flex-shrink-0"
                       />
-                      <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap">
+                      <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap hidden xl:block">
                         <div className="font-medium">
                           {user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User'}
                         </div>
@@ -188,11 +191,11 @@ function ClientNavigation() {
                             onClick={async () => {
                               try {
                                 const response = await organizerAPI.accessOrganizerPortal();
-                                
+
                                 if (response.data.success) {
                                   // Update auth context to reflect organizer admin role
                                   await transitionToOrganizerAdmin(response.data);
-                                  
+
                                   // Navigate to organizer portal (use the redirect URL from response)
                                   navigate(response.data.redirect_url || '/admin/events');
                                 } else {
@@ -266,7 +269,8 @@ function ClientNavigation() {
                             <div className="font-medium text-left">Sign Out</div>
                             <div className="text-xs text-gray-500">End your session</div>
                           </div>
-                        </button>                      </div>
+                        </button>                      
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -275,17 +279,99 @@ function ClientNavigation() {
                 <div className="flex items-center">
                   <Link
                     to="/auth/login"
-                    className="inline-flex items-center justify-center px-6 py-3 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="inline-flex items-center justify-center px-4 lg:px-6 py-3 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <i className="fas fa-sign-in-alt mr-2"></i>
-                    Join Campus Connect
+                    <span className="hidden xl:inline">Join Campus Connect</span>
+                    <span className="xl:hidden">Join</span>
                   </Link>
                 </div>
               )}
             </div>
+
+            {/* Mobile/Tablet Menu Button */}
+            <div className="lg:hidden flex items-center">
+              {isAuthenticated ? (
+                <Link
+                  to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
+                  className="flex items-center space-x-2 p-2 rounded-lg"
+                >
+                  <Avatar
+                    src={avatarUrl}
+                    size="sm"
+                    name={user?.full_name || user?.enrollment_no}
+                    className="flex-shrink-0"
+                  />
+                </Link>
+              ) : (
+                <Link
+                  to="/auth/login"
+                  className="inline-flex items-center justify-center px-3 py-2 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200"
+                >
+                  <i className="fas fa-sign-in-alt mr-1"></i>
+                  Join
+                </Link>
+              )}
+            </div>
           </div>
         </div>
-      </nav>      {/* Proper Mobile Bottom Navigation Bar */}
+      </nav>
+
+      {/* Tablet Navigation - Visible only on md/lg screens */}
+      <div className="hidden md:block lg:hidden fixed top-24 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center space-x-2 py-3">
+            <Link
+              to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
+              className={`${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:text-blue-600'
+                } px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+            >
+              <i className="fas fa-calendar text-sm"></i>
+              <span className="text-sm font-semibold">All Events</span>
+            </Link>
+
+            <Link
+              to={userType === 'faculty' ? '/faculty/events?filter=upcoming' : '/client/events?filter=upcoming'}
+              className={`${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'upcoming')
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:text-blue-600'
+                } px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+            >
+              <i className="fas fa-clock text-sm"></i>
+              <span className="text-sm font-semibold">Upcoming</span>
+            </Link>
+
+            <Link
+              to={userType === 'faculty' ? '/faculty/events?filter=ongoing' : '/client/events?filter=ongoing'}
+              className={`${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing')
+                ? 'bg-green-500 text-white shadow-md'
+                : 'bg-gray-100 text-green-600'
+                } px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2`}
+            >
+              <div className="flex items-center space-x-2">
+                <div className="relative flex items-center justify-center w-3 h-3">
+                  {isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing') ? (
+                    <>
+                      <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                      <span className="absolute w-2 h-2 bg-white/40 rounded-full animate-ping"></span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      <span className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
+                    </>
+                  )}
+                </div>
+                <span className="text-sm font-semibold">Live</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Proper Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="grid grid-cols-5 h-16">
           {/* Upcoming Button */}

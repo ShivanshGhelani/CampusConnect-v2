@@ -1645,9 +1645,9 @@ function EventDetail() {
                           <span className="text-sm font-semibold text-blue-600">
                             {event.registration_stats.total_teams || 0} teams
                           </span>
-                          {event.registration_stats.total_participants && event.registration_stats.total_participants > 0 && (
+                          {/* {event.registration_stats.total_participants && event.registration_stats.total_participants > 0 && (
                             <div className="text-xs text-gray-500">{event.registration_stats.total_participants} total participants</div>
-                          )}
+                          )} */}
                         </div>
                       ) : (
                         <span className="text-sm font-semibold text-blue-600">

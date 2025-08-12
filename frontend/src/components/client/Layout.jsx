@@ -7,8 +7,9 @@ function ClientLayout({ children, noPadding = false }) {
     <div className="min-h-screen">
       <TopBanner />
       <ClientNavigation />
-      <div className={noPadding ? "" : "pt-20"}> {/* TopBanner (~32px with py-2 + content) + Navigation (64px) = ~96px, using pt-20 (80px) */}
-        <main>
+      {/* Responsive padding for different navigation layouts */}
+      <div className={noPadding ? "" : "pt-28 sm:pt-26 md:pt-32 lg:pt-24 pb-0 md:pb-0 lg:pb-0"}> {/* Responsive spacing for TopBanner + Header + Tablet nav */}
+        <main className="pb-20 md:pb-0"> {/* Add bottom padding for mobile nav */}
           {children}
         </main>
       </div>
