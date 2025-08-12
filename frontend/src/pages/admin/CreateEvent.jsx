@@ -4,6 +4,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import DateTimePicker from '../../components/common/DateTimePicker';
 import DateRangePicker from '../../components/common/DateRangePicker';
 import ClockPicker from '../../components/common/ClockPicker';
+import AttendancePreview from '../../components/AttendancePreview';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import { formatDateToLocal } from '../../utils/dateHelpers';
@@ -41,6 +42,10 @@ function CreateEvent() {
 
   // Notification state for duplicate selection alerts
   const [organizerNotification, setOrganizerNotification] = useState(null);
+
+  // Attendance preview and customization states
+  const [showAttendanceCustomization, setShowAttendanceCustomization] = useState(false);
+  const [customAttendanceStrategy, setCustomAttendanceStrategy] = useState(null);
 
   // Session management functions
   const createEventCreatorSession = (name, email) => {
@@ -1182,6 +1187,8 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
+        // Custom attendance strategy if selected
+        custom_attendance_strategy: customAttendanceStrategy || null,
         // Set status and approval based on user role
         // Role-based event status and approval logic
         // Super Admin & Organizer Admin: Direct approval - no approval needed
@@ -2226,6 +2233,23 @@ function CreateEvent() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Attendance Strategy Preview */}
+              <div>
+                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Attendance Strategy Preview
+                </h3>
+                
+                <AttendancePreview
+                  eventData={form}
+                  onStrategyChange={setCustomAttendanceStrategy}
+                  showCustomization={showAttendanceCustomization}
+                  onToggleCustomization={() => setShowAttendanceCustomization(!showAttendanceCustomization)}
+                />
               </div>
             </div>
           </div>

@@ -114,6 +114,10 @@ export const adminAPI = {
   // Faculty Organizers (for event creation)
   getFacultyOrganizers: (params) => api.get('/api/v1/admin/events/faculty-organizers', { params }),
   
+  // Attendance Preview (for event creation)
+  previewAttendanceStrategy: (eventData) => api.post('/api/v1/admin/attendance-preview/preview-strategy', eventData),
+  validateCustomStrategy: (strategyData) => api.post('/api/v1/admin/attendance-preview/validate-custom-strategy', strategyData),
+  
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
   // with parameters to specify focus areas, maintaining your 62-endpoint optimization
