@@ -33,7 +33,7 @@ const AttendancePreview = ({
 
   // Validate custom strategy when it changes
   useEffect(() => {
-    if (customStrategy && customStrategy !== previewData?.data?.detected_strategy) {
+    if (customStrategy && eventData.start_date && eventData.start_time && eventData.end_date && eventData.end_time) {
       validateCustomStrategy();
     }
   }, [customStrategy]);
@@ -65,8 +65,9 @@ const AttendancePreview = ({
       const data = response.data;
       setPreviewData(data);
       
-      // Initialize custom strategy with detected strategy
-      if (data.success && data.data.detected_strategy) {
+      // Only initialize custom strategy with detected strategy if not already set
+      // This preserves user's custom selection when event data changes
+      if (data.success && data.data.detected_strategy && !customStrategy) {
         setCustomStrategy(data.data.detected_strategy);
       }
 
@@ -78,8 +79,10 @@ const AttendancePreview = ({
     }
   };
 
-  const validateCustomStrategy = async () => {
-    if (!customStrategy || !eventData.start_date || !eventData.start_time || !eventData.end_date || !eventData.end_time) {
+  const validateCustomStrategy = async (strategyToValidate = null) => {
+    const strategyToUse = strategyToValidate || customStrategy;
+    
+    if (!strategyToUse || !eventData.start_date || !eventData.start_time || !eventData.end_date || !eventData.end_time) {
       return;
     }
 
@@ -92,7 +95,7 @@ const AttendancePreview = ({
         event_type: eventData.event_type,
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
-        custom_strategy: customStrategy,
+        custom_strategy: strategyToUse,
         detailed_description: eventData.detailed_description || '',
         target_audience: eventData.target_audience || 'students',
         registration_mode: eventData.registration_mode || 'individual'
@@ -120,25 +123,9 @@ const AttendancePreview = ({
 
   const handleStrategyChange = (newStrategy) => {
     setCustomStrategy(newStrategy);
-    if (onStrategyChange) {
-      // If we have validation data for this strategy, pass the complete config
-      if (validationData && validationData.strategy === newStrategy) {
-        onStrategyChange({
-          strategy: validationData.strategy,
-          criteria: validationData.criteria,
-          sessions: validationData.sessions,
-          warnings: validationData.warnings,
-          recommendations: validationData.recommendations
-        });
-      } else {
-        // Otherwise just pass the strategy name
-        onStrategyChange({
-          strategy: newStrategy,
-          criteria: null,
-          sessions: null
-        });
-      }
-    }
+    
+    // Validate the new strategy immediately
+    validateCustomStrategy(newStrategy);
   };
 
   const getStrategyIcon = (strategy) => {
