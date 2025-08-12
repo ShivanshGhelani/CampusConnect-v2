@@ -102,6 +102,17 @@ const AttendancePreview = ({
       const data = response.data;
       setValidationData(data);
 
+      // Update parent with the complete configuration
+      if (onStrategyChange && data) {
+        onStrategyChange({
+          strategy: data.strategy,
+          criteria: data.criteria,
+          sessions: data.sessions,
+          warnings: data.warnings,
+          recommendations: data.recommendations
+        });
+      }
+
     } catch (err) {
       console.error('Error validating custom strategy:', err);
     }
@@ -110,7 +121,23 @@ const AttendancePreview = ({
   const handleStrategyChange = (newStrategy) => {
     setCustomStrategy(newStrategy);
     if (onStrategyChange) {
-      onStrategyChange(newStrategy);
+      // If we have validation data for this strategy, pass the complete config
+      if (validationData && validationData.strategy === newStrategy) {
+        onStrategyChange({
+          strategy: validationData.strategy,
+          criteria: validationData.criteria,
+          sessions: validationData.sessions,
+          warnings: validationData.warnings,
+          recommendations: validationData.recommendations
+        });
+      } else {
+        // Otherwise just pass the strategy name
+        onStrategyChange({
+          strategy: newStrategy,
+          criteria: null,
+          sessions: null
+        });
+      }
     }
   };
 
@@ -184,6 +211,7 @@ const AttendancePreview = ({
         </div>
         
         <button
+          type="button"
           onClick={onToggleCustomization}
           className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
         >
@@ -222,6 +250,7 @@ const AttendancePreview = ({
             {availableStrategies.map((strategy) => (
               <button
                 key={strategy.value}
+                type="button"
                 onClick={() => handleStrategyChange(strategy.value)}
                 className={`p-3 rounded-lg border text-left transition-all ${
                   customStrategy === strategy.value
@@ -245,6 +274,7 @@ const AttendancePreview = ({
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-gray-900">Attendance Timeline</h4>
           <button
+            type="button"
             onClick={() => setShowDetails(!showDetails)}
             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
           >

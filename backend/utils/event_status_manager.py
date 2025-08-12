@@ -12,8 +12,13 @@ class EventStatusManager:
     """Simple event status management for Phase 1"""
     
     @staticmethod
-    async def get_available_events(status: str = "all") -> List[Dict]:
-        """Get available events based on status"""
+    async def get_available_events(status: str = "all", include_pending_approval: bool = False) -> List[Dict]:
+        """Get available events based on status
+        
+        Args:
+            status: Event status filter ("all", "upcoming", "active", etc.)
+            include_pending_approval: Whether to include events pending approval (for admin use)
+        """
         try:
             query = {}
             
@@ -21,6 +26,15 @@ class EventStatusManager:
                 query["event_date"] = {"$gte": datetime.utcnow().isoformat()}
             elif status == "active":
                 query["registration_open"] = True
+            
+            # If include_pending_approval is True, don't filter by status
+            if include_pending_approval:
+                # For admin views, include all events regardless of approval status
+                pass
+            else:
+                # For regular views, exclude pending approval events
+                if "status" not in query:
+                    query["status"] = {"$ne": "pending_approval"}
             
             events = await DatabaseOperations.find_many("events", query)
             return events or []

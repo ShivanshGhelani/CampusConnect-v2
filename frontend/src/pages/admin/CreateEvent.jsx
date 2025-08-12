@@ -1187,8 +1187,12 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
-        // Custom attendance strategy if selected
-        custom_attendance_strategy: customAttendanceStrategy || null,
+        
+        // Attendance configuration if customized
+        attendance_strategy: customAttendanceStrategy?.strategy || null,
+        attendance_criteria: customAttendanceStrategy?.criteria || null,
+        custom_attendance_config: customAttendanceStrategy || null,
+        
         // Set status and approval based on user role
         // Role-based event status and approval logic
         // Super Admin & Organizer Admin: Direct approval - no approval needed
