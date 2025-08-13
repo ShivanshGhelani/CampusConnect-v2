@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_STORAGE_BUCKET: str = "campusconnect"
     SUPABASE_ASSETS_BUCKET: str = "campusconnect-assets-private"
+    SUPABASE_EVENT_BUCKET: str = "campusconnect-event-data"
 
     class Config:
         env_file = ".env"

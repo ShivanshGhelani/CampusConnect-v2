@@ -3,13 +3,11 @@
 from .audit_service import AuditLogService  
 from .faculty_service import FacultyOrganizerService
 from .password_reset_service import PasswordResetService
-# from .storage_service import SupabaseStorageService
 from .venue_service import VenueService
 
 __all__ = [
     'AuditLogService', 
     'FacultyOrganizerService',
     'PasswordResetService',
-    # 'SupabaseStorageService',
     'VenueService'
 ]

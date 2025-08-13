@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import { formatDateToLocal } from '../../utils/dateHelpers';
 import { Dropdown, SearchBox, Checkbox } from '../../components/ui';
+import unifiedStorage from '../../services/unifiedStorage';
 
 // Helper for step progress
 const steps = [
@@ -46,6 +47,10 @@ function CreateEvent() {
   // Attendance preview and customization states
   const [showAttendanceCustomization, setShowAttendanceCustomization] = useState(false);
   const [customAttendanceStrategy, setCustomAttendanceStrategy] = useState(null);
+  
+  // Loading state for form submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   // Session management functions
   const createEventCreatorSession = (name, email) => {
@@ -204,11 +209,58 @@ function CreateEvent() {
     allow_multiple_team_registrations: false,
     max_participants: '',
     min_participants: '1',
-    certificate_template: null,
+    is_certificate_based: false,
+    certificate_templates: {},
+    event_poster: null,
     assets: [],
   });
   const [errors, setErrors] = useState({});
   const [existingEventIds, setExistingEventIds] = useState([]);
+
+  // Certificate template types based on event type
+  const getCertificateTypes = (eventType, eventMode = null) => {
+    const certificateMapping = {
+      'technical': [
+        'Certificate of Participation',
+        'Certificate of Achievement'
+      ],
+      'cultural': [
+        'Certificate of Participation',
+        ...(eventMode === 'hybrid' || eventMode === 'online' ? ['Winner Certificate'] : [])
+      ],
+      'sport': [
+        'Certificate of Participation'
+      ],
+      'workshop': [
+        'Certificate of Completion',
+        'Certificate of Excellence'
+      ],
+      'training': [
+        'Certificate of Completion',
+        'Certificate of Excellence'
+      ],
+      'seminar': [
+        'Certificate of Attendance'
+      ],
+      'conference': [
+        'Certificate of Attendance'
+      ],
+      'competition': [
+        'Certificate of Participation',
+        ...(eventMode === 'hybrid' || eventMode === 'online' ? ['Winner Certificate'] : [])
+      ],
+      'hackathon': [
+        'Certificate of Participation',
+        'Certificate of Innovation',
+        ...(eventMode === 'hybrid' || eventMode === 'online' ? ['Winner Certificate'] : [])
+      ],
+      'other': [
+        'Certificate of Participation'
+      ]
+    };
+    
+    return certificateMapping[eventType?.toLowerCase()] || certificateMapping['other'];
+  };
 
   // Load venues on component mount, but only after authentication is checked
   useEffect(() => {
@@ -455,6 +507,17 @@ function CreateEvent() {
     }
   }, [isAuthenticated, userType, user]);
 
+  // Reset certificate templates when event type or mode changes
+  useEffect(() => {
+    if (form.event_type && form.is_certificate_based) {
+      // Clear existing templates when event type or mode changes
+      setForm(prev => ({
+        ...prev,
+        certificate_templates: {}
+      }));
+    }
+  }, [form.event_type, form.mode]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -489,6 +552,8 @@ function CreateEvent() {
         setForm((prev) => ({ ...prev, certificate_template: files[0] }));
       } else if (name === 'assets') {
         setForm((prev) => ({ ...prev, assets: Array.from(files) }));
+      } else if (name === 'event_poster') {
+        setForm((prev) => ({ ...prev, event_poster: files[0] }));
       }
     } else if (type === 'checkbox') {
       setForm((prev) => ({ ...prev, [name]: checked }));
@@ -703,7 +768,17 @@ function CreateEvent() {
         if (!form.team_size_max) stepErrors.team_size_max = 'Max team size required';
       }
     } else if (step === 4) {
-      if (!form.certificate_template) stepErrors.certificate_template = 'Certificate template is required';
+      // Only validate certificates if this is a certificate-based event
+      if (form.is_certificate_based) {
+        const certificateTypes = getCertificateTypes(form.event_type, form.mode);
+        const hasRequiredTemplates = certificateTypes.every(type => 
+          form.certificate_templates[type] && form.certificate_templates[type] !== null
+        );
+        
+        if (!hasRequiredTemplates) {
+          stepErrors.certificate_templates = 'All required certificate templates must be uploaded';
+        }
+      }
     }
     
     setErrors(stepErrors);
@@ -1039,14 +1114,14 @@ function CreateEvent() {
             </div>
           </div>
 
-          {/* Certificate Template */}
+          {/* Certificate Configuration */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Certificate Template
+                Certificate Configuration
               </h3>
               <button 
                 onClick={() => setCurrentStep(4)}
@@ -1055,19 +1130,67 @@ function CreateEvent() {
                 Edit
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm text-gray-900">{form.certificate_template?.name || 'No template selected'}</span>
+            <div className="space-y-4">
+              {/* Certificate Based Status */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-600">Certificate Based Event:</span>
+                <span className={`text-sm px-2 py-1 rounded-full ${
+                  form.is_certificate_based 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {form.is_certificate_based ? 'Yes' : 'No'}
+                </span>
               </div>
-              {form.assets.length > 0 && (
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+
+              {form.is_certificate_based ? (
+                <>
+                  {/* Certificate Types */}
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Certificate Types:</span>
+                    <div className="mt-2 space-y-2">
+                      {form.event_type && getCertificateTypes(form.event_type, form.mode).map((type, index) => {
+                        const hasTemplate = form.certificate_templates[type];
+                        return (
+                          <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-center space-x-2">
+                              <svg className={`w-4 h-4 ${hasTemplate ? 'text-green-600' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d={hasTemplate 
+                                  ? "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  : "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                } clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm text-gray-900">{type} – [Event Name]</span>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              hasTemplate 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {hasTemplate ? 'Template Uploaded' : 'Missing Template'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Event Poster */}
+                  {form.event_poster && (
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm text-gray-900">Event poster: {form.event_poster.name}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                  <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="text-sm text-gray-900">{form.assets.length} asset file(s)</span>
+                  <p className="text-sm text-gray-600">No certificates will be provided for this event</p>
                 </div>
               )}
             </div>
@@ -1077,17 +1200,8 @@ function CreateEvent() {
 
       {/* Action Buttons */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={prevStep}
-            className="flex items-center px-6 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Certificate
-          </button>
+        <div className="flex items-center justify-end">
+
           
           <div className="flex items-center space-x-4">
             <div className="text-right">
@@ -1097,12 +1211,29 @@ function CreateEvent() {
             <button
               type="button"
               onClick={handleSubmit}
-              className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              disabled={isSubmitting}
+              className={`flex items-center px-8 py-3 font-semibold rounded-lg shadow-lg transition-all duration-200 transform ${
+                isSubmitting 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow-xl hover:scale-105'
+              } text-white`}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Create Event
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {uploadStatus || 'Creating Event...'}
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Create Event
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1139,7 +1270,84 @@ function CreateEvent() {
       return;
     }
     
+    setIsSubmitting(true);
+    
     try {
+      // Upload files to Appwrite before submitting the form
+      let certificateTemplateUrls = {};
+      let eventPosterUrl = null;
+
+      if (form.is_certificate_based && form.certificate_templates) {
+        setUploadStatus('Uploading certificate templates...');
+        
+        try {
+          const uploadResults = await unifiedStorage.uploadCertificateTemplates(
+            form.certificate_templates, 
+            form.event_id
+          );
+          
+          // Process upload results
+          for (const [certificateType, result] of Object.entries(uploadResults)) {
+            if (result.success) {
+              certificateTemplateUrls[certificateType] = result.url;
+            } else {
+              console.error(`Failed to upload ${certificateType}:`, result.error);
+              setErrors(prev => ({
+                ...prev,
+                certificates: `Failed to upload ${certificateType}: ${result.error}`
+              }));
+              setIsSubmitting(false);
+              setUploadStatus('');
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error uploading certificate templates:', error);
+          setErrors(prev => ({
+            ...prev,
+            certificates: 'Failed to upload certificate templates. Please try again.'
+          }));
+          setIsSubmitting(false);
+          setUploadStatus('');
+          return;
+        }
+      }
+
+      if (form.event_poster) {
+        setUploadStatus('Uploading event poster...');
+        
+        try {
+          const posterResult = await unifiedStorage.uploadEventPoster(
+            form.event_poster, 
+            form.event_id
+          );
+          
+          if (posterResult.success) {
+            eventPosterUrl = posterResult.url;
+          } else {
+            console.error('Failed to upload event poster:', posterResult.error);
+            setErrors(prev => ({
+              ...prev,
+              poster: `Failed to upload event poster: ${posterResult.error}`
+            }));
+            setIsSubmitting(false);
+            setUploadStatus('');
+            return;
+          }
+        } catch (error) {
+          console.error('Error uploading event poster:', error);
+          setErrors(prev => ({
+            ...prev,
+            poster: 'Failed to upload event poster. Please try again.'
+          }));
+          setIsSubmitting(false);
+          setUploadStatus('');
+          return;
+        }
+      }
+
+      setUploadStatus('Creating event...');
+
       // Prepare form data for submission
       const eventData = {
         event_id: form.event_id,
@@ -1187,6 +1395,14 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
+        
+        // Certificate configuration
+        is_certificate_based: form.is_certificate_based,
+        certificate_templates: form.is_certificate_based ? certificateTemplateUrls : {},
+        certificate_types: form.is_certificate_based && form.event_type ? getCertificateTypes(form.event_type, form.mode) : [],
+        
+        // Event poster URL from Appwrite upload
+        event_poster_url: eventPosterUrl,
         
         // Attendance configuration if customized
         attendance_strategy: customAttendanceStrategy?.strategy || null,
@@ -1273,6 +1489,7 @@ function CreateEvent() {
           }
         });
       } else {
+        setIsSubmitting(false);
         alert(`Error creating event: ${response.data?.message || 'Unknown error'}`);
       }
     } catch (error) {
@@ -1302,6 +1519,9 @@ function CreateEvent() {
       } else {
         alert(`Unexpected error: ${error.message}`);
       }
+    } finally {
+      setIsSubmitting(false);
+      setUploadStatus('');
     }
   };
 
@@ -1381,9 +1601,11 @@ function CreateEvent() {
                     options={[
                       { value: "technical", label: "Technical Event" },
                       { value: "cultural", label: "Cultural Event" },
-                      { value: "sports", label: "Sports Event" },
-                      { value: "workshop", label: "Workshop/Training" },
-                      { value: "seminar", label: "Seminar/Conference" },
+                      { value: "sport", label: "Sport Event" },
+                      { value: "workshop", label: "Workshop" },
+                      { value: "training", label: "Training" },
+                      { value: "seminar", label: "Seminar" },
+                      { value: "conference", label: "Conference" },
                       { value: "competition", label: "Competition" },
                       { value: "hackathon", label: "Hackathon" },
                       { value: "other", label: "Other" }
@@ -2261,20 +2483,283 @@ function CreateEvent() {
       case 4:
         return (
           <div>
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Certificate Template</h2>
-              <p className="text-sm text-gray-600">Upload and configure the certificate template for participants</p>
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                <div className="relative group">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2 text-amber-600 cursor-help">
+                    <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813A3.75 3.75 0 007.466 7.89l.813-2.846A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.394-1.183A.75.75 0 0116.5 15z" clipRule="evenodd" />
+                  </svg>
+                  
+                  {/* Tooltip */}
+                  <div className="absolute left-0 top-8 w-80 bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="flex items-start space-x-2">
+                      <div className="w-5 h-5 text-amber-600 mt-0.5">🏆</div>
+                      <div className="text-sm text-amber-800">
+                        <p className="font-medium mb-2">Certificate Configuration:</p>
+                        <ul className="space-y-1 text-xs">
+                          <li>• Choose if your event provides certificates to participants</li>
+                          <li>• Different event types have different certificate templates</li>
+                          <li>• Upload HTML templates for each certificate type</li>
+                          <li>• Templates should include placeholders like [Event Name], [Participant Name]</li>
+                          <li>• Asset files (images, fonts, CSS) can be uploaded separately</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    {/* Arrow pointing up */}
+                    <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
+                  </div>
+                </div>
+                Certificate Configuration
+              </h2>
+              <p className="text-sm text-gray-600">Configure certificate templates and settings for your event participants</p>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Certificate Template (HTML)<span className="text-red-500">*</span></label>
-                <input type="file" name="certificate_template" accept=".html" onChange={handleChange} required className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${errors.certificate_template ? 'border-red-500' : ''}`} />
-                {errors.certificate_template && <p className="text-xs text-red-500">{errors.certificate_template}</p>}
+
+            <div className="space-y-8">
+              {/* Certificate Based Event Toggle */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="is_certificate_based"
+                      name="is_certificate_based"
+                      type="checkbox"
+                      checked={form.is_certificate_based}
+                      onChange={(e) => handleCheckboxChange('is_certificate_based', e.target.checked)}
+                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="is_certificate_based" className="text-base font-semibold text-gray-900 cursor-pointer">
+                      This event provides certificates to participants
+                    </label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Enable this if participants will receive digital certificates upon event completion.
+                      Different certificate types will be available based on your event type.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Template Assets</label>
-                <input type="file" name="assets" multiple onChange={handleChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-              </div>
+
+              {/* Certificate Templates Section - Only show if certificate-based */}
+              {form.is_certificate_based && (
+                <div className="space-y-6">
+                  {/* Event Type Information */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <h3 className="text-md font-medium text-gray-900">
+                        Certificate Types for {form.event_type ? form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1) : 'Selected'} Event
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Based on your event type and mode, the following certificate templates are required:
+                    </p>
+                    {form.event_type && (
+                      <div className="mt-3">
+                        <div className="flex flex-wrap gap-2">
+                          {getCertificateTypes(form.event_type, form.mode).map((type, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {type} – [Event Name]
+                            </span>
+                          ))}
+                        </div>
+                        {form.mode === 'offline' && (form.event_type === 'cultural' || form.event_type === 'competition' || form.event_type === 'hackathon') && (
+                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div className="flex items-start space-x-2">
+                              <svg className="w-4 h-4 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <p className="text-xs text-amber-800">
+                                <strong>Note:</strong> Winner certificates are only available for hybrid or online events. 
+                                Change the event mode in Step 2 to include winner certificates.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Certificate Template Uploads */}
+                  {form.event_type && (
+                    <div className="space-y-4">
+                      <h3 className="text-md font-medium text-gray-900 border-b pb-2">Upload Certificate Templates</h3>
+                      
+                      <div className="grid grid-cols-1 gap-6">
+                        {getCertificateTypes(form.event_type, form.mode).map((certificateType, index) => (
+                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900">{certificateType} – [Event Name]</h4>
+                                <p className="text-xs text-gray-500 mt-1">Upload the HTML template for this certificate type</p>
+                              </div>
+                              {form.certificate_templates[certificateType] && (
+                                <div className="flex items-center space-x-2">
+                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="text-xs text-green-600 font-medium">Uploaded</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <input
+                                type="file"
+                                accept=".html"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    setForm(prev => ({
+                                      ...prev,
+                                      certificate_templates: {
+                                        ...prev.certificate_templates,
+                                        [certificateType]: file
+                                      }
+                                    }));
+                                  }
+                                }}
+                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              />
+                              
+                              {form.certificate_templates[certificateType] && (
+                                <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <span className="text-sm text-green-800 font-medium">
+                                        {form.certificate_templates[certificateType].name}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setForm(prev => {
+                                          const updated = { ...prev.certificate_templates };
+                                          delete updated[certificateType];
+                                          return {
+                                            ...prev,
+                                            certificate_templates: updated
+                                          };
+                                        });
+                                      }}
+                                      className="text-red-600 hover:text-red-800 text-xs underline"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {errors.certificate_templates && (
+                        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+                          {errors.certificate_templates}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Event Poster Section */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-md font-medium text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Event Poster (Optional)
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Upload an event poster image (PNG preferred, but any image format works).
+                    </p>
+                    
+                    <input
+                      type="file"
+                      name="event_poster"
+                      accept="image/*"
+                      onChange={handleChange}
+                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                    />
+                    
+                    {form.event_poster && (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Poster:</h4>
+                        <div className="flex items-center justify-between bg-gray-50 rounded-md p-2">
+                          <div className="flex items-center space-x-2">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-sm text-gray-700">{form.event_poster.name}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">{Math.round(form.event_poster.size / 1024)} KB</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm(prev => ({
+                                  ...prev,
+                                  event_poster: null
+                                }));
+                              }}
+                              className="text-red-600 hover:text-red-800 text-xs underline"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Certificate Template Guidelines */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                    <h3 className="text-md font-medium text-amber-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 text-amber-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Template Guidelines
+                    </h3>
+                    <div className="text-sm text-amber-800 space-y-2">
+                      <p><strong>Required Placeholders:</strong></p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li><code>[Event Name]</code> - Will be replaced with the actual event name</li>
+                        <li><code>[Participant Name]</code> - Will be replaced with participant's name</li>
+                        <li><code>[Event Date]</code> - Will be replaced with event date</li>
+                        <li><code>[Organization]</code> - Will be replaced with organizing department</li>
+                      </ul>
+                      <p className="mt-3"><strong>Optional Placeholders:</strong></p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li><code>[Certificate ID]</code> - Unique certificate identifier</li>
+                        <li><code>[Issue Date]</code> - Certificate generation date</li>
+                        <li><code>[Event Duration]</code> - Event duration or hours</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* No Certificate Section */}
+              {!form.is_certificate_based && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Certificates Required</h3>
+                  <p className="text-sm text-gray-600 max-w-md mx-auto">
+                    This event will not provide certificates to participants. Participants will be able to register and attend, but no certificates will be generated.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAvatarUrl } from '../lib/supabase';
+import { getAvatarUrl } from '../services/unifiedStorage';
 import api from '../api/base';
 import { useAuth } from '../context/AuthContext';
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../lib/supabase';
+import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../services/unifiedStorage';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/base';
 
