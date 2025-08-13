@@ -28,6 +28,7 @@ from core.logger import get_logger
 # Setup logger
 logger = get_logger(__name__)
 from core.id_generator import generate_attendance_id
+from .integration_service import integration_service
 
 class IntegratedDynamicAttendanceService:
     """
@@ -188,9 +189,9 @@ class IntegratedDynamicAttendanceService:
             # Get event details for context
             event_data = await DatabaseOperations.find_one("events", {"event_id": event_id})
             
-            # Get registration details
-            registration_data = await DatabaseOperations.find_one(
-                "student_registrations",
+            # Get participation details from new unified collection
+            participation_data = await DatabaseOperations.find_one(
+                "student_event_participations",
                 {
                     "student.enrollment_no": student_enrollment,
                     "event.event_id": event_id
@@ -202,7 +203,7 @@ class IntegratedDynamicAttendanceService:
                 **status,
                 "event_name": event_data.get("event_name") if event_data else "Unknown Event",
                 "event_type": event_data.get("event_type") if event_data else "Unknown",
-                "registration_type": registration_data.get("registration", {}).get("type") if registration_data else None,
+                "registration_type": participation_data.get("registration", {}).get("type") if participation_data else None,
                 "attendance_requirements": self._get_attendance_requirements(status["attendance_strategy"]),
                 "progress": self._calculate_progress(status),
                 "recommendations": self._get_attendance_recommendations(status)
@@ -236,13 +237,13 @@ class IntegratedDynamicAttendanceService:
                 {"event_id": event_id}
             )
             
-            # Get event registrations for comparison
-            registrations = await DatabaseOperations.find_many(
-                "student_registrations",
+            # Get event participations for comparison (using new unified collection)
+            participations = await DatabaseOperations.find_many(
+                "student_event_participations",
                 {"event.event_id": event_id}
             )
             
-            total_registered = len(registrations)
+            total_registered = len(participations)
             total_with_attendance = len(records)
             
             # Calculate session-wise attendance

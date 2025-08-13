@@ -42,6 +42,9 @@ env.bak/
 venv.bak/
 campusconnect/
 
+passowords.txt
+
+
 # Database
 *.db
 *.sqlite

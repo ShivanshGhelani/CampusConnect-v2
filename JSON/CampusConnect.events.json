@@ -1,4 +1,4 @@
-{
+[{
   "_id": {
     "$oid": "689c64ddb189a6084c06f9ed"
   },
@@ -144,4 +144,4 @@
     }
   ],
   "attendance_auto_generated": true
-}
+}]

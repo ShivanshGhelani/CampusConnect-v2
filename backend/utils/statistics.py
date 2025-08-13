@@ -170,24 +170,24 @@ class StatisticsManager:
     
     @classmethod
     async def get_event_statistics(cls, event_id: str) -> Dict[str, Any]:
-        """Get statistics for a specific event"""
+        """Get statistics for a specific event using unified participation system"""
         try:
-            # Get counts from different collections for this event
-            registrations = await DatabaseOperations.count_documents("registrations", {"event_id": event_id})
-            attendance = await DatabaseOperations.count_documents("attendance", {"event_id": event_id})
-            feedback = await DatabaseOperations.count_documents("feedback", {"event_id": event_id})
+            # Get all participations for this event
+            participations = await DatabaseOperations.find_many(
+                "student_event_participations", 
+                {"event.event_id": event_id}
+            )
             
-            # Count certificates by counting attendance with present status
-            certificates = await DatabaseOperations.count_documents("attendance", {
-                "event_id": event_id,
-                "attendance_status": "present"
-            })
+            total_registrations = len(participations)
+            attendance_marked = sum(1 for p in participations if p.get("attendance", {}).get("is_eligible", False))
+            feedback_submitted = sum(1 for p in participations if p.get("feedback", {}).get("submitted", False))
+            certificates_issued = sum(1 for p in participations if p.get("certificate", {}).get("issued", False))
             
             return {
-                "registrations": registrations,
-                "attendance": attendance,
-                "feedback": feedback,
-                "certificates": certificates
+                "registrations": total_registrations,
+                "attendance": attendance_marked,
+                "feedback": feedback_submitted,
+                "certificates": certificates_issued
             }
             
         except Exception as e:

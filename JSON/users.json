@@ -1,0 +1,174 @@
+[{
+  "_id": {
+    "$oid": "683896cf60c767ff258eb476"
+  },
+  "fullname": "Shivansh Ghelani",
+  "username": "SHIV9090",
+  "email": "shivansh_22043@ldrp.ac.in",
+  "password": "$2b$12$iMwUgcDSxBYmT9YQGRN6RO9KR2sxArs5KF7Hw39nW.UAT02tmqUYi",
+  "is_active": true,
+  "role": "super_admin",
+  "is_admin": true,
+  "created_at": {
+    "$date": "2025-05-29T17:18:07.054Z"
+  },
+  "created_by": "system",
+  "permissions": [
+    "admin.users.create",
+    "admin.users.read",
+    "admin.users.update",
+    "admin.users.delete",
+    "admin.events.create",
+    "admin.events.read",
+    "admin.events.update",
+    "admin.events.delete",
+    "admin.students.create",
+    "admin.students.read",
+    "admin.students.update",
+    "admin.students.delete",
+    "admin.dashboard.view",
+    "admin.analytics.view",
+    "admin.settings.manage",
+    "admin.logs.view",
+    "admin.system.manage"
+  ],
+  "last_login": {
+    "$date": "2025-08-13T10:07:25.314Z"
+  },
+  "mobile_no": "8980811621",
+  "updated_at": {
+    "$date": "2025-08-04T19:42:11.172Z"
+  },
+  "settings": {
+    "theme_preference": "light"
+  }
+},
+{
+  "_id": {
+    "$oid": "68912ac29ae91841e72ac9e6"
+  },
+  "fullname": "LDRP Admin",
+  "username": "ldrpadmin",
+  "email": "ccadmin@ldrp.ac.in",
+  "password": "$2b$12$RtEX.W4TLd0fPw.3dRVPF.4UYV.CvPunKW3Pb2uCkAnt4YcjPhV6a",
+  "role": "executive_admin",
+  "is_admin": true,
+  "is_active": true,
+  "assigned_events": [],
+  "permissions": [],
+  "created_at": {
+    "$date": "2025-08-04T21:48:50.114Z"
+  },
+  "last_login": {
+    "$date": "2025-08-10T19:23:25.180Z"
+  },
+  "created_by": "SHIV9090",
+  "user_type": "admin"
+},
+{
+  "_id": {
+    "$oid": "68972c1b478fb7cd1e1a0bfa"
+  },
+  "fullname": "Meet Gadhiya",
+  "username": "MEETT42",
+  "email": "meetgadhiya2005@gmail.com",
+  "password": "$2b$12$.wOTZZ3MrrfFOYyDbjYNhO.0kDXxrwT2jJexmVjjX1u8keg4Snntq",
+  "role": "super_admin",
+  "is_active": true,
+  "created_at": {
+    "$date": "2025-08-09T11:08:11.219Z"
+  },
+  "created_by": "SHIV9090",
+  "is_admin": true,
+  "last_login": {
+    "$date": "2025-08-09T17:06:40.980Z"
+  },
+  "updated_at": {
+    "$date": "2025-08-09T17:15:43.447Z"
+  },
+  "mobile_no": "9632587410"
+},
+{
+  "_id": {
+    "$oid": "68972c43478fb7cd1e1a0bfb"
+  },
+  "fullname": "VSITR",
+  "username": "vsitradmin",
+  "email": "vsitradmin@ldrp.ac.in",
+  "password": "$2b$12$VilV1fGPaCjr4YwYIVHbhemIRw4eIwE63zo14ayu0CtSAHA5/qsV6",
+  "role": "executive_admin",
+  "is_active": true,
+  "created_at": {
+    "$date": "2025-08-09T11:08:51.873Z"
+  },
+  "created_by": "SHIV9090",
+  "is_admin": true,
+  "last_login": {
+    "$date": "2025-08-09T16:16:49.459Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "689774bb6ff9a5d0aca5abf4"
+  },
+  "fullname": "Arth Darji",
+  "username": "ARTD10",
+  "email": "arthdarji_22026@ldrp.ac.in",
+  "password": "$2b$12$CfokcrNd2O/LQGZwS/BKduPcMda72Ll5DOrcrXm3dMfQxN49HdsTG",
+  "role": "super_admin",
+  "is_active": true,
+  "created_at": {
+    "$date": "2025-08-09T16:18:03.018Z"
+  },
+  "created_by": "MEET42",
+  "is_admin": true,
+  "permissions": [
+    "admin.users.create",
+    "admin.users.read",
+    "admin.users.update",
+    "admin.users.delete",
+    "admin.events.create",
+    "admin.events.read",
+    "admin.events.update",
+    "admin.events.delete",
+    "admin.students.create",
+    "admin.students.read",
+    "admin.students.update",
+    "admin.students.delete",
+    "admin.dashboard.view",
+    "admin.analytics.view",
+    "admin.settings.manage",
+    "admin.logs.view",
+    "admin.system.manage"
+  ]
+},
+{
+  "_id": {
+    "$oid": "689774f06ff9a5d0aca5abf5"
+  },
+  "fullname": "M.M Patel Medical College",
+  "username": "MMPSEC26",
+  "email": "mmpatel_ksv@ksv.ac.in",
+  "password": "$2b$12$3QA8QZ.g.ZdvOdEcMwdc/ucUw.zMuqs4f0jb99gMJmkZiKNcq.46C",
+  "role": "executive_admin",
+  "is_active": false,
+  "created_at": {
+    "$date": "2025-08-09T16:18:56.492Z"
+  },
+  "created_by": "MEET42",
+  "is_admin": true,
+  "permissions": [
+    "admin.events.create",
+    "admin.events.read",
+    "admin.events.update",
+    "admin.students.read",
+    "admin.dashboard.view"
+  ],
+  "last_login": {
+    "$date": "2025-08-09T16:19:08.267Z"
+  },
+  "deleted_at": {
+    "$date": "2025-08-09T16:44:33.833Z"
+  },
+  "deleted_by": "SHIV9090"
+}]

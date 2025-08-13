@@ -14,3 +14,11 @@ router.include_router(profile_router, prefix="/profile", tags=["client-profile-a
 
 # NOTE: Registration, attendance, feedback, and certificate endpoints 
 # have been removed and will be rebuilt as a simple unified system
+
+# Add participation routes for students
+from ..participations import router as participations_router
+router.include_router(participations_router, prefix="/participations", tags=["student-participations"])
+
+# Add student registration endpoints  
+from ..student_registration import router as student_registration_router
+router.include_router(student_registration_router, prefix="/registration", tags=["student-registration"])

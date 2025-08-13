@@ -118,36 +118,6 @@ export const adminAPI = {
   previewAttendanceStrategy: (eventData) => api.post('/api/v1/admin/attendance-preview/preview-strategy', eventData),
   validateCustomStrategy: (strategyData) => api.post('/api/v1/admin/attendance-preview/validate-custom-strategy', strategyData),
   
-
-  
-  // ADDED: Participation Management - New unified participation system
-  getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
-  
-  markStudentAttendance: (attendanceData) => api.post('/api/v1/admin/participation/attendance/mark', attendanceData),
-  
-  bulkMarkAttendance: (eventId, attendanceList) => api.post('/api/v1/admin/participation/attendance/bulk-mark', {
-    event_id: eventId,
-    attendance_data: attendanceList
-  }),
-  
-  issueStudentCertificate: (certificateData) => api.post('/api/v1/admin/participation/certificate/issue', certificateData),
-  
-  getStudentParticipations: (enrollmentNo, filters) => api.get(`/api/v1/admin/participation/student/${enrollmentNo}/participations`, { params: filters }),
-  
-  getEventStatistics: (eventId) => api.get(`/api/v1/admin/participation/statistics/event/${eventId}`),
-  
-  // UPDATED: Event Registration Management - Now using unified participation data
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
-  
-  // LEGACY SUPPORT: Keep existing registration endpoints for backward compatibility
-  getStudents: async (params = {}) => {
-    const queryParams = {
-      ...params,
-      user_type: 'student'
-    };
-    return await api.get('/api/v1/admin/users/list', { params: queryParams });
-  },
-
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
   // with parameters to specify focus areas, maintaining your 62-endpoint optimization

@@ -42,7 +42,11 @@ def generate_registration_id(enrollment_no: str, event_id: str, full_name: str) 
 
 def generate_team_registration_id(team_name: str, event_id: str, leader_enrollment: str) -> str:
     """
-    Generate a unique team registration ID
+    DEPRECATED: Generate a unique team registration ID
+    
+    This function is deprecated. Use the new ParticipationService instead.
+    The new unified system handles both individual and team registrations
+    through a single participation_id.
     
     Args:
         team_name: Name of the team
@@ -52,6 +56,13 @@ def generate_team_registration_id(team_name: str, event_id: str, leader_enrollme
     Returns:
         Unique team registration ID
     """
+    import warnings
+    warnings.warn(
+        "generate_team_registration_id is deprecated. Use ParticipationService instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     # Create a hash from the combination to ensure uniqueness
     combined = f"{team_name}_{event_id}_{leader_enrollment}_{datetime.now().isoformat()}"
     hash_object = hashlib.md5(combined.encode())

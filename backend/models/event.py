@@ -2,6 +2,9 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class EventMainStatus(Enum):
     """Main event status categories"""
@@ -96,100 +99,19 @@ class Event(BaseModel):
     is_team_based: bool = Field(default=False, description="Whether this is a team-based event")
     registration_fee: Optional[float] = Field(default=None, description="Registration fee for paid events")
     
-    # Updated registration tracking fields for new enrollment_no-based structure
-    # INDIVIDUAL EVENTS: enrollment_no -> registration_id (NEW STRUCTURE)
-    registrations: Dict[str, str] = Field(default={}, description="""
-    Individual registrations mapped by enrollment number:
+    # Simplified registration tracking - just statistics
+    registration_stats: Dict[str, Any] = Field(default={}, description="""
+    Simplified registration statistics:
     {
-        "22BEIT30043": "REG12345",
-        "22BEIT30044": "REG12346"
+        "individual_count": 150,
+        "team_count": 25,
+        "total_participants": 250,
+        "attendance_marked": 180,
+        "feedback_submitted": 160,
+        "certificates_issued": 140,
+        "last_updated": "2025-08-13T10:30:00Z"
     }
-    Use enrollment_no to find student data in students collection
-    """)
-    
-    # TEAM EVENTS: team_name -> {enrollment_no: registration_id} (SIMPLIFIED STRUCTURE)
-    team_registrations: Dict[str, Dict] = Field(default={}, description="""
-    Team registrations mapped by team_name:
-    {
-        "team_name": {
-            "22BEIT30043": "REG12345",  # team leader
-            "22BEIT30044": "REG12346",  # team member
-            "22BEIT30045": "REG12347",  # team member
-            ...
-            # Optional metadata
-            "payment_id": "PAY123",
-            "payment_status": "complete",
-            "team_leader": "22BEIT30043"
-        }
-    }
-    Use enrollment_no to find student data in students collection
-    """)
-    
-    # ATTENDANCE TRACKING: enrollment_no -> [attendance_ids] (NEW STRUCTURE)
-    attendances: Dict[str, List[str]] = Field(default={}, description="""
-    Individual attendances mapped by enrollment number:
-    {
-        "22BEIT30043": ["ATT12345", "ATT12346"],  # Multiple attendance sessions
-        "22BEIT30044": ["ATT12347"]               # Single attendance
-    }
-    Supports multiple attendance sessions (physical, virtual, day-based)
-    Store attendance IDs only when attendance is actually marked
-    """)
-    
-    # TEAM ATTENDANCES: team_name -> {enrollment_no: [attendance_ids]} (NEW STRUCTURE)
-    team_attendances: Dict[str, Dict[str, List[str]]] = Field(default={}, description="""
-    Team attendances mapped by team_name:
-    {
-        "team_name": {
-            "22BEIT30043": ["ATT12345"],  # team leader attendance
-            "22BEIT30044": ["ATT12346"],  # team member attendance
-            ...
-        }
-    }
-    """)
-    
-    # FEEDBACK TRACKING: enrollment_no -> feedback_id (NEW STRUCTURE)
-    feedbacks: Dict[str, str] = Field(default={}, description="""
-    Individual feedbacks mapped by enrollment number:
-    {
-        "22BEIT30043": "FEED12345",
-        "22BEIT30044": "FEED12346"
-    }
-    Store feedback ID only when feedback is actually submitted
-    """)
-    
-    # TEAM FEEDBACKS: team_name -> {enrollment_no: feedback_id} (NEW STRUCTURE)
-    team_feedbacks: Dict[str, Dict[str, str]] = Field(default={}, description="""
-    Team feedbacks mapped by team_name:
-    {
-        "team_name": {
-            "22BEIT30043": "FEED12345",  # team leader feedback
-            "22BEIT30044": "FEED12346",  # team member feedback
-            ...
-        }
-    }
-    """)
-    
-    # CERTIFICATE TRACKING: enrollment_no -> certificate_id (NEW STRUCTURE)
-    certificates: Dict[str, str] = Field(default={}, description="""
-    Individual certificates mapped by enrollment number:
-    {
-        "22BEIT30043": "CERT12345",
-        "22BEIT30044": "CERT12346"
-    }
-    Store certificate ID only when certificate is actually collected/generated
-    """)
-    
-    # TEAM CERTIFICATES: team_name -> {enrollment_no: certificate_id} (NEW STRUCTURE)
-    team_certificates: Dict[str, Dict[str, str]] = Field(default={}, description="""
-    Team certificates mapped by team_name:
-    {
-        "team_name": {
-            "22BEIT30043": "CERT12345",  # team leader certificate
-            "22BEIT30044": "CERT12346",  # team member certificate
-            ...
-        }
-    }
+    All detailed tracking moved to student_event_participations collection
     """)
     
     # Certificate settings
@@ -222,117 +144,83 @@ class Event(BaseModel):
                 self.sub_status = EventSubStatus.EVENT_COMPLETED.value
                 self.status = "completed"
     
-    # NEW ENROLLMENT-BASED HELPER METHODS
+    # SIMPLIFIED HELPER METHODS (Updated for new architecture)
+    
+    def get_registration_stats(self) -> Dict[str, int]:
+        """Get registration statistics from simplified structure"""
+        return self.registration_stats
+    
+    def update_registration_stats(self, stats_update: Dict[str, Any]) -> None:
+        """Update registration statistics"""
+        if not self.registration_stats:
+            self.registration_stats = {
+                "individual_count": 0,
+                "team_count": 0,
+                "total_participants": 0,
+                "attendance_marked": 0,
+                "feedback_submitted": 0,
+                "certificates_issued": 0,
+                "last_updated": datetime.utcnow()
+            }
+        
+        self.registration_stats.update(stats_update)
+        self.registration_stats["last_updated"] = datetime.utcnow()
+    
+    def get_participant_count(self) -> int:
+        """Get total participant count"""
+        return self.registration_stats.get("total_participants", 0)
+    
+    def is_registration_full(self) -> bool:
+        """Check if event registration is full"""
+        if not self.max_participants:
+            return False
+        return self.get_participant_count() >= self.max_participants
+    
+    # DEPRECATED METHODS (Kept for backward compatibility during migration)
+    # These methods will be removed after migration to student_event_participations
     
     def add_individual_registration(self, enrollment_no: str, registration_id: str) -> None:
-        """Add individual registration using enrollment_no as key"""
-        self.registrations[enrollment_no] = registration_id
+        """DEPRECATED: Use ParticipationService instead"""
+        logger.warning("add_individual_registration is deprecated. Use ParticipationService.create_participation()")
+        pass
     
     def add_team_registration(self, team_name: str, enrollment_no: str, registration_id: str, 
                             is_leader: bool = False, **metadata) -> None:
-        """Add team member registration using enrollment_no as key"""
-        if team_name not in self.team_registrations:
-            self.team_registrations[team_name] = {}
-        
-        self.team_registrations[team_name][enrollment_no] = registration_id
-        
-        # Add metadata like team leader info, payment details
-        if is_leader:
-            self.team_registrations[team_name]["team_leader"] = enrollment_no
-        
-        for key, value in metadata.items():
-            if not key.startswith("22"):  # Not an enrollment number
-                self.team_registrations[team_name][key] = value
+        """DEPRECATED: Use ParticipationService instead"""
+        logger.warning("add_team_registration is deprecated. Use ParticipationService.create_participation()")
+        pass
     
     def add_attendance(self, enrollment_no: str, attendance_id: str, team_name: str = None) -> None:
-        """Add attendance record using enrollment_no as key (store only when marked)"""
-        if team_name:
-            # Team attendance
-            if team_name not in self.team_attendances:
-                self.team_attendances[team_name] = {}
-            if enrollment_no not in self.team_attendances[team_name]:
-                self.team_attendances[team_name][enrollment_no] = []
-            self.team_attendances[team_name][enrollment_no].append(attendance_id)
-        else:
-            # Individual attendance
-            if enrollment_no not in self.attendances:
-                self.attendances[enrollment_no] = []
-            self.attendances[enrollment_no].append(attendance_id)
+        """DEPRECATED: Use ParticipationService instead"""
+        logger.warning("add_attendance is deprecated. Use ParticipationService.mark_attendance()")
+        pass
     
     def add_feedback(self, enrollment_no: str, feedback_id: str, team_name: str = None) -> None:
-        """Add feedback record using enrollment_no as key (store only when submitted)"""
-        if team_name:
-            # Team feedback
-            if team_name not in self.team_feedbacks:
-                self.team_feedbacks[team_name] = {}
-            self.team_feedbacks[team_name][enrollment_no] = feedback_id
-        else:
-            # Individual feedback
-            self.feedbacks[enrollment_no] = feedback_id
+        """DEPRECATED: Use ParticipationService instead"""
+        logger.warning("add_feedback is deprecated. Use ParticipationService instead")
+        pass
     
     def add_certificate(self, enrollment_no: str, certificate_id: str, team_name: str = None) -> None:
-        """Add certificate record using enrollment_no as key (store only when collected)"""
-        if team_name:
-            # Team certificate
-            if team_name not in self.team_certificates:
-                self.team_certificates[team_name] = {}
-            self.team_certificates[team_name][enrollment_no] = certificate_id
-        else:
-            # Individual certificate
-            self.certificates[enrollment_no] = certificate_id
+        """DEPRECATED: Use ParticipationService instead"""
+        logger.warning("add_certificate is deprecated. Use ParticipationService instead")
+        pass
     
     def get_student_registration_id(self, enrollment_no: str) -> str:
-        """Get registration ID for a student (individual or team)"""
-        # Check individual registrations first
-        if enrollment_no in self.registrations:
-            return self.registrations[enrollment_no]
-        
-        # Check team registrations
-        for team_name, team_data in self.team_registrations.items():
-            if enrollment_no in team_data and isinstance(team_data[enrollment_no], str):
-                return team_data[enrollment_no]
-        
+        """DEPRECATED: Use ParticipationService.get_participation() instead"""
+        logger.warning("get_student_registration_id is deprecated. Use ParticipationService.get_participation()")
         return None
     
     def get_student_attendance_ids(self, enrollment_no: str) -> List[str]:
-        """Get all attendance IDs for a student (individual or team)"""
-        attendance_ids = []
-        
-        # Check individual attendances
-        if enrollment_no in self.attendances:
-            attendance_ids.extend(self.attendances[enrollment_no])
-        
-        # Check team attendances
-        for team_name, team_data in self.team_attendances.items():
-            if enrollment_no in team_data:
-                attendance_ids.extend(team_data[enrollment_no])
-        
-        return attendance_ids
+        """DEPRECATED: Use ParticipationService.get_participation() instead"""
+        logger.warning("get_student_attendance_ids is deprecated. Use ParticipationService.get_participation()")
+        return []
     
     def is_student_registered(self, enrollment_no: str) -> bool:
-        """Check if student is registered for this event"""
-        return self.get_student_registration_id(enrollment_no) is not None
+        """DEPRECATED: Use ParticipationService.get_participation() instead"""
+        logger.warning("is_student_registered is deprecated. Use ParticipationService.get_participation()")
+        return False
     
-    def get_registration_stats(self) -> Dict[str, int]:
-        """Get registration statistics following new structure"""
-        individual_count = len(self.registrations)
-        team_count = 0
-        team_members_count = 0
-        
-        for team_name, team_data in self.team_registrations.items():
-            team_count += 1
-            # Count only enrollment numbers (not metadata fields)
-            members = [k for k in team_data.keys() if k.startswith("22")]
-            team_members_count += len(members)
-        
-        return {
-            "individual_registrations": individual_count,
-            "team_count": team_count,
-            "team_members": team_members_count,
-            "total_participants": individual_count + team_members_count
-        }
-    
-    def get_available_forms(self) -> List[str]:
+    def update_status(self, current_time: datetime = None) -> None:
         """Update event status and sub_status based on current time"""
         if current_time is None:
             current_time = datetime.now()
@@ -359,27 +247,25 @@ class Event(BaseModel):
                 self.status = "completed"
     
     def get_available_forms(self) -> List[str]:
-        """
-        Get list of available forms based on current event status.
+        """Get list of available forms for this event"""
+        forms = []
+        current_time = datetime.now()
         
-        Returns:
-            List of available form types: ['registration', 'certificate', 'attendance']
-        """
-        available_forms = []
+        # Registration form
+        if (self.registration_start_date and self.registration_end_date and 
+            self.registration_start_date <= current_time <= self.registration_end_date):
+            forms.append("registration")
         
-        # Check if registration is available
-        if self.sub_status == EventSubStatus.REGISTRATION_OPEN.value:
-            available_forms.append("registration")
+        # Feedback form (available after event ends)
+        if current_time >= self.end_datetime:
+            forms.append("feedback")
         
-        # Check if certificate form is available
-        if self.sub_status == EventSubStatus.CERTIFICATE_AVAILABLE.value:
-            available_forms.append("certificate")
+        # Certificate form (if certificates are available)
+        if (current_time >= self.end_datetime and 
+            (not self.certificate_end_date or current_time <= self.certificate_end_date)):
+            forms.append("certificate")
         
-        # Check if attendance form is available (during event)
-        if self.sub_status == EventSubStatus.EVENT_STARTED.value:
-            available_forms.append("attendance")
-        
-        return available_forms
+        return forms
 
 class CreateEvent(BaseModel):
     """Model for creating a new event"""

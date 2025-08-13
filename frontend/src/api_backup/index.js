@@ -9,8 +9,7 @@ export const loadAuthAPI = () => import('./auth').then(m => m.authAPI);
 export const loadClientAPI = () => import('./client').then(m => m.clientAPI);
 export const loadAdminAPI = () => import('./admin').then(m => m.adminAPI);
 export const loadOrganizerAPI = () => import('./organizer').then(m => m.organizerAPI);
-export const loadSystemAPI = () => import('./system').then(m => m.systemAPI);
-export const loadParticipationAPI = () => import('./participation').then(m => m.participationAPI); // NEW - System management
+export const loadSystemAPI = () => import('./system').then(m => m.systemAPI); // NEW - System management
 
 // Direct exports for most commonly used APIs (smaller bundle impact)
 export { authAPI } from './auth';
@@ -18,4 +17,3 @@ export { clientAPI } from './client';
 export { adminAPI } from './admin';
 export { organizerAPI } from './organizer';
 export { systemAPI } from './system'; // NEW - System management
-export { participationAPI } from './participation'; // NEW - Unified participation system
