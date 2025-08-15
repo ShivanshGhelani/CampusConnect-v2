@@ -10,6 +10,7 @@ const AttendancePreview = ({
 }) => {
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
   const [customStrategy, setCustomStrategy] = useState('');
   const [showDetails, setShowDetails] = useState(false);
@@ -33,7 +34,8 @@ const AttendancePreview = ({
 
   // Validate custom strategy when it changes
   useEffect(() => {
-    if (customStrategy && customStrategy !== previewData?.data?.detected_strategy) {
+    if (customStrategy && eventData.start_date && eventData.start_time && eventData.end_date && eventData.end_time) {
+      // Always validate when customStrategy changes, regardless of whether it's the detected strategy
       validateCustomStrategy();
     }
   }, [customStrategy]);
@@ -83,6 +85,8 @@ const AttendancePreview = ({
       return;
     }
 
+    setValidating(true);
+    
     try {
       const startDateTime = new Date(`${eventData.start_date}T${eventData.start_time}`);
       const endDateTime = new Date(`${eventData.end_date}T${eventData.end_time}`);
@@ -103,39 +107,51 @@ const AttendancePreview = ({
       setValidationData(data);
 
       // Update parent with the complete configuration
-      if (onStrategyChange && data) {
+      if (onStrategyChange && data.success && data.data) {
         onStrategyChange({
-          strategy: data.strategy,
-          criteria: data.criteria,
-          sessions: data.sessions,
-          warnings: data.warnings,
-          recommendations: data.recommendations
+          strategy: data.data.strategy,
+          criteria: data.data.config,
+          sessions: data.data.sessions,
+          warnings: data.data.warnings || [],
+          recommendations: data.data.recommendations || []
         });
       }
 
     } catch (err) {
       console.error('Error validating custom strategy:', err);
+      setError('Failed to validate custom strategy');
+    } finally {
+      setValidating(false);
     }
   };
 
   const handleStrategyChange = (newStrategy) => {
+    // Clear previous validation data when changing strategy
+    setValidationData(null);
+    
+    // Update the custom strategy state
     setCustomStrategy(newStrategy);
-    if (onStrategyChange) {
-      // If we have validation data for this strategy, pass the complete config
-      if (validationData && validationData.strategy === newStrategy) {
+    
+    // If switching back to the detected strategy, we'll use the original preview data
+    if (newStrategy === previewData?.data?.detected_strategy) {
+      if (onStrategyChange) {
         onStrategyChange({
-          strategy: validationData.strategy,
-          criteria: validationData.criteria,
-          sessions: validationData.sessions,
-          warnings: validationData.warnings,
-          recommendations: validationData.recommendations
+          strategy: newStrategy,
+          criteria: previewData.data.attendance_config,
+          sessions: previewData.data.sessions,
+          warnings: [],
+          recommendations: previewData.data.recommendations
         });
-      } else {
-        // Otherwise just pass the strategy name
+      }
+    } else {
+      // For other strategies, pass basic info and wait for validation
+      if (onStrategyChange) {
         onStrategyChange({
           strategy: newStrategy,
           criteria: null,
-          sessions: null
+          sessions: null,
+          warnings: [],
+          recommendations: []
         });
       }
     }
@@ -190,7 +206,22 @@ const AttendancePreview = ({
   }
 
   const { data } = previewData;
-  const currentData = validationData?.success ? validationData.data : data;
+  
+  // Determine current data to display based on state
+  const currentData = (() => {
+    // If we have validation data and it's successful, use it
+    if (validationData?.success && validationData.data) {
+      return validationData.data;
+    }
+    
+    // If custom strategy matches detected strategy, use original data
+    if (customStrategy === data.detected_strategy) {
+      return data;
+    }
+    
+    // Otherwise, fallback to original data
+    return data;
+  })();
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 space-y-4">
@@ -201,8 +232,11 @@ const AttendancePreview = ({
             {getStrategyIcon(currentData.strategy || currentData.detected_strategy)}
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Attendance Strategy: {currentData.strategy_name}
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <span>Attendance Strategy: {currentData.strategy_name}</span>
+              {validating && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              )}
             </h3>
             <p className="text-sm text-gray-600">
               {data.duration_info.total_hours}h event • {data.attendance_config.total_sessions} session(s)
