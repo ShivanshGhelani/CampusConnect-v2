@@ -15,8 +15,12 @@ function ManageAdmin() {
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [isHardDeleteModalOpen, setIsHardDeleteModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [deleteAdminData, setDeleteAdminData] = useState({ id: '', name: '' });
+  const [restoreAdminData, setRestoreAdminData] = useState({ id: '', name: '' });
+  const [hardDeleteAdminData, setHardDeleteAdminData] = useState({ id: '', name: '' });
 
   // Form data for creating new admin
   const [newAdminForm, setNewAdminForm] = useState({
@@ -42,7 +46,7 @@ function ManageAdmin() {
 
   // Add/remove modal backdrop blur class
   useEffect(() => {
-    const isModalOpen = isEditModalOpen || isDeleteModalOpen;
+    const isModalOpen = isEditModalOpen || isDeleteModalOpen || isRestoreModalOpen || isHardDeleteModalOpen;
     
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -56,7 +60,7 @@ function ManageAdmin() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isEditModalOpen, isDeleteModalOpen]);
+  }, [isEditModalOpen, isDeleteModalOpen, isRestoreModalOpen, isHardDeleteModalOpen]);
 
   useEffect(() => {
     fetchData();
@@ -150,20 +154,58 @@ function ManageAdmin() {
 
   const handleDeleteAdmin = async () => {
     try {
-      console.log('Deleting admin with username:', deleteAdminData.id);
+      console.log('Soft deleting admin with username:', deleteAdminData.id);
       const response = await adminAPI.deleteAdminUser(deleteAdminData.id);
-      console.log('Delete response:', response.data);
+      console.log('Soft delete response:', response.data);
       
       if (response.data.success) {
-        showNotification('Admin deleted successfully!', 'success');
+        showNotification('Admin deactivated successfully!', 'success');
         setIsDeleteModalOpen(false);
         fetchData(); // Refresh the list
       } else {
-        throw new Error(response.data.message || 'Failed to delete admin');
+        throw new Error(response.data.message || 'Failed to deactivate admin');
       }
     } catch (error) {
-      console.error('Error deleting admin:', error);
-      showNotification(error.response?.data?.message || 'Failed to delete admin', 'error');
+      console.error('Error deactivating admin:', error);
+      showNotification(error.response?.data?.message || 'Failed to deactivate admin', 'error');
+    }
+  };
+
+  const handleRestoreAdmin = async () => {
+    try {
+      console.log('Restoring admin with username:', restoreAdminData.id);
+      const response = await adminAPI.restoreAdminUser(restoreAdminData.id);
+      console.log('Restore response:', response.data);
+      
+      if (response.data.success) {
+        showNotification('Admin restored successfully!', 'success');
+        setIsRestoreModalOpen(false);
+        fetchData(); // Refresh the list
+      } else {
+        throw new Error(response.data.message || 'Failed to restore admin');
+      }
+    } catch (error) {
+      console.error('Error restoring admin:', error);
+      showNotification(error.response?.data?.message || 'Failed to restore admin', 'error');
+    }
+  };
+
+  const handleHardDeleteAdmin = async () => {
+    try {
+      console.log('Hard deleting admin with username:', hardDeleteAdminData.id);
+      const response = await adminAPI.hardDeleteAdminUser(hardDeleteAdminData.id);
+      console.log('Hard delete response:', response.data);
+      
+      if (response.data.success) {
+        showNotification('Admin permanently deleted!', 'success');
+        setIsHardDeleteModalOpen(false);
+        fetchData(); // Refresh the list
+      } else {
+        throw new Error(response.data.message || 'Failed to permanently delete admin');
+      }
+    } catch (error) {
+      console.error('Error permanently deleting admin:', error);
+      showNotification(error.response?.data?.message || 'Failed to permanently delete admin', 'error');
     }
   };
 
@@ -185,6 +227,22 @@ function ManageAdmin() {
       name: admin.fullname
     });
     setIsDeleteModalOpen(true);
+  };
+
+  const openRestoreModal = (admin) => {
+    setRestoreAdminData({
+      id: admin.username,
+      name: admin.fullname
+    });
+    setIsRestoreModalOpen(true);
+  };
+
+  const openHardDeleteModal = (admin) => {
+    setHardDeleteAdminData({
+      id: admin.username,
+      name: admin.fullname
+    });
+    setIsHardDeleteModalOpen(true);
   };
 
   const getRoleBadgeColor = (role) => {
@@ -245,7 +303,14 @@ function ManageAdmin() {
             <div className="px-4 py-5 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Admin Users</h3>
-                <p className="mt-1 text-sm text-gray-600">{admins.length} admin{admins.length !== 1 ? 's' : ''} total</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {admins.length} admin{admins.length !== 1 ? 's' : ''} total
+                  {admins.length > 0 && (
+                    <span className="ml-2">
+                      ({admins.filter(admin => admin.is_active).length} active, {admins.filter(admin => !admin.is_active).length} inactive)
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center space-x-4">
                 {/* Role Legend */}
@@ -297,7 +362,11 @@ function ManageAdmin() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {admins.map((admin) => (
-                      <tr key={admin.username} className="hover:bg-gray-50">
+                      <tr key={admin.username} className={`${
+                        admin.is_active 
+                          ? 'hover:bg-gray-50' 
+                          : 'bg-gray-50 hover:bg-gray-100 opacity-75'
+                      } transition-colors`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-8 w-8">
@@ -308,10 +377,20 @@ function ManageAdmin() {
                               </div>
                             </div>
                             <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className={`text-sm font-medium flex items-center ${
+                                admin.is_active ? 'text-gray-900' : 'text-gray-600'
+                              }`}>
                                 {admin.fullname}
+                                {!admin.is_active && (
+                                  <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    <i className="fas fa-user-slash mr-1 text-xs"></i>
+                                    Deactivated
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className={`text-sm ${
+                                admin.is_active ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
                                 @{admin.username}
                               </div>
                             </div>
@@ -347,21 +426,44 @@ function ManageAdmin() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => openEditModal(admin)}
-                              className="text-blue-600 hover:text-blue-900 text-sm"
-                              title="Edit Admin"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(admin)}
-                              className="text-red-600 hover:text-red-900 text-sm"
-                              title="Delete Admin"
-                            >
-                              Delete
-                            </button>
+                          <div className="flex justify-end space-x-3">
+                            {admin.is_active ? (
+                              // Actions for active admins
+                              <>
+                                <button
+                                  onClick={() => openEditModal(admin)}
+                                  className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors"
+                                  title="Edit Admin"
+                                >
+                                  <i className="fas fa-edit text-sm"></i>
+                                </button>
+                                <button
+                                  onClick={() => openDeleteModal(admin)}
+                                  className="text-orange-600 hover:text-orange-900 p-1 rounded-md hover:bg-orange-50 transition-colors"
+                                  title="Deactivate Admin"
+                                >
+                                  <i className="fas fa-user-slash text-sm"></i>
+                                </button>
+                              </>
+                            ) : (
+                              // Actions for inactive (soft deleted) admins
+                              <>
+                                <button
+                                  onClick={() => openRestoreModal(admin)}
+                                  className="text-green-600 hover:text-green-900 p-1 rounded-md hover:bg-green-50 transition-colors"
+                                  title="Restore Admin"
+                                >
+                                  <i className="fas fa-user-check text-sm"></i>
+                                </button>
+                                <button
+                                  onClick={() => openHardDeleteModal(admin)}
+                                  className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
+                                  title="Permanently Delete Admin"
+                                >
+                                  <i className="fas fa-trash text-sm"></i>
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -637,22 +739,23 @@ function ManageAdmin() {
         </form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* Deactivate Confirmation Modal */}
       <Modal 
         isOpen={isDeleteModalOpen} 
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Admin"
+        title="Deactivate Admin"
         backdrop="blur"
         size="md"
       >
         <div className="flex items-center mb-4">
-          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-            <i className="fas fa-exclamation-triangle text-red-600"></i>
+          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+            <i className="fas fa-user-slash text-orange-600"></i>
           </div>
-          <span className="text-lg font-medium text-gray-900">Confirm Deletion</span>
+          <span className="text-lg font-medium text-gray-900">Confirm Deactivation</span>
         </div>
         <p className="text-gray-600 mb-6">
-          Are you sure you want to delete admin "<span className="font-medium">{deleteAdminData.name}</span>"? This action cannot be undone.
+          Are you sure you want to deactivate admin "<span className="font-medium">{deleteAdminData.name}</span>"? 
+          The admin will be unable to access the system but their data will be preserved. You can restore them later.
         </p>
         <div className="flex justify-end space-x-3">
           <button
@@ -663,9 +766,83 @@ function ManageAdmin() {
           </button>
           <button
             onClick={handleDeleteAdmin}
+            className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm"
+          >
+            Deactivate
+          </button>
+        </div>
+      </Modal>
+
+      {/* Restore Confirmation Modal */}
+      <Modal 
+        isOpen={isRestoreModalOpen} 
+        onClose={() => setIsRestoreModalOpen(false)}
+        title="Restore Admin"
+        backdrop="blur"
+        size="md"
+      >
+        <div className="flex items-center mb-4">
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+            <i className="fas fa-user-check text-green-600"></i>
+          </div>
+          <span className="text-lg font-medium text-gray-900">Confirm Restoration</span>
+        </div>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to restore admin "<span className="font-medium">{restoreAdminData.name}</span>"? 
+          They will regain access to the system with their previous permissions.
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={() => setIsRestoreModalOpen(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRestoreAdmin}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+          >
+            Restore
+          </button>
+        </div>
+      </Modal>
+
+      {/* Hard Delete Confirmation Modal */}
+      <Modal 
+        isOpen={isHardDeleteModalOpen} 
+        onClose={() => setIsHardDeleteModalOpen(false)}
+        title="Permanently Delete Admin"
+        backdrop="blur"
+        size="md"
+      >
+        <div className="flex items-center mb-4">
+          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+            <i className="fas fa-exclamation-triangle text-red-600"></i>
+          </div>
+          <span className="text-lg font-medium text-gray-900">⚠️ Permanent Deletion</span>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+          <p className="text-red-800 text-sm font-medium">
+            <i className="fas fa-exclamation-triangle mr-1"></i>
+            This action cannot be undone!
+          </p>
+        </div>
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to permanently delete admin "<span className="font-medium">{hardDeleteAdminData.name}</span>"? 
+          This will completely remove all their data from the system and cannot be restored.
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={() => setIsHardDeleteModalOpen(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleHardDeleteAdmin}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
           >
-            Delete Admin
+            Permanently Delete
           </button>
         </div>
       </Modal>

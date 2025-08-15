@@ -56,6 +56,8 @@ export const adminAPI = {
   createAdminUser: (adminData) => api.post('/api/v1/admin/users/list', { ...adminData, user_type: 'admin' }),
   updateAdminUser: (username, adminData) => api.put('/api/v1/admin/users/list', { user_id: username, user_type: 'admin', ...adminData }),
   deleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/list/${adminId}?user_type=admin`),
+  restoreAdminUser: (adminId) => api.patch(`/api/v1/admin/users/restore/${adminId}?user_type=admin`),
+  hardDeleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/hard-delete/${adminId}?user_type=admin`),
   
   // Profile Management - FIXED to use correct auth endpoints
   getProfile: () => api.get('/auth/api/profile'),
