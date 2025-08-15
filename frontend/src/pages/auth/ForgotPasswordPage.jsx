@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { authAPI } from '../../api/auth';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function ForgotPasswordPage() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('student');
   const [formData, setFormData] = useState({
     // Student form data
@@ -16,6 +17,17 @@ function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  // Check URL for tab parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'faculty') {
+      setActiveTab('faculty');
+    } else if (tabParam === 'student') {
+      setActiveTab('student');
+    }
+  }, [location.search]);
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
@@ -172,7 +184,7 @@ function ForgotPasswordPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             {activeTab === 'student' ? (
               <>
                 {/* Student Reset Fields */}
@@ -312,7 +324,7 @@ function ForgotPasswordPage() {
             </div>
             <div className="text-center">
               <Link
-                to="/auth/login"
+                to={`/auth/login?tab=${activeTab}`}
                 className={`inline-flex items-center justify-center px-6 py-3 border rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
                   activeTab === 'faculty'
                     ? 'border-blue-600 text-blue-600 bg-white hover:bg-blue-600 hover:text-white'

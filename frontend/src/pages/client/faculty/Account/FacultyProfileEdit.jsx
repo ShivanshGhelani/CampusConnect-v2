@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
+import { authAPI } from '../../../../api/auth';
 
 function FacultyProfileEdit() {
   const { user } = useAuth();
@@ -11,6 +12,8 @@ function FacultyProfileEdit() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
+  const [validationLoading, setValidationLoading] = useState({});
   const [showPassword, setShowPassword] = useState({
     current_password: false,
     new_password: false,
@@ -42,6 +45,69 @@ function FacultyProfileEdit() {
     const date = new Date(dateStr);
     return date.toISOString().split('T')[0];
   };
+
+  // Real-time field validation for database checks
+  const validateFieldRealTime = useCallback(
+    async (fieldName, fieldValue) => {
+      console.log('🎯 validateFieldRealTime CALLED for faculty profile edit:', { fieldName, fieldValue });
+      
+      // Only validate email and contact_no for cross-validation
+      const fieldsToValidate = ['email', 'contact_no'];
+      if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
+        console.log('❌ Validation skipped - field not in list or too short');
+        return;
+      }
+
+      console.log('✅ Validation proceeding for:', fieldName);
+      setValidationLoading(prev => ({ ...prev, [fieldName]: true }));
+
+      try {
+        const response = await authAPI.validateField(fieldName, fieldValue, 'faculty', user?.employee_id);
+        console.log('🔍 Validation response for', fieldName, ':', response);
+        
+        if (response.data.success) {
+          // Update validation errors with the real-time check
+          if (!response.data.available) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [fieldName]: response.data.message
+            }));
+          } else {
+            // Clear the error if field is available
+            setValidationErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors[fieldName]?.includes('already registered')) {
+                delete newErrors[fieldName];
+              }
+              return newErrors;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Field validation error:', error);
+        // Don't show errors for network issues during real-time validation
+      } finally {
+        setValidationLoading(prev => ({ ...prev, [fieldName]: false }));
+      }
+    },
+    [user?.employee_id]
+  );
+
+  // Debounce the validation to avoid too many API calls
+  const debouncedValidation = useCallback(
+    (() => {
+      const timers = {};
+      return (fieldName, fieldValue) => {
+        console.log('⏰ Debouncing validation for:', fieldName, 'value:', fieldValue);
+        clearTimeout(timers[fieldName]);
+        timers[fieldName] = setTimeout(() => {
+          console.log('✅ Executing debounced validation for:', fieldName);
+          validateFieldRealTime(fieldName, fieldValue);
+        }, 800); // Wait 800ms after user stops typing
+      };
+    })(),
+    [validateFieldRealTime]
+  );
 
   // Fetch current profile data
   useEffect(() => {
@@ -86,14 +152,40 @@ function FacultyProfileEdit() {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Process the value based on field type
+    let processedValue = value;
+    if (name === 'contact_no') {
+      processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+    } else if (name === 'email') {
+      processedValue = value.toLowerCase();
+    } else if (name === 'experience_years') {
+      processedValue = value.replace(/[^0-9]/g, '').slice(0, 2);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
 
     // Clear messages when user starts typing
     if (success) setSuccess('');
     if (error) setError('');
+    
+    // Clear specific validation error
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+
+    // Trigger real-time database validation for email and contact_no
+    const fieldsToValidateRealTime = ['email', 'contact_no'];
+    if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
+      console.log('🚀 Triggering real-time validation for:', name, 'value:', processedValue);
+      debouncedValidation(name, processedValue);
+    }
   };
 
   // Toggle password visibility
@@ -112,6 +204,14 @@ function FacultyProfileEdit() {
     setSuccess('');
 
     try {
+      // Check for validation errors before submission
+      const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
+      if (hasValidationErrors) {
+        setError('Please fix the validation errors before submitting');
+        setSaving(false);
+        return;
+      }
+
       // Validate password fields if any password is provided
       if (formData.new_password || formData.current_password || formData.confirm_new_password) {
         if (!formData.current_password) {
@@ -173,16 +273,6 @@ function FacultyProfileEdit() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Auto-format contact number
-  const handleContactChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 10) value = value.substring(0, 10);
-    setFormData(prev => ({
-      ...prev,
-      contact_no: value
-    }));
   };
 
   if (!user || user.user_type !== 'faculty') {
@@ -311,17 +401,28 @@ function FacultyProfileEdit() {
                         name="email" 
                         type="email" 
                         required
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
+                          validationErrors.email 
+                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
+                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                        }`}
                         placeholder="Enter your email address"
                         value={formData.email}
                         onChange={handleInputChange}
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
+                        {validationLoading.email ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
+                    {validationErrors.email && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Your email will be used for important notifications</p>
                   </div>
 
@@ -336,17 +437,28 @@ function FacultyProfileEdit() {
                         name="contact_no" 
                         type="tel" 
                         pattern="[0-9]{10}"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
+                          validationErrors.contact_no 
+                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
+                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                        }`}
                         placeholder="10-digit mobile number"
                         value={formData.contact_no}
-                        onChange={handleContactChange}
+                        onChange={handleInputChange}
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
+                        {validationLoading.contact_no ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
+                    {validationErrors.contact_no && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.contact_no}</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Your active contact number for notifications</p>
                   </div>
 
@@ -421,17 +533,19 @@ function FacultyProfileEdit() {
                         id="employee_id" 
                         name="employee_id" 
                         type="text"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="Enter your employee ID"
+                        readOnly
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
+                        placeholder="Employee ID (Cannot be changed)"
                         value={formData.employee_id}
-                        onChange={handleInputChange}
+                        title="Employee ID cannot be modified"
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 114 0v2m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </div>
                     </div>
+                    <p className="mt-1 text-xs text-gray-500">Employee ID cannot be modified for security reasons</p>
                   </div>
 
                   {/* Department */}
@@ -630,13 +744,14 @@ function FacultyProfileEdit() {
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           {showPassword.current_password ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                           ) : (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           )}
                         </svg>
                       </button>
                     </div>
+                    
                     <p className="text-xs text-gray-500 mt-1">Required only if changing password</p>
                   </div>
 
@@ -665,7 +780,7 @@ function FacultyProfileEdit() {
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {showPassword.new_password ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                             ) : (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             )}
@@ -697,7 +812,7 @@ function FacultyProfileEdit() {
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {showPassword.confirm_new_password ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                             ) : (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             )}

@@ -248,12 +248,13 @@ function Students() {
   const toggleStudentStatus = async (studentId, currentStatus) => {
     try {
       const newStatus = !currentStatus;
+      
       const response = await adminAPI.updateStudentStatus(studentId, { is_active: newStatus });
       
       if (response.data.success) {
         // Update both allStudents and cache
         const updatedStudents = allStudents.map(student => 
-          student.user_id === studentId || student._id === studentId
+          student.enrollment_no === studentId || student.user_id === studentId || student._id === studentId
             ? { ...student, is_active: newStatus }
             : student
         );
@@ -612,7 +613,7 @@ function Students() {
                                   : 'bg-green-600 hover:bg-green-700 text-white'
                               }`}
                               title={student.is_active !== false ? 'Deactivate Student' : 'Activate Student'}
-                              onClick={() => toggleStudentStatus(student.user_id || student._id, student.is_active !== false)}
+                              onClick={() => toggleStudentStatus(student.enrollment_no || student.user_id || student._id, student.is_active !== false)}
                             >
                               <i className={`fas ${student.is_active !== false ? 'fa-user-slash' : 'fa-user-check'}`}></i>
                             </button>

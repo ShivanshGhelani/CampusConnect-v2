@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI } from '../api/auth';
 
+// Import avatar reset function
+import { resetAvatarGlobalState } from '../hooks/useAvatar';
+
+// Import data cache manager to clear caches on logout
+import { DataCacheManager } from '../utils/dataFilteringUtils';
+
 // Auth context
 const AuthContext = createContext();
 
@@ -121,6 +127,15 @@ export function AuthProvider({ children }) {
           localStorage.removeItem('user_data');
           localStorage.removeItem('user_type');
           localStorage.removeItem('auth_token');
+          
+          // Clear avatar cache when session is invalid
+          try {
+            resetAvatarGlobalState();
+            console.log('✅ Avatar cache cleared due to invalid session');
+          } catch (error) {
+            console.error('Failed to clear avatar cache:', error);
+          }
+          
           dispatch({ type: authActions.LOGOUT });
         }
       } else {
@@ -131,6 +146,15 @@ export function AuthProvider({ children }) {
       // Clear any invalid session data
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
+      
+      // Clear avatar cache on auth failure
+      try {
+        resetAvatarGlobalState();
+        console.log('✅ Avatar cache cleared due to auth failure');
+      } catch (avatarError) {
+        console.error('Failed to clear avatar cache:', avatarError);
+      }
+      
       dispatch({ type: authActions.LOGOUT });
     }
   };
@@ -212,6 +236,31 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user_data');
     localStorage.removeItem('user_type');
     localStorage.removeItem('auth_token');
+    
+    // Clear any additional cached data that might contain user-specific info
+    localStorage.removeItem('profileData');
+    localStorage.removeItem('avatarCache');
+    localStorage.removeItem('userProfile');
+    
+    // Clear session storage as well
+    sessionStorage.clear();
+    
+    // CRITICAL FIX: Clear avatar cache to prevent showing previous user's avatar
+    try {
+      resetAvatarGlobalState();
+      console.log('✅ Avatar cache cleared on logout');
+    } catch (error) {
+      console.error('Failed to clear avatar cache:', error);
+    }
+    
+    // Clear data cache manager to prevent cross-user data leaks
+    try {
+      const cacheManager = new DataCacheManager();
+      cacheManager.clear();
+      console.log('✅ Data cache cleared on logout');
+    } catch (error) {
+      console.error('Failed to clear data cache:', error);
+    }
     
     dispatch({ type: authActions.LOGOUT });
   };

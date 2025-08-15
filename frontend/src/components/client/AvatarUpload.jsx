@@ -4,6 +4,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../services/unifiedStorage';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/base';
+import Loader from '../ui/Loader';
 
 function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
   const { user } = useAuth();
@@ -92,16 +93,18 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
         type: 'image/jpeg',
       });
 
-      console.log('File created:', file.name, file.size, 'bytes');      // Upload to Supabase
-      console.log('Uploading to Supabase...');
-      const avatarPath = await uploadAvatar(file, user);
-      console.log('Supabase upload successful:', avatarPath);
+      console.log('File created:', file.name, file.size, 'bytes');
+
+      // Upload to storage service
+      console.log('Uploading to storage...');
+      const uploadResult = await uploadAvatar(file, user);
+      console.log('Storage upload successful:', uploadResult);
       
-      // Get the public URL from Supabase
-      const avatarPublicUrl = getAvatarUrl(avatarPath);
-      console.log('Generated public URL:', avatarPublicUrl);
+      // Extract the avatar URL from the upload result
+      const avatarPublicUrl = uploadResult.avatarUrl;
+      console.log('Avatar URL to store:', avatarPublicUrl);
       
-      // Update profile in backend with the PUBLIC URL, not the path
+      // Update profile in backend with the avatar URL
       console.log('Updating backend profile...');
       
       // Use different endpoint based on user type
@@ -186,9 +189,10 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
         <div className="w-40 h-40 bg-slate-100 rounded-full flex items-center justify-center shadow-lg border-4 border-white group-hover:scale-105 transition-transform duration-300 cursor-pointer overflow-hidden">
           {currentAvatar ? (
             <img
-              src={currentAvatar}
+              src={`${currentAvatar}?t=${Date.now()}`} // Add timestamp to prevent browser caching
               alt="Profile"
               className="w-full h-full object-cover"
+              key={`avatar-${user?.enrollment_no || user?.employee_id}-${Date.now()}`} // Force re-render on user change
             />
           ) : (
             <span className="text-5xl font-bold text-slate-800">
@@ -272,10 +276,16 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
                       className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 font-semibold"
                       disabled={uploading}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      {currentAvatar ? 'Change Photo' : 'Upload Photo'}
+                      {uploading ? (
+                        <Loader size="sm" color="white" text="Loading..." />
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          {currentAvatar ? 'Change Photo' : 'Upload Photo'}
+                        </>
+                      )}
                     </button>
 
                     {currentAvatar && (
@@ -284,10 +294,16 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
                         className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 font-semibold"
                         disabled={uploading}
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Remove Photo
+                        {uploading ? (
+                          <Loader size="sm" color="white" text="Removing..." />
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Remove Photo
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -332,10 +348,7 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
                       disabled={uploading || !completedCrop}
                     >
                       {uploading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Uploading...
-                        </>
+                        <Loader size="sm" color="white" text="Uploading..." />
                       ) : (
                         <>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

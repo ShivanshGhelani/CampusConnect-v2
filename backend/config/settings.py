@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
     BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # Admin Settings
     DEFAULT_ADMIN_USERNAME: str = "ldrpadmin"
@@ -58,6 +59,7 @@ DB_NAME = settings.DB_NAME
 
 DEBUG = settings.DEBUG
 ENVIRONMENT = settings.ENVIRONMENT
+FRONTEND_URL = settings.FRONTEND_URL
 
 @lru_cache()
 def get_settings():

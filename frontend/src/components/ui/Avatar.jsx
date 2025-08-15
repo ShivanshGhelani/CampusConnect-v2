@@ -37,9 +37,10 @@ function Avatar({
     return (
       <div className={`${sizeClass} rounded-full overflow-hidden flex-shrink-0 ${className}`}>
         <img
-          src={src}
+          src={`${src}?t=${Date.now()}`} // Add timestamp to prevent browser caching
           alt={name || 'Avatar'}
           className="w-full h-full object-cover"
+          key={`avatar-${src}-${Date.now()}`} // Force re-render when src changes
           onError={() => setImageError(true)}
           onLoad={() => setImageError(false)}
         />

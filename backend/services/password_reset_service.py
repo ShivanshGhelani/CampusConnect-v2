@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from core.logger import get_logger
 from config.database import Database
+from config.settings import FRONTEND_URL
 from services.communication.email_service import CommunicationService
 
 try:
@@ -143,7 +144,7 @@ class PasswordResetService:
             logger.error(f"Error getting user info: {e}")
             return None
 
-    async def initiate_password_reset_student(self, enrollment_no: str, email: str) -> Dict[str, Any]:
+    async def initiate_password_reset_student(self, enrollment_no: str, email: str, client_ip: str = "Unknown") -> Dict[str, Any]:
         """Initiate password reset for student"""
         try:
             db = await Database.get_database()
@@ -169,16 +170,17 @@ class PasswordResetService:
             if not token:
                 raise Exception("Failed to generate reset token")
             
-            # Send reset email
-            reset_link = f"http://127.0.0.1:3000/auth/reset-password/{token}"
+            # Send reset email with environment-aware URL
+            reset_link = f"{FRONTEND_URL}/auth/reset-password/{token}"
             email_sent = await self.email_service.send_password_reset_email(
                 user_email=email.lower(),
                 user_name=student['full_name'],
                 reset_url=reset_link,
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                ip_address=client_ip
             )
             
-            logger.info(f"Password reset initiated for student {enrollment_no}")
+            logger.info(f"Password reset initiated for student {enrollment_no} from IP {client_ip}")
             return {
                 'success': True,
                 'message': 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.',
@@ -193,7 +195,7 @@ class PasswordResetService:
                 'email_sent': False
             }
 
-    async def initiate_password_reset_faculty(self, employee_id: str, email: str) -> Dict[str, Any]:
+    async def initiate_password_reset_faculty(self, employee_id: str, email: str, client_ip: str = "Unknown") -> Dict[str, Any]:
         """Initiate password reset for faculty"""
         try:
             db = await Database.get_database()
@@ -219,16 +221,17 @@ class PasswordResetService:
             if not token:
                 raise Exception("Failed to generate reset token")
             
-            # Send reset email
-            reset_link = f"http://127.0.0.1:3000/auth/reset-password/{token}"
+            # Send reset email with environment-aware URL
+            reset_link = f"{FRONTEND_URL}/auth/reset-password/{token}"
             email_sent = await self.email_service.send_password_reset_email(
                 user_email=email.lower(),
                 user_name=faculty['full_name'],
                 reset_url=reset_link,
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                ip_address=client_ip
             )
             
-            logger.info(f"Password reset initiated for faculty {employee_id}")
+            logger.info(f"Password reset initiated for faculty {employee_id} from IP {client_ip}")
             return {
                 'success': True,
                 'message': 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.',

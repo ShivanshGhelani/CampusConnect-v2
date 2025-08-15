@@ -173,7 +173,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/auth/login');
+            navigate('/auth/login?tab=admin');
         } catch (error) {
             console.error('Logout error:', error);
         }

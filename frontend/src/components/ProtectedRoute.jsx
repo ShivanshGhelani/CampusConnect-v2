@@ -16,8 +16,9 @@ function ProtectedRoute({ children, userType }) {
   }
 
   if (!isAuthenticated) {
-    // Redirect to appropriate login page
-    const loginPath = userType === 'admin' ? '/auth/login?mode=admin' : '/auth/login';
+    // Redirect to appropriate login page with correct tab
+    const loginTab = userType === 'admin' ? 'admin' : userType === 'faculty' ? 'faculty' : 'student';
+    const loginPath = `/auth/login?tab=${loginTab}`;
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 

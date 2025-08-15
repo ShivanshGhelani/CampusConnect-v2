@@ -337,33 +337,44 @@ async def delete_asset_endpoint(
 
 # Helper function to delete user avatars
 async def delete_user_avatars(user_type: str, user_id: str):
-    """Delete all existing avatars for a user from campusconnect bucket"""
+    """Delete existing avatar for a user from campusconnect bucket"""
     try:
-        folder_path = f"faculties/{user_id}" if user_type == 'faculty' else f"students/{user_id}"
+        from database.operations import DatabaseOperations
         
-        # List files in user folder
-        files_result = await SupabaseStorageService.list_files(
-            bucket_name=settings.SUPABASE_STORAGE_BUCKET,  # campusconnect
-            folder_path=folder_path
+        # Get current avatar info from database
+        collection_name = "faculties" if user_type == 'faculty' else "students"
+        id_field = "employee_id" if user_type == 'faculty' else "enrollment_no"
+        
+        user_doc = await DatabaseOperations.find_one(
+            collection_name=collection_name,
+            query={id_field: user_id}
         )
         
-        if files_result["success"] and files_result["files"]:
-            # Filter for image files
-            image_extensions = ['.png', '.jpg', '.jpeg', '.webp']
-            avatar_files = [
-                f for f in files_result["files"] 
-                if any(f["name"].lower().endswith(ext) for ext in image_extensions)
-            ]
+        if user_doc and user_doc.get('avatar_url'):
+            avatar_url = user_doc['avatar_url']
             
-            # Delete each avatar file
-            for file_obj in avatar_files:
-                file_path = f"{folder_path}/{file_obj['name']}"
-                await SupabaseStorageService.delete_file(
+            # Extract file path from Supabase URL
+            # URL format: https://[project].supabase.co/storage/v1/object/public/campusconnect/[file_path]
+            if '/storage/v1/object/public/campusconnect/' in avatar_url:
+                # Get the file path after the bucket name
+                file_path = avatar_url.split('/storage/v1/object/public/campusconnect/')[-1]
+                
+                logger.info(f"Deleting existing avatar: {file_path}")
+                
+                # Delete the specific file
+                delete_result = await SupabaseStorageService.delete_file(
                     bucket_name=settings.SUPABASE_STORAGE_BUCKET,
                     file_path=file_path
                 )
-        
+                
+                if delete_result:
+                    logger.info(f"Successfully deleted existing avatar: {file_path}")
+                else:
+                    logger.warning(f"Could not delete existing avatar: {file_path} (file may not exist)")
+                    
         return True
+        
     except Exception as e:
         logger.error(f"Error deleting user avatars: {e}")
-        return False
+        # Don't fail the upload if delete fails - just log the error
+        return True

@@ -953,52 +953,101 @@ async def validate_field_api(request: Request):
         field_name = data.get("field_name")
         field_value = data.get("field_value", "").strip()
         user_type = data.get("user_type", "student")  # student or faculty
+        current_user_id = data.get("current_user_id")  # For profile edit validation
         
         if not field_name or not field_value:
             return {"success": True, "available": True, "message": ""}
         
         field_value_lower = field_value.lower()
         
-        if user_type == "student":
-            # Check students collection
-            query = {}
-            if field_name == "email":
-                query = {"email": field_value_lower}
-            elif field_name == "mobile_no":
-                query = {"mobile_no": field_value}
-            elif field_name == "enrollment_no":
-                query = {"enrollment_no": field_value.upper()}
-            else:
-                return {"success": True, "available": True, "message": ""}
+        # For email and phone, check BOTH students and faculty collections for cross-validation
+        if field_name in ["email", "mobile_no", "contact_no"]:
+            # Normalize field names for query
+            student_field = "mobile_no" if field_name in ["mobile_no", "contact_no"] else field_name
+            faculty_field = "contact_no" if field_name in ["mobile_no", "contact_no"] else field_name
             
-            existing_student = await DatabaseOperations.find_one("students", query)
+            # Check students collection
+            student_query = {}
+            if field_name == "email":
+                student_query = {"email": field_value_lower}
+            elif field_name in ["mobile_no", "contact_no"]:
+                student_query = {"mobile_no": field_value}
+            
+            existing_student = await DatabaseOperations.find_one("students", student_query)
+            
+            # Check faculty collection
+            faculty_query = {}
+            if field_name == "email":
+                faculty_query = {"email": field_value_lower}
+            elif field_name in ["mobile_no", "contact_no"]:
+                faculty_query = {"contact_no": field_value}
+            
+            existing_faculty = await DatabaseOperations.find_one("faculties", faculty_query)
+            
+            # If editing profile, exclude current user from validation
+            if current_user_id:
+                if user_type == "student" and existing_student:
+                    # Check if the found student is the current user
+                    if (existing_student.get("enrollment_no") == current_user_id or 
+                        str(existing_student.get("_id")) == current_user_id):
+                        existing_student = None
+                elif user_type == "faculty" and existing_faculty:
+                    # Check if the found faculty is the current user
+                    if (existing_faculty.get("employee_id") == current_user_id or 
+                        str(existing_faculty.get("_id")) == current_user_id):
+                        existing_faculty = None
+            
+            # Return appropriate error message
             if existing_student:
                 field_display = field_name.replace("_", " ").title()
                 return {
                     "success": True,
                     "available": False,
-                    "message": f"This {field_display} is already registered"
+                    "message": f"This {field_display} is already registered with a student account"
                 }
-                
-        elif user_type == "faculty":
-            # Check faculties collection
-            query = {}
-            if field_name == "email":
-                query = {"email": field_value_lower}
-            elif field_name == "contact_no":
-                query = {"contact_no": field_value}
-            elif field_name == "employee_id":
-                query = {"employee_id": field_value.upper()}
-            else:
-                return {"success": True, "available": True, "message": ""}
             
-            existing_faculty = await DatabaseOperations.find_one("faculties", query)
             if existing_faculty:
                 field_display = field_name.replace("_", " ").title()
                 return {
                     "success": True,
                     "available": False,
-                    "message": f"This {field_display} is already registered"
+                    "message": f"This {field_display} is already registered with a faculty account"
+                }
+        
+        # For enrollment_no, only check students collection
+        elif user_type == "student" and field_name == "enrollment_no":
+            query = {"enrollment_no": field_value.upper()}
+            existing_student = await DatabaseOperations.find_one("students", query)
+            
+            # If editing profile, exclude current user
+            if current_user_id and existing_student:
+                if (existing_student.get("enrollment_no") == current_user_id or 
+                    str(existing_student.get("_id")) == current_user_id):
+                    existing_student = None
+            
+            if existing_student:
+                return {
+                    "success": True,
+                    "available": False,
+                    "message": "This Enrollment No is already registered"
+                }
+        
+        # For employee_id, only check faculty collection
+        elif user_type == "faculty" and field_name == "employee_id":
+            query = {"employee_id": field_value.upper()}
+            existing_faculty = await DatabaseOperations.find_one("faculties", query)
+            
+            # If editing profile, exclude current user
+            if current_user_id and existing_faculty:
+                if (existing_faculty.get("employee_id") == current_user_id or 
+                    str(existing_faculty.get("_id")) == current_user_id):
+                    existing_faculty = None
+            
+            if existing_faculty:
+                return {
+                    "success": True,
+                    "available": False,
+                    "message": "This Employee ID is already registered"
                 }
         
         return {"success": True, "available": True, "message": "Available"}

@@ -39,11 +39,17 @@ export const adminAPI = {
   getStudentDetails: (enrollmentNo) => api.get('/api/v1/admin/users/list', { params: { user_id: enrollmentNo, user_type: 'student' } }),
   updateStudent: (enrollmentNo, studentData) => api.put('/api/v1/admin/users/list', { user_id: enrollmentNo, ...studentData }),
   createStudent: (studentData) => api.post('/api/v1/admin/users/list', { ...studentData, user_type: 'student' }),
-  updateStudentStatus: (studentId, statusData) => api.put('/api/v1/admin/users/list', { user_id: studentId, user_type: 'student', ...statusData }),
+  updateStudentStatus: (studentId, statusData) => {
+    const requestData = { user_id: studentId, user_type: 'student', ...statusData };
+    return api.put('/api/v1/admin/users/list', requestData);
+  },
   
   // Faculty Management
   getFaculty: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'faculty' } }),
-  updateFacultyStatus: (facultyId, statusData) => api.put('/api/v1/admin/users/list', { user_id: facultyId, user_type: 'faculty', ...statusData }),
+  updateFacultyStatus: (facultyId, statusData) => {
+    const requestData = { user_id: facultyId, user_type: 'faculty', ...statusData };
+    return api.put('/api/v1/admin/users/list', requestData);
+  },
   
   // Admin User Management
   getAdminUsers: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'admin' } }),

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
+import { authAPI } from '../../../../api/auth';
 
 function EditProfile() {
   const { user } = useAuth();
@@ -11,6 +12,8 @@ function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
+  const [validationLoading, setValidationLoading] = useState({});
   const [showPassword, setShowPassword] = useState({
     current_password: false,
     new_password: false,
@@ -30,6 +33,76 @@ function EditProfile() {
     new_password: '',
     confirm_new_password: ''
   });
+
+  // Format date for input field
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Real-time field validation for database checks
+  const validateFieldRealTime = useCallback(
+    async (fieldName, fieldValue) => {
+      console.log('🎯 validateFieldRealTime CALLED for profile edit:', { fieldName, fieldValue });
+      
+      // Only validate email and mobile_no for cross-validation
+      const fieldsToValidate = ['email', 'mobile_no'];
+      if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
+        console.log('❌ Validation skipped - field not in list or too short');
+        return;
+      }
+
+      console.log('✅ Validation proceeding for:', fieldName);
+      setValidationLoading(prev => ({ ...prev, [fieldName]: true }));
+
+      try {
+        const response = await authAPI.validateField(fieldName, fieldValue, 'student', user?.enrollment_no);
+        console.log('🔍 Validation response for', fieldName, ':', response);
+        
+        if (response.data.success) {
+          // Update validation errors with the real-time check
+          if (!response.data.available) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [fieldName]: response.data.message
+            }));
+          } else {
+            // Clear the error if field is available
+            setValidationErrors(prev => {
+              const newErrors = { ...prev };
+              if (newErrors[fieldName]?.includes('already registered')) {
+                delete newErrors[fieldName];
+              }
+              return newErrors;
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Field validation error:', error);
+        // Don't show errors for network issues during real-time validation
+      } finally {
+        setValidationLoading(prev => ({ ...prev, [fieldName]: false }));
+      }
+    },
+    [user?.enrollment_no]
+  );
+
+  // Debounce the validation to avoid too many API calls
+  const debouncedValidation = useCallback(
+    (() => {
+      const timers = {};
+      return (fieldName, fieldValue) => {
+        console.log('⏰ Debouncing validation for:', fieldName, 'value:', fieldValue);
+        clearTimeout(timers[fieldName]);
+        timers[fieldName] = setTimeout(() => {
+          console.log('✅ Executing debounced validation for:', fieldName);
+          validateFieldRealTime(fieldName, fieldValue);
+        }, 800); // Wait 800ms after user stops typing
+      };
+    })(),
+    [validateFieldRealTime]
+  );
 
   // Fetch current profile data
   useEffect(() => {
@@ -66,24 +139,41 @@ function EditProfile() {
     }
   }, [user]);
 
-  // Format date for input field
-  const formatDateForInput = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toISOString().split('T')[0];
-  };
-
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Process the value based on field type
+    let processedValue = value;
+    if (name === 'mobile_no') {
+      processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+    } else if (name === 'email') {
+      processedValue = value.toLowerCase();
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
 
     // Clear messages when user starts typing
     if (success) setSuccess('');
     if (error) setError('');
+    
+    // Clear specific validation error
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+
+    // Trigger real-time database validation for email and mobile_no
+    const fieldsToValidateRealTime = ['email', 'mobile_no'];
+    if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
+      console.log('🚀 Triggering real-time validation for:', name, 'value:', processedValue);
+      debouncedValidation(name, processedValue);
+    }
   };
 
   // Toggle password visibility
@@ -97,6 +187,13 @@ function EditProfile() {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check for validation errors before submission
+    const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
+    if (hasValidationErrors) {
+      setError('Please fix the validation errors before submitting');
+      return;
+    }
     
     // Check if password change is requested
     const hasPasswordChange = formData.new_password || formData.confirm_new_password;
@@ -150,54 +247,29 @@ function EditProfile() {
         }
       }
 
-      // Success message
-      if (hasPasswordChange) {
-        setSuccess('Profile and password updated successfully!');
-      } else {
-        setSuccess('Profile updated successfully!');
-      }
+      setSuccess('Profile updated successfully!');
       
-      // Clear password fields
+      // Clear password fields on success
       setFormData(prev => ({
         ...prev,
         current_password: '',
         new_password: '',
         confirm_new_password: ''
       }));
-      
-      // Redirect to profile page after a short delay
-      setTimeout(() => {
-        navigate('/client/profile');
-      }, 1500);
-      
+
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(error.message || error.response?.data?.message || 'Failed to update profile');
+      setError(error.message || 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Auto-format mobile number
-  const handleMobileChange = (e) => {
-    let value = e.target.value.replace(/[^0-9]/g, '');
-    if (value.length > 10) {
-      value = value.slice(0, 10);
-    }
-    setFormData(prev => ({
-      ...prev,
-      mobile_no: value
-    }));
-  };
-
   if (loading) {
     return (
       <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-slate-600 font-medium">Loading profile...</span>
-          </div>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
         </div>
       </ClientLayout>
     );
@@ -205,74 +277,62 @@ function EditProfile() {
 
   return (
     <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 shadow-lg border-b border-purple-200">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center space-x-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Edit Profile</h1>
-                <p className="text-gray-600">Update your personal and academic information</p>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Edit Profile</h1>
+            <p className="text-lg text-gray-600">Update your personal information and account settings</p>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          
+          {/* Navigation */}
+          <div className="mb-6">
+            <nav className="flex" aria-label="Breadcrumb">
+              <ol className="inline-flex items-center space-x-1 md:space-x-3">
+                <li className="inline-flex items-center">
+                  <Link to="/client/dashboard" className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-purple-600">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
+                    </svg>
+                    <span className="ml-1 text-sm font-medium text-purple-600 md:ml-2">Edit Profile</span>
+                  </div>
+                </li>
+              </ol>
+            </nav>
+          </div>
+
           {/* Success/Error Messages */}
           {success && (
-            <div className="mb-6 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{success}</p>
-                </div>
-              </div>
+            <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+              {success}
             </div>
           )}
-
+          
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{error}</p>
-                </div>
-              </div>
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
             </div>
           )}
 
-          {/* Profile Edit Form */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          {/* Main Form */}
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <form onSubmit={handleSubmit} className="p-8 space-y-8">
               
               {/* Personal Information Section */}
-              <div className="border-b border-gray-200 pb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                  <svg className="w-5 h-5 text-purple-500 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Personal Information
-                </h3>
-                
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-6">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
                   {/* Full Name */}
-                  <div className="md:col-span-2">
+                  <div>
                     <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
                       Full Name *
                     </label>
@@ -283,7 +343,7 @@ function EditProfile() {
                         type="text" 
                         required
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="Enter your full name as per official records"
+                        placeholder="Enter your full name"
                         value={formData.full_name}
                         onChange={handleInputChange}
                       />
@@ -306,18 +366,28 @@ function EditProfile() {
                         name="email" 
                         type="email" 
                         required
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
+                          validationErrors.email 
+                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
+                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                        }`}
                         placeholder="Enter your email address"
                         value={formData.email}
                         onChange={handleInputChange}
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
+                        {validationLoading.email ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Your email will be used for important notifications</p>
+                    {validationErrors.email && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                    )}
                   </div>
 
                   {/* Mobile Number */}
@@ -332,17 +402,28 @@ function EditProfile() {
                         type="tel" 
                         required 
                         pattern="[0-9]{10}"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
+                          validationErrors.mobile_no 
+                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
+                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
+                        }`}
                         placeholder="10-digit mobile number"
                         value={formData.mobile_no}
-                        onChange={handleMobileChange}
+                        onChange={handleInputChange}
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
+                        {validationLoading.mobile_no ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h5.5a2 2 0 012 2v6.5a1 1 0 01-1 1H10a1 1 0 01-1-1v-1M7 13h5.5a1 1 0 011 1v5.5a2 2 0 01-2 2H4a1 1 0 01-1-1V14a1 1 0 011-1h3z" />
+                          </svg>
+                        )}
                       </div>
                     </div>
+                    {validationErrors.mobile_no && (
+                      <p className="mt-1 text-sm text-red-600">{validationErrors.mobile_no}</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Your active mobile number for notifications</p>
                   </div>
 
@@ -364,11 +445,6 @@ function EditProfile() {
                         <option value="Female">Female</option>
                         <option value="Other">Other</option>
                       </select>
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
                     </div>
                   </div>
 
@@ -377,57 +453,38 @@ function EditProfile() {
                     <label htmlFor="date_of_birth" className="block text-sm font-semibold text-gray-800 mb-2">
                       Date of Birth
                     </label>
-                    <div className="relative">
-                      <input 
-                        id="date_of_birth" 
-                        name="date_of_birth" 
-                        type="date"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        max={new Date().toISOString().split('T')[0]}
-                        value={formData.date_of_birth}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    </div>
+                    <input 
+                      id="date_of_birth" 
+                      name="date_of_birth" 
+                      type="date"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                      value={formData.date_of_birth}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Academic Information Section */}
-              <div className="border-b border-gray-200 pb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                  <svg className="w-5 h-5 text-purple-500 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Academic Information
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-6">Academic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
                   {/* Enrollment Number (Read-only) */}
                   <div>
                     <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Enrollment Number (Cannot be changed)
+                      Enrollment Number
                     </label>
-                    <div className="relative">
-                      <input 
-                        id="enrollment_no" 
-                        name="enrollment_no" 
-                        type="text" 
-                        readOnly
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-600"
-                        value={formData.enrollment_no}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 114 0v2m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                        </svg>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Contact admin to change enrollment number</p>
+                    <input 
+                      id="enrollment_no" 
+                      name="enrollment_no" 
+                      type="text"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                      value={formData.enrollment_no}
+                      readOnly
+                      disabled
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enrollment number cannot be changed</p>
                   </div>
 
                   {/* Department */}
@@ -435,72 +492,45 @@ function EditProfile() {
                     <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
                       Department
                     </label>
-                    <div className="relative">
-                      <select 
-                        id="department" 
-                        name="department"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
-                        value={formData.department}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select Your Department</option>
-                        <option value="Computer Engineering">Computer Engineering</option>
-                        <option value="Information Technology">Information Technology</option>
-                        <option value="Electronics & Communication">Electronics & Communication</option>
-                        <option value="Electrical Engineering">Electrical Engineering</option>
-                        <option value="Mechanical Engineering">Mechanical Engineering</option>
-                        <option value="Civil Engineering">Civil Engineering</option>
-                        <option value="Master of Computer Applications">Master of Computer Applications</option>
-                        <option value="MBA">MBA</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    <input 
+                      id="department" 
+                      name="department" 
+                      type="text"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                      placeholder="Your department"
+                      value={formData.department}
+                      onChange={handleInputChange}
+                    />
                   </div>
 
                   {/* Semester */}
                   <div>
                     <label htmlFor="semester" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Current Semester
+                      Semester
                     </label>
-                    <div className="relative">
-                      <select 
-                        id="semester" 
-                        name="semester"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
-                        value={formData.semester}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select Semester</option>
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                          <option key={i} value={i}>Semester {i}</option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    <select 
+                      id="semester" 
+                      name="semester"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
+                      value={formData.semester}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select Semester</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                        <option key={sem} value={sem}>{sem}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
 
               {/* Password Change Section */}
-              <div className="pb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                  <svg className="w-5 h-5 text-purple-500 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                  Change Password 
-                </h3>
-                
-                <div className="space-y-6">
-                  {/* Current Password - Full Width */}
-                  <div className="max-w-full">
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-6">Change Password</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  {/* Current Password */}
+                  <div>
                     <label htmlFor="current_password" className="block text-sm font-semibold text-gray-800 mb-2">
                       Current Password
                     </label>
@@ -510,131 +540,107 @@ function EditProfile() {
                         name="current_password" 
                         type={showPassword.current_password ? "text" : "password"}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="Enter your current password"
+                        placeholder="Enter current password"
                         value={formData.current_password}
                         onChange={handleInputChange}
                       />
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
                         onClick={() => togglePasswordVisibility('current_password')}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           {showPassword.current_password ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
                           ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           )}
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Required only if changing password</p>
                   </div>
 
-                  {/* New Password Fields - Side by Side */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* New Password */}
-                    <div>
-                      <label htmlFor="new_password" className="block text-sm font-semibold text-gray-800 mb-2">
-                        New Password
-                      </label>
-                      <div className="relative">
-                        <input 
-                          id="new_password" 
-                          name="new_password" 
-                          type={showPassword.new_password ? "text" : "password"}
-                          minLength="6"
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                          placeholder="Leave blank to keep current password"
-                          value={formData.new_password}
-                          onChange={handleInputChange}
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => togglePasswordVisibility('new_password')}
-                          className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {showPassword.new_password ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            )}
-                          </svg>
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Minimum 6 characters required</p>
-                    </div>
-
-                    {/* Confirm New Password */}
-                    <div>
-                      <label htmlFor="confirm_new_password" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Confirm New Password
-                      </label>
-                      <div className="relative">
-                        <input 
-                          id="confirm_new_password" 
-                          name="confirm_new_password" 
-                          type={showPassword.confirm_new_password ? "text" : "password"}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                          placeholder="Confirm your new password"
-                          value={formData.confirm_new_password}
-                          onChange={handleInputChange}
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => togglePasswordVisibility('confirm_new_password')}
-                          className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {showPassword.confirm_new_password ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464 9.878 9.878zM18.535 15.536L20 17l-1.465-1.465-1.067 1.067m0 0l-1.068-1.068m1.068 1.068l-3.035-3.035M18.535 15.536L17.464 16.605" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            )}
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="mt-2 text-xs">
-                        {(formData.new_password || formData.confirm_new_password) && !formData.current_password && (
-                          <div className="text-orange-600 mb-1">⚠ Current password is required to change password</div>
-                        )}
-                        {formData.new_password && formData.confirm_new_password && (
-                          formData.new_password === formData.confirm_new_password ? (
-                            <span className="text-green-600">✓ Passwords match</span>
+                  {/* New Password */}
+                  <div>
+                    <label htmlFor="new_password" className="block text-sm font-semibold text-gray-800 mb-2">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="new_password" 
+                        name="new_password" 
+                        type={showPassword.new_password ? "text" : "password"}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Enter new password"
+                        value={formData.new_password}
+                        onChange={handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                        onClick={() => togglePasswordVisibility('new_password')}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.new_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
                           ) : (
-                            <span className="text-red-600">✗ Passwords do not match</span>
-                          )
-                        )}
-                        {(!formData.new_password || !formData.confirm_new_password) && (
-                          <span className="text-gray-500">Re-enter your new password to confirm</span>
-                        )}
-                      </div>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          )}
+                        </svg>
+                      </button>
                     </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div>
+                    <label htmlFor="confirm_new_password" className="block text-sm font-semibold text-gray-800 mb-2">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="confirm_new_password" 
+                        name="confirm_new_password" 
+                        type={showPassword.confirm_new_password ? "text" : "password"}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Confirm new password"
+                        value={formData.confirm_new_password}
+                        onChange={handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                        onClick={() => togglePasswordVisibility('confirm_new_password')}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.confirm_new_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Leave blank to keep current password</p>
                   </div>
                 </div>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                <Link 
-                  to="/client/profile" 
-                  className="inline-flex items-center px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              {/* Submit Button */}
+              <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <Link
+                  to="/client/dashboard"
+                  className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Back to Profile
+                  Cancel
                 </Link>
-                
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={saving}
-                  className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500/20 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
                   {saving ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Saving...
                     </>
                   ) : (

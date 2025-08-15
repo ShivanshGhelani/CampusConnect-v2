@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from models.password_reset import (
     ForgotPasswordRequest, 
     ForgotPasswordFacultyRequest,
@@ -15,14 +15,22 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["Password Reset"])
 
 @router.post("/forgot-password/student", response_model=ForgotPasswordResponse)
-async def forgot_password_student(request: ForgotPasswordRequest):
+async def forgot_password_student(request_data: ForgotPasswordRequest, request: Request):
     """
     Initiate password reset for student
     """
     try:
+        # Extract client IP address
+        client_ip = request.client.host
+        if "x-forwarded-for" in request.headers:
+            client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
+        elif "x-real-ip" in request.headers:
+            client_ip = request.headers["x-real-ip"]
+        
         result = await password_reset_service.initiate_password_reset_student(
-            enrollment_no=request.enrollment_no,
-            email=request.email
+            enrollment_no=request_data.enrollment_no,
+            email=request_data.email,
+            client_ip=client_ip
         )
         
         if result['success']:
@@ -41,14 +49,22 @@ async def forgot_password_student(request: ForgotPasswordRequest):
         )
 
 @router.post("/forgot-password/faculty", response_model=ForgotPasswordResponse)
-async def forgot_password_faculty(request: ForgotPasswordFacultyRequest):
+async def forgot_password_faculty(request_data: ForgotPasswordFacultyRequest, request: Request):
     """
     Initiate password reset for faculty
     """
     try:
+        # Extract client IP address
+        client_ip = request.client.host
+        if "x-forwarded-for" in request.headers:
+            client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
+        elif "x-real-ip" in request.headers:
+            client_ip = request.headers["x-real-ip"]
+        
         result = await password_reset_service.initiate_password_reset_faculty(
-            employee_id=request.employee_id,
-            email=request.email
+            employee_id=request_data.employee_id,
+            email=request_data.email,
+            client_ip=client_ip
         )
         
         if result['success']:

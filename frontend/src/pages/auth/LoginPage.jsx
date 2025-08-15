@@ -42,10 +42,17 @@ function LoginPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const mode = urlParams.get('mode');
-    if (mode === 'admin') {
+    const tab = urlParams.get('tab');
+    
+    // Support both 'mode' and 'tab' parameters for backward compatibility
+    const activeMode = tab || mode;
+    
+    if (activeMode === 'admin') {
       setActiveTab('admin');
-    } else if (mode === 'faculty') {
+    } else if (activeMode === 'faculty') {
       setActiveTab('faculty');
+    } else if (activeMode === 'student') {
+      setActiveTab('student');
     }
   }, [location.search]);
 
@@ -216,7 +223,7 @@ function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             {activeTab === 'student' ? (
               <>
                 {/* Student Login Fields */}
@@ -403,7 +410,7 @@ function LoginPage() {
               </div>
               {(activeTab === 'student' || activeTab === 'faculty') && (
                 <Link
-                  to="/forgot-password"
+                  to={`/forgot-password?tab=${activeTab}`}
                   className={`text-sm font-medium transition-colors ${
                     activeTab === 'faculty' 
                       ? 'text-blue-600 hover:text-blue-500'
@@ -457,7 +464,7 @@ function LoginPage() {
               {/* Create Account Link */}
               <div className="text-center">
                 <Link
-                  to="/auth/register"
+                  to={`/auth/register?tab=${activeTab}`}
                   className={`inline-flex items-center justify-center px-6 py-3 border rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
                     activeTab === 'faculty'
                       ? 'border-blue-600 text-blue-600 bg-white hover:bg-blue-600 hover:text-white'

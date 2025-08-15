@@ -52,13 +52,13 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
       if (currentPath.startsWith('/admin')) {
         // Redirect admin to admin login
-        window.location.href = '/auth/login?mode=admin&reason=session_expired';
+        window.location.href = '/auth/login?tab=admin&reason=session_expired';
       } else if (currentPath.startsWith('/faculty')) {
         // Redirect faculty to faculty login
-        window.location.href = '/auth/login?mode=faculty&reason=session_expired';
+        window.location.href = '/auth/login?tab=faculty&reason=session_expired';
       } else if (!currentPath.includes('/login')) {
         // Redirect to general login for students or other users
-        window.location.href = '/login?reason=session_expired';
+        window.location.href = '/auth/login?tab=student&reason=session_expired';
       }
     }
     

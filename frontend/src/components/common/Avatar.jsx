@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 function Avatar({ src, size = 'md', name, className = '' }) {
   const sizeClasses = {
@@ -10,6 +10,9 @@ function Avatar({ src, size = 'md', name, className = '' }) {
     '3xl': 'w-24 h-24 text-2xl'
   };
 
+  // Generate stable timestamp for cache busting that doesn't change on every render
+  const cacheTimestamp = useMemo(() => Date.now(), [src]);
+  
   const getInitials = () => {
     if (name) {
       const names = name.split(' ');
@@ -20,14 +23,15 @@ function Avatar({ src, size = 'md', name, className = '' }) {
     }
     return 'GU';
   };
+  
   return (
     <div className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden ${className}`}>
       {src ? (
         <img
-          src={src}
+          src={`${src}?t=${cacheTimestamp}`} // Use stable timestamp
           alt="Avatar"
           className="w-full h-full object-cover"
-          key={src} // Force re-render when src changes
+          key={`avatar-${src}-${cacheTimestamp}`} // Use stable key
           onError={(e) => {
             // If image fails to load, hide it and show initials instead
             e.target.style.display = 'none';

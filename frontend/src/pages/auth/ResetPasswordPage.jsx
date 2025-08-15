@@ -140,7 +140,7 @@ function ResetPasswordPage() {
       }, 2000);
     } catch (error) {
       console.error('Reset password error:', error);
-      setError('Network error. Please check your connection and try again.');
+      setError('The password reset link has expired or is invalid.');
     } finally {
       setIsLoading(false);
     }

@@ -11,6 +11,33 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom styles for stable profile dropdown */
+.profile-dropdown-container {
+  position: relative;
+}
+
+.profile-dropdown-container:hover .profile-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.profile-dropdown {
+  transition: opacity 150ms ease, visibility 150ms ease, transform 150ms ease;
+}
+
+/* Prevent avatar flickering during hover */
+.stable-avatar {
+  transform: translateZ(0); /* Force hardware acceleration */
+  backface-visibility: hidden;
+  will-change: auto;
+}
+
+.stable-avatar img {
+  pointer-events: none; /* Prevent image from interfering with hover */
+}
+
 a {
   font-weight: 500;
   color: #646cff;

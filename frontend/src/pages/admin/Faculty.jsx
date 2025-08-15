@@ -137,13 +137,14 @@ function Faculty() {
   const toggleFacultyStatus = async (facultyId, currentStatus) => {
     try {
       const newStatus = !currentStatus;
+      
       const response = await adminAPI.updateFacultyStatus(facultyId, { is_active: newStatus });
       
       if (response.data.success) {
         // Update local state
         setFaculty(prevFaculty => 
           prevFaculty.map(facultyMember => 
-            facultyMember.user_id === facultyId || facultyMember._id === facultyId
+            facultyMember.employee_id === facultyId || facultyMember.user_id === facultyId || facultyMember._id === facultyId
               ? { ...facultyMember, is_active: newStatus }
               : facultyMember
           )
@@ -554,7 +555,7 @@ function Faculty() {
                                 : 'text-green-600 bg-green-50 hover:bg-green-100 hover:text-green-700'
                             }`}
                             title={facultyMember.is_active !== false ? 'Deactivate Faculty' : 'Activate Faculty'}
-                            onClick={() => toggleFacultyStatus(facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
+                            onClick={() => toggleFacultyStatus(facultyMember.employee_id || facultyMember.user_id || facultyMember._id, facultyMember.is_active !== false)}
                           >
                             <i className={`fas ${facultyMember.is_active !== false ? 'fa-user-slash' : 'fa-user-check'} text-xs`}></i>
                           </button>

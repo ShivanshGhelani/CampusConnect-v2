@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../api/auth';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -8,6 +8,8 @@ import { useToast, ToastContainer } from '../../components/ui/Alert';
 import { validators } from '../../utils/validators';
 
 function RegisterPage() {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('student');
   const [formData, setFormData] = useState({
     // Student form data
@@ -58,6 +60,17 @@ function RegisterPage() {
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, activeTab]);
+
+  // Check URL for tab parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'faculty') {
+      setActiveTab('faculty');
+    } else if (tabParam === 'student') {
+      setActiveTab('student');
+    }
+  }, [location.search]);
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
@@ -547,7 +560,7 @@ function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             {activeTab === 'student' ? (
               <>
                 {/* Student Registration Form */}
@@ -1505,11 +1518,15 @@ function RegisterPage() {
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
             <p className="text-gray-600 mb-4">Already have an account?</p>
             <Link
-              to="/auth/login"
-              className="inline-flex items-center px-6 py-3 border-2 border-green-200 text-green-700 bg-green-50 rounded-lg text-sm font-semibold hover:bg-green-100 hover:border-green-300 transition-all duration-200"
+              to={`/auth/login?tab=${activeTab}`}
+              className={`inline-flex items-center px-6 py-3 border-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === 'faculty'
+                  ? 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
+                  : 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-300'
+              }`}
             >
               <i className="fas fa-sign-in-alt mr-2"></i>
-              Sign In to Student Portal
+              {activeTab === 'faculty' ? 'Sign In to Faculty Portal' : 'Sign In to Student Portal'}
             </Link>
           </div>
         </div>

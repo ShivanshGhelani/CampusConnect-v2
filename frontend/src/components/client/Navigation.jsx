@@ -14,10 +14,27 @@ function ClientNavigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+
+  // Fixed hover handlers to prevent avatar flickering
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setIsProfileDropdownOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsProfileDropdownOpen(false);
+    }, 100); // Shorter delay
+  };
 
   const handleLogout = async () => {
+    // Determine appropriate login tab based on current user type
+    const loginTab = userType === 'faculty' ? 'faculty' : 'student';
     await logout();
-    navigate('/login');
+    navigate(`/auth/login?tab=${loginTab}`);
   };
 
   const toggleMobileMenu = () => {
@@ -53,10 +70,13 @@ function ClientNavigation() {
     closeMobileMenu();
   }, [location.pathname]);
 
-  // Clean up body overflow on unmount
+  // Clean up body overflow and timeout on unmount
   useEffect(() => {
     return () => {
       document.body.style.overflow = '';
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -148,23 +168,26 @@ function ClientNavigation() {
 
               {isAuthenticated ? (
                 /* User Profile Button */
-                <div className="relative flex items-center  space-x-4 ml-2 pl-2 h-10 border-l border-gray-300" ref={dropdownRef}>
-                  {/* Profile Button with Hover Card */}
+                <div className="relative flex items-center space-x-4 ml-2 pl-2 h-10 border-l border-gray-300" ref={dropdownRef}>
+                  {/* Profile Button with Optimized Hover Card */}
                   <div
                     className="relative"
-                    onMouseEnter={() => setIsProfileDropdownOpen(true)}
-                    onMouseLeave={() => setIsProfileDropdownOpen(false)}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
                   >
                     <Link
                       to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
-                      className="flex items-center pt-3 space-x-2 lg:space-x-3 rounded-lg px-3 lg:px-4 py-2.5 transition-colors min-w-0"
+                      className="flex items-center space-x-2 lg:space-x-3 rounded-lg px-3 lg:px-4 py-2.5 transition-colors min-w-0 hover:bg-gray-50"
                     >
-                      <Avatar
-                        src={avatarUrl}
-                        size="md"
-                        name={user?.full_name || user?.enrollment_no}
-                        className="flex-shrink-0"
-                      />
+                      {/* Optimized avatar container - fixed flickering */}
+                      <div className="flex-shrink-0">
+                        <Avatar
+                          src={avatarUrl}
+                          size="md"
+                          name={user?.full_name || user?.enrollment_no}
+                          className="stable-avatar"
+                        />
+                      </div>
                       <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap hidden xl:block">
                         <div className="font-medium">
                           {user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User'}
@@ -173,17 +196,25 @@ function ClientNavigation() {
                           {userType === 'faculty' ? 'Faculty' : 'Student'}
                         </div>
                       </div>
-                    </Link>{/* Hover Card - Simple Design */}
+                    </Link>
+                    
+                    {/* Fixed Hover Dropdown */}
                     <div
-                      className={`absolute -left-4 top-full mt-2.5 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 transition-all duration-200 z-50 ${isProfileDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-                        }`}
-                      onMouseEnter={() => setIsProfileDropdownOpen(true)}
-                      onMouseLeave={() => setIsProfileDropdownOpen(false)}
-                    >                      {/* Header */}
+                      className={`absolute -left-4 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 transition-all duration-150 z-50 ${
+                        isProfileDropdownOpen 
+                          ? 'opacity-100 visible translate-y-0' 
+                          : 'opacity-0 invisible translate-y-2 pointer-events-none'
+                      }`}
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      {/* Header */}
                       <div className="pl-4 pr-8 py-3 border-b border-gray-100">
                         <div className="text-sm font-medium text-gray-900">{user?.full_name || 'Guest User'}</div>
                         <div className="text-xs text-gray-500">{user?.enrollment_no || user?.employee_id || 'No ID'}</div>
-                      </div>{/* Menu Items */}
+                      </div>
+                      
+                      {/* Menu Items */}
                       <div className="py-2">
                         {/* Organize Event - Faculty Only */}
                         {userType === 'faculty' && (
@@ -278,7 +309,7 @@ function ClientNavigation() {
                 /* Not Logged In - Single Inviting Action Button */
                 <div className="flex items-center">
                   <Link
-                    to="/auth/login"
+                    to="/auth/login?tab=student"
                     className="inline-flex items-center justify-center px-4 lg:px-6 py-3 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <i className="fas fa-sign-in-alt mr-2"></i>
@@ -305,7 +336,7 @@ function ClientNavigation() {
                 </Link>
               ) : (
                 <Link
-                  to="/auth/login"
+                  to="/auth/login?tab=student"
                   className="inline-flex items-center justify-center px-3 py-2 border border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white rounded-lg text-sm font-semibold transition-all duration-200"
                 >
                   <i className="fas fa-sign-in-alt mr-1"></i>
@@ -429,7 +460,7 @@ function ClientNavigation() {
             </Link>
           ) : (
             <Link
-              to="/auth/login"
+              to="/auth/login?tab=student"
               className="flex flex-col items-center justify-center text-green-600"
             >
               <i className="fas fa-sign-in-alt text-lg mb-1"></i>

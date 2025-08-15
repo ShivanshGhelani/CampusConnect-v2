@@ -25,11 +25,11 @@ function ExecutiveAdminRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login?mode=admin" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login?tab=admin" state={{ from: location }} replace />;
   }
 
   if (userType !== 'admin') {
-    return <Navigate to="/auth/login?mode=admin" replace />;
+    return <Navigate to="/auth/login?tab=admin" replace />;
   }
 
   // Check if user is Executive Admin
