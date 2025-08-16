@@ -1,5 +1,6 @@
 """
-Email Service Health Check and Monitoring Endpoint
+Email Service API Routes
+Handles email service health check and monitoring endpoints
 """
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -10,7 +11,7 @@ from services.communication.email_service import communication_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/email", tags=["Email Service"])
+router = APIRouter(prefix="/email", tags=["email-api"])
 
 @router.get("/health")
 async def email_service_health():

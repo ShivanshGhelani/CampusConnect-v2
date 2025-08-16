@@ -1,15 +1,27 @@
 """
-Organizer Portal Routes
-Faculty members access organizer functionality through these routes
+Legacy Direct Routes
+Maps the old direct routes (without /api prefix) for backward compatibility
 """
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from dependencies.auth import require_admin
 from models.admin_user import AdminUser, AdminRole
 
-router = APIRouter(prefix="/organizer", tags=["organizer-portal"])
+router = APIRouter(tags=["legacy-direct-routes"])
 
-@router.get("")
+# Admin routes (originally from routes/admin)
+@router.get("/admin")
+async def admin_root_no_slash(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect root admin path to React frontend"""
+    return RedirectResponse(url="http://localhost:3000/admin", status_code=303)
+
+@router.get("/admin/")
+async def admin_root_with_slash(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect root admin path to React frontend"""
+    return RedirectResponse(url="http://localhost:3000/admin", status_code=303)
+
+# Organizer routes (originally from routes/organizer)
+@router.get("/organizer")
 async def organizer_root_no_slash(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect root organizer path to React frontend"""
     # Only organizer admins can access this
@@ -18,7 +30,7 @@ async def organizer_root_no_slash(request: Request, admin: AdminUser = Depends(r
     
     return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
 
-@router.get("/")
+@router.get("/organizer/")
 async def organizer_root_with_slash(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect root organizer path to React frontend"""
     # Only organizer admins can access this
@@ -27,7 +39,7 @@ async def organizer_root_with_slash(request: Request, admin: AdminUser = Depends
     
     return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
 
-@router.get("/dashboard")
+@router.get("/organizer/dashboard")
 async def organizer_dashboard(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect to organizer dashboard"""
     # Only organizer admins can access this
@@ -36,7 +48,7 @@ async def organizer_dashboard(request: Request, admin: AdminUser = Depends(requi
     
     return RedirectResponse(url="http://localhost:3000/organizer/dashboard", status_code=303)
 
-@router.get("/events")
+@router.get("/organizer/events")
 async def organizer_events(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect to organizer events page"""
     # Only organizer admins can access this

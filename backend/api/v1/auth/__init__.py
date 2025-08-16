@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from models.faculty import Faculty, FacultyCreate
-from routes.auth import get_current_admin, authenticate_admin
+from dependencies.auth import get_current_admin
+from .legacy import authenticate_admin
 from dependencies.auth import get_current_student_optional, get_current_student
 from database.operations import DatabaseOperations
 from utils.token_manager import token_manager

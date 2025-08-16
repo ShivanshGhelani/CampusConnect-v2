@@ -1,12 +1,69 @@
 from fastapi import Request, HTTPException, Depends, status
 from fastapi.responses import RedirectResponse
 from datetime import datetime
-from routes.auth import get_current_admin, refresh_admin_session
 from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from models.faculty import Faculty
 from core.permissions import PermissionManager, require_super_admin
 from typing import Optional, Union
+
+async def get_current_admin(request: Request) -> AdminUser:
+    """Get current authenticated admin from session"""
+    admin_data = request.session.get('admin')  # Changed from 'admin_user' to 'admin'
+    if not admin_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    try:
+        # Convert datetime strings back to datetime objects
+        for key, value in admin_data.items():
+            if key in ['created_at', 'last_login', 'login_time'] and isinstance(value, str):
+                try:
+                    admin_data[key] = datetime.fromisoformat(value)
+                except ValueError:
+                    admin_data[key] = None
+        
+        return AdminUser(**admin_data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session data"
+        )
+
+async def refresh_admin_session(request: Request) -> AdminUser:
+    """Refresh admin session - get updated data from database for organizers"""
+    admin = await get_current_admin(request)
+    
+    # If this is an organizer admin, refresh from database to get latest assigned events
+    if admin.role == AdminRole.ORGANIZER_ADMIN:
+        from database.operations import DatabaseOperations
+        faculty = await DatabaseOperations.find_one(
+            "faculty",
+            {
+                "employee_id": admin.username,
+                "is_active": True,
+                "organizer_access.is_approved": True,
+                "organizer_access.is_active": True
+            }
+        )
+        
+        if faculty:
+            # Update admin data with latest organizer info
+            admin_data = admin.model_dump()
+            admin_data["assigned_events"] = faculty.get("organizer_access", {}).get("assigned_events", [])
+            admin_data["permissions"] = faculty.get("organizer_access", {}).get("permissions", [])
+            
+            # Update session
+            for key, value in admin_data.items():
+                if isinstance(value, datetime):
+                    admin_data[key] = value.isoformat()
+            
+            request.session["admin"] = admin_data
+            return AdminUser(**admin_data)
+    
+    return admin
 
 async def get_current_student(request: Request) -> Student:
     """Get currently logged in student from session"""

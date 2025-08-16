@@ -151,23 +151,17 @@ async def internal_server_error_handler(request: Request, exc):
     
     return response
 
-# Include routes
-from routes.admin import router as admin_router
-from routes.auth import router as auth_router
-from routes.organizer import router as organizer_router
-from routes.email_health import router as email_health_router
+# Include routes - Now all consolidated in API structure
 from api import router as api_router
+from api.legacy_direct_routes import router as legacy_direct_router
 from api.v1.storage import router as storage_router
 from api.v1.participations import router as participations_router
 
 # Mount routes in correct order (most specific first)
 app.include_router(participations_router, prefix="/api/v1")  # Participation routes at /api/v1/participations/...
 app.include_router(storage_router) # Storage routes at /api/v1/storage/...
-app.include_router(email_health_router, prefix="/api/v1")  # Email health routes at /api/v1/email/...
-app.include_router(api_router)     # API routes at /api/...
-app.include_router(admin_router)   # Admin routes including /admin/...
-app.include_router(organizer_router)  # Organizer routes including /organizer/...
-app.include_router(auth_router)    # Auth routes at /auth/...
+app.include_router(api_router)     # API routes at /api/... (includes all admin, auth, email, organizer functionality)
+app.include_router(legacy_direct_router)  # Legacy direct routes at / (admin, organizer, etc.)
 
 # Global variable to keep scheduler task alive
 scheduler_task = None

@@ -128,8 +128,13 @@ export const adminAPI = {
   
 
   
-  // ADDED: Participation Management - New unified participation system
-  getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  // UPDATED: Participation Management - Fixed endpoint paths to match backend mounting
+  getEventParticipants: (eventId, options = {}) => {
+    const { limit = 10, offset = 0, ...filters } = options;
+    return api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { 
+      params: { limit, offset, ...filters } 
+    });
+  },
   
   markStudentAttendance: (attendanceData) => api.post('/api/v1/admin/participation/attendance/mark', attendanceData),
   
@@ -145,7 +150,7 @@ export const adminAPI = {
   getEventStatistics: (eventId) => api.get(`/api/v1/admin/participation/statistics/event/${eventId}`),
   
   // UPDATED: Event Registration Management - Now using unified participation data
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/participations/event/${eventId}`, { params: filters }),
   
   // LEGACY SUPPORT: Keep existing registration endpoints for backward compatibility
   getStudents: async (params = {}) => {

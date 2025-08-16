@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
+import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2,MoreHorizontal } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
 
 function EventDetail() {
@@ -27,12 +28,68 @@ function EventDetail() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [presentDropdownOpen, setPresentDropdownOpen] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
 
   useEffect(() => {
     if (eventId) {
       fetchEventDetails();
     }
   }, [eventId]);
+
+    const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
+    const variants = {
+      primary: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600',
+      secondary: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300',
+      success: 'bg-green-600 hover:bg-green-700 text-white border-green-600',
+      warning: 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600',
+      danger: 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+    };
+
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`
+          inline-flex items-center px-4 py-2 border rounded-lg font-medium text-sm
+          transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+          disabled:opacity-50 disabled:cursor-not-allowed
+          ${variants[variant]} ${className}
+        `}
+      >
+        {Icon && <Icon className={`w-4 h-4 ${children ? 'mr-2' : ''}`} />}
+        {children}
+      </button>
+    );
+  };
+
+  const DropdownMenu = ({ isOpen, onClose, children }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+        <div className="py-1">
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  const DropdownItem = ({ onClick, icon: Icon, children, variant = 'default' }) => {
+    const variants = {
+      default: 'text-gray-700 hover:bg-gray-50',
+      danger: 'text-red-700 hover:bg-red-50'
+    };
+
+    return (
+      <button
+        onClick={onClick}
+        className={`w-full flex items-center px-4 py-2 text-sm text-left ${variants[variant]}`}
+      >
+        {Icon && <Icon className="w-4 h-4 mr-3" />}
+        {children}
+      </button>
+    );
+  };
 
   // Manual refresh function to force reload data
   const refreshData = async () => {
@@ -342,6 +399,42 @@ function EventDetail() {
   const canDelete = user && user.role === 'super_admin';
   const isReadOnly = user && user.role === 'organizer_admin';
 
+
+
+  const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
+    <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+          <Icon className="w-5 h-5 text-gray-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+
+  const InfoRow = ({ label, value, className = "" }) => (
+    <div className={`flex justify-between items-start py-2 ${className}`}>
+      <span className="text-sm font-medium text-gray-600">{label}</span>
+      <span className="text-sm text-gray-900 text-right max-w-[60%]">{value || 'N/A'}</span>
+    </div>
+  );
+
+  const Badge = ({ children, variant = "default" }) => {
+    const variants = {
+      default: "bg-gray-100 text-gray-800",
+      primary: "bg-blue-100 text-blue-800",
+      success: "bg-green-100 text-green-800"
+    };
+    
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${variants[variant]}`}>
+        {children}
+      </span>
+    );
+  };
+
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -389,92 +482,153 @@ function EventDetail() {
   }
 
   const statusConfig = getStatusConfig(event.status);
+  // Compute a safe attendance percentage to display in the header
+  const attendancePercent = attendanceStats
+    ? attendanceStats.attendance_percentage
+    : (eventStats && eventStats.registrations_count ? Math.round(((eventStats.attendance_count || 0) / eventStats.registrations_count) * 100) : 0);
 
   return (
     <AdminLayout pageTitle={`${event.event_name} - Event Management`}>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4">
           
-          {/* Header Section */}
-          <div className="bg-white shadow-xl rounded-lg p-8 mb-8">
-            {/* Breadcrumb and Status */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div className="flex items-center space-x-2 text-gray-600">
-                <button 
-                  onClick={() => navigate('/admin/events')}
-                  className="hover:text-blue-600 transition-colors"
-                >
-                  <i className="fas fa-arrow-left mr-1"></i>Back to Events
-                </button>
-               
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.text}`}>
-                  <i className={`${statusConfig.icon} mr-2`}></i>{event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
-                </span>
-                <span className="text-sm text-gray-500">Event ID: {event.event_id}</span>
-              </div>
-            </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+      {/* Breadcrumb and Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <button 
+          onClick={() => navigate('/admin/events')}
+          className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors text-sm"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to Events
+        </button>
+        
+        <div className="flex items-center gap-3">
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.text}`}>
+            <div className={`${statusConfig.icon} mr-2`}></div>
+            {event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
+          </div>
+          <span className="text-sm text-gray-500 font-mono">ID: {event.event_id}</span>
+        </div>
+      </div>
 
-            {/* Main Title and Actions */}
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                <i className="fas fa-calendar-check text-3xl text-blue-500"></i>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.event_name}</h1>
-              <p className="text-lg text-gray-600">{event.event_type} - Event Management Dashboard</p>
-            </div>
+      {/* Main Title */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-blue-50 mb-4">
+          <Calendar className="w-8 h-8 text-blue-600" />
+        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.event_name}</h1>
+        <p className="text-gray-600">{event.event_type} • Event Management Dashboard</p>
+      </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap justify-center gap-4">
-              <button 
-                onClick={refreshData}
-                disabled={isLoading}
-                className="px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-lg hover:from-blue-500 hover:to-blue-700 transition-all font-semibold shadow-lg disabled:opacity-50"
+      {/* Action Buttons */}
+      <div className="flex flex-wrap justify-center gap-3">
+        {/* Primary Actions - Always Visible */}
+        <ActionButton
+          onClick={refreshData}
+          disabled={isLoading}
+          variant="primary"
+          icon={isLoading ? RefreshCw : RefreshCw}
+          className={isLoading ? 'cursor-wait' : ''}
+        >
+          {isLoading ? 'Refreshing...' : 'Refresh'}
+        </ActionButton>
+
+        <ActionButton
+          onClick={() => navigate(`/admin/events/${eventId}/export`)}
+          variant="success"
+          icon={Download}
+        >
+          Export Data
+        </ActionButton>
+
+        <ActionButton
+          onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
+          variant="warning"
+          icon={UserCheck}
+        >
+          Attendance
+        </ActionButton>
+
+        {/* Desktop: Show all buttons */}
+        <div className="hidden lg:flex gap-3">
+          {canEdit && (
+            <ActionButton
+              onClick={() => navigate(`/admin/events/${eventId}/edit`)}
+              variant="secondary"
+              icon={Edit3}
+            >
+              Edit Event
+            </ActionButton>
+          )}
+
+          <ActionButton
+            onClick={() => window.print()}
+            variant="secondary"
+            icon={FileDown}
+          >
+            Download PDF
+          </ActionButton>
+
+          {canDelete && (
+            <ActionButton
+              onClick={() => setDeleteModalOpen(true)}
+              variant="danger"
+              icon={Trash2}
+            >
+              Cancel Event
+            </ActionButton>
+          )}
+        </div>
+
+        {/* Mobile/Tablet: More Actions Dropdown */}
+        <div className="relative lg:hidden">
+          <ActionButton
+            onClick={() => setShowMoreActions(!showMoreActions)}
+            variant="secondary"
+            icon={MoreHorizontal}
+          >
+            More
+          </ActionButton>
+
+          <DropdownMenu isOpen={showMoreActions} onClose={() => setShowMoreActions(false)}>
+            {canEdit && (
+              <DropdownItem
+                onClick={() => {
+                  navigate(`/admin/events/${eventId}/edit`);
+                  setShowMoreActions(false);
+                }}
+                icon={Edit3}
               >
-                <i className={`fas ${isLoading ? 'fa-spinner fa-spin' : 'fa-sync-alt'} mr-2`}></i>
-                {isLoading ? 'Refreshing...' : 'Refresh Data'}
-              </button>
-              
-              <button 
-                onClick={() => navigate(`/admin/events/${eventId}/export`)}
-                className="px-6 py-3 bg-gradient-to-r from-green-400 to-green-600 text-white rounded-lg hover:from-green-500 hover:to-green-700 transition-all font-semibold shadow-lg"
+                Edit Event
+              </DropdownItem>
+            )}
+            
+            <DropdownItem
+              onClick={() => {
+                window.print();
+                setShowMoreActions(false);
+              }}
+              icon={FileDown}
+            >
+              Download PDF
+            </DropdownItem>
+
+            {canDelete && (
+              <DropdownItem
+                onClick={() => {
+                  setDeleteModalOpen(true);
+                  setShowMoreActions(false);
+                }}
+                icon={Trash2}
+                variant="danger"
               >
-                <i className="fas fa-download mr-2"></i>Export Data
-              </button>
-              
-              <button 
-                onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-400 to-purple-600 text-white rounded-lg hover:from-purple-500 hover:to-purple-700 transition-all font-semibold shadow-lg"
-              >
-                <i className="fas fa-user-check mr-2"></i>Attendance Portal
-              </button>
-              
-              {canEdit && (
-                <button 
-                  onClick={() => navigate(`/admin/events/${eventId}/edit`)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg"
-                >
-                  <i className="fas fa-edit mr-2"></i>Edit Event
-                </button>
-              )}
-              
-              {canDelete && (
-                <button 
-                  onClick={() => setDeleteModalOpen(true)}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold shadow-lg"
-                >
-                  <i className="fas fa-trash mr-2"></i>Delete Event
-                </button>
-              )}
-              
-              <button 
-                onClick={() => window.print()} 
-                className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold shadow-lg"
-              >
-                <i className="fas fa-print mr-2"></i>Print Summary
-              </button>
-            </div>
+                Cancel Event
+              </DropdownItem>
+            )}
+          </DropdownMenu>
+        </div>
+      </div>
           </div>
 
           {/* Read-only notice for Event Admins */}
@@ -552,8 +706,7 @@ function EventDetail() {
                               `${Math.round((eventStats.attendance_count / eventStats.registrations_count) * 100)}% attendance rate` :
                               '0% attendance rate'
                             }
-                            <br />
-                            <span className="text-yellow-600 text-xs">Legacy data (click for details)</span>
+                            <br />                          
                           </>
                         )}
                       </p>
@@ -666,99 +819,70 @@ function EventDetail() {
             </div>
           )}
 
-          {/* Latest Registrations Section */}
-          <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
-            <div className="border-b border-gray-200 pb-6 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <i className="fas fa-user-check text-blue-500"></i>
-                    Latest Registrations
-                  </h2>
-                  <p className="text-gray-600 mt-2">Showing the most recent {Math.min(recentRegistrations.length, 5)} registrations</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-lg font-semibold text-gray-700">
-                    Total: <span className="text-blue-600">{eventStats?.registrations_count || 0}</span>
-                  </div>
-                  <button
-                    onClick={handleViewAllRegistrations}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-lg hover:from-blue-500 hover:to-blue-700 transition-all font-semibold shadow-lg flex items-center gap-2"
-                  >
-                    <i className="fas fa-list"></i>View All Registrations
-                  </button>
-                </div>
+          {/* Latest Registrations Section - simplified, sober UI */}
+          <div className="bg-white shadow rounded-lg p-6 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
+                  <i className="fas fa-user-check text-gray-700"></i>
+                  Latest Registrations
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">Showing the most recent {Math.min(recentRegistrations.length, 5)} registrations</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{eventStats?.registrations_count || 0}</span></div>
+                <button
+                  onClick={handleViewAllRegistrations}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  <i className="fas fa-list"></i>
+                  <span>View All</span>
+                </button>
               </div>
             </div>
-            
-            {/* Registration Cards */}
-            <div className="space-y-4">
+
+            {/* Registration List */}
+            <div className="space-y-3">
               {console.log('Rendering registrations, count:', recentRegistrations.length, 'data:', recentRegistrations)}
               {recentRegistrations && recentRegistrations.length > 0 ? (
                 eventStats?.is_team_based ? (
-                  // Team Registrations Display
+                  // Team Registrations - compact, clear cards
                   recentRegistrations.map((reg, index) => (
-                    <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
-                      {/* Team Header */}
-                      <div className="grid grid-cols-6 gap-4 p-4 bg-blue-50 border-b border-blue-100">
-                        <div className="col-span-2">
-                          <div className="font-medium text-blue-900 flex items-center gap-2">
-                            <i className="fas fa-users text-blue-500"></i>{reg.team_name}
+                    <div key={index} className="border rounded-md bg-white shadow-sm">
+                      <div className="flex items-center justify-between p-3">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                            <i className="fas fa-users text-gray-600"></i>
+                            <span className="truncate max-w-[36rem]">{reg.team_name || 'Unnamed Team'}</span>
                           </div>
-                          <div className="text-sm text-blue-700">{reg.member_count} members</div>
+                          <div className="text-xs text-gray-500 mt-1">Leader: <span className="font-medium text-gray-700">{reg.name || 'N/A'}</span> • {reg.member_count} members</div>
                         </div>
-                        <div className="col-span-2">
-                          <div className="font-medium text-gray-900">{reg.name}</div>
-                          <div className="text-sm text-gray-600">Team Leader</div>
-                        </div>
-                        <div className="col-span-1 text-gray-700">
-                          <div className="text-gray-900">{formatDateTime(reg.registration_date)}</div>
-                        </div>
-                        <div className="col-span-1 text-right">
+
+                        <div className="flex items-center gap-3">
+                          <div className="text-xs text-gray-500">{formatCompactDateTime(reg.registration_date)}</div>
                           <button
                             onClick={() => toggleTeamExpansion(`recent-${index}`)}
-                            className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
                           >
                             <i className={`fas ${expandedTeams.has(`recent-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-                            <span className="ml-1">{expandedTeams.has(`recent-${index}`) ? 'Hide' : 'Show'} Details</span>
                           </button>
                         </div>
                       </div>
-                      
-                      {/* Team Members - Hidden by default */}
+
                       {expandedTeams.has(`recent-${index}`) && reg.team_members && (
-                        <div className="p-4 bg-gray-50">
-                          <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
+                        <div className="border-t px-3 py-2 bg-gray-50">
+                          <div className="text-xs text-gray-600 mb-2">Team Members</div>
                           <div className="space-y-2">
                             {reg.team_members.map((member, memberIndex) => (
-                              <div key={memberIndex} className="grid grid-cols-12 gap-2 py-2 px-3 border-b border-gray-200 last:border-0 hover:bg-white rounded transition-colors">
-                                <div className="col-span-3 font-medium text-gray-900 text-sm min-w-0 pr-1">
-                                  <div className="break-words leading-tight whitespace-normal" title={member.full_name}>
-                                    {member.full_name}
-                                    {member.registration_type === "team_leader" && (
-                                      <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
-                                    )}
-                                  </div>
+                              <div key={memberIndex} className="flex items-center justify-between text-sm text-gray-700 py-2">
+                                <div className="min-w-0 pr-3">
+                                  <div className="font-medium truncate">{member.full_name}</div>
+                                  <div className="text-xs text-gray-500 truncate">{member.department} • {member.enrollment_no}</div>
                                 </div>
-                                <div className="col-span-2 text-gray-700 text-sm font-mono min-w-0 pr-1">
-                                  <div className="break-words leading-tight whitespace-normal" title={member.enrollment_no}>
-                                    {member.enrollment_no}
-                                  </div>
-                                </div>
-                                <div className="col-span-3 text-gray-700 text-sm min-w-0 pr-1">
-                                  <div className="break-words leading-tight whitespace-normal" title={member.department}>
-                                    {member.department}
-                                  </div>
-                                </div>
-                                <div className="col-span-1 text-gray-700 text-xs text-center font-medium min-w-0">
-                                  <div className="break-words leading-tight whitespace-normal">
-                                    {formatOrdinalNumber(member.semester)}
-                                  </div>
-                                </div>
-                                <div className="col-span-3 text-gray-700 text-sm min-w-0 pr-1">
-                                  <div className="break-words leading-tight whitespace-normal" title={member.email}>
-                                    {(member.email || '').trim()}
-                                  </div>
+                                <div className="text-right text-xs text-gray-500">
+                                  <div>{formatOrdinalNumber(member.semester)}</div>
+                                  <div className="truncate mt-1">{(member.email || '').trim()}</div>
                                 </div>
                               </div>
                             ))}
@@ -768,83 +892,38 @@ function EventDetail() {
                     </div>
                   ))
                 ) : (
-                  // Individual Registrations Display
-                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                    {/* Table Headers */}
-                    <div className="grid grid-cols-12 gap-1 py-4 px-4 border-b-2 border-gray-200 bg-gray-50 font-semibold text-gray-700">
-                      <div className="col-span-2 flex items-center gap-2 min-w-0">
-                        <i className="fas fa-user text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-sm truncate">Name</span>
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2 min-w-0">
-                        <i className="fas fa-id-card text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-sm truncate">Enrollment</span>
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2 min-w-0">
-                        <i className="fas fa-building text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-sm truncate">Department</span>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-center gap-1 min-w-0">
-                        <i className="fas fa-layer-group text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-xs">Semester</span>
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2 min-w-0">
-                        <i className="fas fa-envelope text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-sm truncate">Email</span>
-                      </div>
-                      <div className="col-span-1 flex items-center gap-1 min-w-0">
-                        <i className="fas fa-calendar text-gray-500 text-xs flex-shrink-0"></i>
-                        <span className="text-xs">Date</span>
-                      </div>
+                  // Individual registrations - clean table-like list
+                  <div className="border rounded-md bg-white overflow-hidden">
+                    <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-100 text-xs text-gray-700 font-medium">
+                      <div className="col-span-3">Name</div>
+                      <div className="col-span-2">Enrollment</div>
+                      <div className="col-span-3">Department</div>
+                      <div className="col-span-1 text-center">Sem</div>
+                      <div className="col-span-2">Email</div>
+                      <div className="col-span-1 text-right">Date</div>
                     </div>
-                    
-                    {/* Registration Rows */}
-                    <div className="bg-white">
+                    <div>
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-1 py-3 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
-                          <div className="col-span-2 font-medium text-gray-900 text-sm min-w-0 pr-2">
-                            <div className="break-words leading-tight" title={reg.full_name || reg.name}>
-                              {reg.full_name || reg.name || 'N/A'}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-gray-700 text-sm font-mono min-w-0 pr-2">
-                            <div className="break-words leading-tight" title={reg.enrollment_no}>
-                              {reg.enrollment_no || 'N/A'}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-gray-700 text-sm min-w-0 pr-2">
-                            <div className="break-words leading-tight" title={reg.department}>
-                              {reg.department || 'N/A'}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-gray-700 text-xs text-center font-medium min-w-0">
-                            <div className="break-words leading-tight whitespace-normal">
-                              {formatOrdinalNumber(reg.semester) || 'N/A'}
-                            </div>
-                          </div>
-                          <div className="col-span-2 text-gray-700 text-sm min-w-0 pr-2">
-                            <div className="break-words leading-tight whitespace-normal" title={reg.email}>
-                              {(reg.email || 'N/A').trim()}
-                            </div>
-                          </div>
-                          <div className="col-span-1 text-gray-700 text-xs  font-medium min-w-0">
-                            <div className="text-nowrap text-right leading-tight" title={formatDateTime(reg.registration_date)}>
-                              {formatDateTime(reg.registration_date) || 'N/A'}
-                            </div>
-                          </div>
+                        <div key={index} className="grid grid-cols-12 gap-2 px-3 py-3 items-center hover:bg-gray-50 text-sm text-gray-800 border-b last:border-0">
+                          <div className="col-span-3 truncate">{reg.full_name || reg.name || 'N/A'}</div>
+                          <div className="col-span-2 font-mono truncate">{reg.enrollment_no || 'N/A'}</div>
+                          <div className="col-span-3 truncate">{reg.department || 'N/A'}</div>
+                          <div className="col-span-1 text-center text-xs">{formatOrdinalNumber(reg.semester) || 'N/A'}</div>
+                          <div className="col-span-2 truncate">{(reg.email || 'N/A').trim()}</div>
+                          <div className="col-span-1 text-right text-xs text-gray-500">{formatCompactDateTime(reg.registration_date) || 'N/A'}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )
               ) : (
-                <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <div className="text-center py-8">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 mb-3">
                     <i className="fas fa-users text-2xl text-gray-400"></i>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Recent Registrations</h3>
-                  <p className="text-gray-600 mb-4">
-                    {eventStats?.registrations_count > 0 
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No Recent Registrations</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {eventStats?.registrations_count > 0
                       ? `There are ${eventStats.registrations_count} total registrations, but none showing in recent list.`
                       : 'No one has registered for this event yet.'
                     }
@@ -852,16 +931,16 @@ function EventDetail() {
                   <div className="flex justify-center gap-3">
                     <button
                       onClick={() => fetchEventDetails()}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                     >
-                      <i className="fas fa-sync mr-2"></i>Refresh Data
+                      <i className="fas fa-sync mr-2"></i>Refresh
                     </button>
                     {eventStats?.registrations_count > 0 && (
                       <button
                         onClick={handleViewAllRegistrations}
-                        className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
                       >
-                        <i className="fas fa-list mr-2"></i>View All Registrations
+                        <i className="fas fa-list mr-2"></i>View All
                       </button>
                     )}
                   </div>
@@ -873,495 +952,188 @@ function EventDetail() {
           {/* Event Details Section */}
           
 
-          {/* Detailed Event Information - Copied from EventCreatedSuccess */}
-          <div className="bg-white shadow-lg rounded-lg p-8 mb-8">
-            <div className="border-b border-gray-200 pb-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                <i className="fas fa-info-circle text-blue-500"></i>
-                Event Details
-              </h2>
-              <p className="text-gray-600 mt-2">Comprehensive event information and configuration</p>
+          <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Event Details</h1>
+            <p className="text-sm text-gray-600 mt-1">Manage and view comprehensive event information</p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">Event ID</div>
+            <div className="text-sm font-mono text-gray-900">{event.event_id}</div>
+          </div>
+        </div>
+
+        {/* Event Summary */}
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Calendar className="w-8 h-8 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">{event.event_name}</h2>
+            <p className="text-gray-600 mb-3">{event.short_description}</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="primary">{event.event_type}</Badge>
+              <Badge>{event.target_audience}</Badge>
+              <Badge>{event.mode}</Badge>
+              {event.is_xenesis_event && <Badge variant="success">Xenesis Event</Badge>}
+              <Badge>{event.status}</Badge>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Event Header with Enhanced Badges */}
-            <div className="text-center mb-8 p-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border-2 border-blue-200 shadow-lg">
-              <div className="mb-6">
-                <h3 className="text-3xl font-bold text-gray-900 mb-2">{event.event_name}</h3>
-                <p className="text-gray-600 text-lg">Event ID: <span className="font-mono font-semibold text-blue-700">{event.event_id}</span></p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-3">
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border-2 border-blue-300 shadow-sm">
-                  <i className="fas fa-tag mr-2"></i>
-                  {event.event_type?.charAt(0).toUpperCase() + event.event_type?.slice(1) || 'N/A'}
-                </span>
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-green-100 to-green-200 text-green-800 border-2 border-green-300 shadow-sm">
-                  <i className="fas fa-users mr-2"></i>
-                  {event.target_audience?.charAt(0).toUpperCase() + event.target_audience?.slice(1) || 'N/A'}
-                </span>
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border-2 border-purple-300 shadow-sm">
-                  <i className="fas fa-globe mr-2"></i>
-                  {event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1) || 'N/A'}
-                </span>
-                {event.is_xenesis_event && (
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border-2 border-amber-300 shadow-sm">
-                    <i className="fas fa-star mr-2"></i>
-                    Xenesis Event
-                  </span>
-                )}
-                {event.status && (
-                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
-                    event.status === 'upcoming' ? 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border-2 border-emerald-300' :
-                    event.status === 'ongoing' ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border-2 border-orange-300' :
-                    event.status === 'completed' ? 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border-2 border-gray-300' :
-                    'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border-2 border-red-300'
-                  }`}>
-                    <i className="fas fa-circle mr-2"></i>
-                    {event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
-                  </span>
-                )}
-              </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Basic Information */}
+          <InfoCard icon={FileText} title="Basic Information">
+            <div className="space-y-0 divide-y divide-gray-100">
+              <InfoRow label="Event Type" value={event.event_type?.charAt(0).toUpperCase() + event.event_type?.slice(1)} />
+              <InfoRow label="Target Audience" value={event.target_audience?.charAt(0).toUpperCase() + event.target_audience?.slice(1)} />
+              <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
+              <InfoRow label="Status" value={event.status?.charAt(0).toUpperCase() + event.status?.slice(1)} />
             </div>
-
-            {/* Enhanced Two Column Layout */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Left Column */}
-              <div className="space-y-8">
-                {/* Basic Information - Enhanced */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200 shadow-lg">
-                  <h4 className="text-xl font-bold text-blue-900 mb-6 flex items-center">
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3">
-                      <i className="fas fa-clipboard-list text-white"></i>
-                    </div>
-                    1. Basic Information
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-blue-700">Event Type:</span>
-                        <span className="text-sm text-blue-900 text-right max-w-[60%] font-medium">
-                          {event.event_type?.charAt(0).toUpperCase() + event.event_type?.slice(1) || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-blue-700">Target Audience:</span>
-                        <span className="text-sm text-blue-900 text-right max-w-[60%] font-medium">
-                          {event.target_audience?.charAt(0).toUpperCase() + event.target_audience?.slice(1) || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-blue-700">Short Description:</span>
-                        <span className="text-sm text-blue-900 text-right max-w-[60%] font-medium">
-                          {event.short_description || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    {event.detailed_description && (
-                      <div className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-                        <span className="text-sm font-bold text-blue-700 block mb-3">Detailed Description:</span>
-                        <p className="text-sm text-blue-900 whitespace-pre-line leading-relaxed">{event.detailed_description}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Schedule - Enhanced */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border-2 border-green-200 shadow-lg">
-                  <h4 className="text-xl font-bold text-green-900 mb-6 flex items-center">
-                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                      <i className="fas fa-calendar-alt text-white"></i>
-                    </div>
-                    2. Schedule
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-green-700">Event Start:</span>
-                        <span className="text-sm text-green-900 text-right max-w-[60%] font-medium">
-                          {formatDateTime(event.start_datetime)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-green-700">Event End:</span>
-                        <span className="text-sm text-green-900 text-right max-w-[60%] font-medium">
-                          {formatDateTime(event.end_datetime)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-green-700">Registration Opens:</span>
-                        <span className="text-sm text-green-900 text-right max-w-[60%] font-medium">
-                          {formatDateTime(event.registration_start_date)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-green-700">Registration Closes:</span>
-                        <span className="text-sm text-green-900 text-right max-w-[60%] font-medium">
-                          {formatDateTime(event.registration_end_date)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-8">
-                {/* Venue & Location - Enhanced */}
-                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border-2 border-red-200 shadow-lg">
-                  <h4 className="text-xl font-bold text-red-900 mb-6 flex items-center">
-                    <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center mr-3">
-                      <i className="fas fa-map-marker-alt text-white"></i>
-                    </div>
-                    3. Venue & Location
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-lg p-4 border border-red-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-red-700">Event Mode:</span>
-                        <span className="text-sm text-red-900 text-right max-w-[60%] font-medium">
-                          {event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1) || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-red-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-red-700">
-                          {event.mode === 'online' ? 'Platform/Link:' : 'Venue/Location:'}
-                        </span>
-                        <span className="text-sm text-red-900 text-right max-w-[60%] font-medium">
-                          {event.venue || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Organizer & Contact Information - Enhanced */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border-2 border-purple-200 shadow-lg">
-                  <h4 className="text-xl font-bold text-purple-900 mb-6 flex items-center">
-                    <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mr-3">
-                      <i className="fas fa-users text-white"></i>
-                    </div>
-                    4. Organizer & Contact Information
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-purple-700">Organizing Department:</span>
-                        <span className="text-sm text-purple-900 text-right max-w-[60%] font-medium">
-                          {event.organizing_department || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Event Organizers - Check multiple possible data sources */}
-                    {((event.organizer_details && event.organizer_details.length > 0) || 
-                      (event.organizers && event.organizers.length > 0) ||
-                      (event.faculty_organizers && event.faculty_organizers.length > 0)) && (
-                      <div className="mt-4">
-                        <span className="text-sm font-medium text-gray-600 block mb-3">Event Organizers:</span>
-                        <div className="space-y-3">
-                          {/* First try organizer_details */}
-                          {event.organizer_details && event.organizer_details.length > 0 ? (
-                            event.organizer_details.map((organizer, index) => (
-                              <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 shadow-sm">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="text-sm font-bold text-purple-900 flex items-center gap-2">
-                                      <i className="fas fa-user-tie text-purple-600"></i>
-                                      {index + 1}. {organizer.name || organizer.full_name || 'Unnamed Organizer'}
-                                    </div>
-                                    {organizer.email && (
-                                      <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                        <i className="fas fa-envelope text-purple-500"></i>
-                                        {organizer.email}
-                                      </div>
-                                    )}
-                                    {organizer.employee_id && (
-                                      <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                        <i className="fas fa-id-badge text-purple-500"></i>
-                                        Employee ID: {organizer.employee_id}
-                                      </div>
-                                    )}
-                                    {organizer.department && (
-                                      <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                        <i className="fas fa-building text-purple-500"></i>
-                                        {organizer.department}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {organizer.isNew && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                      <i className="fas fa-star text-amber-600 mr-1"></i>
-                                      New Organizer
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))
-                          ) : event.organizers && event.organizers.length > 0 ? (
-                            // Fallback to organizers array
-                            event.organizers.map((organizer, index) => (
-                              <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 shadow-sm">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="text-sm font-bold text-purple-900 flex items-center gap-2">
-                                      <i className="fas fa-user-tie text-purple-600"></i>
-                                      {index + 1}. {typeof organizer === 'string' ? organizer : organizer.name || organizer.email || 'Unknown Organizer'}
-                                    </div>
-                                    {typeof organizer === 'object' && organizer.email && (
-                                      <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                        <i className="fas fa-envelope text-purple-500"></i>
-                                        {organizer.email}
-                                      </div>
-                                    )}
-                                    {typeof organizer === 'object' && organizer.employee_id && (
-                                      <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                        <i className="fas fa-id-badge text-purple-500"></i>
-                                        Employee ID: {organizer.employee_id}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {typeof organizer === 'object' && organizer.isNew && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                      <i className="fas fa-star text-amber-600 mr-1"></i>
-                                      New Organizer
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))
-                          ) : event.faculty_organizers && event.faculty_organizers.length > 0 ? (
-                            // Fallback to faculty_organizers array (just IDs)
-                            event.faculty_organizers.map((facultyId, index) => (
-                              <div key={index} className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 shadow-sm">
-                                <div className="text-sm font-bold text-purple-900 flex items-center gap-2">
-                                  <i className="fas fa-user-tie text-purple-600"></i>
-                                  {index + 1}. Faculty Organizer
-                                </div>
-                                <div className="text-xs text-purple-700 mt-1 flex items-center gap-1">
-                                  <i className="fas fa-id-badge text-purple-500"></i>
-                                  Faculty ID: {facultyId}
-                                </div>
-                              </div>
-                            ))
-                          ) : null}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Contact Information */}
-                    {event.contacts && event.contacts.length > 0 && (
-                      <div className="mt-6">
-                        <span className="text-sm font-medium text-gray-600 block mb-3">Contact Information:</span>
-                        <div className="space-y-2">
-                          {event.contacts.map((contact, index) => (
-                            <div key={index} className="p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200 shadow-sm">
-                              <div className="flex items-center gap-3">
-                                <i className="fas fa-phone text-blue-600"></i>
-                                <div className="flex-1">
-                                  <span className="text-sm font-medium text-blue-900">{contact.name}</span>
-                                  <span className="text-sm text-blue-700 ml-2">{contact.contact}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Fallback if no organizers found */}
-                    {!((event.organizer_details && event.organizer_details.length > 0) || 
-                       (event.organizers && event.organizers.length > 0) ||
-                       (event.faculty_organizers && event.faculty_organizers.length > 0)) && (
-                      <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                        <div className="flex items-center gap-2 text-amber-800">
-                          <i className="fas fa-exclamation-triangle"></i>
-                          <span className="text-sm font-medium">No organizer information available</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Registration & Certificate Details - Enhanced */}
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-6 border-2 border-amber-200 shadow-lg">
-                  <h4 className="text-xl font-bold text-amber-900 mb-6 flex items-center">
-                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center mr-3">
-                      <i className="fas fa-certificate text-white"></i>
-                    </div>
-                    5. Registration & Certificate Details
-                  </h4>
-                  
-                  {/* Registration Settings */}
-                  <div className="mb-6">
-                    <span className="text-lg font-bold text-amber-800 block mb-4">Registration Settings:</span>
-                    <div className="space-y-3">
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-amber-700">Registration Type:</span>
-                          <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                            event.is_paid ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                          }`}>
-                            {event.is_paid ? '💰 Paid' : '🆓 Free'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-amber-700">Registration Mode:</span>
-                          <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                            event.is_team_based ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                          }`}>
-                            {event.is_team_based ? '👥 Team' : '👤 Individual'}
-                          </span>
-                        </div>
-                      </div>
-                      {event.registration_fee && (
-                        <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-bold text-amber-700">Registration Fee:</span>
-                            <span className="text-sm font-bold text-amber-900">₹{event.registration_fee}</span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-amber-700">Min Participants:</span>
-                          <span className="text-sm font-bold text-amber-900">{event.min_participants || 1}</span>
-                        </div>
-                      </div>
-                      {event.max_participants && (
-                        <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-bold text-amber-700">Max Participants:</span>
-                            <span className="text-sm font-bold text-amber-900">{event.max_participants}</span>
-                          </div>
-                        </div>
-                      )}
-                      {event.is_team_based && (
-                        <>
-                          <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-bold text-amber-700">Min Team Size:</span>
-                              <span className="text-sm font-bold text-amber-900">{event.team_size_min || 'N/A'}</span>
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-bold text-amber-700">Max Team Size:</span>
-                              <span className="text-sm font-bold text-amber-900">{event.team_size_max || 'N/A'}</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Certificate & Resources */}
-                  <div>
-                    <span className="text-lg font-bold text-amber-800 block mb-4 pt-4 border-t-2 border-amber-300">
-                      Certificate & Resources:
-                    </span>
-                    <div className="space-y-3">
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <span className="text-sm font-bold text-amber-700">Certificate Template:</span>
-                          <span className="text-sm font-bold text-amber-900 text-right max-w-[60%]">
-                            {event.certificate_template?.name || 
-                             event.certificate_template_name || 
-                             (event.certificate_template && typeof event.certificate_template === 'string' ? event.certificate_template : null) ||
-                             'No template selected'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-amber-700">Certificate Status:</span>
-                          <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                            (event.certificate_template?.name || 
-                             event.certificate_template_name || 
-                             event.certificate_template) ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {(event.certificate_template?.name || 
-                              event.certificate_template_name || 
-                              event.certificate_template) ? '✅ Template Available' : '⚠️ Template Required'}
-                          </span>
-                        </div>
-                      </div>
-                      {event.assets && event.assets.length > 0 && (
-                        <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-bold text-amber-700">Additional Assets:</span>
-                            <span className="text-sm font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                              📎 {event.assets.length} file(s) uploaded
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="bg-white rounded-lg p-3 border border-amber-200 shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <span className="text-sm font-bold text-amber-700">Certificate Available Until:</span>
-                          <span className="text-sm font-bold text-amber-900 text-right max-w-[60%]">
-                            {formatDateTime(event.certificate_end_date)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Requirements & Additional Information - Enhanced */}
-            {(event.prerequisites || event.what_to_bring) && (
-              <div className="mt-8 p-8 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border-2 border-indigo-200 shadow-lg">
-                <h4 className="text-2xl font-bold text-indigo-900 mb-6 flex items-center">
-                  <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center mr-4">
-                    <i className="fas fa-clipboard-check text-white text-lg"></i>
-                  </div>
-                  6. Requirements & Additional Information
-                </h4>
-                <div className="space-y-6">
-                  {event.prerequisites && (
-                    <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-md">
-                      <div className="flex items-center mb-4">
-                        <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-                          <i className="fas fa-check-circle text-white text-sm"></i>
-                        </div>
-                        <span className="text-lg font-bold text-indigo-800">Prerequisites</span>
-                      </div>
-                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                        <p className="text-sm text-indigo-900 whitespace-pre-line leading-relaxed font-medium">{event.prerequisites}</p>
-                      </div>
-                    </div>
-                  )}
-                  {event.what_to_bring && (
-                    <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-md">
-                      <div className="flex items-center mb-4">
-                        <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mr-3">
-                          <i className="fas fa-briefcase text-white text-sm"></i>
-                        </div>
-                        <span className="text-lg font-bold text-indigo-800">What to Bring</span>
-                      </div>
-                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                        <p className="text-sm text-indigo-900 whitespace-pre-line leading-relaxed font-medium">{event.what_to_bring}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {event.detailed_description && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="text-sm font-medium text-gray-600 mb-2">Description</div>
+                <p className="text-sm text-gray-900 leading-relaxed">{event.detailed_description}</p>
               </div>
             )}
+          </InfoCard>
+
+          {/* Registration & Pricing */}
+          <InfoCard icon={CreditCard} title="Registration & Pricing">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {event.is_paid ? `₹${event.registration_fee}` : 'FREE'}
+                </div>
+                <div className="text-xs text-gray-600">Registration Fee</div>
+              </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {event.is_team_based ? 'Team' : 'Individual'}
+                </div>
+                <div className="text-xs text-gray-600">Participation Mode</div>
+              </div>
+            </div>
+            <div className="space-y-0 divide-y divide-gray-100">
+              <InfoRow label="Min Participants" value={event.min_participants || 1} />
+              <InfoRow label="Max Participants" value={event.max_participants || 'Unlimited'} />
+            </div>
+          </InfoCard>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Schedule */}
+          <InfoCard icon={Clock} title="Schedule">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Registration Period</div>
+                    <div className="text-xs text-gray-600">Opens → Closes</div>
+                  </div>
+                  <div className="text-right text-sm text-gray-900">
+                    <div>{formatDateTime(event.registration_start_date)}</div>
+                    <div className="text-gray-600">to</div>
+                    <div>{formatDateTime(event.registration_end_date)}</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Event Period</div>
+                    <div className="text-xs text-gray-600">Start → End</div>
+                  </div>
+                  <div className="text-right text-sm text-gray-900">
+                    <div>{formatDateTime(event.start_datetime)}</div>
+                    <div className="text-gray-600">to</div>
+                    <div>{formatDateTime(event.end_datetime)}</div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          </InfoCard>
+
+          {/* Venue & Location */}
+          <InfoCard icon={MapPin} title="Venue & Location">
+            <div className="space-y-0 divide-y divide-gray-100">
+              <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
+              <InfoRow label="Venue" value={event.venue} />
+            </div>
+          </InfoCard>
+
+          {/* Certificates */}
+          <InfoCard icon={Award} title="Certificates">
+            <div className="space-y-0 divide-y divide-gray-100">
+              <InfoRow label="Template" value={event.certificate_template_name || 'Not configured'} />
+              <InfoRow label="Available Until" value={formatDateTime(event.certificate_end_date)} />
+              {event.assets && event.assets.length > 0 && (
+                <InfoRow label="Assets" value={`${event.assets.length} file(s) attached`} />
+              )}
+            </div>
+          </InfoCard>
+        </div>
+      </div>
+
+      {/* Organizers & Contacts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Organizers */}
+        <InfoCard icon={Users} title="Organizers">
+          <div className="space-y-3">
+            {event.organizer_details && event.organizer_details.length > 0 ? (
+              event.organizer_details.map((organizer, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Users className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{organizer.name || 'Unnamed'}</div>
+                    <div className="text-sm text-gray-600">{organizer.email}</div>
+                    {organizer.employee_id && (
+                      <div className="text-xs text-gray-500">ID: {organizer.employee_id}</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-600 text-center py-4">No organizer information available</div>
+            )}
           </div>
+        </InfoCard>
+
+        {/* Contacts */}
+        <InfoCard icon={Phone} title="Contact Information">
+          <div className="space-y-3">
+            {event.contacts && event.contacts.length > 0 ? (
+              event.contacts.map((contact, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                    {contact.contact.includes('@') ? (
+                      <Mail className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <Phone className="w-5 h-5 text-gray-600" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{contact.name}</div>
+                    <div className="text-sm text-gray-600">{contact.contact}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-gray-600 text-center py-4">No contact information available</div>
+            )}
+          </div>
+        </InfoCard>
+      </div>
+    </div>
 
           {/* Delete Confirmation Modal */}
           {deleteModalOpen && (
