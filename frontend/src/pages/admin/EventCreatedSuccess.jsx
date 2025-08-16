@@ -463,6 +463,122 @@ function EventCreatedSuccess() {
             </View>
           )}
 
+          {/* Attendance Strategy Details Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>7. Attendance Strategy Details</Text>
+            
+            {eventData.attendance_strategy ? (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Strategy Type:</Text>
+                  <Text style={styles.fieldValue}>
+                    {eventData.attendance_strategy.detected_strategy?.name || 
+                     eventData.attendance_strategy.strategy || 
+                     'Auto-detected'}
+                  </Text>
+                </View>
+                
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Strategy Description:</Text>
+                  <Text style={styles.fieldValue}>
+                    {eventData.attendance_strategy.detected_strategy?.description || 
+                     eventData.attendance_strategy.description || 
+                     'Strategy determined automatically based on event type'}
+                  </Text>
+                </View>
+                
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Total Sessions:</Text>
+                  <Text style={styles.fieldValue}>
+                    {eventData.attendance_strategy.sessions?.length || 0}
+                  </Text>
+                </View>
+                
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Pass Criteria:</Text>
+                  <Text style={styles.fieldValue}>
+                    {eventData.attendance_strategy.criteria?.minimum_percentage || 
+                     eventData.attendance_strategy.minimum_percentage || 'N/A'}% attendance required
+                  </Text>
+                </View>
+                
+                {eventData.attendance_strategy.detected_strategy?.reasoning && (
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Strategy Reasoning:</Text>
+                    <Text style={styles.fieldValue}>
+                      {eventData.attendance_strategy.detected_strategy.reasoning}
+                    </Text>
+                  </View>
+                )}
+                
+                {eventData.attendance_strategy.detected_strategy?.confidence && (
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Detection Confidence:</Text>
+                    <Text style={styles.fieldValue}>
+                      {Math.round(eventData.attendance_strategy.detected_strategy.confidence * 100)}%
+                    </Text>
+                  </View>
+                )}
+
+                {eventData.attendance_strategy.sessions?.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.fieldLabel, { fontSize: 9, fontWeight: 'bold', marginBottom: 4 }]}>
+                      Session Breakdown:
+                    </Text>
+                    {eventData.attendance_strategy.sessions.slice(0, 5).map((session, index) => (
+                      <View key={index} style={styles.field}>
+                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>
+                          {index + 1}. {session.session_name || `Session ${index + 1}`} 
+                          {session.session_type && ` (${session.session_type})`}
+                          {session.duration_minutes && ` - ${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m`}
+                          {session.is_mandatory === false && ' [Optional]'}
+                        </Text>
+                      </View>
+                    ))}
+                    {eventData.attendance_strategy.sessions.length > 5 && (
+                      <Text style={[styles.fieldValue, { fontSize: 8, fontStyle: 'italic' }]}>
+                        ... and {eventData.attendance_strategy.sessions.length - 5} more sessions
+                      </Text>
+                    )}
+                  </View>
+                )}
+                
+                {eventData.attendance_strategy.recommendations?.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[styles.fieldLabel, { fontSize: 9, fontWeight: 'bold', marginBottom: 4 }]}>
+                      Recommendations:
+                    </Text>
+                    {eventData.attendance_strategy.recommendations.slice(0, 3).map((rec, index) => (
+                      <View key={index} style={styles.field}>
+                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>• {rec}</Text>
+                      </View>
+                    ))}
+                    {eventData.attendance_strategy.recommendations.length > 3 && (
+                      <Text style={[styles.fieldValue, { fontSize: 8, fontStyle: 'italic' }]}>
+                        ... and {eventData.attendance_strategy.recommendations.length - 3} more recommendations
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                {eventData.attendance_strategy.estimated_completion_rate && (
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Estimated Completion Rate:</Text>
+                    <Text style={styles.fieldValue}>
+                      {Math.round(eventData.attendance_strategy.estimated_completion_rate * 100)}%
+                    </Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.field}>
+                <Text style={styles.fieldValue}>
+                  Attendance strategy will be determined automatically based on event type, duration, and target audience
+                </Text>
+              </View>
+            )}
+          </View>
+
           {/* Administrative Section */}
           <View style={styles.approvalSection}>
             <Text style={styles.sectionTitle}>ADMINISTRATIVE SECTION</Text>

@@ -19,7 +19,10 @@ const DateRangePicker = ({
   error = null,
   includeTime = false,
   singleDate = false,
-  theme = "blue"
+  theme = "blue",
+  constrainToRegistration = false,
+  registrationEndDate = null,
+  registrationEndTime = null
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isOpen, setIsOpen] = useState(false);
@@ -33,6 +36,25 @@ const DateRangePicker = ({
   ];
 
   const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  // Calculate effective minimum date based on registration constraints
+  const getEffectiveMinDate = () => {
+    if (constrainToRegistration && registrationEndDate) {
+      // Event cannot start before registration ends
+      const regEndDate = new Date(registrationEndDate);
+      
+      // If registration includes time, ensure event starts after registration ends
+      if (registrationEndTime) {
+        // Add a small buffer (same day is allowed if times are appropriate)
+        return regEndDate.toISOString().split('T')[0];
+      }
+      
+      // If no specific time, use the registration end date as minimum
+      return regEndDate.toISOString().split('T')[0];
+    }
+    
+    return minDate;
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -105,8 +127,9 @@ const DateRangePicker = ({
     // Check if date is booked
     if (isDateBooked(date)) return true;
     
-    // Check min/max dates
-    if (minDate && date < new Date(minDate)) return true;
+    // Check effective min/max dates (including registration constraints)
+    const effectiveMinDate = getEffectiveMinDate();
+    if (effectiveMinDate && date < new Date(effectiveMinDate)) return true;
     if (maxDate && date > new Date(maxDate)) return true;
     
     return false;
@@ -285,6 +308,8 @@ const DateRangePicker = ({
           {description}
         </p>
       )}
+
+
       
       <div 
         className={`w-full px-4 py-3 border rounded-lg cursor-pointer bg-white transition-all duration-200 flex items-center justify-between hover:border-${colors.border} focus-within:ring-2 focus-within:ring-${colors.ring} focus-within:border-${colors.ring} ${

@@ -40,6 +40,16 @@ const AttendancePreview = ({
     }
   }, [customStrategy]);
 
+  // Check for missing required fields
+  const missingFields = useMemo(() => {
+    const missing = [];
+    if (!eventData.registration_mode) missing.push('Registration Mode (Individual or Team)');
+    if (!eventData.event_type) missing.push('Event Type');
+    if (!eventData.start_date || !eventData.start_time) missing.push('Event Start Date/Time');
+    if (!eventData.end_date || !eventData.end_time) missing.push('Event End Date/Time');
+    return missing;
+  }, [eventData.registration_mode, eventData.event_type, eventData.start_date, eventData.start_time, eventData.end_date, eventData.end_time]);
+
   const generatePreview = async () => {
     if (!eventData.start_date || !eventData.start_time || !eventData.end_date || !eventData.end_time) {
       return;
@@ -63,13 +73,39 @@ const AttendancePreview = ({
         registration_mode: eventData.registration_mode || 'individual'
       };
 
+      console.log('AttendancePreview - Sending request data:', requestData);
+      console.log('AttendancePreview - Date validation:', {
+        start_date: eventData.start_date,
+        start_time: eventData.start_time,
+        end_date: eventData.end_date,
+        end_time: eventData.end_time,
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString()
+      });
+
       const response = await adminAPI.previewAttendanceStrategy(requestData);
       const data = response.data;
       setPreviewData(data);
       
-      // Initialize custom strategy with detected strategy
-      if (data.success && data.data.detected_strategy) {
-        setCustomStrategy(data.data.detected_strategy);
+      // Initialize custom strategy with detected strategy and notify parent
+      if (data.success && data.detected_strategy) {
+        setCustomStrategy(data.detected_strategy.type);
+        
+        // Immediately notify parent with the detected strategy data
+        if (onStrategyChange) {
+          const strategyData = {
+            strategy: data.detected_strategy.type,
+            detected_strategy: data.detected_strategy,
+            criteria: data.attendance_config,
+            sessions: data.sessions,
+            warnings: data.validation_details?.warnings || [],
+            recommendations: data.recommendations || [],
+            minimum_percentage: data.attendance_config?.minimum_percentage
+          };
+          
+          console.log('AttendancePreview - Sending strategy data to parent:', strategyData);
+          onStrategyChange(strategyData);
+        }
       }
 
     } catch (err) {
@@ -91,12 +127,31 @@ const AttendancePreview = ({
       const startDateTime = new Date(`${eventData.start_date}T${eventData.start_time}`);
       const endDateTime = new Date(`${eventData.end_date}T${eventData.end_time}`);
 
+      // Create a custom strategy configuration object
+      const customStrategyConfig = {
+        type: customStrategy,
+        name: `Custom ${customStrategy.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+        description: `User-selected ${customStrategy} strategy`,
+        sessions: [
+          {
+            name: "Main Session",
+            start_time: startDateTime.toISOString(),
+            duration: Math.floor(Math.max(60, (endDateTime - startDateTime) / 1000 / 60)) // Convert to integer minutes
+          }
+        ],
+        criteria: {
+          strategy: customStrategy,
+          minimum_percentage: customStrategy === 'single_mark' ? 100 : (customStrategy === 'continuous' ? 90 : 75),
+          auto_calculate: true
+        }
+      };
+
       const requestData = {
         event_name: eventData.event_name,
         event_type: eventData.event_type,
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
-        custom_strategy: customStrategy,
+        custom_strategy: customStrategyConfig,
         detailed_description: eventData.detailed_description || '',
         target_audience: eventData.target_audience || 'students',
         registration_mode: eventData.registration_mode || 'individual'
@@ -107,13 +162,13 @@ const AttendancePreview = ({
       setValidationData(data);
 
       // Update parent with the complete configuration
-      if (onStrategyChange && data.success && data.data) {
+      if (onStrategyChange && data.success && data.custom_strategy) {
         onStrategyChange({
-          strategy: data.data.strategy,
-          criteria: data.data.config,
-          sessions: data.data.sessions,
-          warnings: data.data.warnings || [],
-          recommendations: data.data.recommendations || []
+          strategy: data.custom_strategy.type,
+          criteria: data.custom_strategy.config,
+          sessions: data.custom_strategy.sessions,
+          warnings: data.validation_details?.warnings || [],
+          recommendations: data.recommendations || []
         });
       }
 
@@ -133,14 +188,14 @@ const AttendancePreview = ({
     setCustomStrategy(newStrategy);
     
     // If switching back to the detected strategy, we'll use the original preview data
-    if (newStrategy === previewData?.data?.detected_strategy) {
+    if (newStrategy === previewData?.detected_strategy?.type) {
       if (onStrategyChange) {
         onStrategyChange({
           strategy: newStrategy,
-          criteria: previewData.data.attendance_config,
-          sessions: previewData.data.sessions,
+          criteria: previewData.attendance_config,
+          sessions: previewData.sessions,
           warnings: [],
-          recommendations: previewData.data.recommendations
+          recommendations: previewData.recommendations
         });
       }
     } else {
@@ -190,6 +245,36 @@ const AttendancePreview = ({
     );
   }
 
+  // Show missing fields error first
+  if (missingFields.length > 0) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+        <div className="flex items-start space-x-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="text-sm font-medium text-amber-800 mb-2">
+              Complete Required Fields to Generate Attendance Strategy
+            </h4>
+            <p className="text-sm text-amber-700 mb-3">
+              Please complete the following fields to automatically generate your attendance strategy:
+            </p>
+            <ul className="text-sm text-amber-700 space-y-1">
+              {missingFields.map((field, index) => (
+                <li key={index} className="flex items-center space-x-2">
+                  <span className="w-1.5 h-1.5 bg-amber-600 rounded-full flex-shrink-0"></span>
+                  <span>{field}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-amber-600 mt-3">
+              Attendance strategy will be generated automatically based on event type, duration, and audience.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -205,17 +290,17 @@ const AttendancePreview = ({
     return null;
   }
 
-  const { data } = previewData;
+  const data = previewData;
   
   // Determine current data to display based on state
   const currentData = (() => {
     // If we have validation data and it's successful, use it
-    if (validationData?.success && validationData.data) {
-      return validationData.data;
+    if (validationData?.success && validationData.custom_strategy) {
+      return validationData.custom_strategy;
     }
     
     // If custom strategy matches detected strategy, use original data
-    if (customStrategy === data.detected_strategy) {
+    if (customStrategy === data.detected_strategy?.type) {
       return data;
     }
     
@@ -228,18 +313,18 @@ const AttendancePreview = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg ${getStrategyColor(currentData.strategy || currentData.detected_strategy)}`}>
-            {getStrategyIcon(currentData.strategy || currentData.detected_strategy)}
+          <div className={`p-2 rounded-lg ${getStrategyColor(currentData.type || data.detected_strategy?.type)}`}>
+            {getStrategyIcon(currentData.type || data.detected_strategy?.type)}
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-              <span>Attendance Strategy: {currentData.strategy_name}</span>
+              <span>Attendance Strategy: {currentData.name || data.detected_strategy?.name}</span>
               {validating && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               )}
             </h3>
             <p className="text-sm text-gray-600">
-              {data.duration_info.total_hours}h event • {data.attendance_config.total_sessions} session(s)
+              {data.event_details?.duration_hours}h event • {(currentData.sessions || data.sessions)?.length || 0} session(s)
             </p>
           </div>
         </div>
@@ -256,18 +341,18 @@ const AttendancePreview = ({
 
       {/* Strategy Explanation */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <p className="text-sm text-gray-700">{currentData.explanation || data.explanation}</p>
+        <p className="text-sm text-gray-700">{currentData.description || data.detected_strategy?.description || "Strategy analysis in progress..."}</p>
       </div>
 
       {/* Warnings (if any) */}
-      {validationData?.data?.warnings?.length > 0 && (
+      {validationData?.recommendations?.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-start space-x-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-amber-800 mb-1">Recommendations:</p>
               <ul className="text-sm text-amber-700 space-y-1">
-                {validationData.data.warnings.map((warning, idx) => (
+                {validationData.recommendations.map((warning, idx) => (
                   <li key={idx}>• {warning}</li>
                 ))}
               </ul>
@@ -347,20 +432,20 @@ const AttendancePreview = ({
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{data.attendance_config.total_sessions}</p>
+          <p className="text-lg font-semibold text-gray-900">{(currentData.sessions || data.sessions)?.length || 0}</p>
           <p className="text-xs text-gray-600">Total Sessions</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{data.attendance_config.criteria_percentage || 'N/A'}%</p>
+          <p className="text-lg font-semibold text-gray-900">{data.criteria?.minimum_percentage || 'N/A'}%</p>
           <p className="text-xs text-gray-600">Pass Criteria</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{data.duration_info.total_hours}h</p>
+          <p className="text-lg font-semibold text-gray-900">{data.event_details?.duration_hours || 0}h</p>
           <p className="text-xs text-gray-600">Duration</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
           <p className="text-lg font-semibold text-gray-900">
-            {currentData.config?.flexibility_score || data.attendance_config.flexible_attendance ? 'High' : 'Standard'}
+            {data.detected_strategy?.type === 'flexible_attendance' ? 'High' : 'Standard'}
           </p>
           <p className="text-xs text-gray-600">Flexibility</p>
         </div>

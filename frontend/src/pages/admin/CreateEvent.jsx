@@ -750,14 +750,26 @@ function CreateEvent() {
     } else if (step === 3) {
       // Date/Time validation
       ['start_date','start_time','end_date','end_time','registration_start_date','registration_start_time','registration_end_date','registration_end_time','certificate_end_date','certificate_end_time'].forEach((f) => { if (!form[f]) stepErrors[f] = 'Required'; });
-      // Date/time logic
+      
+      // Date/time logic validation
       const start = new Date(`${form.start_date}T${form.start_time}`);
       const end = new Date(`${form.end_date}T${form.end_time}`);
       const regStart = new Date(`${form.registration_start_date}T${form.registration_start_time}`);
       const regEnd = new Date(`${form.registration_end_date}T${form.registration_end_time}`);
-      if (end <= start) stepErrors.end_time = 'End must be after start';
-      if (regEnd <= regStart) stepErrors.registration_end_time = 'Reg end must be after reg start';
-      if (regEnd > start) stepErrors.registration_end_time = 'Reg end must be before event start';
+      
+      // Basic time ordering checks
+      if (end <= start) stepErrors.end_time = 'Event end must be after event start';
+      if (regEnd <= regStart) stepErrors.registration_end_time = 'Registration end must be after registration start';
+      
+      // Registration period constraint - event cannot start before registration ends
+      if (start < regEnd) stepErrors.start_date = 'Event cannot start before registration period ends';
+      
+      // Ensure reasonable gap between registration end and event start (optional warning)
+      const timeDiff = start - regEnd;
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+      if (hoursDiff < 1 && hoursDiff >= 0) {
+        stepErrors.start_time = 'Recommend at least 1 hour gap between registration end and event start';
+      }
       
       // Registration validation
       if (!form.registration_type) stepErrors.registration_type = 'Registration Type is required';
@@ -925,6 +937,104 @@ function CreateEvent() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Attendance Strategy Preview */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Attendance Strategy
+              </h3>
+              <button 
+                onClick={() => setCurrentStep(3)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            
+            {customAttendanceStrategy ? (
+              <div className="space-y-4">
+                {console.log('CreateEvent Review - customAttendanceStrategy:', customAttendanceStrategy)}
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">Strategy Type:</span>
+                  <span className="text-sm text-gray-900 capitalize">
+                    {customAttendanceStrategy.detected_strategy?.name || customAttendanceStrategy.strategy || 'Auto-detected'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">Total Sessions:</span>
+                  <span className="text-sm text-gray-900">
+                    {customAttendanceStrategy.sessions?.length || 0}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-600">Pass Criteria:</span>
+                  <span className="text-sm text-gray-900">
+                    {customAttendanceStrategy.criteria?.minimum_percentage || customAttendanceStrategy.minimum_percentage || 'N/A'}%
+                  </span>
+                </div>
+                
+                <div className="pt-2 border-t border-gray-100">
+                  <span className="text-sm font-medium text-gray-600">Description:</span>
+                  <p className="text-sm text-gray-900 mt-1">
+                    {customAttendanceStrategy.detected_strategy?.description || 
+                     customAttendanceStrategy.description || 
+                     'Strategy will be determined automatically based on event type and duration'}
+                  </p>
+                </div>
+                
+                {customAttendanceStrategy.recommendations?.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <span className="text-sm font-medium text-blue-800">Recommendations:</span>
+                    <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                      {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
+                        <li key={idx}>• {rec}</li>
+                      ))}
+                      {customAttendanceStrategy.recommendations.length > 3 && (
+                        <li className="text-xs text-blue-600">
+                          ... and {customAttendanceStrategy.recommendations.length - 3} more
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {customAttendanceStrategy.sessions?.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <span className="text-sm font-medium text-gray-800">Session Preview:</span>
+                    <div className="mt-2 space-y-1">
+                      {customAttendanceStrategy.sessions.slice(0, 3).map((session, idx) => (
+                        <div key={idx} className="text-sm text-gray-700 flex justify-between">
+                          <span>{session.session_name || `Session ${idx + 1}`}</span>
+                          <span className="text-xs text-gray-500">
+                            {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : ''}
+                          </span>
+                        </div>
+                      ))}
+                      {customAttendanceStrategy.sessions.length > 3 && (
+                        <div className="text-xs text-gray-500 text-center pt-1">
+                          +{customAttendanceStrategy.sessions.length - 3} more sessions
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-sm text-gray-600">Attendance strategy will be generated automatically</p>
+                <p className="text-xs text-gray-500 mt-1">Based on event type, duration, and audience</p>
+              </div>
+            )}
           </div>
 
           {/* Event Creator Information for Executive Admin */}
@@ -1473,7 +1583,9 @@ function CreateEvent() {
           prerequisites: form.prerequisites,
           what_to_bring: form.what_to_bring,
           target_outcomes: form.target_outcomes,
-          assets: form.assets
+          assets: form.assets,
+          // Add attendance strategy data for display
+          attendance_strategy: customAttendanceStrategy
         };
 
         console.log('CreateEvent - Sending displayEventData:', displayEventData);
@@ -2241,7 +2353,10 @@ function CreateEvent() {
                       includeTime={true}
                       required={true}
                       placeholder="Select event duration"
-                      minDate={form.registration_start_date || formatDateToLocal(new Date())}
+                      constrainToRegistration={true}
+                      registrationEndDate={form.registration_end_date}
+                      registrationEndTime={form.registration_end_time}
+                      minDate={form.registration_end_date || formatDateToLocal(new Date())}
                       error={errors.start_date || errors.end_date || errors.start_time || errors.end_time}
                       className="w-full"
                     />

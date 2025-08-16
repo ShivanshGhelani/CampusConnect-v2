@@ -591,6 +591,182 @@ class AttendanceIntelligenceService:
         else:  # absent
             return "Attendance not marked or below minimum requirement"
 
+    async def analyze_event_requirements(self, event_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyze event requirements and provide comprehensive attendance strategy analysis
+        This method is called by the attendance preview API
+        """
+        try:
+            # Detect the appropriate attendance strategy
+            detected_strategy = self.detect_attendance_strategy(event_data)
+            
+            # Generate sessions based on the detected strategy
+            sessions = self.generate_attendance_sessions(event_data, detected_strategy)
+            
+            # Get default criteria for the strategy
+            criteria_config = self.DEFAULT_CRITERIA.get(detected_strategy, {})
+            
+            # Create criteria object
+            criteria = AttendanceCriteria(
+                strategy=detected_strategy,
+                minimum_percentage=criteria_config.get("minimum_percentage"),
+                required_sessions=criteria_config.get("required_sessions"),
+                required_milestones=criteria_config.get("required_milestones"),
+                auto_calculate=True
+            )
+            
+            # Calculate event duration
+            start_time = event_data.get("start_datetime")
+            end_time = event_data.get("end_datetime")
+            duration_hours = 0
+            if start_time and end_time:
+                duration = end_time - start_time
+                duration_hours = duration.total_seconds() / 3600
+            
+            # Generate strategy analysis
+            strategy_info = {
+                "type": detected_strategy.value,
+                "name": self._get_strategy_display_name(detected_strategy),
+                "description": criteria_config.get("description", ""),
+                "reasoning": self._get_strategy_reasoning(event_data, detected_strategy, duration_hours),
+                "confidence": self._calculate_confidence_score(event_data, detected_strategy),
+                "sessions": [
+                    {
+                        "session_id": session.session_id,
+                        "session_name": session.session_name,
+                        "session_type": session.session_type,
+                        "start_time": session.start_time.isoformat(),
+                        "end_time": session.end_time.isoformat(),
+                        "duration_minutes": int((session.end_time - session.start_time).total_seconds() / 60),
+                        "is_mandatory": session.is_mandatory,
+                        "weight": session.weight
+                    }
+                    for session in sessions
+                ],
+                "config": {
+                    "strategy": detected_strategy.value,
+                    "criteria": criteria.dict(),
+                    "total_sessions": len(sessions),
+                    "mandatory_sessions": len([s for s in sessions if s.is_mandatory])
+                },
+                "criteria": criteria.dict(),
+                "estimated_completion_rate": self._estimate_completion_rate(detected_strategy, len(sessions)),
+                "recommendations": self._generate_recommendations(event_data, detected_strategy, sessions)
+            }
+            
+            return {
+                "success": True,
+                "strategy": strategy_info
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def _get_strategy_display_name(self, strategy: AttendanceStrategy) -> str:
+        """Get human-readable strategy name"""
+        names = {
+            AttendanceStrategy.SINGLE_MARK: "Single Attendance",
+            AttendanceStrategy.DAY_BASED: "Daily Attendance",
+            AttendanceStrategy.SESSION_BASED: "Session-Based Attendance",
+            AttendanceStrategy.MILESTONE_BASED: "Milestone-Based Attendance",
+            AttendanceStrategy.CONTINUOUS: "Continuous Engagement"
+        }
+        return names.get(strategy, "Unknown Strategy")
+    
+    def _get_strategy_reasoning(self, event_data: Dict[str, Any], strategy: AttendanceStrategy, duration_hours: float) -> str:
+        """Generate reasoning for why this strategy was selected"""
+        event_type = event_data.get("event_type", "").lower()
+        event_name = event_data.get("event_name", "").lower()
+        
+        if strategy == AttendanceStrategy.SINGLE_MARK:
+            return f"Short-duration event ({duration_hours:.1f} hours) suitable for single attendance marking"
+        elif strategy == AttendanceStrategy.DAY_BASED:
+            return f"Multi-day event detected with training/workshop characteristics"
+        elif strategy == AttendanceStrategy.SESSION_BASED:
+            return f"Competition or hackathon format detected with multiple rounds/sessions"
+        elif strategy == AttendanceStrategy.MILESTONE_BASED:
+            return f"Cultural or technical event with distinct phases/milestones"
+        elif strategy == AttendanceStrategy.CONTINUOUS:
+            return f"Long-term event requiring continuous engagement tracking"
+        else:
+            return "Strategy selected based on event characteristics"
+    
+    def _calculate_confidence_score(self, event_data: Dict[str, Any], strategy: AttendanceStrategy) -> float:
+        """Calculate confidence score for strategy selection"""
+        event_name = event_data.get("event_name", "").lower()
+        event_type = event_data.get("event_type", "").lower()
+        description = event_data.get("detailed_description", "").lower()
+        combined_text = f"{event_name} {event_type} {description}"
+        
+        # Count pattern matches for the selected strategy
+        patterns = self.EVENT_TYPE_PATTERNS.get(strategy, [])
+        match_count = sum(len(re.findall(pattern, combined_text)) for pattern in patterns)
+        
+        # Base confidence + bonus for matches
+        base_confidence = 0.6
+        match_bonus = min(0.3, match_count * 0.1)
+        
+        return min(0.95, base_confidence + match_bonus)
+    
+    def _estimate_completion_rate(self, strategy: AttendanceStrategy, session_count: int) -> float:
+        """Estimate completion rate based on strategy and session count"""
+        base_rates = {
+            AttendanceStrategy.SINGLE_MARK: 0.9,
+            AttendanceStrategy.DAY_BASED: 0.8,
+            AttendanceStrategy.SESSION_BASED: 0.75,
+            AttendanceStrategy.MILESTONE_BASED: 0.7,
+            AttendanceStrategy.CONTINUOUS: 0.65
+        }
+        
+        base_rate = base_rates.get(strategy, 0.75)
+        
+        # Reduce rate based on complexity (more sessions = lower completion)
+        if session_count > 5:
+            base_rate -= 0.1
+        elif session_count > 3:
+            base_rate -= 0.05
+        
+        return max(0.5, base_rate)
+    
+    def _generate_recommendations(self, event_data: Dict[str, Any], strategy: AttendanceStrategy, 
+                                sessions: List[AttendanceSession]) -> List[str]:
+        """Generate recommendations for the selected strategy"""
+        recommendations = []
+        
+        session_count = len(sessions)
+        mandatory_count = len([s for s in sessions if s.is_mandatory])
+        
+        if strategy == AttendanceStrategy.SINGLE_MARK:
+            recommendations.append("Simple attendance marking - participants mark once during event")
+            recommendations.append("Consider QR code or digital check-in for efficiency")
+        
+        elif strategy == AttendanceStrategy.DAY_BASED:
+            recommendations.append(f"Daily attendance tracking across {session_count} day(s)")
+            recommendations.append("80% daily attendance required for completion")
+        
+        elif strategy == AttendanceStrategy.SESSION_BASED:
+            recommendations.append(f"Track attendance across {session_count} sessions/rounds")
+            recommendations.append(f"{mandatory_count} mandatory sessions must be attended")
+            if session_count > 4:
+                recommendations.append("Consider reducing sessions for better completion rates")
+        
+        elif strategy == AttendanceStrategy.MILESTONE_BASED:
+            recommendations.append("Milestone-based tracking for cultural/technical events")
+            recommendations.append("Track key phases: registration, participation, completion")
+        
+        elif strategy == AttendanceStrategy.CONTINUOUS:
+            recommendations.append("Continuous engagement monitoring")
+            recommendations.append("90% participation required throughout event duration")
+        
+        # General recommendations
+        if session_count > 3:
+            recommendations.append("Consider automated attendance tracking tools")
+        
+        return recommendations
+
 
 class DynamicAttendanceService:
     """Service for managing dynamic attendance configurations and tracking"""
