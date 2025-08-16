@@ -19,3 +19,4 @@ export { adminAPI } from './admin';
 export { organizerAPI } from './organizer';
 export { systemAPI } from './system'; // NEW - System management
 export { participationAPI } from './participation'; // NEW - Unified participation system
+export { simpleAPI } from './simple';

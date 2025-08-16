@@ -93,4 +93,30 @@ export const clientAPI = {
     event_id: eventId,
     conflict_resolution: resolution
   })
+
+  // SIMPLE REGISTRATION ENDPOINTS (event_lifecycle.txt implementation)
+  // Individual registration
+  registerIndividualSimple: (eventId, registrationData) => 
+    api.post(`/api/v1/registrations/individual/${eventId}`, registrationData),
+  
+  // Team registration
+  registerTeamSimple: (eventId, teamData) => 
+    api.post(`/api/v1/registrations/team/${eventId}`, teamData),
+  
+  // Registration status
+  getRegistrationStatusSimple: (eventId) => 
+    api.get(`/api/v1/registrations/status/${eventId}`),
+  
+  // Cancel registration
+  cancelRegistrationSimple: (eventId) => 
+    api.delete(`/api/v1/registrations/cancel/${eventId}`),
+  
+  // Mark attendance
+  markAttendanceSimple: (eventId, attendanceData) => 
+    api.post(`/api/v1/registrations/attendance/${eventId}/mark`, attendanceData),
+  
+  // Submit feedback
+  submitFeedbackSimple: (eventId, feedbackData) => 
+    api.post(`/api/v1/registrations/feedback/${eventId}/submit`, feedbackData),
+
 };

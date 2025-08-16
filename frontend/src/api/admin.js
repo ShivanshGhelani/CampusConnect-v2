@@ -19,7 +19,10 @@ export const adminAPI = {
   createEvent: (eventData) => api.post('/api/v1/admin/events/create', eventData),
   updateEvent: (eventId, eventData) => api.put(`/api/v1/admin/events/update/${eventId}`, eventData),
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/events/registrations/${eventId}`, { params: filters }),
+  
+  // Updated to use new participation API
+  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
   
   // Event Approval Management
   approveEvent: (eventId) => api.post(`/api/v1/admin/events/approve/${eventId}`),
@@ -164,4 +167,23 @@ export const adminAPI = {
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
   // with parameters to specify focus areas, maintaining your 62-endpoint optimization
+
+  // SIMPLE REGISTRATION SYSTEM (event_lifecycle.txt implementation)
+  // Fast, efficient endpoints as specified in the plan
+  getEventRegistrationsSimple: (eventId, options = {}) => {
+    const { limit = 50, offset = 0 } = options;
+    return api.get(`/api/v1/registrations/event/${eventId}/registrations`, { 
+      params: { limit, offset } 
+    });
+  },
+  
+  markAttendanceSimple: (eventId, attendanceData) => 
+    api.post(`/api/v1/registrations/attendance/${eventId}/mark-bulk`, attendanceData),
+  
+  issueSimpleCertificates: (eventId, certificateData) => 
+    api.post(`/api/v1/registrations/certificates/${eventId}/issue-bulk`, certificateData),
+  
+  getEventStatisticsSimple: (eventId) => 
+    api.get(`/api/v1/registrations/statistics/${eventId}`),
+
 };

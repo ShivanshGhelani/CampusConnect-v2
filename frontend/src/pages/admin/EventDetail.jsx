@@ -1094,7 +1094,7 @@ function EventDetail() {
                     <Users className="w-5 h-5 text-gray-600" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">{organizer.name || 'Unnamed'}</div>
+                    <div className="font-medium text-gray-900">{organizer.full_name || 'Unnamed'}</div>
                     <div className="text-sm text-gray-600">{organizer.email}</div>
                     {organizer.employee_id && (
                       <div className="text-xs text-gray-500">ID: {organizer.employee_id}</div>
