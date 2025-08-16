@@ -111,7 +111,7 @@ class Event(BaseModel):
         "certificates_issued": 140,
         "last_updated": "2025-08-13T10:30:00Z"
     }
-    All detailed tracking moved to student_event_participations collection
+    All detailed tracking moved to student_registrations collection
     """)
     
     # Certificate settings
@@ -177,47 +177,47 @@ class Event(BaseModel):
         return self.get_participant_count() >= self.max_participants
     
     # DEPRECATED METHODS (Kept for backward compatibility during migration)
-    # These methods will be removed after migration to student_event_participations
+    # These methods will be removed after migration to student_registrations
     
     def add_individual_registration(self, enrollment_no: str, registration_id: str) -> None:
-        """DEPRECATED: Use ParticipationService instead"""
-        logger.warning("add_individual_registration is deprecated. Use ParticipationService.create_participation()")
+        """DEPRECATED: Use RegistrationService instead"""
+        logger.warning("add_individual_registration is deprecated. Use RegistrationService.register_student()")
         pass
     
     def add_team_registration(self, team_name: str, enrollment_no: str, registration_id: str, 
                             is_leader: bool = False, **metadata) -> None:
-        """DEPRECATED: Use ParticipationService instead"""
-        logger.warning("add_team_registration is deprecated. Use ParticipationService.create_participation()")
+        """DEPRECATED: Use RegistrationService instead"""
+        logger.warning("add_team_registration is deprecated. Use RegistrationService.register_student()")
         pass
     
     def add_attendance(self, enrollment_no: str, attendance_id: str, team_name: str = None) -> None:
-        """DEPRECATED: Use ParticipationService instead"""
-        logger.warning("add_attendance is deprecated. Use ParticipationService.mark_attendance()")
+        """DEPRECATED: Use RegistrationService instead"""
+        logger.warning("add_attendance is deprecated. Use RegistrationService.mark_attendance()")
         pass
     
     def add_feedback(self, enrollment_no: str, feedback_id: str, team_name: str = None) -> None:
-        """DEPRECATED: Use ParticipationService instead"""
-        logger.warning("add_feedback is deprecated. Use ParticipationService instead")
+        """DEPRECATED: Use RegistrationService instead"""
+        logger.warning("add_feedback is deprecated. Use RegistrationService instead")
         pass
     
     def add_certificate(self, enrollment_no: str, certificate_id: str, team_name: str = None) -> None:
-        """DEPRECATED: Use ParticipationService instead"""
-        logger.warning("add_certificate is deprecated. Use ParticipationService instead")
+        """DEPRECATED: Use RegistrationService instead"""
+        logger.warning("add_certificate is deprecated. Use RegistrationService instead")
         pass
     
     def get_student_registration_id(self, enrollment_no: str) -> str:
-        """DEPRECATED: Use ParticipationService.get_participation() instead"""
-        logger.warning("get_student_registration_id is deprecated. Use ParticipationService.get_participation()")
+        """DEPRECATED: Use RegistrationService.get_registration() instead"""
+        logger.warning("get_student_registration_id is deprecated. Use RegistrationService.get_registration()")
         return None
     
     def get_student_attendance_ids(self, enrollment_no: str) -> List[str]:
-        """DEPRECATED: Use ParticipationService.get_participation() instead"""
-        logger.warning("get_student_attendance_ids is deprecated. Use ParticipationService.get_participation()")
+        """DEPRECATED: Use RegistrationService.get_registration() instead"""
+        logger.warning("get_student_attendance_ids is deprecated. Use RegistrationService.get_registration()")
         return []
     
     def is_student_registered(self, enrollment_no: str) -> bool:
-        """DEPRECATED: Use ParticipationService.get_participation() instead"""
-        logger.warning("is_student_registered is deprecated. Use ParticipationService.get_participation()")
+        """DEPRECATED: Use RegistrationService.get_registration() instead"""
+        logger.warning("is_student_registered is deprecated. Use RegistrationService.get_registration()")
         return False
     
     def update_status(self, current_time: datetime = None) -> None:

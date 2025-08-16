@@ -1,7 +1,7 @@
 """
 Migration Helper Utilities
 =========================
-Provides utilities for migrating between old and new participation systems.
+Provides utilities for migrating between old and new registration systems.
 Helps with data conversion and compatibility.
 """
 
@@ -18,9 +18,9 @@ class MigrationHelper:
     async def verify_migration_integrity(self) -> Dict[str, Any]:
         """Verify that migration was completed successfully"""
         try:
-            # Check participation collection
-            participations_collection = self.db["student_event_participations"]
-            participations_count = await participations_collection.count_documents({})
+            # Check registration collection
+            registrations_collection = self.db["student_registrations"]
+            registrations_count = await registrations_collection.count_documents({})
             
             # Check events collection for legacy data
             events_collection = self.db["events"]
@@ -37,11 +37,11 @@ class MigrationHelper:
                         total_legacy_registrations += len(registrations)
             
             return {
-                "migration_complete": participations_count > 0,
-                "participations_count": participations_count,
+                "migration_complete": registrations_count > 0,
+                "registrations_count": registrations_count,
                 "legacy_events_with_registrations": events_with_registrations,
                 "legacy_registrations_count": total_legacy_registrations,
-                "integrity_status": "VERIFIED" if participations_count >= total_legacy_registrations else "INCOMPLETE"
+                "integrity_status": "VERIFIED" if registrations_count >= total_legacy_registrations else "INCOMPLETE"
             }
             
         except Exception as e:
@@ -57,26 +57,26 @@ class MigrationHelper:
             # Check database collections
             collections = await self.db.list_collection_names()
             
-            # Check participation system
-            participations_collection = self.db["student_event_participations"]
-            sample_participation = await participations_collection.find_one({})
+            # Check registration system
+            registrations_collection = self.db["student_registrations"]
+            sample_registration = await registrations_collection.find_one({})
             
             # Check indexes
-            indexes = await participations_collection.list_indexes().to_list(length=None)
+            indexes = await registrations_collection.list_indexes().to_list(length=None)
             index_names = [idx["name"] for idx in indexes]
             
-            required_indexes = ["idx_student_enrollment", "idx_event_id", "idx_participation_id"]
+            required_indexes = ["idx_student_enrollment", "idx_event_id", "idx_registration_id"]
             indexes_present = all(idx in index_names for idx in required_indexes)
             
             return {
                 "database_connected": True,
-                "collections_present": "student_event_participations" in collections,
-                "sample_data_exists": sample_participation is not None,
+                "collections_present": "student_registrations" in collections,
+                "sample_data_exists": sample_registration is not None,
                 "indexes_present": indexes_present,
                 "total_indexes": len(indexes),
                 "system_status": "HEALTHY" if all([
-                    "student_event_participations" in collections,
-                    sample_participation is not None,
+                    "student_registrations" in collections,
+                    sample_registration is not None,
                     indexes_present
                 ]) else "NEEDS_ATTENTION"
             }
@@ -88,13 +88,13 @@ class MigrationHelper:
                 "system_status": "ERROR"
             }
     
-    def convert_legacy_registration_to_participation(self, enrollment_no: str, 
+    def convert_legacy_registration_to_registration(self, enrollment_no: str, 
                                                    event_data: Dict[str, Any],
                                                    registration_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert legacy registration format to new participation format"""
+        """Convert legacy registration format to new registration format"""
         try:
-            participation = {
-                "participation_id": f"{event_data.get('event_id')}_{enrollment_no}_{int(datetime.now().timestamp())}",
+            registration = {
+                "registration_id": f"{event_data.get('event_id')}_{enrollment_no}_{int(datetime.now().timestamp())}",
                 "student": {
                     "enrollment_no": enrollment_no,
                     "name": registration_data.get("name", ""),
@@ -150,7 +150,7 @@ class MigrationHelper:
                 "updated_at": datetime.now()
             }
             
-            return participation
+            return registration
             
         except Exception as e:
             raise Exception(f"Failed to convert legacy registration: {str(e)}")

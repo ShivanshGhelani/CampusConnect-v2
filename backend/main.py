@@ -153,10 +153,10 @@ async def internal_server_error_handler(request: Request, exc):
 from api import router as api_router
 from api.legacy_direct_routes import router as legacy_direct_router
 from api.v1.storage import router as storage_router
-from api.v1.participations import router as participations_router
+from api.v1.registrations import router as registrations_router
 
 # Mount routes in correct order (most specific first)
-app.include_router(participations_router, prefix="/api/v1")  # Participation routes at /api/v1/participations/...
+app.include_router(registrations_router, prefix="/api/v1")  # Registration routes at /api/v1/registrations/...
 app.include_router(storage_router) # Storage routes at /api/v1/storage/...
 app.include_router(api_router)     # API routes at /api/... (includes all admin, auth, email, organizer functionality)
 app.include_router(legacy_direct_router)  # Legacy direct routes at / (admin, organizer, etc.)

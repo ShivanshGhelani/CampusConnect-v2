@@ -1,15 +1,16 @@
 import api from './base';
 
 /**
- * Simple Registration API Module
- * =============================
- * Clean, fast API endpoints implementing the simple system from event_lifecycle.txt
+ * Simple Registration API Module - Updated for Event Lifecycle Implementation
+ * ==========================================================================
+ * Clean, fast API endpoints implementing the complete event lifecycle system
  * 
  * Features:
- * - Single collection queries
+ * - Single collection queries to student_registrations
  * - Fast response times (< 2 seconds)
  * - Simple request/response format
- * - Proper error handling
+ * - Complete lifecycle support (registration → attendance → feedback → certificate)
+ * - Role-based dashboards
  */
 
 export const simpleAPI = {
@@ -34,10 +35,10 @@ export const simpleAPI = {
     api.delete(`/api/v1/registrations/cancel/${eventId}`),
   
   // ============================================================================
-  // EVENT LIFECYCLE (Simple Operations)
+  // EVENT LIFECYCLE (Complete Implementation)
   // ============================================================================
   
-  // Mark attendance - single update
+  // Mark attendance - single update with session support
   markAttendance: (eventId, data = {}) => 
     api.post(`/api/v1/registrations/attendance/${eventId}/mark`, data),
   
@@ -46,10 +47,22 @@ export const simpleAPI = {
     api.post(`/api/v1/registrations/feedback/${eventId}/submit`, feedback),
   
   // ============================================================================
+  // DASHBOARD ENDPOINTS (Role-based Access)
+  // ============================================================================
+  
+  // Student dashboard - complete participation overview
+  getStudentDashboard: () => 
+    api.get('/api/v1/registrations/student/dashboard'),
+  
+  // Organizer dashboard - event monitoring and analytics
+  getOrganizerDashboard: (eventId) => 
+    api.get(`/api/v1/registrations/organizer/event/${eventId}/dashboard`),
+  
+  // ============================================================================
   // ADMIN OPERATIONS (Fast Analytics)
   // ============================================================================
   
-  // Get event registrations - indexed query
+  // Get event registrations - indexed query with pagination
   getEventRegistrations: (eventId, options = {}) => 
     api.get(`/api/v1/registrations/event/${eventId}/registrations`, { params: options }),
   
@@ -57,16 +70,12 @@ export const simpleAPI = {
   markBulkAttendance: (eventId, attendanceList) => 
     api.post(`/api/v1/registrations/attendance/${eventId}/mark-bulk`, attendanceList),
   
-  // Bulk certificate issuance - efficient batch operation
-  issueBulkCertificates: (eventId, certificateList) => 
-    api.post(`/api/v1/registrations/certificates/${eventId}/issue-bulk`, certificateList),
-  
   // Get event statistics - fast aggregation
   getStatistics: (eventId) => 
     api.get(`/api/v1/registrations/statistics/${eventId}`),
   
   // ============================================================================
-  // UTILITY FUNCTIONS
+  // UTILITY FUNCTIONS (Enhanced)
   // ============================================================================
   
   // Check if student is registered
@@ -80,7 +89,7 @@ export const simpleAPI = {
     }
   },
   
-  // Get registration details
+  // Get registration details with completion status
   getRegistrationDetails: async (eventId) => {
     try {
       const response = await api.get(`/api/v1/registrations/status/${eventId}`);
@@ -91,8 +100,19 @@ export const simpleAPI = {
     }
   },
   
-  // Calculate completion percentage
-  getCompletionStatus: (registration) => {
+  // Get completion status with next steps
+  getCompletionStatus: async (eventId) => {
+    try {
+      const response = await api.get(`/api/v1/registrations/status/${eventId}`);
+      return response.data?.completion_status || null;
+    } catch (error) {
+      console.error('Error getting completion status:', error);
+      return null;
+    }
+  },
+  
+  // Calculate completion percentage (legacy support)
+  calculateCompletionPercentage: (registration) => {
     if (!registration) return 0;
     
     let completed = 1; // Registration completed
@@ -101,5 +121,28 @@ export const simpleAPI = {
     if (registration.certificate?.issued) completed++;
     
     return (completed / 4) * 100; // 4 total stages
+  },
+  
+  // ============================================================================
+  // REAL-TIME FEATURES
+  // ============================================================================
+  
+  // Get real-time event status (for organizers)
+  getRealTimeEventStatus: async (eventId) => {
+    try {
+      const response = await api.get(`/api/v1/registrations/statistics/${eventId}`);
+      return response.data || null;
+    } catch (error) {
+      console.error('Error getting real-time status:', error);
+      return null;
+    }
+  },
+  
+  // Subscribe to real-time updates (WebSocket - placeholder for future implementation)
+  subscribeToUpdates: (eventId, callback) => {
+    // Placeholder for WebSocket implementation
+    console.log(`Subscribing to real-time updates for event ${eventId}`);
+    // TODO: Implement WebSocket connection
+    return () => console.log('Unsubscribed from updates');
   }
 };

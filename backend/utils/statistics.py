@@ -170,18 +170,18 @@ class StatisticsManager:
     
     @classmethod
     async def get_event_statistics(cls, event_id: str) -> Dict[str, Any]:
-        """Get statistics for a specific event using unified participation system"""
+        """Get statistics for a specific event using unified registration system"""
         try:
-            # Get all participations for this event
-            participations = await DatabaseOperations.find_many(
-                "student_event_participations", 
+            # Get all registrations for this event
+            registrations = await DatabaseOperations.find_many(
+                "student_registrations", 
                 {"event.event_id": event_id}
             )
             
-            total_registrations = len(participations)
-            attendance_marked = sum(1 for p in participations if p.get("attendance", {}).get("is_eligible", False))
-            feedback_submitted = sum(1 for p in participations if p.get("feedback", {}).get("submitted", False))
-            certificates_issued = sum(1 for p in participations if p.get("certificate", {}).get("issued", False))
+            total_registrations = len(registrations)
+            attendance_marked = sum(1 for p in registrations if p.get("attendance", {}).get("is_eligible", False))
+            feedback_submitted = sum(1 for p in registrations if p.get("feedback", {}).get("submitted", False))
+            certificates_issued = sum(1 for p in registrations if p.get("certificate", {}).get("issued", False))
             
             return {
                 "registrations": total_registrations,
