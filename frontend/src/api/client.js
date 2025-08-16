@@ -92,7 +92,7 @@ export const clientAPI = {
   resolveRegistrationConflict: (eventId, resolution) => api.post('/api/v1/client/registration/register', {
     event_id: eventId,
     conflict_resolution: resolution
-  })
+  }),
 
   // SIMPLE REGISTRATION ENDPOINTS (event_lifecycle.txt implementation)
   // Individual registration

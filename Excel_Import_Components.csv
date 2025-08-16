@@ -1,0 +1,11 @@
+Component_Name,Current_Status,Target_Status,Priority,Completion_%,Owner,Last_Updated,Issues,Next_Action,Week_to_Address
+Registration System,Working,Enhance,Medium,80,Backend Team,2025-08-16,Collection name non-compliant,Rename to student_registrations,Week 1
+Dynamic Attendance,Excellent,Maintain,Low,95,Backend Team,2025-08-16,None,Integration testing only,All Weeks
+Student Dashboard,Missing,Complete,High,0,Frontend Team,2025-08-16,Major gap in user experience,Start development,Week 1
+Organizer Dashboard,Missing,Complete,High,0,Frontend Team,2025-08-16,Cannot monitor events,Start development,Week 2
+Event Completion Workflow,Missing,Complete,High,0,Backend Team,2025-08-16,Manual certificate process,Implement automation,Week 2
+Certificate Generation,Basic,Automated,High,20,Backend Team,2025-08-16,No actual generation,Build automation,Week 2
+Database Indexes,Partial,Complete,Medium,40,DevOps Team,2025-08-16,Performance issues,Create missing indexes,Week 1
+Data Cleanup,Missing,Automated,Medium,0,Backend Team,2025-08-16,Data will grow indefinitely,Implement automation,Week 3
+Role-based Access,Basic,Complete,High,30,Security Team,2025-08-16,No role separation,Enhance throughout project,All Weeks
+Performance Monitoring,Missing,Complete,Medium,0,DevOps Team,2025-08-16,Cannot track performance,Build monitoring tools,Week 3
