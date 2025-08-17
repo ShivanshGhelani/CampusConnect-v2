@@ -349,8 +349,14 @@ class AttendanceIntelligenceService:
             day_count = 1
             
             while current_date <= end_date:
-                day_start = datetime.combine(current_date, start_time.time())
-                day_end = datetime.combine(current_date, end_time.time())
+                # Create timezone-aware datetime objects
+                # Handle both timezone-aware and timezone-naive datetimes
+                if start_time.tzinfo:
+                    day_start = datetime.combine(current_date, start_time.time(), tzinfo=start_time.tzinfo)
+                    day_end = datetime.combine(current_date, end_time.time(), tzinfo=end_time.tzinfo)
+                else:
+                    day_start = datetime.combine(current_date, start_time.time())
+                    day_end = datetime.combine(current_date, end_time.time())
                 
                 # Adjust for last day
                 if current_date == end_date:

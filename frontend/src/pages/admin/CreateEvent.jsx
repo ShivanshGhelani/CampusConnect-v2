@@ -14,8 +14,8 @@ import unifiedStorage from '../../services/unifiedStorage';
 // Helper for step progress
 const steps = [
   'Basic Info',
-  'Organizer & Location',
-  'Schedule & Registration',
+  'Organizer & Registration',
+  'Schedule & Location',
   'Certificate',
   'Review'
 ];
@@ -209,6 +209,7 @@ function CreateEvent() {
     allow_multiple_team_registrations: false,
     max_participants: '',
     min_participants: '1',
+    attendance_mandatory: true,
     is_certificate_based: false,
     certificate_templates: {},
     event_poster: null,
@@ -264,22 +265,14 @@ function CreateEvent() {
 
   // Load venues on component mount, but only after authentication is checked
   useEffect(() => {
-    console.log('🔧 COMPONENT MOUNTED - Authentication check:', { isAuthenticated, userType });
     if (isAuthenticated && userType === 'admin') {
       loadVenues();
       loadExistingEventIds();
     }
-    
-    // Cleanup function to log when component unmounts
-    return () => {
-      console.log('🚨 COMPONENT UNMOUNTING - This should not happen during step navigation!');
-    };
   }, [isAuthenticated, userType]);
 
   // Initialize event creator session for Executive Admin
   useEffect(() => {
-    console.log('🔧 Executive Admin Session Check:', { isAuthenticated, userType, userRole: user?.role });
-    
     if (isAuthenticated && userType === 'admin' && user && user.role === 'executive_admin') {
       // Check if there's an existing valid session
       const existingSession = getEventCreatorSession();
@@ -518,6 +511,14 @@ function CreateEvent() {
     }
   }, [form.event_type, form.mode]);
 
+  // Clear attendance data when attendance is not mandatory
+  useEffect(() => {
+    if (!form.attendance_mandatory) {
+      setCustomAttendanceStrategy(null);
+      setShowAttendanceCustomization(false);
+    }
+  }, [form.attendance_mandatory]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -718,12 +719,15 @@ function CreateEvent() {
       if (!form.short_description) stepErrors.short_description = 'Short Description is required';
       if (!form.detailed_description) stepErrors.detailed_description = 'Detailed Description is required';
     } else if (step === 2) {
-      if (!form.organizing_department) stepErrors.organizing_department = 'Organizing Department/Club is required';
+      if (!form.organizing_department) {
+        stepErrors.organizing_department = 'Organizing Department/Club is required';
+      }
       
       // New organizer validation
       const selectedOrganizers = form.organizers.filter(org => org.selected);
+      
       if (selectedOrganizers.length === 0) {
-        stepErrors.organizers = 'At least one organizer must be selected';
+        stepErrors.organizers = 'At least one organizer must be selected from the dropdown';
       } else {
         // Validate each selected organizer
         selectedOrganizers.forEach((org, idx) => {
@@ -739,7 +743,7 @@ function CreateEvent() {
       if (!form.contacts.length || form.contacts.some((c) => !c.name || !c.contact)) {
         stepErrors.contacts = 'At least one contact with name and contact is required';
       }
-      
+    } else if (step === 3) {
       if (!form.mode) stepErrors.mode = 'Event Mode is required';
       if ((form.mode === 'offline' || form.mode === 'hybrid') && !form.venue) {
         stepErrors.venue = 'Venue selection is required for offline/hybrid events';
@@ -800,22 +804,9 @@ function CreateEvent() {
 
   // Navigation with validation
   const nextStep = () => {
-    console.log('🔄 NEXT STEP CLICKED');
-    console.log('Current Step Before:', currentStep);
-    console.log('Validation Result:', validateStep(currentStep));
-    
     if (validateStep(currentStep)) {
       const newStep = Math.min(currentStep + 1, totalSteps);
-      console.log('✅ Moving to step:', newStep);
-      
-      // Special logging for step 5
-      if (newStep === 5) {
-        console.log('🎯 NAVIGATING TO REVIEW STEP (5) - This is where the issue might occur');
-      }
-      
       setCurrentStep(newStep);
-    } else {
-      console.log('❌ Validation failed, staying on step:', currentStep);
     }
   };
   const prevStep = () => {
@@ -956,83 +947,106 @@ function CreateEvent() {
               </button>
             </div>
             
-            {customAttendanceStrategy ? (
-              <div className="space-y-4">
-                {console.log('CreateEvent Review - customAttendanceStrategy:', customAttendanceStrategy)}
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">Strategy Type:</span>
-                  <span className="text-sm text-gray-900 capitalize">
-                    {customAttendanceStrategy.detected_strategy?.name || customAttendanceStrategy.strategy || 'Auto-detected'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">Total Sessions:</span>
-                  <span className="text-sm text-gray-900">
-                    {customAttendanceStrategy.sessions?.length || 0}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">Pass Criteria:</span>
-                  <span className="text-sm text-gray-900">
-                    {customAttendanceStrategy.criteria?.minimum_percentage || customAttendanceStrategy.minimum_percentage || 'N/A'}%
-                  </span>
-                </div>
-                
-                <div className="pt-2 border-t border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Description:</span>
-                  <p className="text-sm text-gray-900 mt-1">
-                    {customAttendanceStrategy.detected_strategy?.description || 
-                     customAttendanceStrategy.description || 
-                     'Strategy will be determined automatically based on event type and duration'}
-                  </p>
-                </div>
-                
-                {customAttendanceStrategy.recommendations?.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <span className="text-sm font-medium text-blue-800">Recommendations:</span>
-                    <ul className="text-sm text-blue-700 mt-1 space-y-1">
-                      {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
-                        <li key={idx}>• {rec}</li>
-                      ))}
-                      {customAttendanceStrategy.recommendations.length > 3 && (
-                        <li className="text-xs text-blue-600">
-                          ... and {customAttendanceStrategy.recommendations.length - 3} more
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                )}
+            {/* Attendance Mandatory Status */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-gray-600">Attendance Tracking:</span>
+              <span className={`text-sm px-2 py-1 rounded-full ${
+                form.attendance_mandatory 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {form.attendance_mandatory ? 'Mandatory' : 'Not Required'}
+              </span>
+            </div>
 
-                {customAttendanceStrategy.sessions?.length > 0 && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <span className="text-sm font-medium text-gray-800">Session Preview:</span>
-                    <div className="mt-2 space-y-1">
-                      {customAttendanceStrategy.sessions.slice(0, 3).map((session, idx) => (
-                        <div key={idx} className="text-sm text-gray-700 flex justify-between">
-                          <span>{session.session_name || `Session ${idx + 1}`}</span>
-                          <span className="text-xs text-gray-500">
-                            {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : ''}
-                          </span>
-                        </div>
-                      ))}
-                      {customAttendanceStrategy.sessions.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center pt-1">
-                          +{customAttendanceStrategy.sessions.length - 3} more sessions
-                        </div>
-                      )}
-                    </div>
+            {form.attendance_mandatory ? (
+              customAttendanceStrategy ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-600">Strategy Type:</span>
+                    <span className="text-sm text-gray-900 capitalize">
+                      {customAttendanceStrategy.detected_strategy?.name || customAttendanceStrategy.strategy || 'Auto-detected'}
+                    </span>
                   </div>
-                )}
-              </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-600">Total Sessions:</span>
+                    <span className="text-sm text-gray-900">
+                      {customAttendanceStrategy.sessions?.length || 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-600">Pass Criteria:</span>
+                    <span className="text-sm text-gray-900">
+                      {customAttendanceStrategy.criteria?.minimum_percentage || 
+                       customAttendanceStrategy.minimum_percentage || 
+                       (customAttendanceStrategy.strategy === 'single_mark' ? '100' : '75')}%
+                    </span>
+                  </div>
+                  
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">Description:</span>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {customAttendanceStrategy.detected_strategy?.description || 
+                       customAttendanceStrategy.description || 
+                       'Strategy will be determined automatically based on event type and duration'}
+                    </p>
+                  </div>
+                  
+                  {customAttendanceStrategy.recommendations?.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <span className="text-sm font-medium text-blue-800">Recommendations:</span>
+                      <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                        {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
+                          <li key={idx}>• {rec}</li>
+                        ))}
+                        {customAttendanceStrategy.recommendations.length > 3 && (
+                          <li className="text-xs text-blue-600">
+                            ... and {customAttendanceStrategy.recommendations.length - 3} more
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {customAttendanceStrategy.sessions?.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <span className="text-sm font-medium text-gray-800">Session Preview:</span>
+                      <div className="mt-2 space-y-1">
+                        {customAttendanceStrategy.sessions.slice(0, 3).map((session, idx) => (
+                          <div key={idx} className="text-sm text-gray-700 flex justify-between">
+                            <span>{session.session_name || `Session ${idx + 1}`}</span>
+                            <span className="text-xs text-gray-500">
+                              {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : ''}
+                            </span>
+                          </div>
+                        ))}
+                        {customAttendanceStrategy.sessions.length > 3 && (
+                          <div className="text-xs text-gray-500 text-center pt-1">
+                            +{customAttendanceStrategy.sessions.length - 3} more sessions
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                  <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-sm text-gray-600">Attendance strategy will be generated automatically</p>
+                  <p className="text-xs text-gray-500 mt-1">Based on event type, duration, and audience</p>
+                </div>
+              )
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                 <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
                 </svg>
-                <p className="text-sm text-gray-600">Attendance strategy will be generated automatically</p>
-                <p className="text-xs text-gray-500 mt-1">Based on event type, duration, and audience</p>
+                <p className="text-sm text-gray-600">No attendance tracking required</p>
+                <p className="text-xs text-gray-500 mt-1">Attendance data will not be collected for this event</p>
               </div>
             )}
           </div>
@@ -1358,19 +1372,13 @@ function CreateEvent() {
       e.preventDefault();
     }
     
-    console.log('🚨 Form Submit Triggered!');
-    console.log('Current Step:', currentStep, 'Total Steps:', totalSteps);
-    console.log('Event target:', e?.target, 'Event type:', e?.type);
-    
     // Only submit if we're on the final step (step 5)
     if (currentStep !== totalSteps) {
-      console.log('❌ Not on final step, preventing submission');
       return;
     }
     
     // Validate the current step
     if (!validateStep(currentStep)) {
-      console.log('Validation failed');
       return;
     }
     
@@ -1514,10 +1522,13 @@ function CreateEvent() {
         // Event poster URL from Appwrite upload
         event_poster_url: eventPosterUrl,
         
-        // Attendance configuration if customized
-        attendance_strategy: customAttendanceStrategy?.strategy || null,
-        attendance_criteria: customAttendanceStrategy?.criteria || null,
-        custom_attendance_config: customAttendanceStrategy || null,
+        // Attendance configuration - only include if attendance is mandatory
+        attendance_mandatory: form.attendance_mandatory,
+        ...(form.attendance_mandatory && {
+          attendance_strategy: customAttendanceStrategy?.strategy || null,
+          attendance_criteria: customAttendanceStrategy?.criteria || null,
+          custom_attendance_config: customAttendanceStrategy || null,
+        }),
         
         // Set status and approval based on user role
         // Role-based event status and approval logic
@@ -1542,8 +1553,6 @@ function CreateEvent() {
         eventData.event_created_by = user.fullname || user.username || 'Executive Admin';
         eventData.event_creator_email = ''; // No email if no session
       }
-
-      console.log('Submitting event data:', eventData);
 
       const response = await adminAPI.createEvent(eventData);
       
@@ -1587,10 +1596,6 @@ function CreateEvent() {
           // Add attendance strategy data for display
           attendance_strategy: customAttendanceStrategy
         };
-
-        console.log('CreateEvent - Sending displayEventData:', displayEventData);
-        console.log('CreateEvent - Filtered organizers:', displayEventData.organizers);
-        console.log('CreateEvent - Certificate template:', displayEventData.certificate_template);
 
         navigate('/admin/events/created-success', {
           state: { 
@@ -1820,8 +1825,8 @@ function CreateEvent() {
         return (
           <div>
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Organizer, Contact & Event Location</h2>
-              <p className="text-sm text-gray-600">Specify who is organizing the event, contact information, and event location details</p>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Organizer, Contact & Registration Settings</h2>
+              <p className="text-sm text-gray-600">Specify who is organizing the event, contact information, and registration settings</p>
             </div>
             
             <div className="space-y-10">
@@ -2079,177 +2084,105 @@ function CreateEvent() {
                 </div>
               </div>
 
-              {/* Event Mode & Location Section */}
+              {/* Registration Settings Section */}
               <div>
-                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Event Mode & Location</h3>
+                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Registration Settings</h3>
                 <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Mode<span className="text-red-500">*</span></label>
-                    <Dropdown
-                      options={[
-                        { value: "online", label: "Online" },
-                        { value: "offline", label: "Offline" },
-                        { value: "hybrid", label: "Hybrid" }
-                      ]}
-                      value={form.mode}
-                      onChange={(value) => handleChange({ target: { name: 'mode', value } })}
-                      placeholder="Select Mode"
-                      required
-                      error={errors.mode}
-                    />
-                    {errors.mode && <p className="text-xs text-red-500">{errors.mode}</p>}
-                  </div>
-
-                  {form.mode === 'offline' || form.mode === 'hybrid' ? (
+                  {/* Registration Type and Mode in same row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Venue/Location<span className="text-red-500">*</span>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Registration Type<span className="text-red-500">*</span>
                       </label>
-                      
-                      <div className="relative venue-search-container">
-                        <input 
-                          type="text"
-                          name="venue"
-                          value={form.venue}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setForm(prev => ({ 
-                              ...prev, 
-                              venue: value,
-                              venue_id: '' // Clear venue_id when manually typing
-                            }));
-                            
-                            // Show autocomplete suggestions - all venues if empty, filtered if has text
-                            if (value.trim()) {
-                              const filtered = venues.filter(v => 
-                                v.is_active && 
-                                (v.name.toLowerCase().includes(value.toLowerCase()) || 
-                                 v.location.toLowerCase().includes(value.toLowerCase()) ||
-                                 `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
-                              );
-                              setFilteredVenues(filtered);
-                              setShowVenueDropdown(true);
-                            } else {
-                              // Show all active venues when field is empty
-                              const allActiveVenues = venues.filter(v => v.is_active);
-                              setFilteredVenues(allActiveVenues);
-                              setShowVenueDropdown(allActiveVenues.length > 0);
-                            }
-                          }}
-                          onFocus={() => {
-                            // Show dropdown on focus - all venues if empty, filtered if has text
-                            if (form.venue.trim()) {
-                              const filtered = venues.filter(v => 
-                                v.is_active && 
-                                (v.name.toLowerCase().includes(form.venue.toLowerCase()) || 
-                                 v.location.toLowerCase().includes(form.venue.toLowerCase()) ||
-                                 `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
-                              );
-                              setFilteredVenues(filtered);
-                              setShowVenueDropdown(true);
-                            } else {
-                              // Show all active venues when focused with empty field
-                              const allActiveVenues = venues.filter(v => v.is_active);
-                              setFilteredVenues(allActiveVenues);
-                              setShowVenueDropdown(allActiveVenues.length > 0);
-                            }
-                          }}
-                          placeholder="Click to view all venues or type to search (e.g., Main Auditorium, Room 101)"
-                          className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
-                          required
-                        />
-                        
-                        {/* Search Icon */}
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                        
-                        {/* Autocomplete Dropdown */}
-                        {showVenueDropdown && filteredVenues.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                            {filteredVenues.map((venue) => (
-                              <div
-                                key={venue.venue_id}
-                                onClick={() => {
-                                  setForm(prev => ({
-                                    ...prev,
-                                    venue_id: venue.venue_id,
-                                    venue: `${venue.name} - ${venue.location}`
-                                  }));
-                                  setShowVenueDropdown(false);
-                                }}
-                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-900">{venue.name}</p>
-                                    <p className="text-xs text-gray-500">{venue.location}</p>
-                                    {venue.venue_type && (
-                                      <p className="text-xs text-blue-600 capitalize">{venue.venue_type.replace('_', ' ')}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                      Capacity: {venue.capacity || 'N/A'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {errors.venue && <p className="text-xs text-red-500 mt-1">{errors.venue}</p>}
-                      
-                      <p className="text-xs text-gray-500 mt-1">
-                        Start typing to see suggestions from existing venues, or enter a custom venue name.
-                      </p>
-                      
-                      {/* Display selected venue confirmation */}
-                      {form.venue_id && (
-                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm text-green-800 font-medium">Existing venue selected</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Display custom venue confirmation */}
-                      {form.venue && !form.venue_id && (
-                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm text-amber-800 font-medium">Custom venue will be created</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : form.mode === 'online' ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Platform/Meeting Link<span className="text-red-500">*</span></label>
-                      <input 
-                        type="url" 
-                        name="venue" 
-                        value={form.venue} 
-                        onChange={handleChange} 
-                        placeholder="e.g., https://meet.google.com/xyz-abc-def or Zoom Meeting ID"
-                        required 
-                        className={`mt-1 block w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`} 
+                      <Dropdown
+                        options={[
+                          { value: "free", label: "Free Registration" },
+                          { value: "paid", label: "Paid Registration" },
+                          { value: "sponsored", label: "Sponsored Event" }
+                        ]}
+                        value={form.registration_type}
+                        onChange={(value) => handleChange({ target: { name: 'registration_type', value } })}
+                        placeholder="Select Registration Type"
+                        required
+                        error={errors.registration_type}
                       />
-                      {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
-                      <p className="text-xs text-gray-500 mt-1">
-                        For online events, provide the meeting platform link or details
-                      </p>
+                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether the event is free, paid, or sponsored</p>
+                      {errors.registration_type && <p className="text-xs text-red-500">{errors.registration_type}</p>}
                     </div>
-                  ) : null}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">Registration Mode<span className="text-red-500">*</span></label>
+                      <Dropdown
+                        options={[
+                          { value: "individual", label: "Individual Registration" },
+                          { value: "team", label: "Team Registration" }
+                        ]}
+                        value={form.registration_mode}
+                        onChange={(value) => handleChange({ target: { name: 'registration_mode', value } })}
+                        placeholder="Select Registration Mode"
+                        required
+                        error={errors.registration_mode}
+                      />
+                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether participants register individually or as teams</p>
+                      {errors.registration_mode && <p className="text-xs text-red-500">{errors.registration_mode}</p>}
+                    </div>
+                  </div>
+                  {showFeeFields && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="fee-fields">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700">Registration Fee (₹)</label>
+                        <input type="number" name="registration_fee" min="0" step="0.01" value={form.registration_fee} onChange={handleChange} placeholder="e.g., 500.00" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.registration_fee ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
+                        <p className="helper-text text-xs text-gray-500 mt-1">Enter the registration fee amount</p>
+                        {errors.registration_fee && <p className="text-xs text-red-500">{errors.registration_fee}</p>}
+                      </div>
+                      <div className="mt-4 md:mt-0">
+                        <label className="block text-sm font-semibold text-gray-700">Fee Description <span className="text-gray-500">(Optional)</span></label>
+                        <textarea name="fee_description" value={form.fee_description} onChange={handleChange} rows={3} placeholder="e.g., Includes lunch, materials, certificate, etc." className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                        <p className="helper-text text-xs text-gray-500 mt-1">Describe what the fee includes or additional payment details</p>
+                      </div>
+                    </div>
+                  )}
+                  {showTeamFields && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="team-fields">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700">Minimum Team Size</label>
+                        <input type="number" name="team_size_min" min="2" value={form.team_size_min} onChange={handleChange} placeholder="e.g., 2" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.team_size_min ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
+                        <p className="helper-text text-xs text-gray-500 mt-1">Minimum number of members per team</p>
+                        {errors.team_size_min && <p className="text-xs text-red-500">{errors.team_size_min}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700">Maximum Team Size</label>
+                        <input type="number" name="team_size_max" min="2" value={form.team_size_max} onChange={handleChange} placeholder="e.g., 5" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.team_size_max ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
+                        <p className="helper-text text-xs text-gray-500 mt-1">Maximum number of members per team</p>
+                        {errors.team_size_max && <p className="text-xs text-red-500">{errors.team_size_max}</p>}
+                      </div>
+                      <div className="md:col-span-2">
+                        <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
+                          <input
+                            id="multiple-team-checkbox"
+                            type="checkbox"
+                            onChange={(e) => setForm(prev => ({ ...prev, allow_multiple_team_registrations: e.target.checked }))}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                          <label htmlFor="multiple-team-checkbox" className="cursor-pointer">
+                            <span className="text-sm font-semibold text-gray-700">Allow Multiple Team Registrations</span>
+                            <p className="text-xs text-gray-500">Allow students to be part of multiple teams for this event (requires approval)</p>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">Maximum Participants <span className="text-gray-500">(Optional)</span></label>
+                      <input type="number" name="max_participants" min="1" value={form.max_participants} onChange={handleChange} placeholder="e.g., 100" className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                      <p className="helper-text text-xs text-gray-500 mt-1">Maximum number of participants allowed (leave empty for unlimited)</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">Minimum Participants</label>
+                      <input type="number" name="min_participants" min="1" value={form.min_participants} onChange={handleChange} placeholder="e.g., 10" className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+                      <p className="helper-text text-xs text-gray-500 mt-1">Minimum number of participants required for the event to proceed</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2270,16 +2203,17 @@ function CreateEvent() {
                     <div className="flex items-start space-x-2">
                       <div className="w-5 h-5 text-amber-600 mt-0.5">⚠️</div>
                       <div className="text-sm text-amber-800">
-                        <p className="font-medium mb-2">Schedule & Registration Guidelines:</p>
+                        <p className="font-medium mb-2">Schedule, Event Mode & Location Guidelines:</p>
                         <ul className="space-y-1 text-xs">
                           <li>• <strong>Registration Period:</strong> When participants can register for the event</li>
                           <li>• <strong>Event Schedule:</strong> The actual event start and end times</li>
                           <li>• <strong>Certificate End:</strong> When certificates will no longer be downloadable</li>
+                          <li>• <strong>Event Mode:</strong> Online, offline, or hybrid event format</li>
+                          <li>• <strong>Venue/Location:</strong> Physical location or online platform details</li>
                           <li>• Registration must end before the event starts</li>
                           <li>• Event end time must be after start time</li>
                           <li>• Certificate distribution should end after the event concludes</li>
                           <li>• All times are in your local timezone</li>
-                          <li>• Choose appropriate registration type and participant limits</li>
                         </ul>
                       </div>
                     </div>
@@ -2288,9 +2222,9 @@ function CreateEvent() {
                     <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
                   </div>
                 </div>
-                Schedule & Registration Details
+                Schedule, Event Mode & Location
               </h2>
-              <p className="text-sm text-gray-600">Set the schedule for your event, registration periods, and configure registration settings</p>
+              <p className="text-sm text-gray-600">Set the schedule for your event, event mode, and location details</p>
             </div>
             
             <div className="space-y-10">
@@ -2474,123 +2408,235 @@ function CreateEvent() {
                 </div>
               </div>
 
-              {/* Registration Type & Fee Structure Section */}
+              {/* Event Mode & Location Section */}
               <div>
-                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Registration Settings</h3>
+                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Event Mode & Location</h3>
                 <div className="space-y-6">
-                  {/* Registration Type and Mode in same row */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Mode<span className="text-red-500">*</span></label>
+                    <Dropdown
+                      options={[
+                        { value: "online", label: "Online" },
+                        { value: "offline", label: "Offline" },
+                        { value: "hybrid", label: "Hybrid" }
+                      ]}
+                      value={form.mode}
+                      onChange={(value) => handleChange({ target: { name: 'mode', value } })}
+                      placeholder="Select Mode"
+                      required
+                      error={errors.mode}
+                    />
+                    {errors.mode && <p className="text-xs text-red-500">{errors.mode}</p>}
+                  </div>
+
+                  {form.mode === 'offline' || form.mode === 'hybrid' ? (
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700">
-                        Registration Type<span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Venue/Location<span className="text-red-500">*</span>
                       </label>
-                      <Dropdown
-                        options={[
-                          { value: "free", label: "Free Registration" },
-                          { value: "paid", label: "Paid Registration" },
-                          { value: "sponsored", label: "Sponsored Event" }
-                        ]}
-                        value={form.registration_type}
-                        onChange={(value) => handleChange({ target: { name: 'registration_type', value } })}
-                        placeholder="Select Registration Type"
-                        required
-                        error={errors.registration_type}
-                      />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether the event is free, paid, or sponsored</p>
-                      {errors.registration_type && <p className="text-xs text-red-500">{errors.registration_type}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">Registration Mode<span className="text-red-500">*</span></label>
-                      <Dropdown
-                        options={[
-                          { value: "individual", label: "Individual Registration" },
-                          { value: "team", label: "Team Registration" }
-                        ]}
-                        value={form.registration_mode}
-                        onChange={(value) => handleChange({ target: { name: 'registration_mode', value } })}
-                        placeholder="Select Registration Mode"
-                        required
-                        error={errors.registration_mode}
-                      />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether participants register individually or as teams</p>
-                      {errors.registration_mode && <p className="text-xs text-red-500">{errors.registration_mode}</p>}
-                    </div>
-                  </div>
-                  {showFeeFields && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="fee-fields">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700">Registration Fee (₹)</label>
-                        <input type="number" name="registration_fee" min="0" step="0.01" value={form.registration_fee} onChange={handleChange} placeholder="e.g., 500.00" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.registration_fee ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
-                        <p className="helper-text text-xs text-gray-500 mt-1">Enter the registration fee amount</p>
-                        {errors.registration_fee && <p className="text-xs text-red-500">{errors.registration_fee}</p>}
-                      </div>
-                      <div className="mt-4 md:mt-0">
-                        <label className="block text-sm font-semibold text-gray-700">Fee Description <span className="text-gray-500">(Optional)</span></label>
-                        <textarea name="fee_description" value={form.fee_description} onChange={handleChange} rows={3} placeholder="e.g., Includes lunch, materials, certificate, etc." className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
-                        <p className="helper-text text-xs text-gray-500 mt-1">Describe what the fee includes or additional payment details</p>
-                      </div>
-                    </div>
-                  )}
-                  {showTeamFields && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="team-fields">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700">Minimum Team Size</label>
-                        <input type="number" name="team_size_min" min="2" value={form.team_size_min} onChange={handleChange} placeholder="e.g., 2" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.team_size_min ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
-                        <p className="helper-text text-xs text-gray-500 mt-1">Minimum number of members per team</p>
-                        {errors.team_size_min && <p className="text-xs text-red-500">{errors.team_size_min}</p>}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700">Maximum Team Size</label>
-                        <input type="number" name="team_size_max" min="2" value={form.team_size_max} onChange={handleChange} placeholder="e.g., 5" className={`mt-1 px-4 py-2 w-full rounded-lg border ${errors.team_size_max ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`} />
-                        <p className="helper-text text-xs text-gray-500 mt-1">Maximum number of members per team</p>
-                        {errors.team_size_max && <p className="text-xs text-red-500">{errors.team_size_max}</p>}
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
-                          <input
-                            id="multiple-team-checkbox"
-                            type="checkbox"
-                            onChange={(e) => setForm(prev => ({ ...prev, allow_multiple_team_registrations: e.target.checked }))}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                          />
-                          <label htmlFor="multiple-team-checkbox" className="cursor-pointer">
-                            <span className="text-sm font-semibold text-gray-700">Allow Multiple Team Registrations</span>
-                            <p className="text-xs text-gray-500">Allow students to be part of multiple teams for this event (requires approval)</p>
-                          </label>
+                      
+                      <div className="relative venue-search-container">
+                        <input 
+                          type="text"
+                          name="venue"
+                          value={form.venue}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setForm(prev => ({ 
+                              ...prev, 
+                              venue: value,
+                              venue_id: '' // Clear venue_id when manually typing
+                            }));
+                            
+                            // Show autocomplete suggestions - all venues if empty, filtered if has text
+                            if (value.trim()) {
+                              const filtered = venues.filter(v => 
+                                v.is_active && 
+                                (v.name.toLowerCase().includes(value.toLowerCase()) || 
+                                 v.location.toLowerCase().includes(value.toLowerCase()) ||
+                                 `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
+                              );
+                              setFilteredVenues(filtered);
+                              setShowVenueDropdown(true);
+                            } else {
+                              // Show all active venues when field is empty
+                              const allActiveVenues = venues.filter(v => v.is_active);
+                              setFilteredVenues(allActiveVenues);
+                              setShowVenueDropdown(allActiveVenues.length > 0);
+                            }
+                          }}
+                          onFocus={() => {
+                            // Show dropdown on focus - all venues if empty, filtered if has text
+                            if (form.venue.trim()) {
+                              const filtered = venues.filter(v => 
+                                v.is_active && 
+                                (v.name.toLowerCase().includes(form.venue.toLowerCase()) || 
+                                 v.location.toLowerCase().includes(form.venue.toLowerCase()) ||
+                                 `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
+                              );
+                              setFilteredVenues(filtered);
+                              setShowVenueDropdown(true);
+                            } else {
+                              // Show all active venues when focused with empty field
+                              const allActiveVenues = venues.filter(v => v.is_active);
+                              setFilteredVenues(allActiveVenues);
+                              setShowVenueDropdown(allActiveVenues.length > 0);
+                            }
+                          }}
+                          placeholder="Click to view all venues or type to search (e.g., Main Auditorium, Room 101)"
+                          className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
+                          required
+                        />
+                        
+                        {/* Search Icon */}
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
                         </div>
+                        
+                        {/* Autocomplete Dropdown */}
+                        {showVenueDropdown && filteredVenues.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                            {filteredVenues.map((venue) => (
+                              <div
+                                key={venue.venue_id}
+                                onClick={() => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    venue_id: venue.venue_id,
+                                    venue: `${venue.name} - ${venue.location}`
+                                  }));
+                                  setShowVenueDropdown(false);
+                                }}
+                                className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">{venue.name}</p>
+                                    <p className="text-xs text-gray-500">{venue.location}</p>
+                                    {venue.venue_type && (
+                                      <p className="text-xs text-blue-600 capitalize">{venue.venue_type.replace('_', ' ')}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      Capacity: {venue.capacity || 'N/A'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                      
+                      {errors.venue && <p className="text-xs text-red-500 mt-1">{errors.venue}</p>}
+                      
+                      <p className="text-xs text-gray-500 mt-1">
+                        Start typing to see suggestions from existing venues, or enter a custom venue name.
+                      </p>
+                      
+                      {/* Display selected venue confirmation */}
+                      {form.venue_id && (
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-green-800 font-medium">Existing venue selected</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Display custom venue confirmation */}
+                      {form.venue && !form.venue_id && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-amber-800 font-medium">Custom venue will be created</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  ) : form.mode === 'online' ? (
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700">Maximum Participants <span className="text-gray-500">(Optional)</span></label>
-                      <input type="number" name="max_participants" min="1" value={form.max_participants} onChange={handleChange} placeholder="e.g., 100" className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Maximum number of participants allowed (leave empty for unlimited)</p>
+                      <label className="block text-sm font-medium text-gray-700">Platform/Meeting Link<span className="text-red-500">*</span></label>
+                      <input 
+                        type="url" 
+                        name="venue" 
+                        value={form.venue} 
+                        onChange={handleChange} 
+                        placeholder="e.g., https://meet.google.com/xyz-abc-def or Zoom Meeting ID"
+                        required 
+                        className={`mt-1 block w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`} 
+                      />
+                      {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                      <p className="text-xs text-gray-500 mt-1">
+                        For online events, provide the meeting platform link or details
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">Minimum Participants</label>
-                      <input type="number" name="min_participants" min="1" value={form.min_participants} onChange={handleChange} placeholder="e.g., 10" className="mt-1 px-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Minimum number of participants required for the event to proceed</p>
-                    </div>
-                  </div>
+                  ) : null}
                 </div>
               </div>
 
               {/* Attendance Strategy Preview */}
               <div>
-                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  Attendance Strategy Preview
-                </h3>
-                
-                <AttendancePreview
-                  eventData={form}
-                  onStrategyChange={setCustomAttendanceStrategy}
-                  showCustomization={showAttendanceCustomization}
-                  onToggleCustomization={() => setShowAttendanceCustomization(!showAttendanceCustomization)}
-                />
+                {/* Attendance Mandatory Checkbox */}
+                <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex items-center h-5">
+                      <input
+                        type="checkbox"
+                        id="attendance_mandatory"
+                        name="attendance_mandatory"
+                        checked={form.attendance_mandatory}
+                        onChange={(e) => handleCheckboxChange('attendance_mandatory', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="attendance_mandatory" className="text-sm font-medium text-gray-900 cursor-pointer">
+                        Is Event Attendance Mandatory?
+                      </label>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Enable this if you want to track attendance for this event. When disabled, no attendance data will be collected.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {form.attendance_mandatory && (
+                  <>
+                    <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Attendance Strategy Preview
+                    </h3>
+                    
+                    <AttendancePreview
+                      eventData={form}
+                      onStrategyChange={setCustomAttendanceStrategy}
+                      showCustomization={showAttendanceCustomization}
+                      onToggleCustomization={() => setShowAttendanceCustomization(!showAttendanceCustomization)}
+                    />
+                  </>
+                )}
+
+                {!form.attendance_mandatory && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Tracking</h3>
+                    <p className="text-sm text-gray-600">
+                      Attendance tracking is disabled for this event. No attendance data will be collected.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

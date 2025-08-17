@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Clock, Users, Target, AlertTriangle, CheckCircle, Settings, Edit3 } from 'lucide-react';
-import { adminAPI } from '../api';
+import { adminAPI } from '../api/admin';
 
 const AttendancePreview = ({ 
   eventData, 
@@ -73,16 +73,6 @@ const AttendancePreview = ({
         registration_mode: eventData.registration_mode || 'individual'
       };
 
-      console.log('AttendancePreview - Sending request data:', requestData);
-      console.log('AttendancePreview - Date validation:', {
-        start_date: eventData.start_date,
-        start_time: eventData.start_time,
-        end_date: eventData.end_date,
-        end_time: eventData.end_time,
-        startDateTime: startDateTime.toISOString(),
-        endDateTime: endDateTime.toISOString()
-      });
-
       const response = await adminAPI.previewAttendanceStrategy(requestData);
       const data = response.data;
       setPreviewData(data);
@@ -136,12 +126,15 @@ const AttendancePreview = ({
           {
             name: "Main Session",
             start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
             duration: Math.floor(Math.max(60, (endDateTime - startDateTime) / 1000 / 60)) // Convert to integer minutes
           }
         ],
         criteria: {
           strategy: customStrategy,
           minimum_percentage: customStrategy === 'single_mark' ? 100 : (customStrategy === 'continuous' ? 90 : 75),
+          required_sessions: null,
+          required_milestones: null,
           auto_calculate: true
         }
       };
@@ -165,10 +158,11 @@ const AttendancePreview = ({
       if (onStrategyChange && data.success && data.custom_strategy) {
         onStrategyChange({
           strategy: data.custom_strategy.type,
-          criteria: data.custom_strategy.config,
+          criteria: data.custom_strategy.criteria,
           sessions: data.custom_strategy.sessions,
           warnings: data.validation_details?.warnings || [],
-          recommendations: data.recommendations || []
+          recommendations: data.recommendations || [],
+          minimum_percentage: data.custom_strategy.criteria?.minimum_percentage
         });
       }
 
@@ -187,29 +181,20 @@ const AttendancePreview = ({
     // Update the custom strategy state
     setCustomStrategy(newStrategy);
     
-    // If switching back to the detected strategy, we'll use the original preview data
-    if (newStrategy === previewData?.detected_strategy?.type) {
-      if (onStrategyChange) {
-        onStrategyChange({
-          strategy: newStrategy,
-          criteria: previewData.attendance_config,
-          sessions: previewData.sessions,
-          warnings: [],
-          recommendations: previewData.recommendations
-        });
-      }
-    } else {
-      // For other strategies, pass basic info and wait for validation
-      if (onStrategyChange) {
-        onStrategyChange({
-          strategy: newStrategy,
-          criteria: null,
-          sessions: null,
-          warnings: [],
-          recommendations: []
-        });
-      }
+    // Always trigger validation to get new sessions for the selected strategy
+    // This will generate appropriate sessions based on the strategy type
+    if (onStrategyChange) {
+      onStrategyChange({
+        strategy: newStrategy,
+        criteria: null,
+        sessions: null,
+        warnings: [],
+        recommendations: []
+      });
     }
+    
+    // The useEffect for customStrategy will trigger validateCustomStrategy
+    // which will generate the new sessions and update the preview
   };
 
   const getStrategyIcon = (strategy) => {
@@ -294,18 +279,40 @@ const AttendancePreview = ({
   
   // Determine current data to display based on state
   const currentData = (() => {
-    // If we have validation data and it's successful, use it
+    // If we have validation data and it's successful, use it (this is for custom strategies)
     if (validationData?.success && validationData.custom_strategy) {
-      return validationData.custom_strategy;
+      return {
+        type: validationData.custom_strategy.type,
+        name: validationData.custom_strategy.name,
+        description: validationData.custom_strategy.description,
+        sessions: validationData.custom_strategy.sessions,
+        criteria: validationData.custom_strategy.criteria,
+        recommendations: validationData.recommendations || []
+      };
     }
     
-    // If custom strategy matches detected strategy, use original data
-    if (customStrategy === data.detected_strategy?.type) {
-      return data;
+    // If no validation data but we have a custom strategy selected that differs from detected
+    if (customStrategy && customStrategy !== data.detected_strategy?.type) {
+      // Show loading state or basic info while waiting for validation
+      return {
+        type: customStrategy,
+        name: `${customStrategy.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Strategy`,
+        description: validating ? "Generating strategy details..." : "Strategy being configured",
+        sessions: [],
+        criteria: {},
+        recommendations: []
+      };
     }
     
-    // Otherwise, fallback to original data
-    return data;
+    // Otherwise, use original detected strategy data
+    return {
+      type: data.detected_strategy?.type,
+      name: data.detected_strategy?.name,
+      description: data.detected_strategy?.description,
+      sessions: data.sessions || [],
+      criteria: data.criteria || {},
+      recommendations: data.recommendations || []
+    };
   })();
 
   return (
@@ -324,7 +331,7 @@ const AttendancePreview = ({
               )}
             </h3>
             <p className="text-sm text-gray-600">
-              {data.event_details?.duration_hours}h event • {(currentData.sessions || data.sessions)?.length || 0} session(s)
+              {data.event_details?.duration_hours}h event • {(currentData.sessions || []).length} session(s)
             </p>
           </div>
         </div>
@@ -339,10 +346,7 @@ const AttendancePreview = ({
         </button>
       </div>
 
-      {/* Strategy Explanation */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <p className="text-sm text-gray-700">{currentData.description || data.detected_strategy?.description || "Strategy analysis in progress..."}</p>
-      </div>
+
 
       {/* Warnings (if any) */}
       {validationData?.recommendations?.length > 0 && (
@@ -402,7 +406,7 @@ const AttendancePreview = ({
         </div>
         
         <div className="space-y-2">
-          {(currentData.sessions || data.sessions).slice(0, showDetails ? undefined : 3).map((session, idx) => (
+          {(currentData.sessions || []).slice(0, showDetails ? undefined : 3).map((session, idx) => (
             <div key={idx} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -419,10 +423,10 @@ const AttendancePreview = ({
             </div>
           ))}
           
-          {!showDetails && (currentData.sessions || data.sessions).length > 3 && (
+          {!showDetails && (currentData.sessions || []).length > 3 && (
             <div className="text-center py-2">
               <span className="text-xs text-gray-500">
-                +{(currentData.sessions || data.sessions).length - 3} more sessions
+                +{(currentData.sessions || []).length - 3} more sessions
               </span>
             </div>
           )}
@@ -432,11 +436,14 @@ const AttendancePreview = ({
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{(currentData.sessions || data.sessions)?.length || 0}</p>
+          <p className="text-lg font-semibold text-gray-900">{(currentData.sessions || []).length}</p>
           <p className="text-xs text-gray-600">Total Sessions</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{data.criteria?.minimum_percentage || 'N/A'}%</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {currentData.criteria?.minimum_percentage || 
+             (customStrategy === 'single_mark' ? '100' : '75')}%
+          </p>
           <p className="text-xs text-gray-600">Pass Criteria</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
@@ -445,18 +452,18 @@ const AttendancePreview = ({
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
           <p className="text-lg font-semibold text-gray-900">
-            {data.detected_strategy?.type === 'flexible_attendance' ? 'High' : 'Standard'}
+            {customStrategy === 'continuous' ? 'High' : 'Standard'}
           </p>
           <p className="text-xs text-gray-600">Flexibility</p>
         </div>
       </div>
 
       {/* Recommendations */}
-      {(currentData.recommendations || data.recommendations)?.length > 0 && (
+      {(currentData.recommendations || []).length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 Recommendations</h4>
           <ul className="text-sm text-blue-800 space-y-1">
-            {(currentData.recommendations || data.recommendations).map((rec, idx) => (
+            {(currentData.recommendations || []).map((rec, idx) => (
               <li key={idx}>• {rec}</li>
             ))}
           </ul>

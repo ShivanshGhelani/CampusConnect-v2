@@ -114,6 +114,9 @@ class Event(BaseModel):
     All detailed tracking moved to student_registrations collection
     """)
     
+    # Attendance configuration
+    attendance_mandatory: bool = Field(default=True, description="Whether attendance tracking is mandatory for this event")
+    
     # Certificate settings
     certificate_start_date: Optional[datetime] = None
     certificate_end_date: Optional[datetime] = None
@@ -323,6 +326,7 @@ class CreateEvent(BaseModel):
     # Legacy fields removed: target_outcomes, prerequisites, what_to_bring (Step 5-6 removed from system)
     
     # Attendance configuration fields
+    attendance_mandatory: bool = Field(default=True, description="Whether attendance tracking is mandatory for this event")
     attendance_strategy: Optional[str] = Field(default=None, description="Attendance strategy (single_mark, day_based, session_based, etc.)")
     attendance_criteria: Optional[Dict[str, Any]] = Field(default=None, description="Attendance criteria configuration")
     custom_attendance_config: Optional[Dict[str, Any]] = Field(default=None, description="Custom attendance configuration if user overrides auto-detection")
@@ -368,6 +372,7 @@ class UpdateEvent(BaseModel):
     team_size_max: Optional[int] = None
     max_participants: Optional[int] = None
     min_participants: Optional[int] = None
+    attendance_mandatory: Optional[bool] = None
 
 class EventResponse(BaseModel):
     """Response model for event data"""
@@ -399,3 +404,4 @@ class EventResponse(BaseModel):
     is_paid: bool = False
     is_team_based: bool = False
     registration_fee: Optional[float] = None
+    attendance_mandatory: bool = True
