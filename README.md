@@ -213,8 +213,7 @@ CampusConnect/
 │   │   │   ├── 📊 organizer/                     # Organizer Portal
 │   │   │   ├── 📧 email/                         # Communication
 │   │   │   ├── 💾 storage.py                     # File uploads
-│   │   │   ├── 📝 registrations.py               # Event registration
-│   │   │   └── 🧪 attendance_testing.py          # Attendance testing
+│   │   │   └── 📝 registrations.py               # Event registration
 │   │   └── 🔄 legacy_direct_routes.py            # Backward compatibility
 │   ├── 📁 models/                                 # Data Models
 │   │   ├── 👤 student.py                         # Student schema
