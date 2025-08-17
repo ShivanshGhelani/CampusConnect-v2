@@ -70,30 +70,129 @@ class StudentAttendanceRecord(BaseModel):
 class AttendanceIntelligenceService:
     """Service to intelligently determine attendance strategies based on event metadata"""
     
-    # Event type patterns for automatic strategy detection
+    # ENHANCED Event type patterns for automatic strategy detection
+    # Phase 1 Enhancement: Comprehensive pattern library with 50+ new patterns
     EVENT_TYPE_PATTERNS = {
         AttendanceStrategy.SINGLE_MARK: [
+            # Conferences & Seminars
             r"conference|webinar|seminar|symposium|talk|lecture|presentation",
-            r"guest.*lecture|keynote|demo|showcase"
+            r"guest.*lecture|keynote|demo|showcase|summit|forum",
+            r"orientation|induction|briefing|introduction|overview",
+            r"alumni.*meet|networking.*event|career.*fair|job.*fair",
+            r"industry.*talk|expert.*session|panel.*discussion",
+            
+            # Workshops (Short Duration)
+            r"masterclass|crash.*course|intensive.*session",
+            r"tutorial|hands.*on.*session|demo.*session",
+            r"awareness.*program|sensitization|information.*session",
+            
+            # Special Events
+            r"inauguration|opening.*ceremony|closing.*ceremony|valedictory",
+            r"award.*ceremony|felicitation|recognition.*event",
+            r"memorial.*lecture|tribute|commemoration",
+            
+            # Single-day Activities
+            r"field.*trip|industrial.*visit|site.*visit|plant.*visit",
+            r"museum.*visit|gallery.*visit|laboratory.*tour",
+            r"blood.*donation|health.*checkup|medical.*camp",
+            r"convocation|graduation|commencement|degree.*ceremony"
         ],
+        
         AttendanceStrategy.DAY_BASED: [
-            r"workshop|training|bootcamp|course|academy",
-            r"sports|tournament|league|championship",
-            r"internship|industrial.*visit|field.*trip"
+            # Multi-day Workshops & Training
+            r"workshop|training|bootcamp|course|academy|institute",
+            r"skill.*development|capacity.*building|professional.*development",
+            r"certification.*program|diploma.*course|intensive.*training",
+            r"faculty.*development|teacher.*training|educator.*workshop",
+            
+            # Sports & Physical Events
+            r"sports|tournament|league|championship|athletic.*meet",
+            r"inter.*college|intra.*college|inter.*university|sports.*fest",
+            r"marathon|cycling|swimming|track.*field|gymnastics",
+            r"basketball|football|cricket|volleyball|tennis|badminton",
+            
+            # Academic Programs
+            r"summer.*school|winter.*school|vacation.*program",
+            r"internship|apprenticeship|placement.*training",
+            r"semester.*exchange|study.*abroad|immersion.*program",
+            
+            # Multi-day Events
+            r"festival|celebration|annual.*day|founders.*day",
+            r"tech.*fest|science.*fair|innovation.*week",
+            r"startup.*week|entrepreneurship.*program",
+            r"language.*immersion|cultural.*exchange"
         ],
+        
         AttendanceStrategy.SESSION_BASED: [
-            r"hackathon|coding.*marathon|programming.*contest",
-            r"competition|contest|challenge|round|qualifier",
-            r"debate|quiz|treasure.*hunt|gaming"
+            # Competitions & Contests
+            r"hackathon|coding.*marathon|programming.*contest|dev.*fest",
+            r"competition|contest|challenge|championship|qualifier",
+            r"coding.*challenge|algorithmic.*contest|programming.*battle",
+            r"app.*development.*contest|web.*development.*challenge",
+            
+            # Academic Competitions
+            r"debate|elocution|speech.*competition|oratory",
+            r"quiz|knowledge.*bowl|trivia|academic.*bowl",
+            r"case.*study.*competition|business.*plan.*contest",
+            r"model.*united.*nations|mun|simulation|role.*play",
+            
+            # Technical Competitions
+            r"robotics.*competition|ai.*challenge|ml.*competition",
+            r"data.*science.*competition|analytics.*challenge",
+            r"cybersecurity.*challenge|ethical.*hacking|ctf",
+            r"design.*thinking|innovation.*challenge|ideathon",
+            
+            # Creative Competitions
+            r"treasure.*hunt|scavenger.*hunt|adventure.*race",
+            r"gaming.*tournament|esports|video.*game.*competition",
+            r"photography.*contest|film.*making|video.*contest",
+            r"art.*competition|design.*contest|creative.*challenge"
         ],
+        
         AttendanceStrategy.MILESTONE_BASED: [
-            r"cultural|fest|celebration|exhibition|fair",
-            r"project.*expo|innovation.*showcase|startup.*pitch",
-            r"technical.*event|robotics|ai.*challenge"
+            # Cultural Events
+            r"cultural|fest|celebration|exhibition|fair|showcase",
+            r"art.*festival|music.*festival|dance.*festival|drama.*festival",
+            r"literary.*fest|book.*fair|poetry.*session|storytelling",
+            r"fashion.*show|talent.*show|variety.*show|entertainment",
+            
+            # Technical Exhibitions
+            r"project.*expo|innovation.*showcase|startup.*pitch|demo.*day",
+            r"technical.*exhibition|science.*exhibition|research.*showcase",
+            r"poster.*presentation|research.*symposium|academic.*conference",
+            r"product.*launch|prototype.*demo|technology.*showcase",
+            
+            # Complex Events with Phases
+            r"cultural.*night|annual.*function|college.*day|university.*fest",
+            r"orientation.*week|freshers.*week|seniors.*farewell",
+            r"convocation.*week|graduation.*week|commencement.*week",
+            
+            # Social Events with Multiple Activities
+            r"social.*service|community.*outreach|volunteer.*program",
+            r"environmental.*drive|cleanliness.*drive|awareness.*campaign",
+            r"fund.*raising|charity.*event|social.*cause"
         ],
+        
         AttendanceStrategy.CONTINUOUS: [
-            r"research|thesis|dissertation|long.*term",
-            r"mentorship|internship|collaboration"
+            # Research & Long-term Projects
+            r"research|thesis|dissertation|long.*term.*project",
+            r"phd.*program|doctoral.*studies|research.*fellowship",
+            r"independent.*study|self.*paced.*learning|distance.*learning",
+            
+            # Mentorship & Guidance
+            r"mentorship|guidance.*program|coaching|tutoring",
+            r"academic.*support|peer.*learning|study.*group",
+            r"industry.*mentorship|professional.*guidance",
+            
+            # Internships & Work Programs
+            r"internship|co.*op|work.*study|industrial.*training",
+            r"placement.*preparation|career.*counseling|job.*readiness",
+            r"skill.*assessment|continuous.*evaluation|progress.*tracking",
+            
+            # Long-term Courses
+            r"semester.*course|annual.*program|year.*long",
+            r"certificate.*course|diploma.*program|degree.*program",
+            r"online.*course|distance.*education|e.*learning.*program"
         ]
     }
     
@@ -129,8 +228,16 @@ class AttendanceIntelligenceService:
     @classmethod
     def detect_attendance_strategy(cls, event_data: Dict[str, Any]) -> AttendanceStrategy:
         """
+        ENHANCED Attendance Strategy Detection (Phase 1)
+        ===============================================
+        
         Intelligently detect the appropriate attendance strategy based on event metadata
-        Enhanced with duration-based analysis and intelligent event type detection
+        Enhanced with:
+        - Comprehensive pattern matching (50+ new patterns)
+        - Advanced duration analysis
+        - Venue-aware intelligence
+        - Team vs individual awareness
+        - Context-sensitive scoring
         """
         event_name = event_data.get("event_name", "").lower()
         event_type = event_data.get("event_type", "").lower()
@@ -139,7 +246,10 @@ class AttendanceIntelligenceService:
         # Combine all text for pattern matching
         combined_text = f"{event_name} {event_type} {description}"
         
-        # Calculate event duration for duration-based decisions
+        # ========================================
+        # DURATION ANALYSIS
+        # ========================================
+        
         start_time = event_data.get("start_datetime")
         end_time = event_data.get("end_datetime")
         duration_hours = 0
@@ -150,170 +260,288 @@ class AttendanceIntelligenceService:
             duration_hours = duration.total_seconds() / 3600
             duration_days = duration.days
         
-        # Score each strategy based on pattern matches
+        # ========================================
+        # VENUE INTELLIGENCE (Phase 1)
+        # ========================================
+        
+        venue_info = event_data.get("venue", {})
+        venue_name = venue_info.get("venue_name", "").lower() if isinstance(venue_info, dict) else str(venue_info).lower()
+        venue_type = venue_info.get("venue_type", "").lower() if isinstance(venue_info, dict) else ""
+        
+        # Venue-based strategy hints
+        venue_strategy_hints = {
+            AttendanceStrategy.SINGLE_MARK: [
+                "auditorium", "hall", "amphitheater", "conference", "seminar", "lecture"
+            ],
+            AttendanceStrategy.DAY_BASED: [
+                "campus", "ground", "field", "stadium", "sports", "playground", "court"
+            ],
+            AttendanceStrategy.SESSION_BASED: [
+                "lab", "laboratory", "computer", "tech", "innovation", "maker", "studio"
+            ],
+            AttendanceStrategy.MILESTONE_BASED: [
+                "cultural", "open", "outdoor", "garden", "plaza", "courtyard", "multiple"
+            ]
+        }
+        
+        # ========================================
+        # TEAM VS INDIVIDUAL AWARENESS (Phase 1)
+        # ========================================
+        
+        registration_mode = event_data.get("registration_mode", "individual")
+        is_team_event = registration_mode == "team"
+        max_team_size = event_data.get("max_team_size", 1)
+        
+        # ========================================
+        # ENHANCED PATTERN SCORING
+        # ========================================
+        
         strategy_scores = {}
         
+        # Initialize all strategies with base score
+        for strategy in AttendanceStrategy:
+            strategy_scores[strategy] = 0
+        
+        # Pattern matching with weighted scoring
         for strategy, patterns in cls.EVENT_TYPE_PATTERNS.items():
             score = 0
             for pattern in patterns:
-                matches = len(re.findall(pattern, combined_text))
-                score += matches
+                # Count pattern matches with position weighting
+                matches_in_name = len(re.findall(pattern, event_name)) * 3  # Name matches are most important
+                matches_in_type = len(re.findall(pattern, event_type)) * 2  # Type matches are important
+                matches_in_desc = len(re.findall(pattern, description)) * 1  # Description matches are helpful
+                
+                score += matches_in_name + matches_in_type + matches_in_desc
+            
             strategy_scores[strategy] = score
         
-        # ENHANCED DURATION-BASED HEURISTICS
+        # ========================================
+        # VENUE INTELLIGENCE SCORING
+        # ========================================
         
-        # 1. VERY SHORT EVENTS (<= 6 hours) - Strong preference for SINGLE_MARK
-        if duration_hours <= 6:
-            strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
-            # Exception: Even short hackathons can be session-based
-            if "hackathon" in combined_text or "marathon" in combined_text:
+        for strategy, venue_keywords in venue_strategy_hints.items():
+            venue_score = 0
+            for keyword in venue_keywords:
+                if keyword in venue_name or keyword in venue_type:
+                    venue_score += 2  # Venue match bonus
+            
+            strategy_scores[strategy] += venue_score
+        
+        # ========================================
+        # DURATION-BASED ENHANCED HEURISTICS
+        # ========================================
+        
+        # ULTRA-SHORT EVENTS (<= 3 hours) - Almost always SINGLE_MARK
+        if duration_hours <= 3:
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] += 5
+            # Exceptions for specific event types
+            if any(term in combined_text for term in ["hackathon", "marathon", "coding", "programming"]):
+                if duration_hours >= 2:  # Mini hackathons can still be session-based
+                    strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
+        
+        # SHORT EVENTS (3-6 hours) - Context-dependent
+        elif duration_hours <= 6:
+            if any(term in combined_text for term in ["workshop", "training", "seminar", "conference"]):
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
+            elif any(term in combined_text for term in ["competition", "contest", "challenge"]):
                 strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
+            else:
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 2
         
-        # 2. MEDIUM EVENTS (6-24 hours) - Context and duration matter
-        elif duration_hours <= 24:
-            if "hackathon" in combined_text or "marathon" in combined_text or "24" in combined_text:
-                strategy_scores[AttendanceStrategy.SESSION_BASED] += 4
-            elif "workshop" in combined_text or "training" in combined_text:
-                if duration_hours >= 10:  # Long workshops can be session-based
-                    strategy_scores[AttendanceStrategy.SESSION_BASED] += 2
+        # MEDIUM EVENTS (6-12 hours) - Often single day with sessions
+        elif duration_hours <= 12:
+            if any(term in combined_text for term in ["hackathon", "marathon", "coding"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 5
+            elif any(term in combined_text for term in ["workshop", "training"]):
+                if duration_hours >= 8:
+                    strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
                 else:
-                    strategy_scores[AttendanceStrategy.SINGLE_MARK] += 2
-            elif duration_hours >= 8:  # Long single-day events default to session-based
-                strategy_scores[AttendanceStrategy.SESSION_BASED] += 2
-            else:  # Shorter events default to single mark
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 1
-        
-        # 3. MULTI-DAY EVENTS (> 24 hours) - Usually day-based or continuous
-        elif duration_days >= 2:
-            if duration_days <= 7:  # Short multi-day events
-                strategy_scores[AttendanceStrategy.DAY_BASED] += 3
-            else:  # Long-term events (> 1 week)
-                strategy_scores[AttendanceStrategy.CONTINUOUS] += 3
-        
-        # ENHANCED EVENT-SPECIFIC LOGIC
-        
-        # Industrial visits - Duration-sensitive
-        if "industrial" in combined_text or "industry" in combined_text or "visit" in combined_text:
-            if duration_hours <= 8:  # Single-day industrial visit
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
-                # Reset day-based score for short visits
-                strategy_scores[AttendanceStrategy.DAY_BASED] = max(0, strategy_scores.get(AttendanceStrategy.DAY_BASED, 0) - 2)
-            else:  # Multi-day industrial program
-                strategy_scores[AttendanceStrategy.DAY_BASED] += 3
-        
-        # Field trips - Usually single day, single mark
-        if "field.*trip" in combined_text or "field trip" in combined_text:
-            if duration_hours <= 12:
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
-                strategy_scores[AttendanceStrategy.DAY_BASED] = max(0, strategy_scores.get(AttendanceStrategy.DAY_BASED, 0) - 1)
-        
-        # Hackathons - Always session-based regardless of duration
-        if "hackathon" in combined_text or "coding.*marathon" in combined_text:
-            strategy_scores[AttendanceStrategy.SESSION_BASED] += 5
-            if duration_hours >= 20:  # Long hackathons get extra session-based preference
+                    strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
+            elif any(term in combined_text for term in ["competition", "contest", "tournament"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 4
+            else:
                 strategy_scores[AttendanceStrategy.SESSION_BASED] += 2
         
-        # Competitions - Session-based for structured competitions
-        if "competition" in combined_text or "contest" in combined_text or "championship" in combined_text:
-            if duration_hours >= 4:  # Structured competitions with multiple rounds
+        # LONG SINGLE-DAY EVENTS (12-24 hours) - Usually session-based
+        elif duration_hours <= 24:
+            strategy_scores[AttendanceStrategy.SESSION_BASED] += 4
+            if any(term in combined_text for term in ["24", "twenty", "hours", "overnight"]):
                 strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
-            else:  # Quick competitions
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 2
         
-        # Workshops and training - Duration-dependent
-        if "workshop" in combined_text or "training" in combined_text or "bootcamp" in combined_text:
-            if duration_days >= 2:  # Multi-day workshops
+        # MULTI-DAY EVENTS (> 24 hours)
+        elif duration_days >= 2:
+            if duration_days <= 7:  # Short multi-day events (2-7 days)
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 5
+                # Cultural events often have milestones even across days
+                if any(term in combined_text for term in ["cultural", "fest", "festival", "celebration"]):
+                    strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 3
+            elif duration_days <= 30:  # Medium-term events (1 week to 1 month)
+                strategy_scores[AttendanceStrategy.CONTINUOUS] += 4
+                # Exception for intensive programs
+                if any(term in combined_text for term in ["intensive", "bootcamp", "immersion"]):
+                    strategy_scores[AttendanceStrategy.DAY_BASED] += 2
+            else:  # Long-term events (> 1 month)
+                strategy_scores[AttendanceStrategy.CONTINUOUS] += 6
+        
+        # ========================================
+        # TEAM EVENT INTELLIGENCE
+        # ========================================
+        
+        if is_team_event:
+            # Team events often favor session-based or milestone-based strategies
+            strategy_scores[AttendanceStrategy.SESSION_BASED] += 2
+            strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 2
+            
+            # Large teams (>4 members) often indicate complex events
+            if max_team_size > 4:
+                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 1
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 1
+            
+            # Team hackathons are definitely session-based
+            if any(term in combined_text for term in ["hackathon", "coding", "programming"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
+        
+        # ========================================
+        # ENHANCED EVENT-SPECIFIC INTELLIGENCE
+        # ========================================
+        
+        # Hackathons - Always session-based with strong preference
+        if any(term in combined_text for term in ["hackathon", "coding marathon", "programming marathon"]):
+            strategy_scores[AttendanceStrategy.SESSION_BASED] += 8
+            # Remove competing scores for clarity
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] = max(0, strategy_scores[AttendanceStrategy.SINGLE_MARK] - 2)
+        
+        # Industrial visits - Duration and context sensitive
+        if any(term in combined_text for term in ["industrial", "industry", "plant", "factory", "site visit"]):
+            if duration_hours <= 8:  # Single-day visits
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 6
+                strategy_scores[AttendanceStrategy.DAY_BASED] = max(0, strategy_scores[AttendanceStrategy.DAY_BASED] - 3)
+            else:  # Multi-day industrial programs
                 strategy_scores[AttendanceStrategy.DAY_BASED] += 4
-            elif duration_hours >= 6:  # Long single-day workshops
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
-            else:  # Short workshops
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
         
-        # Conferences and seminars - Usually single mark
-        if "conference" in combined_text or "seminar" in combined_text or "symposium" in combined_text:
-            strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
-            if duration_days >= 2:  # Multi-day conferences might need day-based
-                strategy_scores[AttendanceStrategy.DAY_BASED] += 2
+        # Field trips - Usually single attendance
+        if any(term in combined_text for term in ["field trip", "educational trip", "study tour"]):
+            if duration_hours <= 12:
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 5
+                strategy_scores[AttendanceStrategy.DAY_BASED] = max(0, strategy_scores[AttendanceStrategy.DAY_BASED] - 2)
         
-        # Sports events - Duration matters for tournament vs single match
-        if "sports" in combined_text or "tournament" in combined_text or "league" in combined_text:
-            if duration_days >= 2:  # Multi-day tournaments
-                strategy_scores[AttendanceStrategy.DAY_BASED] += 4
-            else:  # Single-day sports events
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
-        
-        # Cultural events - Check for festival vs single performance
-        if "cultural" in combined_text or "fest" in combined_text or "festival" in combined_text:
-            if duration_days >= 2:  # Multi-day festivals
-                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 4
-            elif "competition" in combined_text or "championship" in combined_text or "contest" in combined_text:
-                # Cultural competitions have phases even if single day
-                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 5
-            else:  # Single-day cultural events (performances, shows)
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 2
-        
-        # Research and internships - Always continuous for long-term
-        if "research" in combined_text or "internship" in combined_text or "mentorship" in combined_text:
-            if duration_days >= 14:  # Long-term programs
-                strategy_scores[AttendanceStrategy.CONTINUOUS] += 5
-            elif duration_days >= 7:  # Week-long programs
+        # Competitions - Structure-based decisions
+        if any(term in combined_text for term in ["competition", "contest", "championship"]):
+            if duration_hours >= 4 or any(term in combined_text for term in ["round", "qualifier", "elimination"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 4
+            elif duration_days >= 2:
                 strategy_scores[AttendanceStrategy.DAY_BASED] += 3
-            else:  # Short research sessions
+            else:
                 strategy_scores[AttendanceStrategy.SINGLE_MARK] += 2
         
-        # DEFAULT FALLBACK LOGIC based purely on duration (when no strong patterns found)
+        # Workshops and training - Duration and intensity based
+        if any(term in combined_text for term in ["workshop", "training", "bootcamp", "course"]):
+            if duration_days >= 3:  # Multi-day intensive programs
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 5
+            elif duration_hours >= 8:  # Long single-day workshops
+                if any(term in combined_text for term in ["hands", "practical", "lab", "coding"]):
+                    strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
+                else:
+                    strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
+            elif duration_hours >= 4:  # Medium workshops
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 4
+            else:  # Short workshops
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 5
+        
+        # Conferences and seminars - Usually single attendance with exceptions
+        if any(term in combined_text for term in ["conference", "seminar", "symposium", "summit"]):
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] += 5
+            if duration_days >= 2:  # Multi-day conferences
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 3
+        
+        # Sports events - Tournament structure matters
+        if any(term in combined_text for term in ["sports", "tournament", "athletic", "championship"]):
+            if duration_days >= 2 or any(term in combined_text for term in ["inter", "league", "series"]):
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 5
+            elif any(term in combined_text for term in ["knockout", "elimination", "round"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 4
+            else:
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
+        
+        # Cultural events - Phase/milestone detection
+        if any(term in combined_text for term in ["cultural", "fest", "festival", "celebration"]):
+            if duration_days >= 2 or any(term in combined_text for term in ["annual", "week", "multiple"]):
+                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 5
+            elif any(term in combined_text for term in ["competition", "contest", "challenge"]):
+                # Cultural competitions have phases even if single day
+                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 6
+            elif duration_hours >= 6:  # Long cultural events
+                strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 3
+            else:  # Simple cultural events (performances, shows)
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
+        
+        # Research and academic programs - Long-term focus
+        if any(term in combined_text for term in ["research", "thesis", "academic", "study"]):
+            if duration_days >= 30:  # Long-term research
+                strategy_scores[AttendanceStrategy.CONTINUOUS] += 6
+            elif duration_days >= 7:  # Medium-term academic programs
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 4
+            else:  # Short academic sessions
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
+        
+        # Internships - Duration-based
+        if any(term in combined_text for term in ["internship", "placement", "apprenticeship"]):
+            if duration_days >= 30:  # Long-term internships
+                strategy_scores[AttendanceStrategy.CONTINUOUS] += 6
+            elif duration_days >= 7:  # Short-term intensive internships
+                strategy_scores[AttendanceStrategy.DAY_BASED] += 5
+            else:  # Orientation or short programs
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 3
+        
+        # ========================================
+        # ADVANCED FALLBACK LOGIC
+        # ========================================
+        
         max_pattern_score = max(strategy_scores.values()) if strategy_scores else 0
         
-        # Apply duration-based logic if pattern scores are low or tied
-        if max_pattern_score <= 2:  # Weak or no pattern matches
-            if duration_hours <= 4:
-                strategy_scores[AttendanceStrategy.SINGLE_MARK] = max(strategy_scores.get(AttendanceStrategy.SINGLE_MARK, 0), 3)
-            elif duration_hours <= 24:
-                if duration_hours >= 8:
-                    strategy_scores[AttendanceStrategy.SESSION_BASED] = max(strategy_scores.get(AttendanceStrategy.SESSION_BASED, 0), 3)
+        # Enhanced duration-based logic for events with weak or no patterns
+        if max_pattern_score <= 3:  # Weak pattern matches
+            if duration_hours <= 3:
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] = max(strategy_scores.get(AttendanceStrategy.SINGLE_MARK, 0), 5)
+            elif duration_hours <= 8:
+                if duration_hours >= 6:
+                    strategy_scores[AttendanceStrategy.SESSION_BASED] = max(strategy_scores.get(AttendanceStrategy.SESSION_BASED, 0), 4)
                 else:
-                    strategy_scores[AttendanceStrategy.SINGLE_MARK] = max(strategy_scores.get(AttendanceStrategy.SINGLE_MARK, 0), 3)
+                    strategy_scores[AttendanceStrategy.SINGLE_MARK] = max(strategy_scores.get(AttendanceStrategy.SINGLE_MARK, 0), 4)
+            elif duration_hours <= 24:
+                strategy_scores[AttendanceStrategy.SESSION_BASED] = max(strategy_scores.get(AttendanceStrategy.SESSION_BASED, 0), 4)
             elif duration_days <= 7:
-                strategy_scores[AttendanceStrategy.DAY_BASED] = max(strategy_scores.get(AttendanceStrategy.DAY_BASED, 0), 3)
+                strategy_scores[AttendanceStrategy.DAY_BASED] = max(strategy_scores.get(AttendanceStrategy.DAY_BASED, 0), 4)
             else:
-                strategy_scores[AttendanceStrategy.CONTINUOUS] = max(strategy_scores.get(AttendanceStrategy.CONTINUOUS, 0), 3)
+                strategy_scores[AttendanceStrategy.CONTINUOUS] = max(strategy_scores.get(AttendanceStrategy.CONTINUOUS, 0), 4)
         
-        # Team-based events often favor session-based or milestone-based
-        if event_data.get("registration_mode") == "team":
-            strategy_scores[AttendanceStrategy.SESSION_BASED] = strategy_scores.get(AttendanceStrategy.SESSION_BASED, 0) + 1
-            strategy_scores[AttendanceStrategy.MILESTONE_BASED] = strategy_scores.get(AttendanceStrategy.MILESTONE_BASED, 0) + 1
+        # ========================================
+        # STRATEGY SELECTION WITH TIE-BREAKING
+        # ========================================
         
-        # Determine the winning strategy
         max_score = max(strategy_scores.values()) if strategy_scores else 0
         
         if max_score == 0:
-            # Ultimate fallback for events with no data
+            # Ultimate fallback
             return AttendanceStrategy.SINGLE_MARK
         
         # Get all strategies with the maximum score
         winning_strategies = [strategy for strategy, score in strategy_scores.items() if score == max_score]
         
-        # Tie-breaking logic based on event characteristics and duration
+        # Enhanced tie-breaking logic
         if len(winning_strategies) > 1:
-            # Duration-based tie-breaking
-            if duration_hours <= 6:
-                # Short events prefer single mark
-                if AttendanceStrategy.SINGLE_MARK in winning_strategies:
-                    return AttendanceStrategy.SINGLE_MARK
-            elif duration_hours <= 24:
-                # Medium duration events prefer session-based
-                if AttendanceStrategy.SESSION_BASED in winning_strategies:
-                    return AttendanceStrategy.SESSION_BASED
-                elif AttendanceStrategy.SINGLE_MARK in winning_strategies:
-                    return AttendanceStrategy.SINGLE_MARK
-            elif duration_days <= 7:
-                # Multi-day events prefer day-based
-                if AttendanceStrategy.DAY_BASED in winning_strategies:
-                    return AttendanceStrategy.DAY_BASED
-            else:
-                # Long-term events prefer continuous
-                if AttendanceStrategy.CONTINUOUS in winning_strategies:
-                    return AttendanceStrategy.CONTINUOUS
+            # Priority-based tie-breaking
+            tie_break_priority = [
+                AttendanceStrategy.SESSION_BASED,    # Prefer session-based for complex events
+                AttendanceStrategy.DAY_BASED,        # Then day-based for multi-day events
+                AttendanceStrategy.MILESTONE_BASED,  # Then milestone for cultural/technical events
+                AttendanceStrategy.SINGLE_MARK,      # Then single mark for simple events
+                AttendanceStrategy.CONTINUOUS        # Continuous only for very long events
+            ]
+            
+            for preferred_strategy in tie_break_priority:
+                if preferred_strategy in winning_strategies:
+                    return preferred_strategy
         
         # Return the strategy with the highest score
         return winning_strategies[0]
