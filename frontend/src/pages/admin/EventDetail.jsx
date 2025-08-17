@@ -4,8 +4,31 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2,MoreHorizontal } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
+import { eventPDFService } from '../../services/EventPDFService';
+
+// Helper function to convert backend strategy types to user-friendly labels
+const getStrategyDisplayName = (strategyType) => {
+  const strategyMap = {
+    'day_based': 'Day Based',
+    'session_based': 'Session Based',
+    'milestone_based': 'Milestone Based',
+    'time_based': 'Time Based',
+    'percentage_based': 'Percentage Based',
+    'custom': 'Custom',
+    'hybrid': 'Hybrid'
+  };
+  
+  if (!strategyType) return 'Not Configured';
+  
+  // Handle string format (direct strategy type)
+  if (typeof strategyType === 'string') {
+    return strategyMap[strategyType] || strategyType.charAt(0).toUpperCase() + strategyType.slice(1).replace(/_/g, ' ');
+  }
+  
+  return strategyType;
+};
 
 function EventDetail() {
   const { eventId } = useParams();
@@ -137,6 +160,18 @@ function EventDetail() {
         console.log('Event data loaded:', eventResponse.data.event);
         console.log('Organizers data:', eventResponse.data.event.organizer_details);
         console.log('Faculty organizers:', eventResponse.data.event.faculty_organizers);
+        console.log('Attendance strategy:', eventResponse.data.event.attendance_strategy);
+        console.log('Sessions from attendance_strategy:', eventResponse.data.event.attendance_strategy?.sessions);
+        if (eventResponse.data.event.attendance_strategy?.sessions?.length > 0) {
+          console.log('First session data:', eventResponse.data.event.attendance_strategy.sessions[0]);
+        }
+        console.log('Dynamic attendance:', eventResponse.data.event.dynamic_attendance);
+        console.log('Certificate template:', eventResponse.data.event.certificate_template);
+        console.log('Certificate templates:', eventResponse.data.event.certificate_templates);
+        console.log('Certificate template name:', eventResponse.data.event.certificate_template_name);
+        console.log('Minimum attendance percentage:', eventResponse.data.event.minimum_attendance_percentage);
+        console.log('Pass criteria:', eventResponse.data.event.pass_criteria);
+        console.log('All event fields:', Object.keys(eventResponse.data.event));
       } else {
         throw new Error(eventResponse.data.message || 'Failed to fetch event details');
       }
@@ -370,6 +405,24 @@ function EventDetail() {
     );
   };
 
+  // PDF download function
+  const handleHTMLPrint = async () => {
+    try {
+      const htmlContent = await eventPDFService.generatePDFHTML(event, user);
+      const newWindow = window.open('', '_blank');
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+      
+      // Wait for content to load, then print
+      newWindow.onload = () => {
+        newWindow.print();
+      };
+    } catch (error) {
+      console.error('Error generating HTML for print:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
+
   const filteredRegistrations = allRegistrations.filter(reg => {
     const searchMatch = !searchTerm || 
       (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -395,9 +448,9 @@ function EventDetail() {
     return configs[status] || configs.upcoming;
   };
 
-  const canEdit = user && ['super_admin', 'executive_admin'].includes(user.role);
-  const canDelete = user && user.role === 'super_admin';
-  const isReadOnly = user && user.role === 'organizer_admin';
+  const canEdit = user && ['super_admin', 'organizer_admin'].includes(user.role);
+  const canDelete = user && ['super_admin', 'organizer_admin'].includes(user.role);
+  const isReadOnly = false; // No longer read-only for organizer_admin
 
 
 
@@ -542,6 +595,7 @@ function EventDetail() {
           Export Data
         </ActionButton>
 
+
         <ActionButton
           onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
           variant="warning"
@@ -563,7 +617,7 @@ function EventDetail() {
           )}
 
           <ActionButton
-            onClick={() => window.print()}
+            onClick={handleHTMLPrint}
             variant="secondary"
             icon={FileDown}
           >
@@ -630,21 +684,6 @@ function EventDetail() {
         </div>
       </div>
           </div>
-
-          {/* Read-only notice for Event Admins */}
-          {isReadOnly && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8 shadow-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-info-circle text-yellow-600 text-xl"></i>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-yellow-800 font-semibold text-lg">Read-Only Access</h3>
-                  <p className="text-yellow-700 mt-1">You have read-only access to this event. You can view and export data but cannot make changes.</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Statistics Cards */}
           {eventStats && (
@@ -1072,10 +1111,22 @@ function EventDetail() {
           {/* Certificates */}
           <InfoCard icon={Award} title="Certificates">
             <div className="space-y-0 divide-y divide-gray-100">
-              <InfoRow label="Template" value={event.certificate_template_name || 'Not configured'} />
               <InfoRow label="Available Until" value={formatDateTime(event.certificate_end_date)} />
               {event.assets && event.assets.length > 0 && (
                 <InfoRow label="Assets" value={`${event.assets.length} file(s) attached`} />
+              )}
+              {/* Show certificate template details if available */}
+              {(event.certificate_template || event.certificate_templates) && (
+                <div className="pt-3">
+                  <div className="text-sm text-gray-600">
+                    Template Status: <span className="text-green-600 font-medium">Configured</span>
+                  </div>
+                  {event.certificate_templates && typeof event.certificate_templates === 'object' && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Available templates: {Object.keys(event.certificate_templates).join(', ')}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </InfoCard>
@@ -1133,8 +1184,209 @@ function EventDetail() {
           </div>
         </InfoCard>
       </div>
-    </div>
 
+
+    {/* Attendance Strategy Preview */}
+    {(event.attendance_strategy || event.dynamic_attendance) && (
+      <div className="mb-8 mt-4">
+        <InfoCard icon={CheckCircle} title="Attendance Strategy">
+          <div className="space-y-4">
+            {/* Strategy Overview - Bullet Points Format */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Strategy Type:</span>
+                    <span className="text-sm font-semibold text-gray-900 bg-green-50 px-3 py-1 rounded-full">
+                      {getStrategyDisplayName(
+                        typeof event.attendance_strategy === 'string' 
+                          ? event.attendance_strategy
+                          : event.attendance_strategy?.strategy_type || 
+                            event.attendance_strategy?.strategy || 
+                            event.dynamic_attendance?.strategy_type ||
+                            event.dynamic_attendance?.strategy ||
+                            'session_based'
+                      )}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Pass Criteria:</span>
+                    <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full">
+                      {event.minimum_attendance_percentage ||
+                       (typeof event.pass_criteria === 'number' ? event.pass_criteria : event.pass_criteria?.minimum_percentage) ||
+                       event.attendance_strategy?.minimum_percentage || 
+                       event.attendance_strategy?.pass_criteria?.minimum_percentage || 
+                       event.dynamic_attendance?.minimum_percentage ||
+                       event.dynamic_attendance?.pass_criteria?.minimum_percentage ||
+                       75}% required
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Total Sessions:</span>
+                    <span className="text-sm font-semibold text-gray-900 bg-purple-50 px-3 py-1 rounded-full">
+                      {(() => {
+                        const sessionCount = event.attendance_strategy?.sessions?.length || 
+                                           event.dynamic_attendance?.sessions?.length || 
+                                           event.sessions?.length || 0;
+                        return `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Session Overview */}
+            {(() => {
+              const sessions = event.attendance_strategy?.sessions || 
+                             event.dynamic_attendance?.sessions || 
+                             event.sessions || [];
+              
+              return sessions.length > 0 && (
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <h5 className="text-sm font-medium text-gray-900">Session Overview</h5>
+                    </div>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {sessions.slice(0, 5).map((session, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {session?.session_name || session?.name || session?.title || `Session ${idx + 1}`}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Session {idx + 1} of {sessions.length}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="space-y-1">
+                            {/* Duration */}
+                            <p className="text-sm font-medium text-gray-900">
+                              {(() => {
+                                // Check if we have explicit duration
+                                if (session?.duration_minutes || session?.duration) {
+                                  const duration = session.duration_minutes || session.duration;
+                                  return `${Math.floor(duration / 60)}h ${duration % 60}m`;
+                                }
+                                // Calculate duration from start_time and end_time
+                                else if (session.start_time && session.end_time) {
+                                  const start = new Date(session.start_time);
+                                  const end = new Date(session.end_time);
+                                  const durationMs = end - start;
+                                  const durationMinutes = Math.floor(durationMs / (1000 * 60));
+                                  const hours = Math.floor(durationMinutes / 60);
+                                  const minutes = durationMinutes % 60;
+                                  return `${hours}h ${minutes}m`;
+                                }
+                                // Fallback
+                                else {
+                                  return 'Duration TBD';
+                                }
+                              })()}
+                            </p>
+                            
+                            {/* Start/End Times */}
+                            {session.start_time || session.end_time || session.scheduled_time ? (
+                              <div className="text-xs text-gray-500 space-y-0.5">
+                                {session.start_time && (
+                                  <div>
+                                    <span className="font-medium">Start:</span> {new Date(session.start_time).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                )}
+                                {session.end_time && (
+                                  <div>
+                                    <span className="font-medium">End:</span> {new Date(session.end_time).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                )}
+                                {!session.start_time && !session.end_time && session.scheduled_time && (
+                                  <div>
+                                    {new Date(session.scheduled_time).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: 'numeric',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500">Time TBD</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {sessions.length > 5 && (
+                      <div className="text-center">
+                        <span className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
+                          ... and {sessions.length - 5} more session{sessions.length - 5 !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Show empty state only if no sessions found but strategy exists */}
+            {(() => {
+              const sessions = event.attendance_strategy?.sessions || 
+                             event.dynamic_attendance?.sessions || 
+                             event.sessions || [];
+              
+              return sessions.length === 0 && typeof event.attendance_strategy === 'object' && (
+                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="text-sm text-yellow-800">
+                    No session details configured yet. Sessions will be added during event setup.
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </InfoCard>
+      </div>
+    )}
+    </div>
           {/* Delete Confirmation Modal */}
           {deleteModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">

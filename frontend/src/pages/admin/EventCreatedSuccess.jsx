@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -11,11 +11,57 @@ function EventCreatedSuccess() {
   const { user } = useAuth();
   const [eventData, setEventData] = useState(null);
 
+  // Helper function to format strategy type for display
+  const formatStrategyType = (strategyType) => {
+    const strategyMapping = {
+      'session_based': 'Session Based',
+      'single_mark': 'Single Mark',
+      'percentage_based': 'Percentage Based',
+      'time_based': 'Time Based',
+      'milestone_based': 'Milestone Based',
+      'continuous': 'Continuous',
+      'hybrid': 'Hybrid'
+    };
+    
+    return strategyMapping[strategyType] || (strategyType ? strategyType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Auto-detected');
+  };
+
   useEffect(() => {
     if (location.state?.eventData) {
       console.log('Event Data Structure:', location.state.eventData);
       console.log('Organizers:', location.state.eventData.organizers);
       console.log('Certificate Template:', location.state.eventData.certificate_template);
+      console.log('Certificate Template Type:', typeof location.state.eventData.certificate_template);
+      console.log('Certificate Template Name:', location.state.eventData.certificate_template_name);
+      console.log('All Certificate Related Fields:', {
+        certificate_template: location.state.eventData.certificate_template,
+        certificate_template_name: location.state.eventData.certificate_template_name,
+        certificateTemplate: location.state.eventData.certificateTemplate,
+        is_certificate_based: location.state.eventData.is_certificate_based
+      });
+      
+      // Debug attendance strategy data
+      console.log('Attendance Strategy Full Object:', location.state.eventData.attendance_strategy);
+      if (location.state.eventData.attendance_strategy) {
+        console.log('Strategy Type Field:', location.state.eventData.attendance_strategy.strategy_type);
+        console.log('Strategy Field:', location.state.eventData.attendance_strategy.strategy);
+        console.log('Detected Strategy:', location.state.eventData.attendance_strategy.detected_strategy);
+        console.log('Pass Criteria Fields:', {
+          minimum_percentage: location.state.eventData.attendance_strategy.minimum_percentage,
+          pass_criteria: location.state.eventData.attendance_strategy.pass_criteria,
+          criteria: location.state.eventData.attendance_strategy.criteria
+        });
+        console.log('Sessions:', location.state.eventData.attendance_strategy.sessions);
+        if (location.state.eventData.attendance_strategy.sessions?.[0]) {
+          console.log('First Session Fields:', {
+            session_name: location.state.eventData.attendance_strategy.sessions[0].session_name,
+            name: location.state.eventData.attendance_strategy.sessions[0].name,
+            duration_minutes: location.state.eventData.attendance_strategy.sessions[0].duration_minutes,
+            duration: location.state.eventData.attendance_strategy.sessions[0].duration
+          });
+        }
+      }
+      
       setEventData(location.state.eventData);
     } else {
       navigate('/admin/events');
@@ -325,13 +371,13 @@ function EventCreatedSuccess() {
                         {index + 1}. {organizer.name || 'Unnamed'}
                       </Text>
                       {organizer.email && (
-                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>📧 {organizer.email}</Text>
+                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>ðŸ“§ {organizer.email}</Text>
                       )}
                       {organizer.employee_id && (
-                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>🆔 {organizer.employee_id}</Text>
+                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>ðŸ†” {organizer.employee_id}</Text>
                       )}
                       {organizer.isNew && (
-                        <Text style={[styles.fieldValue, { fontSize: 8, color: '#856404' }]}>⚠️ New Organizer</Text>
+                        <Text style={[styles.fieldValue, { fontSize: 8, color: '#856404' }]}>âš ï¸ New Organizer</Text>
                       )}
                     </View>
                   ))}
@@ -343,7 +389,7 @@ function EventCreatedSuccess() {
                   <Text style={[styles.fieldLabel, { fontSize: 9, fontWeight: 'bold', marginBottom: 4 }]}>Contact Information:</Text>
                   {eventData.contacts.map((contact, index) => (
                     <View key={index} style={styles.field}>
-                      <Text style={[styles.fieldValue, { fontSize: 8 }]}>📞 {contact.name}: {contact.contact}</Text>
+                      <Text style={[styles.fieldValue, { fontSize: 8 }]}>ðŸ“ž {contact.name}: {contact.contact}</Text>
                     </View>
                   ))}
                 </View>
@@ -367,19 +413,17 @@ function EventCreatedSuccess() {
               {eventData.registration_fee && (
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Registration Fee:</Text>
-                  <Text style={styles.fieldValue}>₹{eventData.registration_fee}</Text>
+                  <Text style={styles.fieldValue}>â‚¹{eventData.registration_fee}</Text>
                 </View>
               )}
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Min Participants:</Text>
                 <Text style={styles.fieldValue}>{eventData.min_participants || 1}</Text>
               </View>
-              {eventData.max_participants && (
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Max Participants:</Text>
-                  <Text style={styles.fieldValue}>{eventData.max_participants}</Text>
-                </View>
-              )}
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Max Participants:</Text>
+                <Text style={styles.fieldValue}>{eventData.max_participants || 'No limit'}</Text>
+              </View>
               {eventData.registration_mode === 'team' && (
                 <>
                   <View style={styles.field}>
@@ -396,34 +440,63 @@ function EventCreatedSuccess() {
               {/* Certificate Information */}
               <Text style={[styles.fieldLabel, { fontSize: 9, fontWeight: 'bold', marginTop: 12, borderTop: '1px solid #ccc', paddingTop: 8 }]}>Certificate & Resources:</Text>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Certificate Template:</Text>
+                <Text style={styles.fieldLabel}>Certificate Required:</Text>
                 <Text style={styles.fieldValue}>
-                  {eventData.certificate_template?.name || 
-                   eventData.certificate_template_name || 
-                   (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
-                   'No template selected'}
+                  {eventData.is_certificate_based ? 'Yes' : 'No'}
                 </Text>
               </View>
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Certificate Status:</Text>
-                <Text style={styles.fieldValue}>
-                  {(eventData.certificate_template?.name || 
-                    eventData.certificate_template_name || 
-                    eventData.certificate_template) ? '✓ Template Uploaded' : '⚠️ Template Required'}
-                </Text>
-              </View>
+              {eventData.is_certificate_based ? (
+                <>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Certificate Template:</Text>
+                    <Text style={styles.fieldValue}>
+                      {eventData.certificate_template?.name || 
+                       eventData.certificate_template?.fileName || 
+                       eventData.certificate_template?.originalName || 
+                       eventData.certificate_template_name || 
+                       eventData.certificateTemplate?.name ||
+                       eventData.certificateTemplate ||
+                       (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
+                       // Check certificate_templates object for any template
+                       (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0 ? 
+                         `${Object.keys(eventData.certificate_templates).length} template(s) uploaded` : null) ||
+                       'No template selected'}
+                    </Text>
+                  </View>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Certificate Status:</Text>
+                    <Text style={styles.fieldValue}>
+                      {(eventData.certificate_template?.name || 
+                        eventData.certificate_template?.fileName || 
+                        eventData.certificate_template?.originalName || 
+                        eventData.certificate_template_name || 
+                        eventData.certificateTemplate?.name ||
+                        eventData.certificateTemplate ||
+                        eventData.certificate_template ||
+                        (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? 'âœ“ Template Uploaded' : 'âš ï¸ Template Required'}
+                    </Text>
+                  </View>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Certificate Available Until:</Text>
+                    <Text style={styles.fieldValue}>
+                      {formatDate(eventData.certificate_end_date)} at {formatTime(eventData.certificate_end_time)}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Certificate Note:</Text>
+                  <Text style={styles.fieldValue}>
+                    No certificates will be distributed for this event
+                  </Text>
+                </View>
+              )}
               {eventData.assets && eventData.assets.length > 0 && (
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Additional Assets:</Text>
                   <Text style={styles.fieldValue}>{eventData.assets.length} file(s) uploaded</Text>
                 </View>
               )}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Certificate Available Until:</Text>
-                <Text style={styles.fieldValue}>
-                  {formatDate(eventData.certificate_end_date)} at {formatTime(eventData.certificate_end_time)}
-                </Text>
-              </View>
             </View>
           </View>
         </View>
@@ -472,9 +545,15 @@ function EventCreatedSuccess() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Strategy Type:</Text>
                   <Text style={styles.fieldValue}>
-                    {eventData.attendance_strategy.detected_strategy?.name || 
-                     eventData.attendance_strategy.strategy || 
-                     'Auto-detected'}
+                    {formatStrategyType(
+                      eventData.attendance_strategy?.detected_strategy?.name || 
+                      eventData.attendance_strategy?.strategy_type ||
+                      eventData.attendance_strategy?.strategy ||
+                      eventData.attendance_strategy?.type ||
+                      eventData.strategy_type ||
+                      eventData.strategy ||
+                      'Session Based'
+                    )}
                   </Text>
                 </View>
                 
@@ -497,8 +576,12 @@ function EventCreatedSuccess() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Pass Criteria:</Text>
                   <Text style={styles.fieldValue}>
-                    {eventData.attendance_strategy.criteria?.minimum_percentage || 
-                     eventData.attendance_strategy.minimum_percentage || 'N/A'}% attendance required
+                    {(eventData.attendance_strategy?.criteria?.minimum_percentage || 
+                     eventData.attendance_strategy?.minimum_percentage || 
+                     eventData.attendance_strategy?.pass_criteria ||
+                     eventData.minimum_percentage ||
+                     eventData.pass_criteria ||
+                     75)}% attendance required
                   </Text>
                 </View>
                 
@@ -528,10 +611,11 @@ function EventCreatedSuccess() {
                     {eventData.attendance_strategy.sessions.slice(0, 5).map((session, index) => (
                       <View key={index} style={styles.field}>
                         <Text style={[styles.fieldValue, { fontSize: 8 }]}>
-                          {index + 1}. {session.session_name || `Session ${index + 1}`} 
-                          {session.session_type && ` (${session.session_type})`}
-                          {session.duration_minutes && ` - ${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m`}
-                          {session.is_mandatory === false && ' [Optional]'}
+                          {index + 1}. {session?.session_name || session?.name || session?.title || `Session ${index + 1}`} 
+                          {session?.session_type && ` (${session.session_type})`}
+                          {(session?.duration_minutes || session?.duration || session?.length) && 
+                            ` - ${Math.floor((session.duration_minutes || session.duration || session.length) / 60)}h ${(session.duration_minutes || session.duration || session.length) % 60}m`}
+                          {session?.is_mandatory === false && ' [Optional]'}
                         </Text>
                       </View>
                     ))}
@@ -550,7 +634,7 @@ function EventCreatedSuccess() {
                     </Text>
                     {eventData.attendance_strategy.recommendations.slice(0, 3).map((rec, index) => (
                       <View key={index} style={styles.field}>
-                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>• {rec}</Text>
+                        <Text style={[styles.fieldValue, { fontSize: 8 }]}>â€¢ {rec}</Text>
                       </View>
                     ))}
                     {eventData.attendance_strategy.recommendations.length > 3 && (
@@ -579,20 +663,214 @@ function EventCreatedSuccess() {
             )}
           </View>
 
+          {/* Budget & Financial Planning Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>7. Budget & Financial Planning</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Estimated Budget:</Text>
+              <Text style={styles.fieldValue}>â‚¹ ____________</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Registration Fee:</Text>
+              <Text style={styles.fieldValue}>
+                {eventData.registration_fee_enabled ? `â‚¹${eventData.registration_fee || 0}` : 'Free'}
+              </Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Sponsorship Required:</Text>
+              <Text style={styles.fieldValue}>â˜ Yes â˜ No</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Budget Breakdown:</Text>
+              <Text style={styles.fieldValue}></Text>
+            </View>
+            
+            <View style={{ marginTop: 8 }}>
+              <Text style={[styles.fieldLabel, { fontSize: 9, marginBottom: 4 }]}>Cost Categories:</Text>
+              <Text style={[styles.fieldValue, { fontSize: 8, textAlign: 'left' }]}>
+                â€¢ Venue Rental: â‚¹ ______{'\n'}
+                â€¢ Equipment/Technology: â‚¹ ______{'\n'}
+                â€¢ Refreshments/Catering: â‚¹ ______{'\n'}
+                â€¢ Materials/Supplies: â‚¹ ______{'\n'}
+                â€¢ Speaker/Guest Honorarium: â‚¹ ______{'\n'}
+                â€¢ Marketing/Promotion: â‚¹ ______{'\n'}
+                â€¢ Certificates/Awards: â‚¹ ______{'\n'}
+                â€¢ Miscellaneous: â‚¹ ______{'\n'}
+                {'\n'}Total Estimated Cost: â‚¹ ______
+              </Text>
+            </View>
+          </View>
+
+          {/* Resource Requirements Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>8. Resource Requirements</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Technical Requirements:</Text>
+              <Text style={styles.fieldValue}>â˜ Projector â˜ Microphone â˜ Laptop â˜ Internet</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Furniture & Setup:</Text>
+              <Text style={styles.fieldValue}>â˜ Tables â˜ Chairs â˜ Stage â˜ Podium</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Support Staff Required:</Text>
+              <Text style={styles.fieldValue}>_______ persons</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Volunteer Requirements:</Text>
+              <Text style={styles.fieldValue}>_______ volunteers</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Special Arrangements:</Text>
+              <Text style={styles.fieldValue}>_________________________</Text>
+            </View>
+          </View>
+
+          {/* High Authority Approvals Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>9. High Authority Approvals</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Department Head Approval:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Approved â˜ Rejected</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Principal/Director Approval:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Approved â˜ Rejected</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Academic Council Approval:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Approved â˜ Not Required</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Finance Committee Approval:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Approved â˜ Not Required</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>External Partnership Approval:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Approved â˜ Not Required</Text>
+            </View>
+          </View>
+
+          {/* Risk Assessment & Safety Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>10. Risk Assessment & Safety</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Risk Level:</Text>
+              <Text style={styles.fieldValue}>â˜ Low â˜ Medium â˜ High</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Safety Measures Required:</Text>
+              <Text style={styles.fieldValue}>â˜ Security â˜ Medical Aid â˜ Fire Safety â˜ Crowd Control</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Insurance Coverage:</Text>
+              <Text style={styles.fieldValue}>â˜ Required â˜ Not Required</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Emergency Contact:</Text>
+              <Text style={styles.fieldValue}>_________________________</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Special Safety Protocols:</Text>
+              <Text style={styles.fieldValue}>_________________________</Text>
+            </View>
+          </View>
+
+          {/* Marketing & Promotion Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>11. Marketing & Promotion</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Promotion Channels:</Text>
+              <Text style={styles.fieldValue}>â˜ Social Media â˜ Website â˜ Email â˜ Posters â˜ Word of Mouth</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Media Coverage:</Text>
+              <Text style={styles.fieldValue}>â˜ Required â˜ Not Required</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Press Release:</Text>
+              <Text style={styles.fieldValue}>â˜ Prepared â˜ To be Prepared â˜ Not Required</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Social Media Hashtag:</Text>
+              <Text style={styles.fieldValue}>_________________________</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Photography/Videography:</Text>
+              <Text style={styles.fieldValue}>â˜ Professional â˜ In-house â˜ Not Required</Text>
+            </View>
+          </View>
+
+          {/* Post-Event Requirements Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>12. Post-Event Requirements</Text>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Event Report Required:</Text>
+              <Text style={styles.fieldValue}>â˜ Yes â˜ No</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Feedback Collection:</Text>
+              <Text style={styles.fieldValue}>â˜ Digital Survey â˜ Physical Forms â˜ Both</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Certificate Distribution:</Text>
+              <Text style={styles.fieldValue}>
+                {eventData.is_certificate_based ? 'â˜‘ Digital â˜ Physical â˜ Both' : 'â˜ Not Applicable'}
+              </Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Financial Settlement:</Text>
+              <Text style={styles.fieldValue}>â˜ Pending â˜ Completed</Text>
+            </View>
+            
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Documentation Archive:</Text>
+              <Text style={styles.fieldValue}>â˜ Digital â˜ Physical â˜ Both</Text>
+            </View>
+          </View>
+
           {/* Administrative Section */}
           <View style={styles.approvalSection}>
-            <Text style={styles.sectionTitle}>ADMINISTRATIVE SECTION</Text>
+            <Text style={styles.sectionTitle}>13. ADMINISTRATIVE SECTION</Text>
             <View style={styles.checkboxLine}>
               <Text style={styles.fieldLabel}>Event Review:</Text>
-              <Text style={styles.fieldValue}>☐ Approved ☐ Needs Modification</Text>
+              <Text style={styles.fieldValue}>â˜ Approved â˜ Needs Modification</Text>
             </View>
             <View style={styles.checkboxLine}>
               <Text style={styles.fieldLabel}>Budget Approval:</Text>
-              <Text style={styles.fieldValue}>☐ Approved ☐ Not Required</Text>
+              <Text style={styles.fieldValue}>â˜ Approved â˜ Not Required</Text>
             </View>
             <View style={styles.checkboxLine}>
               <Text style={styles.fieldLabel}>Venue Confirmation:</Text>
-              <Text style={styles.fieldValue}>☐ Confirmed ☐ Alternative Required</Text>
+              <Text style={styles.fieldValue}>â˜ Confirmed â˜ Alternative Required</Text>
             </View>
 
             <View style={styles.signatureContainer}>
@@ -702,7 +980,7 @@ function EventCreatedSuccess() {
                     </span>
                     {eventData.is_xenesis_event && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        ⭐ Xenesis Event
+                        â­ Xenesis Event
                       </span>
                     )}
                   </div>
@@ -882,6 +1160,146 @@ function EventCreatedSuccess() {
                     </div>
                   )}
                 </div>
+
+                {/* Attendance Strategy Section */}
+                {eventData.attendance_mandatory && eventData.attendance_strategy && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Attendance Strategy
+                    </h4>
+                    <div className="bg-white p-0 ">
+                      {/* Strategy Overview - Bullet Points Format */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm mb-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <div className="flex-1 flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-700">Strategy Type:</span>
+                              <span className="text-xs font-semibold text-gray-900 bg-green-50 px-2 py-1 rounded-full">
+                                {formatStrategyType(
+                                  eventData.attendance_strategy?.detected_strategy?.name || 
+                                  eventData.attendance_strategy?.strategy_type ||
+                                  eventData.attendance_strategy?.strategy ||
+                                  eventData.attendance_strategy?.type ||
+                                  eventData.strategy_type ||
+                                  eventData.strategy ||
+                                  'Session Based'
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <div className="flex-1 flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-700">Pass Criteria:</span>
+                              <span className="text-xs font-semibold text-gray-900 bg-blue-50 px-2 py-1 rounded-full">
+                                {(eventData.attendance_strategy?.criteria?.minimum_percentage || 
+                                 eventData.attendance_strategy?.minimum_percentage || 
+                                 eventData.attendance_strategy?.pass_criteria ||
+                                 eventData.minimum_percentage ||
+                                 eventData.pass_criteria ||
+                                 75)}% required
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <div className="flex-1 flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-700">Total Sessions:</span>
+                              <span className="text-xs font-semibold text-gray-900 bg-purple-50 px-2 py-1 rounded-full">
+                                {eventData.attendance_strategy.sessions?.length || 0} session{(eventData.attendance_strategy.sessions?.length || 0) !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Session Overview */}
+                      {eventData.attendance_strategy.sessions?.length > 0 && (
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 mb-3">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <svg className="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                              </div>
+                              <h5 className="text-xs font-medium text-gray-900">Session Overview</h5>
+                            </div>
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                              {eventData.attendance_strategy.sessions.length} session{eventData.attendance_strategy.sessions.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {eventData.attendance_strategy.sessions.slice(0, 3).map((session, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                <div className="flex items-center space-x-2">
+                                  <div className="flex-shrink-0">
+                                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-semibold">
+                                      {idx + 1}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-900">
+                                      {session?.session_name || session?.name || session?.title || `Session ${idx + 1}`}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Session {idx + 1} of {eventData.attendance_strategy.sessions.length}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xs font-medium text-gray-900">
+                                    {(session?.duration_minutes || session?.duration || session?.length) ? 
+                                      `${Math.floor((session.duration_minutes || session.duration || session.length) / 60)}h ${(session.duration_minutes || session.duration || session.length) % 60}m` : 
+                                      'TBD'
+                                    }
+                                  </p>
+                                  <p className="text-xs text-gray-500">Duration</p>
+                                </div>
+                              </div>
+                            ))}
+                            {eventData.attendance_strategy.sessions.length > 3 && (
+                              <div className="text-center py-1">
+                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                  +{eventData.attendance_strategy.sessions.length - 3} more sessions
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Strategy Description */}
+                      {eventData.attendance_strategy.detected_strategy?.description && (
+                        <div className="bg-white rounded-lg p-3 border border-gray-200">
+                          <div className="flex items-start space-x-2">
+                            <div className="flex-shrink-0">
+                              <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <h5 className="text-xs font-medium text-gray-900 mb-1">Strategy Description</h5>
+                              <p className="text-xs text-gray-700">
+                                {eventData.attendance_strategy.detected_strategy?.description || 
+                                 eventData.attendance_strategy.description || 
+                                 'Strategy determined automatically based on event type'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -915,7 +1333,7 @@ function EventCreatedSuccess() {
                         <>
                           <div>
                             <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Fee</dt>
-                            <dd className="mt-1 text-gray-900">₹{eventData.registration_fee}</dd>
+                            <dd className="mt-1 text-gray-900">â‚¹{eventData.registration_fee}</dd>
                           </div>
                           {eventData.fee_description && (
                             <div>
@@ -929,12 +1347,10 @@ function EventCreatedSuccess() {
                         <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Min Participants</dt>
                         <dd className="mt-1 text-gray-900">{eventData.min_participants || 1}</dd>
                       </div>
-                      {eventData.max_participants && (
-                        <div>
-                          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Max Participants</dt>
-                          <dd className="mt-1 text-gray-900">{eventData.max_participants}</dd>
-                        </div>
-                      )}
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Max Participants</dt>
+                        <dd className="mt-1 text-gray-900">{eventData.max_participants || 'No limit'}</dd>
+                      </div>
                       {eventData.registration_mode === 'team' && (
                         <>
                           <div>
@@ -948,7 +1364,7 @@ function EventCreatedSuccess() {
                           {eventData.allow_multiple_team_registrations && (
                             <div className="col-span-2">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                ✓ Multiple Teams Allowed (with approval)
+                                âœ“ Multiple Teams Allowed (with approval)
                               </span>
                             </div>
                           )}
@@ -983,39 +1399,70 @@ function EventCreatedSuccess() {
                     <h4 className="font-medium text-gray-900 text-sm mb-2">Certificate & Resources</h4>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Certificate Template:</span>
+                        <span className="text-sm text-gray-600">Certificate Required:</span>
                         <span className="text-sm font-medium text-gray-900">
-                          {eventData.certificate_template?.name || 
-                           eventData.certificate_template_name || 
-                           (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : 'No template selected')}
+                          {eventData.is_certificate_based ? 'Yes' : 'No'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          (eventData.certificate_template?.name || 
-                           eventData.certificate_template_name || 
-                           eventData.certificate_template) 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {(eventData.certificate_template?.name || 
-                            eventData.certificate_template_name || 
-                            eventData.certificate_template) ? '✓ Template Uploaded' : '⚠️ Template Required'}
-                        </span>
-                      </div>
+                      {eventData.is_certificate_based ? (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Certificate Template:</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {eventData.certificate_template?.name || 
+                               eventData.certificate_template?.fileName || 
+                               eventData.certificate_template?.originalName || 
+                               eventData.certificate_template_name || 
+                               eventData.certificateTemplate?.name ||
+                               eventData.certificateTemplate ||
+                               (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
+                               // Check certificate_templates object for any template
+                               (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0 ? 
+                                 `${Object.keys(eventData.certificate_templates).length} template(s) uploaded` : null) ||
+                               'No template selected'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Status:</span>
+                            <span className={`text-sm font-medium ${(eventData.certificate_template?.name || 
+                              eventData.certificate_template?.fileName || 
+                              eventData.certificate_template?.originalName || 
+                              eventData.certificate_template_name || 
+                              eventData.certificateTemplate?.name ||
+                              eventData.certificateTemplate ||
+                              eventData.certificate_template ||
+                              (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? 'text-green-600' : 'text-amber-600'}`}>
+                              {(eventData.certificate_template?.name || 
+                                eventData.certificate_template?.fileName || 
+                                eventData.certificate_template?.originalName || 
+                                eventData.certificate_template_name || 
+                                eventData.certificateTemplate?.name ||
+                                eventData.certificateTemplate ||
+                                eventData.certificate_template ||
+                                (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? 'âœ“ Template Uploaded' : 'âš ï¸ Template Required'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Available Until:</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {formatDate(eventData.certificate_end_date)} at {formatTime(eventData.certificate_end_time)}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Note:</span>
+                          <span className="text-sm text-gray-500">
+                            No certificates will be distributed
+                          </span>
+                        </div>
+                      )}
                       {eventData.assets && eventData.assets.length > 0 && (
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Additional Assets:</span>
                           <span className="text-sm font-medium text-gray-900">{eventData.assets.length} file(s) uploaded</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Available Until:</span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {formatDate(eventData.certificate_end_date)} at {formatTime(eventData.certificate_end_time)}
-                        </span>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1066,7 +1513,7 @@ function EventCreatedSuccess() {
                                 )}
                                 {organizer.selected && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-800 border border-green-200">
-                                    ✓ Selected
+                                    âœ“ Selected
                                   </span>
                                 )}
                               </div>
@@ -1129,9 +1576,9 @@ function EventCreatedSuccess() {
               </div>
             )}
           </div>
-          </div>
         </div>
       </div>
+    </div>
     </AdminLayout>
   );
 }

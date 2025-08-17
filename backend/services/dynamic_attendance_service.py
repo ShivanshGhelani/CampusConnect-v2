@@ -21,7 +21,9 @@ from models.dynamic_attendance import (
     DynamicAttendanceService, 
     AttendanceStrategy,
     DynamicAttendanceConfig,
-    StudentAttendanceRecord
+    StudentAttendanceRecord,
+    AttendanceSession,
+    AttendanceCriteria
 )
 from core.logger import get_logger
 
@@ -476,6 +478,65 @@ class IntegratedDynamicAttendanceService:
             recommendations.append(f"Next: {next_session['session_name']}")
         
         return recommendations
+    
+    async def get_attendance_config(self, event_id: str) -> Optional[DynamicAttendanceConfig]:
+        """
+        Get existing attendance configuration for an event
+        """
+        try:
+            return await self.dynamic_service.get_attendance_config(event_id)
+        except Exception as e:
+            logger.error(f"Error getting attendance config: {e}")
+            return None
+    
+    async def update_attendance_config(self, event_id: str, 
+                                     sessions: Optional[List[AttendanceSession]] = None,
+                                     criteria: Optional[AttendanceCriteria] = None) -> Dict[str, Any]:
+        """
+        Update attendance configuration for an event
+        """
+        try:
+            # Get current configuration
+            current_config = await self.dynamic_service.get_attendance_config(event_id)
+            if not current_config:
+                return {
+                    "success": False,
+                    "message": "Attendance configuration not found"
+                }
+            
+            # Update sessions if provided
+            if sessions is not None:
+                current_config.sessions = sessions
+            
+            # Update criteria if provided
+            if criteria is not None:
+                current_config.criteria = criteria
+            
+            # Update timestamp
+            current_config.updated_at = datetime.utcnow()
+            
+            # Save updated configuration
+            result = await self.dynamic_service.save_attendance_config(current_config)
+            
+            if result:
+                logger.info(f"Updated attendance configuration for event {event_id}")
+                return {
+                    "success": True,
+                    "message": "Attendance configuration updated successfully",
+                    "config": current_config.dict()
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Failed to save updated configuration"
+                }
+                
+        except Exception as e:
+            logger.error(f"Error updating attendance config: {e}")
+            return {
+                "success": False,
+                "message": f"Failed to update configuration: {str(e)}"
+            }
 
 
 # Factory function for easy service creation

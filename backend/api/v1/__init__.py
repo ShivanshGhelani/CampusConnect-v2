@@ -10,6 +10,8 @@ from .unified_organizer import router as unified_organizer_router
 from .email import router as email_router
 from .organizer_portal import router as organizer_portal_router
 from .legacy_auth_routes import router as legacy_auth_router
+from .dynamic_attendance import router as dynamic_attendance_router
+from .attendance_customization import router as attendance_customization_router
 # from .venues import router as venues_router
 
 router = APIRouter()
@@ -23,6 +25,10 @@ router.include_router(organizer_portal_router, tags=["organizer-portal-api"])
 
 # Phase 4 Optimization: Unified organizer routes (replaces organizer + faculty_organizer)
 router.include_router(unified_organizer_router, tags=["unified-organizer-api"])
+
+# Dynamic Attendance System (Phase 1 Complete)
+router.include_router(dynamic_attendance_router, tags=["dynamic-attendance-api"])
+router.include_router(attendance_customization_router, tags=["attendance-customization-api"])
 
 # router.include_router(venues_router, prefix="/venues", tags=["venues-api"])
 

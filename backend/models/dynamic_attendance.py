@@ -1817,3 +1817,24 @@ class DynamicAttendanceService:
             recommendations.append("Consider sub-team attendance tracking for large teams")
         
         return recommendations
+    
+    async def save_attendance_config(self, config: DynamicAttendanceConfig) -> bool:
+        """Save or update attendance configuration in database"""
+        try:
+            from database.operations import DatabaseOperations
+            
+            # Convert to dict for storage
+            config_data = config.dict()
+            
+            # Update existing or insert new
+            result = await DatabaseOperations.upsert(
+                "dynamic_attendance_configs",
+                {"event_id": config.event_id},
+                config_data
+            )
+            
+            return result is not None
+            
+        except Exception as e:
+            print(f"Error saving attendance config: {e}")
+            return False

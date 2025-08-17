@@ -53,6 +53,17 @@ export class EventPDFService {
     }
   }
 
+  // Format strategy type helper
+  formatStrategyType(strategyType) {
+    const strategyTypeMap = {
+      'session_based': 'Session Based',
+      'user_based': 'User Based',
+      'time_based': 'Time Based',
+      'hybrid': 'Hybrid'
+    };
+    return strategyTypeMap[strategyType] || strategyType;
+  }
+
   // Generate organizers HTML section
   generateOrganizersSection(organizers) {
     if (!organizers || organizers.length === 0) {
@@ -141,7 +152,7 @@ export class EventPDFService {
       return '';
     }
 
-    let requirementsHTML = '<div class="section"><div class="section-title">6. Requirements</div>';
+    let requirementsHTML = '<div class="section"><div class="section-title">13. Requirements</div>';
     
     if (eventData.prerequisites) {
       requirementsHTML += `
@@ -161,6 +172,89 @@ export class EventPDFService {
     return requirementsHTML;
   }
 
+  // Generate attendance strategy section
+  generateAttendanceStrategySection(eventData) {
+    if (!eventData.attendance_strategy) {
+      return '';
+    }
+
+    const strategy = eventData.attendance_strategy;
+    let strategyHTML = '<div class="section"><div class="section-title">6. Attendance Strategy</div>';
+
+    // Strategy Overview
+    strategyHTML += '<div class="strategy-overview">';
+    
+    // Strategy Type with multiple fallback options
+    const strategyType = strategy.detected_strategy?.name || 
+                        strategy.strategy_type || 
+                        strategy.strategy || 
+                        strategy.type ||
+                        'Session Based';
+    strategyHTML += `<div class="strategy-item">• Strategy Type: <span class="strategy-value">${this.formatStrategyType(strategyType)}</span></div>`;
+    
+    // Pass Criteria with multiple fallback options
+    const passCriteria = strategy.criteria?.minimum_percentage || 
+                        strategy.minimum_percentage || 
+                        strategy.pass_criteria ||
+                        strategy.threshold ||
+                        75;
+    strategyHTML += `<div class="strategy-item">• Pass Criteria: <span class="strategy-value">${passCriteria}%</span></div>`;
+    
+    // Min/Max Participants
+    strategyHTML += `<div class="strategy-item">• Min Participants: <span class="strategy-value">${strategy.min_participants || eventData.min_participants || 1}</span></div>`;
+    if (strategy.max_participants || eventData.max_participants) {
+      strategyHTML += `<div class="strategy-item">• Max Participants: <span class="strategy-value">${strategy.max_participants || eventData.max_participants}</span></div>`;
+    } else {
+      strategyHTML += `<div class="strategy-item">• Max Participants: <span class="strategy-value">No limit</span></div>`;
+    }
+    strategyHTML += '</div>';
+
+    // Sessions
+    if (strategy.sessions && strategy.sessions.length > 0) {
+      strategyHTML += '<div style="margin-top: 15px;"><strong>Sessions:</strong></div>';
+      strategyHTML += '<div class="session-list">';
+      strategy.sessions.forEach((session, index) => {
+        // Session name with multiple fallback options
+        const sessionName = session.session_name || 
+                           session.name || 
+                           session.title || 
+                           `Session ${index + 1}`;
+        
+        // Session duration with multiple fallback options
+        const duration = session.duration_minutes || 
+                        session.duration || 
+                        session.length ||
+                        'TBD';
+        
+        const durationText = duration === 'TBD' ? 'TBD' : `${duration} minutes`;
+        
+        strategyHTML += `
+          <div class="session-item">
+            <span class="session-number">${index + 1}</span>
+            <div class="session-details">
+              <div class="session-name">${sessionName}</div>
+              <div class="session-duration">Duration: ${durationText}</div>
+            </div>
+          </div>
+        `;
+      });
+      strategyHTML += '</div>';
+    }
+
+    // Recommendations
+    if (strategy.recommendations && strategy.recommendations.length > 0) {
+      strategyHTML += '<div style="margin-top: 15px;"><strong>Recommendations:</strong></div>';
+      strategyHTML += '<div class="recommendation-list">';
+      strategy.recommendations.forEach(recommendation => {
+        strategyHTML += `<div class="recommendation-item">• ${recommendation}</div>`;
+      });
+      strategyHTML += '</div>';
+    }
+
+    strategyHTML += '</div>';
+    return strategyHTML;
+  }
+
   // Generate administrative section for executive admin
   generateAdministrativeSection(user) {
     if (user?.role !== 'executive_admin') {
@@ -169,7 +263,7 @@ export class EventPDFService {
 
     return `
       <div class="approval-section">
-        <div class="section-title">ADMINISTRATIVE SECTION</div>
+        <div class="section-title">15. ADMINISTRATIVE SECTION</div>
         <div class="checkbox-line">
           <span class="field-label">Event Review:</span>
           <span class="field-value">☐ Approved ☐ Needs Modification</span>
@@ -320,12 +414,24 @@ export class EventPDFService {
 
         // Certificate details
         CERTIFICATE_TEMPLATE: eventData.certificate_template?.name || 
+                              eventData.certificate_template?.fileName || 
+                              eventData.certificate_template?.originalName || 
                               eventData.certificate_template_name || 
+                              eventData.certificateTemplate?.name ||
+                              eventData.certificateTemplate ||
                               (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
+                              // Check certificate_templates object for any template
+                              (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0 ? 
+                                `${Object.keys(eventData.certificate_templates).length} template(s) uploaded` : null) ||
                               'No template selected',
         CERTIFICATE_STATUS: (eventData.certificate_template?.name || 
+                             eventData.certificate_template?.fileName || 
+                             eventData.certificate_template?.originalName || 
                              eventData.certificate_template_name || 
-                             eventData.certificate_template) ? '✓ Template Uploaded' : '⚠️ Template Required',
+                             eventData.certificateTemplate?.name ||
+                             eventData.certificateTemplate ||
+                             (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
+                             (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? '✓ Template Uploaded' : '⚠️ Template Required',
         ADDITIONAL_ASSETS: (eventData.assets && eventData.assets.length > 0) ? `
           <div class="field">
             <span class="field-label">Additional Assets:</span>
@@ -334,11 +440,18 @@ export class EventPDFService {
         ` : '',
         CERTIFICATE_AVAILABILITY: `${this.formatDate(eventData.certificate_end_date)} at ${this.formatTime(eventData.certificate_end_time)}`,
 
+        // Registration fee value for budget section
+        REGISTRATION_FEE_VALUE: eventData.registration_fee_enabled ? `₹${eventData.registration_fee || 0}` : 'Free',
+        
+        // Certificate distribution method for post-event section
+        CERTIFICATE_DISTRIBUTION_METHOD: eventData.is_certificate_based ? '☑ Digital ☐ Physical ☐ Both' : '☐ Not Applicable',
+
         // Additional sections
         REQUIREMENTS_SECTION: this.generateRequirementsSection(eventData),
+        ATTENDANCE_STRATEGY_SECTION: this.generateAttendanceStrategySection(eventData),
         REQUEST_SUBMITTED_SECTION: user?.role === 'executive_admin' ? `
           <div class="section">
-            <div class="section-title">7. Request Submitted By</div>
+            <div class="section-title">14. Request Submitted By</div>
             <div class="field">
               <span class="field-label">Submitted By:</span>
               <span class="field-value">${eventData.event_created_by || user.fullname || user.username || 'Executive Admin'}</span>

@@ -218,6 +218,21 @@ function CreateEvent() {
   const [errors, setErrors] = useState({});
   const [existingEventIds, setExistingEventIds] = useState([]);
 
+  // Helper function to format strategy type for display
+  const formatStrategyType = (strategyType) => {
+    const strategyMapping = {
+      'session_based': 'Session Based',
+      'single_mark': 'Single Mark',
+      'percentage_based': 'Percentage Based',
+      'time_based': 'Time Based',
+      'milestone_based': 'Milestone Based',
+      'continuous': 'Continuous',
+      'hybrid': 'Hybrid'
+    };
+    
+    return strategyMapping[strategyType] || (strategyType ? strategyType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Auto-detected');
+  };
+
   // Certificate template types based on event type
   const getCertificateTypes = (eventType, eventMode = null) => {
     const certificateMapping = {
@@ -962,76 +977,136 @@ function CreateEvent() {
             {form.attendance_mandatory ? (
               customAttendanceStrategy ? (
                 <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-600">Strategy Type:</span>
-                    <span className="text-sm text-gray-900 capitalize">
-                      {customAttendanceStrategy.detected_strategy?.name || customAttendanceStrategy.strategy || 'Auto-detected'}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-600">Total Sessions:</span>
-                    <span className="text-sm text-gray-900">
-                      {customAttendanceStrategy.sessions?.length || 0}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-600">Pass Criteria:</span>
-                    <span className="text-sm text-gray-900">
-                      {customAttendanceStrategy.criteria?.minimum_percentage || 
-                       customAttendanceStrategy.minimum_percentage || 
-                       (customAttendanceStrategy.strategy === 'single_mark' ? '100' : '75')}%
-                    </span>
-                  </div>
-                  
-                  <div className="pt-2 border-t border-gray-100">
-                    <span className="text-sm font-medium text-gray-600">Description:</span>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {customAttendanceStrategy.detected_strategy?.description || 
-                       customAttendanceStrategy.description || 
-                       'Strategy will be determined automatically based on event type and duration'}
-                    </p>
-                  </div>
-                  
-                  {customAttendanceStrategy.recommendations?.length > 0 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <span className="text-sm font-medium text-blue-800">Recommendations:</span>
-                      <ul className="text-sm text-blue-700 mt-1 space-y-1">
-                        {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
-                          <li key={idx}>• {rec}</li>
-                        ))}
-                        {customAttendanceStrategy.recommendations.length > 3 && (
-                          <li className="text-xs text-blue-600">
-                            ... and {customAttendanceStrategy.recommendations.length - 3} more
-                          </li>
-                        )}
-                      </ul>
+                  {/* Strategy Overview - Bullet Points Format (matching EventCreatedSuccess.jsx) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="flex-1 flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Strategy Type:</span>
+                        <span className="text-sm font-semibold text-gray-900 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                          {formatStrategyType(customAttendanceStrategy.detected_strategy?.name || 
+                           customAttendanceStrategy.strategy)}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  {customAttendanceStrategy.sessions?.length > 0 && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                      <span className="text-sm font-medium text-gray-800">Session Preview:</span>
-                      <div className="mt-2 space-y-1">
-                        {customAttendanceStrategy.sessions.slice(0, 3).map((session, idx) => (
-                          <div key={idx} className="text-sm text-gray-700 flex justify-between">
-                            <span>{session.session_name || `Session ${idx + 1}`}</span>
-                            <span className="text-xs text-gray-500">
-                              {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : ''}
-                            </span>
-                          </div>
-                        ))}
-                        {customAttendanceStrategy.sessions.length > 3 && (
-                          <div className="text-xs text-gray-500 text-center pt-1">
-                            +{customAttendanceStrategy.sessions.length - 3} more sessions
-                          </div>
-                        )}
+                    
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="flex-1 flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Pass Criteria:</span>
+                        <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                          {customAttendanceStrategy.criteria?.minimum_percentage || 
+                           customAttendanceStrategy.minimum_percentage || 
+                           (customAttendanceStrategy.strategy === 'single_mark' ? '100' : '75')}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>                                
+                  {/* Strategy Description */}
+                  {customAttendanceStrategy.detected_strategy?.description && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-900 mb-1">Strategy Description</h4>
+                          <p className="text-sm text-blue-800">
+                            {customAttendanceStrategy.detected_strategy.description}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
-              ) : (
+
+                {/* Session Overview */}
+                {customAttendanceStrategy.sessions?.length > 0 && (
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                            </div>
+                            <h4 className="text-sm font-medium text-gray-900">Session Overview</h4>
+                          </div>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {customAttendanceStrategy.sessions.length} session{customAttendanceStrategy.sessions.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {customAttendanceStrategy.sessions.slice(0, 4).map((session, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0">
+                                  <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
+                                    {idx + 1}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {session.session_name || `Session ${idx + 1}`}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Session {idx + 1} of {customAttendanceStrategy.sessions.length}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {session.duration_minutes ? 
+                                    `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : 
+                                    'Duration TBD'
+                                  }
+                                </p>
+                                <p className="text-xs text-gray-500">Duration</p>
+                              </div>
+                            </div>
+                          ))}
+                          {customAttendanceStrategy.sessions.length > 4 && (
+                            <div className="text-center py-2">
+                              <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                +{customAttendanceStrategy.sessions.length - 4} more sessions
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {customAttendanceStrategy.recommendations?.length > 0 && (
+                      <div className="bg-white rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                          </div>
+                          <h4 className="text-sm font-medium text-gray-900">Strategy Recommendations</h4>
+                        </div>
+                        <div className="space-y-2">
+                          {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
+                            <div key={idx} className="flex items-start space-x-3 p-2 bg-blue-50 rounded-md">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                              </div>
+                              <p className="text-sm text-blue-900">{rec}</p>
+                            </div>
+                          ))}
+                          {customAttendanceStrategy.recommendations.length > 3 && (
+                            <div className="text-center pt-2">
+                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                                +{customAttendanceStrategy.recommendations.length - 3} more recommendations
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                   <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1269,29 +1344,65 @@ function CreateEvent() {
 
               {form.is_certificate_based ? (
                 <>
-                  {/* Certificate Types */}
+                  {/* Certificate Template Details */}
                   <div>
-                    <span className="text-sm font-medium text-gray-600">Certificate Types:</span>
-                    <div className="mt-2 space-y-2">
+                    <span className="text-sm font-medium text-gray-600">Certificate Required:</span>
+                    <p className="text-sm text-gray-900 mt-1">Yes</p>
+                  </div>
+                  
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Certificate Template:</span>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {form.event_type && getCertificateTypes(form.event_type, form.mode).length > 0 ? (
+                        getCertificateTypes(form.event_type, form.mode).some(type => form.certificate_templates[type]) ? 
+                          getCertificateTypes(form.event_type, form.mode).find(type => form.certificate_templates[type])
+                          : 'No template selected'
+                      ) : 'No template selected'}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Status:</span>
+                    <p className="text-sm mt-1">
+                      {form.event_type && getCertificateTypes(form.event_type, form.mode).some(type => form.certificate_templates[type]) ? (
+                        <span className="text-green-600">✓ Template Uploaded</span>
+                      ) : (
+                        <span className="text-amber-600">⚠️ Template Required</span>
+                      )}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Available Until:</span>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {new Date(`${form.certificate_end_date}T${form.certificate_end_time}`).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })} at {new Date(`${form.certificate_end_date}T${form.certificate_end_time}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </p>
+                  </div>
+
+                  {/* Certificate Types List */}
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Required Templates:</span>
+                    <div className="mt-2 space-y-1">
                       {form.event_type && getCertificateTypes(form.event_type, form.mode).map((type, index) => {
                         const hasTemplate = form.certificate_templates[type];
                         return (
-                          <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                            <div className="flex items-center space-x-2">
-                              <svg className={`w-4 h-4 ${hasTemplate ? 'text-green-600' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d={hasTemplate 
-                                  ? "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  : "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          <div key={index} className="flex items-center space-x-2 text-xs">
+                            <svg className={`w-3 h-3 ${hasTemplate ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d={hasTemplate 
+                                ? "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                : "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                 } clipRule="evenodd" />
-                              </svg>
-                              <span className="text-sm text-gray-900">{type} – [Event Name]</span>
-                            </div>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              hasTemplate 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {hasTemplate ? 'Template Uploaded' : 'Missing Template'}
+                            </svg>
+                            <span className={hasTemplate ? 'text-green-600' : 'text-red-600'}>
+                              {type} {hasTemplate ? '(Uploaded)' : '(Missing)'}
                             </span>
                           </div>
                         );
@@ -1301,11 +1412,14 @@ function CreateEvent() {
 
                   {/* Event Poster */}
                   {form.event_poster && (
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-sm text-gray-900">Event poster: {form.event_poster.name}</span>
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">Event Poster:</span>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-green-600">{form.event_poster.name}</span>
+                      </div>
                     </div>
                   )}
                 </>

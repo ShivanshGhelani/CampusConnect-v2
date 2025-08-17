@@ -229,8 +229,104 @@
             font-size: 9pt;
         }
         
+        .strategy-overview {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+        
+        .strategy-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .strategy-label {
+            font-weight: bold;
+            color: #333;
+            font-size: 10pt;
+        }
+        
+        .strategy-value {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+        
+        .session-list {
+            margin-top: 10px;
+        }
+        
+        .session-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px;
+            margin-bottom: 4px;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .session-number {
+            background: #333;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .session-name {
+            flex: 1;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        .session-duration {
+            font-size: 8pt;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .recommendation-list {
+            margin-top: 8px;
+        }
+        
+        .recommendation-item {
+            margin-bottom: 4px;
+            padding-left: 15px;
+            position: relative;
+            font-size: 9pt;
+            line-height: 1.3;
+        }
+        
+        .recommendation-item:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #007bff;
+            font-weight: bold;
+        }
+        
         @media print {
-            body { -webkit-print-color-adjust: exact; }
+            body { 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -366,6 +462,168 @@
                 <span class="field-label">Certificate Available Until:</span>
                 <span class="field-value">{{CERTIFICATE_AVAILABILITY}}</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Attendance Strategy Details -->
+    <div class="section">
+        <div class="section-title">6. Attendance Strategy Details</div>
+        {{ATTENDANCE_STRATEGY_SECTION}}
+    </div>
+
+    <!-- Budget & Financial Planning -->
+    <div class="section">
+        <div class="section-title">7. Budget & Financial Planning</div>
+        <div class="field">
+            <span class="field-label">Estimated Budget:</span>
+            <span class="field-value">₹ ____________</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Registration Fee:</span>
+            <span class="field-value">{{REGISTRATION_FEE_VALUE}}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Sponsorship Required:</span>
+            <span class="field-value">☐ Yes ☐ No</span>
+        </div>
+        <div style="margin-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Budget Breakdown:</div>
+            <div style="font-size: 9pt; line-height: 1.3;">
+                • Venue Rental: ₹ ______<br>
+                • Equipment/Technology: ₹ ______<br>
+                • Refreshments/Catering: ₹ ______<br>
+                • Materials/Supplies: ₹ ______<br>
+                • Speaker/Guest Honorarium: ₹ ______<br>
+                • Marketing/Promotion: ₹ ______<br>
+                • Certificates/Awards: ₹ ______<br>
+                • Miscellaneous: ₹ ______<br>
+                <br><strong>Total Estimated Cost: ₹ ______</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Requirements -->
+    <div class="section">
+        <div class="section-title">8. Resource Requirements</div>
+        <div class="field">
+            <span class="field-label">Technical Requirements:</span>
+            <span class="field-value">☐ Projector ☐ Microphone ☐ Laptop ☐ Internet</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Furniture & Setup:</span>
+            <span class="field-value">☐ Tables ☐ Chairs ☐ Stage ☐ Podium</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Support Staff Required:</span>
+            <span class="field-value">_______ persons</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Volunteer Requirements:</span>
+            <span class="field-value">_______ volunteers</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Special Arrangements:</span>
+            <span class="field-value">_________________________</span>
+        </div>
+    </div>
+
+    <!-- High Authority Approvals -->
+    <div class="section">
+        <div class="section-title">9. High Authority Approvals</div>
+        <div class="field">
+            <span class="field-label">Department Head Approval:</span>
+            <span class="field-value">☐ Pending ☐ Approved ☐ Rejected</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Principal/Director Approval:</span>
+            <span class="field-value">☐ Pending ☐ Approved ☐ Rejected</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Academic Council Approval:</span>
+            <span class="field-value">☐ Pending ☐ Approved ☐ Not Required</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Finance Committee Approval:</span>
+            <span class="field-value">☐ Pending ☐ Approved ☐ Not Required</span>
+        </div>
+        <div class="field">
+            <span class="field-label">External Partnership Approval:</span>
+            <span class="field-value">☐ Pending ☐ Approved ☐ Not Required</span>
+        </div>
+    </div>
+
+    <!-- Risk Assessment & Safety -->
+    <div class="section">
+        <div class="section-title">10. Risk Assessment & Safety</div>
+        <div class="field">
+            <span class="field-label">Risk Level:</span>
+            <span class="field-value">☐ Low ☐ Medium ☐ High</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Safety Measures Required:</span>
+            <span class="field-value">☐ Security ☐ Medical Aid ☐ Fire Safety ☐ Crowd Control</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Insurance Coverage:</span>
+            <span class="field-value">☐ Required ☐ Not Required</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Emergency Contact:</span>
+            <span class="field-value">_________________________</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Special Safety Protocols:</span>
+            <span class="field-value">_________________________</span>
+        </div>
+    </div>
+
+    <!-- Marketing & Promotion -->
+    <div class="section">
+        <div class="section-title">11. Marketing & Promotion</div>
+        <div class="field">
+            <span class="field-label">Promotion Channels:</span>
+            <span class="field-value">☐ Social Media ☐ Website ☐ Email ☐ Posters ☐ Word of Mouth</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Media Coverage:</span>
+            <span class="field-value">☐ Required ☐ Not Required</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Press Release:</span>
+            <span class="field-value">☐ Prepared ☐ To be Prepared ☐ Not Required</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Social Media Hashtag:</span>
+            <span class="field-value">_________________________</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Photography/Videography:</span>
+            <span class="field-value">☐ Professional ☐ In-house ☐ Not Required</span>
+        </div>
+    </div>
+
+    <!-- Post-Event Requirements -->
+    <div class="section">
+        <div class="section-title">12. Post-Event Requirements</div>
+        <div class="field">
+            <span class="field-label">Event Report Required:</span>
+            <span class="field-value">☐ Yes ☐ No</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Feedback Collection:</span>
+            <span class="field-value">☐ Digital Survey ☐ Physical Forms ☐ Both</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Certificate Distribution:</span>
+            <span class="field-value">{{CERTIFICATE_DISTRIBUTION_METHOD}}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Financial Settlement:</span>
+            <span class="field-value">☐ Pending ☐ Completed</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Documentation Archive:</span>
+            <span class="field-value">☐ Digital ☐ Physical ☐ Both</span>
         </div>
     </div>
 
