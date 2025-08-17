@@ -10,6 +10,7 @@ from .unified_organizer import router as unified_organizer_router
 from .email import router as email_router
 from .organizer_portal import router as organizer_portal_router
 from .legacy_auth_routes import router as legacy_auth_router
+from .attendance_testing import router as attendance_testing_router
 # from .venues import router as venues_router
 
 router = APIRouter()
@@ -23,6 +24,9 @@ router.include_router(organizer_portal_router, tags=["organizer-portal-api"])
 
 # Phase 4 Optimization: Unified organizer routes (replaces organizer + faculty_organizer)
 router.include_router(unified_organizer_router, tags=["unified-organizer-api"])
+
+# Attendance Testing API for Phase 1 validation
+router.include_router(attendance_testing_router, tags=["attendance-testing"])
 
 # router.include_router(venues_router, prefix="/venues", tags=["venues-api"])
 

@@ -108,11 +108,12 @@ class AttendanceIntelligenceService:
             r"award.*ceremony|felicitation|recognition.*event",
             r"memorial.*lecture|tribute|commemoration",
             
-            # Single-day Activities
-            r"field.*trip|industrial.*visit|site.*visit|plant.*visit",
-            r"museum.*visit|gallery.*visit|laboratory.*tour",
-            r"blood.*donation|health.*checkup|medical.*camp",
-            r"convocation|graduation|commencement|degree.*ceremony"
+            # Single-day Activities (STRENGTHENED: Industrial visits and medical camps)
+            r"field.*trip|industrial.*visit|site.*visit|plant.*visit|factory.*visit",
+            r"museum.*visit|gallery.*visit|laboratory.*tour|facility.*tour",
+            r"blood.*donation|health.*checkup|medical.*camp|health.*camp|free.*checkup",
+            r"convocation|graduation|commencement|degree.*ceremony",
+            r"educational.*visit|study.*tour|observation.*visit|inspection.*visit"
         ],
         
         AttendanceStrategy.DAY_BASED: [
@@ -133,11 +134,14 @@ class AttendanceIntelligenceService:
             r"internship|apprenticeship|placement.*training",
             r"semester.*exchange|study.*abroad|immersion.*program",
             
-            # Multi-day Events
+            # Multi-day Events (ENHANCED: Better multi-day conference detection)
             r"festival|celebration|annual.*day|founders.*day",
             r"tech.*fest|science.*fair|innovation.*week",
             r"startup.*week|entrepreneurship.*program",
-            r"language.*immersion|cultural.*exchange"
+            r"language.*immersion|cultural.*exchange",
+            r"multi.*day.*conference|.*day.*conference|hybrid.*conference|.*day.*symposium",
+            r"summit.*.*days?|convention.*.*days?|congress.*.*days?",
+            r".*week.*conference|extended.*conference|intensive.*conference"
         ],
         
         AttendanceStrategy.SESSION_BASED: [
@@ -163,7 +167,13 @@ class AttendanceIntelligenceService:
             r"treasure.*hunt|scavenger.*hunt|adventure.*race",
             r"gaming.*tournament|esports|video.*game.*competition",
             r"photography.*contest|film.*making|video.*contest",
-            r"art.*competition|design.*contest|creative.*challenge"
+            r"art.*competition|design.*contest|creative.*challenge",
+            
+            # Recruitment & Selection (FIXED: Placement drives need sessions)
+            r"placement.*drive|recruitment.*drive|hiring.*drive|campus.*placement",
+            r"interview.*process|selection.*process|recruitment.*process",
+            r"aptitude.*test|technical.*interview|group.*discussion|hr.*round",
+            r"screening.*process|multi.*round.*interview|assessment.*process"
         ],
         
         AttendanceStrategy.MILESTONE_BASED: [
@@ -350,14 +360,14 @@ class AttendanceIntelligenceService:
         for strategy in AttendanceStrategy:
             strategy_scores[strategy] = 0
         
-        # Pattern matching with weighted scoring
+        # Pattern matching with weighted scoring (ENHANCED: Higher weights for pattern matching)
         for strategy, patterns in cls.EVENT_TYPE_PATTERNS.items():
             score = 0
             for pattern in patterns:
-                # Count pattern matches with position weighting
-                matches_in_name = len(re.findall(pattern, event_name)) * 3  # Name matches are most important
-                matches_in_type = len(re.findall(pattern, event_type)) * 2  # Type matches are important
-                matches_in_desc = len(re.findall(pattern, description)) * 1  # Description matches are helpful
+                # Count pattern matches with position weighting (INCREASED WEIGHTS)
+                matches_in_name = len(re.findall(pattern, event_name)) * 6  # Name matches are most important
+                matches_in_type = len(re.findall(pattern, event_type)) * 4  # Type matches are important  
+                matches_in_desc = len(re.findall(pattern, description)) * 2  # Description matches are helpful
                 
                 score += matches_in_name + matches_in_type + matches_in_desc
             
@@ -397,6 +407,10 @@ class AttendanceIntelligenceService:
         elif duration_hours <= 12:
             if any(term in combined_text for term in ["hackathon", "marathon", "coding"]):
                 strategy_scores[AttendanceStrategy.SESSION_BASED] += 5
+            elif any(term in combined_text for term in ["placement", "recruitment", "interview", "selection"]):
+                strategy_scores[AttendanceStrategy.SESSION_BASED] += 5  # FIXED: Placement drives need sessions
+            elif any(term in combined_text for term in ["visit", "trip", "tour", "camp", "checkup"]):
+                strategy_scores[AttendanceStrategy.SINGLE_MARK] += 5  # FIXED: Visits and camps stay single
             elif any(term in combined_text for term in ["workshop", "training"]):
                 if duration_hours >= 8:
                     strategy_scores[AttendanceStrategy.SESSION_BASED] += 3
@@ -417,8 +431,11 @@ class AttendanceIntelligenceService:
         elif duration_days >= 2:
             if duration_days <= 7:  # Short multi-day events (2-7 days)
                 strategy_scores[AttendanceStrategy.DAY_BASED] += 5
+                # FIXED: Hybrid and multi-day conferences should be day-based
+                if any(term in combined_text for term in ["conference", "symposium", "summit", "congress", "hybrid"]):
+                    strategy_scores[AttendanceStrategy.DAY_BASED] += 4
                 # Cultural events often have milestones even across days
-                if any(term in combined_text for term in ["cultural", "fest", "festival", "celebration"]):
+                elif any(term in combined_text for term in ["cultural", "fest", "festival", "celebration"]):
                     strategy_scores[AttendanceStrategy.MILESTONE_BASED] += 3
             elif duration_days <= 30:  # Medium-term events (1 week to 1 month)
                 strategy_scores[AttendanceStrategy.CONTINUOUS] += 4
@@ -1271,10 +1288,10 @@ class AttendanceIntelligenceService:
                     missing_patterns_analysis = None
             
             # Detect the appropriate attendance strategy
-            detected_strategy = self.detect_attendance_strategy(event_data)
+            detected_strategy = AttendanceIntelligenceService.detect_attendance_strategy(event_data)
             
             # Generate sessions based on the detected strategy
-            sessions = self.generate_attendance_sessions(event_data, detected_strategy)
+            sessions = AttendanceIntelligenceService.generate_attendance_sessions(event_data, detected_strategy)
             
             # Get default criteria for the strategy
             criteria_config = self.DEFAULT_CRITERIA.get(detected_strategy, {})
@@ -1403,7 +1420,15 @@ class AttendanceIntelligenceService:
         event_name = event_data.get("event_name", "").lower()
         
         # Base reasoning
-        base_reasoning = self._get_strategy_reasoning(event_data, strategy, duration_hours)
+        event_type = event_data.get("event_type", "").lower()
+        base_reasons = {
+            AttendanceStrategy.SINGLE_MARK: f"Single mark suitable for {event_type} events lasting {duration_hours:.1f} hours",
+            AttendanceStrategy.DAY_BASED: f"Day-based tracking for multi-day {event_type} over {duration_hours/24:.1f} days",
+            AttendanceStrategy.SESSION_BASED: f"Session tracking for structured {event_type} with multiple phases",
+            AttendanceStrategy.MILESTONE_BASED: f"Milestone tracking for {event_type} with key achievement points", 
+            AttendanceStrategy.CONTINUOUS: f"Continuous monitoring for extended {event_type} programs"
+        }
+        base_reasoning = base_reasons.get(strategy, f"Strategy selected for {event_type} characteristics")
         
         # Add venue-specific reasoning
         venue_reasoning = ""
@@ -1733,3 +1758,34 @@ class DynamicAttendanceService:
                 }
         
         return None
+
+    def _get_team_attendance_strategy(self, is_team_event: bool, strategy: AttendanceStrategy) -> str:
+        """Get team-specific attendance strategy description"""
+        if not is_team_event:
+            return "Individual attendance tracking"
+        
+        team_strategies = {
+            AttendanceStrategy.SINGLE_MARK: "Team leader marks attendance for entire team",
+            AttendanceStrategy.DAY_BASED: "Daily team attendance with individual member tracking",
+            AttendanceStrategy.SESSION_BASED: "Session-wise team participation tracking",
+            AttendanceStrategy.MILESTONE_BASED: "Team milestone completion tracking",
+            AttendanceStrategy.CONTINUOUS: "Continuous team activity monitoring"
+        }
+        
+        return team_strategies.get(strategy, "Team-based attendance tracking")
+
+    def _get_team_recommendations(self, is_team_event: bool, max_team_size: int) -> List[str]:
+        """Generate team-specific recommendations"""
+        if not is_team_event:
+            return []
+        
+        recommendations = [
+            f"Team size limited to {max_team_size} members for optimal coordination",
+            "Designate team leader for attendance coordination",
+            "Track both team and individual member participation"
+        ]
+        
+        if max_team_size > 5:
+            recommendations.append("Consider sub-team attendance tracking for large teams")
+        
+        return recommendations
