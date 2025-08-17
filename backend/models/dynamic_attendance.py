@@ -586,50 +586,105 @@ class AttendanceIntelligenceService:
     @classmethod
     def generate_attendance_sessions(cls, event_data: Dict[str, Any], strategy: AttendanceStrategy) -> List[AttendanceSession]:
         """
+        ENHANCED Session Generation (Phase 1.3)
+        =======================================
+        
         Generate appropriate attendance sessions based on strategy and event data
+        Enhanced with:
+        - Smarter session timing and distribution
+        - Event-specific session customization
+        - Venue-aware session planning
+        - Team-event session optimization
         """
         sessions = []
         start_time = event_data.get("start_datetime")
         end_time = event_data.get("end_datetime")
         event_name = event_data.get("event_name", "Event")
+        event_type = event_data.get("event_type", "").lower()
+        is_team_event = event_data.get("registration_mode") == "team"
         
         if not start_time or not end_time:
             return sessions
         
+        # Calculate event duration
+        duration = end_time - start_time
+        duration_hours = duration.total_seconds() / 3600
+        duration_days = duration.days
+        
+        # ========================================
+        # SINGLE MARK STRATEGY - Enhanced
+        # ========================================
         if strategy == AttendanceStrategy.SINGLE_MARK:
+            # Determine optimal attendance window
+            if duration_hours <= 3:
+                # Short events: Full duration window
+                attendance_start = start_time
+                attendance_end = end_time
+            elif duration_hours <= 8:
+                # Medium events: Allow attendance in first 75% of event
+                attendance_end = start_time + timedelta(hours=duration_hours * 0.75)
+                attendance_start = start_time
+            else:
+                # Long single-day events: Extended attendance window
+                attendance_end = start_time + timedelta(hours=min(12, duration_hours * 0.8))
+                attendance_start = start_time
+            
+            session_name = f"{event_name} - Attendance"
+            if "conference" in event_type or "seminar" in event_type:
+                session_name = f"{event_name} - Registration & Attendance"
+            elif "workshop" in event_type:
+                session_name = f"{event_name} - Workshop Attendance"
+            
             sessions.append(AttendanceSession(
                 session_id="main_session",
-                session_name=f"{event_name} - Attendance",
+                session_name=session_name,
                 session_type="single",
-                start_time=start_time,
-                end_time=end_time,
+                start_time=attendance_start,
+                end_time=attendance_end,
                 is_mandatory=True,
                 weight=1.0
             ))
             
+        # ========================================
+        # DAY-BASED STRATEGY - Enhanced
+        # ========================================
         elif strategy == AttendanceStrategy.DAY_BASED:
-            # Generate daily sessions
+            # Generate daily sessions with smart timing
             current_date = start_time.date()
             end_date = end_time.date()
             day_count = 1
+            total_days = (end_date - current_date).days + 1
             
             while current_date <= end_date:
-                # Create timezone-aware datetime objects
-                # Handle both timezone-aware and timezone-naive datetimes
-                if start_time.tzinfo:
-                    day_start = datetime.combine(current_date, start_time.time(), tzinfo=start_time.tzinfo)
-                    day_end = datetime.combine(current_date, end_time.time(), tzinfo=end_time.tzinfo)
+                # Smart daily session timing
+                if current_date == start_time.date():
+                    # First day: Start from event start time
+                    day_start = start_time
                 else:
-                    day_start = datetime.combine(current_date, start_time.time())
-                    day_end = datetime.combine(current_date, end_time.time())
+                    # Subsequent days: Standard daily start
+                    if start_time.tzinfo:
+                        day_start = datetime.combine(current_date, start_time.time(), tzinfo=start_time.tzinfo)
+                    else:
+                        day_start = datetime.combine(current_date, start_time.time())
                 
-                # Adjust for last day
                 if current_date == end_date:
+                    # Last day: End at event end time
                     day_end = end_time
+                else:
+                    # Regular days: Standard daily end
+                    if end_time.tzinfo:
+                        day_end = datetime.combine(current_date, end_time.time(), tzinfo=end_time.tzinfo)
+                    else:
+                        day_end = datetime.combine(current_date, end_time.time())
+                
+                # Generate day-specific session name
+                session_name = cls._generate_day_session_name(
+                    event_name, event_type, day_count, total_days, current_date
+                )
                 
                 sessions.append(AttendanceSession(
                     session_id=f"day_{day_count}",
-                    session_name=f"Day {day_count} - {current_date.strftime('%B %d, %Y')}",
+                    session_name=session_name,
                     session_type="day",
                     start_time=day_start,
                     end_time=day_end,
@@ -640,16 +695,69 @@ class AttendanceIntelligenceService:
                 current_date += timedelta(days=1)
                 day_count += 1
                 
+        # ========================================
+        # SESSION-BASED STRATEGY - Enhanced
+        # ========================================
         elif strategy == AttendanceStrategy.SESSION_BASED:
-            # Generate session-based attendance (hackathon/competition rounds)
-            duration = end_time - start_time
+            sessions.extend(cls._generate_session_based_sessions(
+                event_data, start_time, end_time, duration_hours, is_team_event
+            ))
+                    
+        # ========================================
+        # MILESTONE-BASED STRATEGY - Enhanced
+        # ========================================
+        elif strategy == AttendanceStrategy.MILESTONE_BASED:
+            sessions.extend(cls._generate_milestone_based_sessions(
+                event_data, start_time, end_time, duration_hours, is_team_event
+            ))
             
-            if "hackathon" in event_name.lower() or "24" in event_name:
-                # 24-hour hackathon sessions
+        # ========================================
+        # CONTINUOUS STRATEGY - Enhanced
+        # ========================================
+        elif strategy == AttendanceStrategy.CONTINUOUS:
+            sessions.extend(cls._generate_continuous_sessions(
+                event_data, start_time, end_time, duration, is_team_event
+            ))
+        
+        return sessions
+    
+    @classmethod
+    def _generate_day_session_name(cls, event_name: str, event_type: str, day_count: int, 
+                                 total_days: int, current_date) -> str:
+        """Generate context-aware day session names"""
+        day_name = current_date.strftime('%A')  # Monday, Tuesday, etc.
+        date_str = current_date.strftime('%B %d, %Y')  # January 15, 2024
+        
+        # Event-specific naming
+        if "workshop" in event_type.lower():
+            return f"Workshop Day {day_count} - {day_name} ({date_str})"
+        elif "training" in event_type.lower():
+            return f"Training Day {day_count} - {day_name} ({date_str})"
+        elif "sports" in event_type.lower() or "tournament" in event_type.lower():
+            return f"Tournament Day {day_count} - {day_name} ({date_str})"
+        elif "conference" in event_type.lower():
+            return f"Conference Day {day_count} - {day_name} ({date_str})"
+        else:
+            return f"Day {day_count} - {day_name} ({date_str})"
+    
+    @classmethod
+    def _generate_session_based_sessions(cls, event_data: Dict[str, Any], start_time: datetime, 
+                                       end_time: datetime, duration_hours: float, 
+                                       is_team_event: bool) -> List[AttendanceSession]:
+        """Generate enhanced session-based attendance sessions"""
+        sessions = []
+        event_name = event_data.get("event_name", "Event")
+        event_type = event_data.get("event_type", "").lower()
+        
+        # ========================================
+        # HACKATHON SESSIONS - Specialized
+        # ========================================
+        if any(term in event_name.lower() + event_type for term in ["hackathon", "coding marathon", "dev fest"]):
+            if duration_hours >= 20:  # 24-hour or long hackathons
                 sessions.extend([
                     AttendanceSession(
-                        session_id="opening",
-                        session_name="Opening Ceremony",
+                        session_id="opening_ceremony",
+                        session_name="Opening Ceremony & Team Formation",
                         session_type="session",
                         start_time=start_time,
                         end_time=start_time + timedelta(hours=2),
@@ -657,17 +765,17 @@ class AttendanceIntelligenceService:
                         weight=0.2
                     ),
                     AttendanceSession(
-                        session_id="mid_review",
-                        session_name="Mid-point Review",
+                        session_id="mid_checkpoint",
+                        session_name="Mid-point Progress Check",
                         session_type="session",
-                        start_time=start_time + timedelta(hours=12),
-                        end_time=start_time + timedelta(hours=14),
+                        start_time=start_time + timedelta(hours=duration_hours * 0.4),
+                        end_time=start_time + timedelta(hours=duration_hours * 0.5),
                         is_mandatory=True,
                         weight=0.3
                     ),
                     AttendanceSession(
-                        session_id="final_presentation",
-                        session_name="Final Presentation",
+                        session_id="final_demo",
+                        session_name="Final Demo & Judging",
                         session_type="session",
                         start_time=end_time - timedelta(hours=4),
                         end_time=end_time,
@@ -675,29 +783,227 @@ class AttendanceIntelligenceService:
                         weight=0.5
                     )
                 ])
-            else:
-                # Generic competition rounds
-                session_duration = duration / 3  # Divide into 3 rounds
-                for i in range(3):
-                    session_start = start_time + (session_duration * i)
-                    session_end = session_start + session_duration
+            else:  # Shorter hackathons
+                sessions.extend([
+                    AttendanceSession(
+                        session_id="kickoff",
+                        session_name="Hackathon Kickoff",
+                        session_type="session",
+                        start_time=start_time,
+                        end_time=start_time + timedelta(hours=1),
+                        is_mandatory=True,
+                        weight=0.4
+                    ),
+                    AttendanceSession(
+                        session_id="submission",
+                        session_name="Project Submission & Demo",
+                        session_type="session",
+                        start_time=end_time - timedelta(hours=2),
+                        end_time=end_time,
+                        is_mandatory=True,
+                        weight=0.6
+                    )
+                ])
+        
+        # ========================================
+        # COMPETITION SESSIONS - Structured
+        # ========================================
+        elif any(term in event_name.lower() + event_type for term in ["competition", "contest", "championship"]):
+            if duration_hours >= 8:  # Multi-round competitions
+                num_rounds = min(4, max(2, int(duration_hours / 3)))  # 2-4 rounds based on duration
+                round_duration = duration_hours / num_rounds
+                
+                for i in range(num_rounds):
+                    round_start = start_time + timedelta(hours=round_duration * i)
+                    round_end = round_start + timedelta(hours=round_duration)
+                    
+                    if i == 0:
+                        round_name = "Preliminary Round"
+                    elif i == num_rounds - 1:
+                        round_name = "Final Round"
+                    else:
+                        round_name = f"Round {i + 1}"
                     
                     sessions.append(AttendanceSession(
                         session_id=f"round_{i+1}",
-                        session_name=f"Round {i+1}",
+                        session_name=round_name,
                         session_type="session",
-                        start_time=session_start,
-                        end_time=session_end,
+                        start_time=round_start,
+                        end_time=round_end,
+                        is_mandatory=True,
+                        weight=1.0 if i == num_rounds - 1 else 0.8  # Final round has more weight
+                    ))
+            else:  # Quick competitions
+                sessions.extend([
+                    AttendanceSession(
+                        session_id="main_competition",
+                        session_name="Main Competition",
+                        session_type="session",
+                        start_time=start_time,
+                        end_time=end_time,
                         is_mandatory=True,
                         weight=1.0
-                    ))
-                    
-        elif strategy == AttendanceStrategy.MILESTONE_BASED:
-            # Cultural/technical event milestones
+                    )
+                ])
+        
+        # ========================================
+        # WORKSHOP SESSIONS - Activity-based
+        # ========================================
+        elif any(term in event_name.lower() + event_type for term in ["workshop", "training", "hands-on"]):
+            if duration_hours >= 6:  # Long workshops with breaks
+                sessions.extend([
+                    AttendanceSession(
+                        session_id="morning_session",
+                        session_name="Morning Workshop Session",
+                        session_type="session",
+                        start_time=start_time,
+                        end_time=start_time + timedelta(hours=duration_hours * 0.4),
+                        is_mandatory=True,
+                        weight=0.5
+                    ),
+                    AttendanceSession(
+                        session_id="afternoon_session", 
+                        session_name="Afternoon Workshop Session",
+                        session_type="session",
+                        start_time=start_time + timedelta(hours=duration_hours * 0.6),
+                        end_time=end_time,
+                        is_mandatory=True,
+                        weight=0.5
+                    )
+                ])
+            else:  # Shorter workshops
+                sessions.append(AttendanceSession(
+                    session_id="workshop_session",
+                    session_name="Workshop Session",
+                    session_type="session",
+                    start_time=start_time,
+                    end_time=end_time,
+                    is_mandatory=True,
+                    weight=1.0
+                ))
+        
+        # ========================================
+        # GENERIC SESSIONS - Time-based
+        # ========================================
+        else:
+            # Default session division based on duration
+            num_sessions = min(5, max(2, int(duration_hours / 2)))  # 2-5 sessions
+            session_duration = duration_hours / num_sessions
+            
+            for i in range(num_sessions):
+                session_start = start_time + timedelta(hours=session_duration * i)
+                session_end = session_start + timedelta(hours=session_duration)
+                
+                sessions.append(AttendanceSession(
+                    session_id=f"session_{i+1}",
+                    session_name=f"Session {i+1}",
+                    session_type="session",
+                    start_time=session_start,
+                    end_time=session_end,
+                    is_mandatory=True,
+                    weight=1.0
+                ))
+        
+        return sessions
+    
+    @classmethod
+    def _generate_milestone_based_sessions(cls, event_data: Dict[str, Any], start_time: datetime,
+                                         end_time: datetime, duration_hours: float,
+                                         is_team_event: bool) -> List[AttendanceSession]:
+        """Generate enhanced milestone-based sessions"""
+        sessions = []
+        event_name = event_data.get("event_name", "Event")
+        event_type = event_data.get("event_type", "").lower()
+        
+        # ========================================
+        # CULTURAL EVENT MILESTONES
+        # ========================================
+        if any(term in event_name.lower() + event_type for term in ["cultural", "fest", "festival", "celebration"]):
+            if duration_hours >= 8:  # Multi-phase cultural events
+                sessions.extend([
+                    AttendanceSession(
+                        session_id="registration_inauguration",
+                        session_name="Registration & Inauguration",
+                        session_type="milestone",
+                        start_time=start_time,
+                        end_time=start_time + timedelta(hours=2),
+                        is_mandatory=True,
+                        weight=0.2
+                    ),
+                    AttendanceSession(
+                        session_id="main_events",
+                        session_name="Main Cultural Events",
+                        session_type="milestone",
+                        start_time=start_time + timedelta(hours=2),
+                        end_time=end_time - timedelta(hours=2),
+                        is_mandatory=True,
+                        weight=0.6
+                    ),
+                    AttendanceSession(
+                        session_id="closing_ceremony",
+                        session_name="Closing Ceremony & Awards",
+                        session_type="milestone",
+                        start_time=end_time - timedelta(hours=2),
+                        end_time=end_time,
+                        is_mandatory=True,
+                        weight=0.2
+                    )
+                ])
+            else:  # Shorter cultural events
+                sessions.extend([
+                    AttendanceSession(
+                        session_id="participation",
+                        session_name="Event Participation",
+                        session_type="milestone",
+                        start_time=start_time,
+                        end_time=end_time,
+                        is_mandatory=True,
+                        weight=1.0
+                    )
+                ])
+        
+        # ========================================
+        # TECHNICAL EVENT MILESTONES
+        # ========================================
+        elif any(term in event_name.lower() + event_type for term in ["technical", "project", "innovation", "expo"]):
             sessions.extend([
                 AttendanceSession(
-                    session_id="registration_check",
-                    session_name="Registration & Setup",
+                    session_id="setup_registration",
+                    session_name="Setup & Registration",
+                    session_type="milestone",
+                    start_time=start_time,
+                    end_time=start_time + timedelta(hours=1),
+                    is_mandatory=True,
+                    weight=0.25
+                ),
+                AttendanceSession(
+                    session_id="presentation_demo",
+                    session_name="Presentation & Demo",
+                    session_type="milestone",
+                    start_time=start_time + timedelta(hours=1),
+                    end_time=end_time - timedelta(hours=1),
+                    is_mandatory=True,
+                    weight=0.65
+                ),
+                AttendanceSession(
+                    session_id="evaluation_results",
+                    session_name="Evaluation & Results",
+                    session_type="milestone",
+                    start_time=end_time - timedelta(hours=1),
+                    end_time=end_time,
+                    is_mandatory=True,
+                    weight=0.1
+                )
+            ])
+        
+        # ========================================
+        # GENERIC MILESTONES
+        # ========================================
+        else:
+            sessions.extend([
+                AttendanceSession(
+                    session_id="start_milestone",
+                    session_name="Event Start & Orientation",
                     session_type="milestone",
                     start_time=start_time,
                     end_time=start_time + timedelta(hours=1),
@@ -705,8 +1011,8 @@ class AttendanceIntelligenceService:
                     weight=0.3
                 ),
                 AttendanceSession(
-                    session_id="main_participation",
-                    session_name="Main Event Participation",
+                    session_id="main_milestone",
+                    session_name="Main Event Activities",
                     session_type="milestone",
                     start_time=start_time + timedelta(hours=1),
                     end_time=end_time - timedelta(hours=1),
@@ -714,7 +1020,7 @@ class AttendanceIntelligenceService:
                     weight=0.6
                 ),
                 AttendanceSession(
-                    session_id="completion",
+                    session_id="completion_milestone",
                     session_name="Event Completion",
                     session_type="milestone",
                     start_time=end_time - timedelta(hours=1),
@@ -723,30 +1029,62 @@ class AttendanceIntelligenceService:
                     weight=0.1
                 )
             ])
+        
+        return sessions
+    
+    @classmethod
+    def _generate_continuous_sessions(cls, event_data: Dict[str, Any], start_time: datetime,
+                                    end_time: datetime, duration: timedelta,
+                                    is_team_event: bool) -> List[AttendanceSession]:
+        """Generate enhanced continuous engagement sessions"""
+        sessions = []
+        event_name = event_data.get("event_name", "Event")
+        event_type = event_data.get("event_type", "").lower()
+        
+        # Determine check-in frequency based on event duration
+        duration_days = duration.days
+        
+        if duration_days <= 7:  # Weekly programs
+            check_interval = timedelta(days=1)  # Daily check-ins
+            session_type_name = "Daily"
+        elif duration_days <= 30:  # Monthly programs
+            check_interval = timedelta(days=3)  # Tri-daily check-ins
+            session_type_name = "Progress"
+        elif duration_days <= 90:  # Quarterly programs
+            check_interval = timedelta(weeks=1)  # Weekly check-ins
+            session_type_name = "Weekly"
+        else:  # Long-term programs
+            check_interval = timedelta(weeks=2)  # Bi-weekly check-ins
+            session_type_name = "Bi-weekly"
+        
+        current_time = start_time
+        check_count = 1
+        
+        while current_time < end_time:
+            next_check = min(current_time + check_interval, end_time)
             
-        elif strategy == AttendanceStrategy.CONTINUOUS:
-            # Long-term engagement tracking
-            duration = end_time - start_time
-            check_interval = max(timedelta(days=7), duration / 10)  # Weekly or 10% intervals
+            # Generate context-aware session names
+            if "research" in event_type or "thesis" in event_type:
+                session_name = f"Research Progress Check {check_count}"
+            elif "internship" in event_type:
+                session_name = f"Internship Milestone {check_count}"
+            elif "mentorship" in event_type:
+                session_name = f"Mentorship Session {check_count}"
+            else:
+                session_name = f"{session_type_name} Check {check_count}"
             
-            current_time = start_time
-            check_count = 1
+            sessions.append(AttendanceSession(
+                session_id=f"check_{check_count}",
+                session_name=session_name,
+                session_type="continuous_check",
+                start_time=current_time,
+                end_time=next_check,
+                is_mandatory=True,
+                weight=1.0
+            ))
             
-            while current_time < end_time:
-                next_check = min(current_time + check_interval, end_time)
-                
-                sessions.append(AttendanceSession(
-                    session_id=f"check_{check_count}",
-                    session_name=f"Progress Check {check_count}",
-                    session_type="continuous_check",
-                    start_time=current_time,
-                    end_time=next_check,
-                    is_mandatory=True,
-                    weight=1.0
-                ))
-                
-                current_time = next_check
-                check_count += 1
+            current_time = next_check
+            check_count += 1
         
         return sessions
     
