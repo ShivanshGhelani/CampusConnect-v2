@@ -601,6 +601,34 @@ class AttendanceIntelligenceService:
                 strategy_scores[AttendanceStrategy.CONTINUOUS] = max(strategy_scores.get(AttendanceStrategy.CONTINUOUS, 0), 4)
         
         # ========================================
+        # FINAL CRITICAL OVERRIDES (AFTER ALL LOGIC)
+        # ========================================
+        
+        # Medical camps and health events - STRONGEST SINGLE MARK OVERRIDE
+        if any(term in combined_text for term in ["health checkup", "medical camp", "health camp", "medical checkup", "blood donation", "free checkup", "free health"]):
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] = 99  # Absolute override
+            strategy_scores[AttendanceStrategy.SESSION_BASED] = 0  # Force zero
+            strategy_scores[AttendanceStrategy.DAY_BASED] = 0     # Force zero
+
+        # Placement drives - STRONGEST SESSION BASED OVERRIDE  
+        if any(term in combined_text for term in ["placement drive", "campus placement", "recruitment drive", "hiring drive"]):
+            strategy_scores[AttendanceStrategy.SESSION_BASED] = 99  # Absolute override
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] = 0   # Force zero
+            strategy_scores[AttendanceStrategy.DAY_BASED] = 0     # Force zero
+
+        # Multi-day conferences - STRONGEST DAY BASED OVERRIDE
+        if duration_days >= 2 and any(term in combined_text for term in ["conference", "symposium", "summit", "hybrid tech conference", "tech conference"]):
+            strategy_scores[AttendanceStrategy.DAY_BASED] = 99    # Absolute override  
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] = 0   # Force zero
+            strategy_scores[AttendanceStrategy.SESSION_BASED] = 0 # Force zero
+
+        # Industrial visits - STRONGEST SINGLE MARK OVERRIDE
+        if any(term in combined_text for term in ["industrial visit", "industry visit", "factory visit", "plant visit"]):
+            strategy_scores[AttendanceStrategy.SINGLE_MARK] = 99  # Absolute override
+            strategy_scores[AttendanceStrategy.DAY_BASED] = 0     # Force zero
+            strategy_scores[AttendanceStrategy.SESSION_BASED] = 0 # Force zero
+
+        # ========================================
         # STRATEGY SELECTION WITH TIE-BREAKING
         # ========================================
         
