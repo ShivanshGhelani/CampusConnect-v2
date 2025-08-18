@@ -12,7 +12,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from services.dynamic_attendance_service import create_dynamic_attendance_service
+from services.event_attendance_service import event_attendance_service
+from services.event_registration_service import event_registration_service
+from models.dynamic_attendance import AttendanceIntelligenceService
 from dependencies.auth import get_current_user
 from core.logger import get_logger
 
@@ -39,7 +41,8 @@ class BulkAttendanceMarkRequest(BaseModel):
     notes: Optional[str] = Field(None, description="Bulk marking notes")
 
 # Initialize service
-attendance_service = create_dynamic_attendance_service()
+# Initialize services
+attendance_intelligence = AttendanceIntelligenceService()
 
 @router.post("/initialize/{event_id}")
 async def initialize_event_attendance(

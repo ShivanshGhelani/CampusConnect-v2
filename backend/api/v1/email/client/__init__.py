@@ -12,5 +12,4 @@ router = APIRouter()
 router.include_router(events_router, prefix="/events", tags=["client-events-api"])
 router.include_router(profile_router, prefix="/profile", tags=["client-profile-api"])
 
-# Note: Registration routes are mounted at main v1 level (/api/v1/registrations)
-# No need to duplicate them under client routes
+# Registration routes moved to main v1 level for better organization

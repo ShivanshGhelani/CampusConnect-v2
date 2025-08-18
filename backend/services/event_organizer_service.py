@@ -1,7 +1,8 @@
 """
-Faculty Organizer Service
-
+Event Organizer Service
+=======================
 Handles faculty organizer assignment to events and manages faculty event relationships.
+Renamed from faculty_organizer_service.py for clarity.
 """
 
 from typing import List, Dict, Any, Optional
@@ -13,7 +14,7 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-class FacultyOrganizerService:
+class EventOrganizerService:
     """Service for managing faculty organizer assignments"""
     
     def __init__(self):
@@ -447,4 +448,4 @@ class FacultyOrganizerService:
             return []
 
 # Create a global instance
-faculty_organizer_service = FacultyOrganizerService()
+event_organizer_service = EventOrganizerService()

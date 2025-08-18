@@ -1,9 +1,12 @@
 """
-Unified Organizer API - Consolidates organizer and faculty_organizer endpoints
-Handles both organizer access management and organizer portal transitions
+Professional Organizer Access API
+=================================
+Unified API for organizer access management and portal functionality.
+Combines functionality from unified_organizer.py and organizer_portal.py.
 """
-from fastapi import APIRouter, Request, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
+
+from fastapi import APIRouter, Request, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse, JSONResponse
 from typing import Optional, List
 from datetime import datetime
 import logging
@@ -14,11 +17,11 @@ from dependencies.auth import require_faculty_login, require_admin
 from database.operations import DatabaseOperations
 from core.permissions import PermissionManager
 
-router = APIRouter()
+router = APIRouter(prefix="/organizer", tags=["organizer-access"])
 logger = logging.getLogger(__name__)
 
-class OrganizerManager:
-    """Unified organizer management operations"""
+class OrganizerAccessManager:
+    """Professional organizer access management operations"""
     
     @staticmethod
     async def grant_organizer_access(faculty_employee_id: str, assigned_events: List[str] = None) -> bool:
@@ -77,8 +80,41 @@ class OrganizerManager:
             logger.error(f"Error revoking organizer access: {str(e)}")
             return False
 
-# Organizer Access Management Endpoints
-@router.post("/organizer/request-access")
+# Portal Access Endpoints (from organizer_portal.py)
+@router.get("")
+async def organizer_root_no_slash(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect root organizer path to React frontend"""
+    if admin.role != AdminRole.ORGANIZER_ADMIN:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+    
+    return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
+
+@router.get("/")
+async def organizer_root_with_slash(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect root organizer path to React frontend"""
+    if admin.role != AdminRole.ORGANIZER_ADMIN:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+    
+    return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
+
+@router.get("/dashboard")
+async def organizer_dashboard(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect to organizer dashboard"""
+    if admin.role != AdminRole.ORGANIZER_ADMIN:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+    
+    return RedirectResponse(url="http://localhost:3000/organizer/dashboard", status_code=303)
+
+@router.get("/events")
+async def organizer_events(request: Request, admin: AdminUser = Depends(require_admin)):
+    """Redirect to organizer events page"""
+    if admin.role != AdminRole.ORGANIZER_ADMIN:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+    
+    return RedirectResponse(url="http://localhost:3000/organizer/events", status_code=303)
+
+# Organizer Access Management Endpoints (from unified_organizer.py)
+@router.post("/request-access")
 async def request_organizer_access(request: Request, faculty: Faculty = Depends(require_faculty_login)):
     """Faculty member requests organizer access"""
     try:
@@ -124,9 +160,9 @@ async def request_organizer_access(request: Request, faculty: Faculty = Depends(
             status_code=500
         )
 
-@router.get("/organizer/access-status")
+@router.get("/access-status")
 async def get_organizer_access_status(request: Request, faculty: Faculty = Depends(require_faculty_login)):
-    """Get current organizer access status for faculty (consolidated endpoint)"""
+    """Get current organizer access status for faculty"""
     try:
         return JSONResponse(
             content={
@@ -153,12 +189,11 @@ async def get_organizer_access_status(request: Request, faculty: Faculty = Depen
             status_code=500
         )
 
-@router.post("/organizer/access-portal")
+@router.post("/access-portal")
 async def access_organizer_portal(request: Request, faculty: Faculty = Depends(require_faculty_login)):
     """Faculty member accesses organizer portal (creates admin session)"""
     try:
         logger.info(f"Faculty {faculty.employee_id} attempting to access organizer portal")
-        logger.info(f"Faculty is_organizer status: {getattr(faculty, 'is_organizer', False)}")
         
         # Check if faculty has organizer access
         if not getattr(faculty, 'is_organizer', False):
@@ -166,12 +201,7 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
             return JSONResponse(
                 content={
                     "success": False,
-                    "message": "You don't have organizer access. Please request access from the super admin.",
-                    "debug_info": {
-                        "employee_id": faculty.employee_id,
-                        "is_organizer": getattr(faculty, 'is_organizer', False),
-                        "assigned_events": getattr(faculty, 'assigned_events', [])
-                    }
+                    "message": "You do not have organizer access. Please request access first."
                 },
                 status_code=403
             )
@@ -180,7 +210,6 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         logger.info(f"Creating organizer admin session for authenticated faculty {faculty.employee_id}")
         
         # Convert faculty to AdminUser format for organizer portal
-        from models.admin_user import AdminUser, AdminRole
         admin_data = {
             "fullname": faculty.full_name,
             "username": faculty.employee_id,
@@ -197,38 +226,31 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         
         try:
             organizer_admin = AdminUser(**admin_data)
-            logger.info(f"Successfully created organizer admin for {faculty.employee_id}")
         except Exception as e:
-            logger.error(f"Failed to create organizer admin for {faculty.employee_id}: {str(e)}")
+            logger.error(f"Error creating AdminUser object: {str(e)}")
             return JSONResponse(
                 content={
                     "success": False,
-                    "message": "Unable to create organizer session. Please try again or contact support.",
-                    "debug_info": {
-                        "employee_id": faculty.employee_id,
-                        "creation_failed": True,
-                        "error": str(e)
-                    }
+                    "message": "Error creating admin session"
                 },
                 status_code=500
             )
         
         # Store organizer admin session
-        from datetime import datetime
-        admin_data = organizer_admin.model_dump()
         current_time = datetime.utcnow()
+        admin_session_data = organizer_admin.model_dump()
         
         # Serialize datetime objects
-        for key, value in admin_data.items():
+        for key, value in admin_session_data.items():
             if isinstance(value, datetime):
-                admin_data[key] = value.isoformat()
+                admin_session_data[key] = value.isoformat()
         
         # Add session metadata
-        admin_data["login_time"] = current_time.isoformat()
-        admin_data["login_type"] = "organizer"
+        admin_session_data["login_time"] = current_time.isoformat()
+        admin_session_data["login_type"] = "organizer"
         
         # Store in session
-        request.session["admin"] = admin_data
+        request.session["admin"] = admin_session_data
         
         logger.info(f"Successfully authenticated {faculty.employee_id} as organizer admin")
         
@@ -236,7 +258,7 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
             content={
                 "success": True,
                 "message": "Successfully authenticated as organizer",
-                "redirect_url": "/admin/events",  # Organizer admin should go to events, not dashboard
+                "redirect_url": "/admin/events",
                 "data": {
                     "organizer_name": faculty.full_name,
                     "employee_id": faculty.employee_id,
@@ -257,7 +279,7 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         )
 
 # Admin Management Endpoints
-@router.post("/admin/organizer/grant-access/{faculty_employee_id}")
+@router.post("/admin/grant-access/{faculty_employee_id}")
 async def grant_organizer_access(
     faculty_employee_id: str,
     request: Request,
@@ -268,10 +290,7 @@ async def grant_organizer_access(
     try:
         # Only super admins can grant organizer access
         if admin.role != AdminRole.SUPER_ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only super admins can grant organizer access"
-            )
+            raise HTTPException(status_code=403, detail="Super admin access required")
         
         # Check if faculty exists
         faculty = await DatabaseOperations.find_one(
@@ -280,36 +299,14 @@ async def grant_organizer_access(
         )
         
         if not faculty:
-            return JSONResponse(
-                content={
-                    "success": False,
-                    "message": "Faculty not found or inactive"
-                },
-                status_code=404
-            )
+            raise HTTPException(status_code=404, detail="Faculty not found or inactive")
         
         # Grant organizer access
-        success = await OrganizerManager.grant_organizer_access(
+        success = await OrganizerAccessManager.grant_organizer_access(
             faculty_employee_id, assigned_events or []
         )
         
         if success:
-            # Update any pending request to approved
-            await DatabaseOperations.update_one(
-                "organizer_requests",
-                {
-                    "faculty_employee_id": faculty_employee_id,
-                    "status": "pending"
-                },
-                {
-                    "$set": {
-                        "status": "approved",
-                        "approved_by": admin.username,
-                        "approved_at": datetime.utcnow()
-                    }
-                }
-            )
-            
             return JSONResponse(
                 content={
                     "success": True,
@@ -335,7 +332,7 @@ async def grant_organizer_access(
             status_code=500
         )
 
-@router.post("/admin/organizer/revoke-access/{faculty_employee_id}")
+@router.post("/admin/revoke-access/{faculty_employee_id}")
 async def revoke_organizer_access(
     faculty_employee_id: str,
     request: Request,
@@ -345,13 +342,10 @@ async def revoke_organizer_access(
     try:
         # Only super admins can revoke organizer access
         if admin.role != AdminRole.SUPER_ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only super admins can revoke organizer access"
-            )
+            raise HTTPException(status_code=403, detail="Super admin access required")
         
         # Revoke organizer access
-        success = await OrganizerManager.revoke_organizer_access(faculty_employee_id)
+        success = await OrganizerAccessManager.revoke_organizer_access(faculty_employee_id)
         
         if success:
             return JSONResponse(
@@ -379,16 +373,13 @@ async def revoke_organizer_access(
             status_code=500
         )
 
-@router.get("/admin/organizer/requests")
+@router.get("/admin/requests")
 async def get_organizer_requests(request: Request, admin: AdminUser = Depends(require_admin)):
     """Get all pending organizer access requests (Super Admin only)"""
     try:
         # Only super admins can view requests
         if admin.role != AdminRole.SUPER_ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only super admins can view organizer requests"
-            )
+            raise HTTPException(status_code=403, detail="Super admin access required")
         
         # Get all pending requests
         requests = await DatabaseOperations.find_many(
@@ -418,16 +409,13 @@ async def get_organizer_requests(request: Request, admin: AdminUser = Depends(re
             status_code=500
         )
 
-@router.get("/organizer/dashboard-stats")
+@router.get("/dashboard-stats")
 async def get_organizer_dashboard_stats(request: Request, admin: AdminUser = Depends(require_admin)):
     """Get dashboard statistics for organizer portal"""
     try:
         # Only organizer admins can access this
         if admin.role != AdminRole.ORGANIZER_ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Organizer access required"
-            )
+            raise HTTPException(status_code=403, detail="Organizer access required")
         
         # Get assigned events
         assigned_event_ids = admin.assigned_events or []
@@ -439,8 +427,8 @@ async def get_organizer_dashboard_stats(request: Request, admin: AdminUser = Dep
         total_registrations = 0
         if assigned_event_ids:
             registrations = await DatabaseOperations.find_many(
-                "event_registrations",
-                {"event_id": {"$in": assigned_event_ids}}
+                "student_registrations",
+                {"event.event_id": {"$in": assigned_event_ids}}
             )
             total_registrations = len(registrations)
         

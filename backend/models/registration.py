@@ -57,14 +57,35 @@ class TeamInfo(BaseModel):
     team_members: Optional[List[str]] = None
     team_size: Optional[int] = None
 
-class AttendanceInfo(BaseModel):
-    """Simple attendance information"""
+class AttendanceSessionInfo(BaseModel):
+    """Individual attendance session information"""
+    session_id: str
+    session_name: str
+    session_type: str  # session/day/milestone/continuous_check/single
     marked: bool = False
     marked_at: Optional[datetime] = None
+    marking_method: Optional[str] = None  # attendance_portal/bulk_marking/qr_code
+    marked_by: Optional[str] = None  # Username/ID of who marked attendance
+    marked_by_role: Optional[str] = None  # organizer/volunteer/admin
+    weight: float = 1.0
+    notes: Optional[str] = None
+
+class AttendanceInfo(BaseModel):
+    """Unified attendance information for all strategies"""
+    # Core attendance fields
+    marked: bool = False
     status: AttendanceStatus = AttendanceStatus.NOT_MARKED
-    sessions_attended: int = 0
-    total_sessions: int = 1
     attendance_percentage: float = 0.0
+    strategy_used: Optional[str] = None  # single_mark/day_based/session_based/milestone_based/continuous
+    
+    # Session-based tracking (works for ALL strategies)
+    sessions: List[AttendanceSessionInfo] = []
+    
+    # Calculated summary fields
+    total_sessions: int = 1
+    sessions_attended: int = 0
+    last_marked_at: Optional[datetime] = None
+    last_calculated_at: Optional[datetime] = None
 
 class FeedbackInfo(BaseModel):
     """Simple feedback information"""

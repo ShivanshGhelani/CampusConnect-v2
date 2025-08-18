@@ -1,0 +1,498 @@
+"""
+Event Registration Service
+=========================
+Handles ALL event registration operations: individual, team, team management, cancellation.
+Creates registration documents with pre-structured attendance fields based on event strategy.
+
+SINGLE RESPONSIBILITY: Registration operations only
+COLLECTION: student_registrations (single source of truth)
+"""
+
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime
+from database.operations import DatabaseOperations
+from models.registration import CreateRegistrationRequest, RegistrationResponse
+from core.id_generator import generate_registration_id
+from core.logger import get_logger
+
+logger = get_logger(__name__)
+
+class EventRegistrationService:
+    """
+    Professional service for event registration operations.
+    Creates documents with proper attendance structure based on event strategy.
+    """
+    
+    def __init__(self):
+        self.collection = "student_registrations"
+        self.events_collection = "events"
+        self.students_collection = "students"
+    
+    async def register_individual(
+        self, 
+        enrollment_no: str, 
+        event_id: str, 
+        additional_data: Dict[str, Any] = None
+    ) -> RegistrationResponse:
+        """
+        Register individual student for event.
+        Creates document with pre-structured attendance fields based on event strategy.
+        """
+        try:
+            logger.info(f"Individual registration: {enrollment_no} -> {event_id}")
+            
+            # Check if already registered
+            existing = await self._check_existing_registration(enrollment_no, event_id)
+            if existing:
+                return RegistrationResponse(
+                    success=False,
+                    message="Already registered for this event",
+                    registration_id=existing["registration_id"]
+                )
+            
+            # Get student and event data
+            student_data, event_data = await self._get_student_and_event_data(enrollment_no, event_id)
+            if not student_data:
+                return RegistrationResponse(success=False, message="Student not found")
+            if not event_data:
+                return RegistrationResponse(success=False, message="Event not found")
+            
+            # Generate registration ID
+            registration_id = f"REG_{enrollment_no}_{event_id}"
+            
+            # Create registration document with pre-structured attendance fields
+            registration_doc = await self._create_registration_document(
+                registration_id=registration_id,
+                student_data=student_data,
+                event_data=event_data,
+                registration_type="individual",
+                additional_data=additional_data or {}
+            )
+            
+            # Insert registration
+            await DatabaseOperations.insert_one(self.collection, registration_doc)
+            
+            logger.info(f"Individual registration successful: {registration_id}")
+            
+            return RegistrationResponse(
+                success=True,
+                message="Individual registration successful",
+                registration_id=registration_id,
+                data={
+                    "event_name": event_data["event_name"],
+                    "registration_type": "individual",
+                    "attendance_structure": registration_doc["attendance"]
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Individual registration error: {e}")
+            return RegistrationResponse(
+                success=False,
+                message=f"Registration failed: {str(e)}"
+            )
+    
+    async def register_team(
+        self,
+        team_leader_enrollment: str,
+        event_id: str,
+        team_data: Dict[str, Any]
+    ) -> RegistrationResponse:
+        """
+        Register team for event.
+        Creates documents for all team members with shared team information.
+        """
+        try:
+            team_name = team_data.get("team_name")
+            team_members = team_data.get("team_members", [])  # List of enrollment numbers
+            
+            logger.info(f"Team registration: {team_name} -> {event_id} ({len(team_members)} members)")
+            
+            # Validate team members
+            if not team_members or team_leader_enrollment not in team_members:
+                return RegistrationResponse(
+                    success=False,
+                    message="Invalid team composition"
+                )
+            
+            # Check if any member is already registered
+            for enrollment_no in team_members:
+                existing = await self._check_existing_registration(enrollment_no, event_id)
+                if existing:
+                    return RegistrationResponse(
+                        success=False,
+                        message=f"Student {enrollment_no} already registered for this event"
+                    )
+            
+            # Get event data
+            _, event_data = await self._get_student_and_event_data(team_leader_enrollment, event_id)
+            if not event_data:
+                return RegistrationResponse(success=False, message="Event not found")
+            
+            # Create team registration for each member
+            team_registration_ids = []
+            team_info = {
+                "team_name": team_name,
+                "team_leader": team_leader_enrollment,
+                "team_members": team_members,
+                "team_size": len(team_members)
+            }
+            
+            for enrollment_no in team_members:
+                # Get student data
+                student_data, _ = await self._get_student_and_event_data(enrollment_no, event_id)
+                if not student_data:
+                    continue
+                
+                registration_id = f"REG_{enrollment_no}_{event_id}"
+                
+                # Create registration document for team member
+                registration_doc = await self._create_registration_document(
+                    registration_id=registration_id,
+                    student_data=student_data,
+                    event_data=event_data,
+                    registration_type="team",
+                    team_info=team_info,
+                    additional_data=team_data.get("additional_data", {})
+                )
+                
+                await DatabaseOperations.insert_one(self.collection, registration_doc)
+                team_registration_ids.append(registration_id)
+            
+            logger.info(f"Team registration successful: {team_name} ({len(team_registration_ids)} members)")
+            
+            return RegistrationResponse(
+                success=True,
+                message=f"Team registration successful ({len(team_registration_ids)} members)",
+                registration_id=f"TEAM_{team_name}_{event_id}",
+                data={
+                    "team_name": team_name,
+                    "team_registrations": team_registration_ids,
+                    "event_name": event_data["event_name"]
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Team registration error: {e}")
+            return RegistrationResponse(
+                success=False,
+                message=f"Team registration failed: {str(e)}"
+            )
+    
+    async def cancel_registration(
+        self,
+        enrollment_no: str,
+        event_id: str
+    ) -> Dict[str, Any]:
+        """Cancel student registration for event."""
+        try:
+            result = await DatabaseOperations.delete_one(
+                self.collection,
+                {
+                    "student.enrollment_no": enrollment_no,
+                    "event.event_id": event_id
+                }
+            )
+            
+            if result.deleted_count == 0:
+                return {
+                    "success": False,
+                    "message": "Registration not found or already cancelled"
+                }
+            
+            logger.info(f"Registration cancelled: {enrollment_no} -> {event_id}")
+            
+            return {
+                "success": True,
+                "message": "Registration cancelled successfully"
+            }
+            
+        except Exception as e:
+            logger.error(f"Registration cancellation error: {e}")
+            return {
+                "success": False,
+                "message": f"Cancellation failed: {str(e)}"
+            }
+    
+    async def get_registration_status(
+        self,
+        enrollment_no: str,
+        event_id: str
+    ) -> Dict[str, Any]:
+        """Get registration status for student and event."""
+        try:
+            registration = await DatabaseOperations.find_one(
+                self.collection,
+                {
+                    "student.enrollment_no": enrollment_no,
+                    "event.event_id": event_id
+                }
+            )
+            
+            if not registration:
+                return {
+                    "success": False,
+                    "message": "Registration not found",
+                    "registered": False
+                }
+            
+            return {
+                "success": True,
+                "registered": True,
+                "registration_id": registration["registration_id"],
+                "registration_type": registration["registration"]["type"],
+                "status": registration["registration"]["status"],
+                "registered_at": registration["registration"]["registered_at"],
+                "team_info": registration.get("team"),
+                "attendance_structure": registration["attendance"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting registration status: {e}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}"
+            }
+    
+    async def get_event_registrations(
+        self,
+        event_id: str,
+        registration_type: Optional[str] = None,
+        limit: int = 50,
+        skip: int = 0
+    ) -> Dict[str, Any]:
+        """Get all registrations for an event with pagination."""
+        try:
+            # Build query
+            query = {"event.event_id": event_id}
+            if registration_type:
+                query["registration.type"] = registration_type
+            
+            # Get registrations with pagination
+            registrations = await DatabaseOperations.find_many(
+                self.collection,
+                query,
+                limit=limit,
+                skip=skip,
+                sort_by=[("registration.registered_at", -1)]
+            )
+            
+            # Get total count
+            total_count = await DatabaseOperations.count_documents(self.collection, query)
+            
+            return {
+                "success": True,
+                "registrations": registrations,
+                "pagination": {
+                    "total": total_count,
+                    "limit": limit,
+                    "skip": skip,
+                    "has_more": (skip + limit) < total_count
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting event registrations: {e}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}"
+            }
+    
+    # PRIVATE HELPER METHODS
+    
+    async def _check_existing_registration(
+        self,
+        enrollment_no: str,
+        event_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Check if student already registered for event."""
+        return await DatabaseOperations.find_one(
+            self.collection,
+            {
+                "student.enrollment_no": enrollment_no,
+                "event.event_id": event_id
+            }
+        )
+    
+    async def _get_student_and_event_data(
+        self,
+        enrollment_no: str,
+        event_id: str
+    ) -> Tuple[Optional[Dict], Optional[Dict]]:
+        """Get student and event data in parallel."""
+        student_data = await DatabaseOperations.find_one(
+            self.students_collection,
+            {"enrollment_no": enrollment_no}
+        )
+        
+        event_data = await DatabaseOperations.find_one(
+            self.events_collection,
+            {"event_id": event_id}
+        )
+        
+        return student_data, event_data
+    
+    async def _create_registration_document(
+        self,
+        registration_id: str,
+        student_data: Dict[str, Any],
+        event_data: Dict[str, Any],
+        registration_type: str,
+        team_info: Optional[Dict[str, Any]] = None,
+        additional_data: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Create registration document with pre-structured attendance fields.
+        The attendance structure is created based on the event's attendance strategy.
+        """
+        
+        # Get attendance strategy from event (this uses the 4-day intelligence system)
+        attendance_strategy = await self._get_event_attendance_strategy(event_data)
+        
+        # Create base registration document
+        registration_doc = {
+            "registration_id": registration_id,
+            "student": {
+                "enrollment_no": student_data["enrollment_no"],
+                "name": student_data.get("full_name", student_data.get("name", "")),
+                "email": student_data.get("email", ""),
+                "phone": student_data.get("phone"),
+                "department": student_data.get("department"),
+                "year": student_data.get("year")
+            },
+            "event": {
+                "event_id": event_data["event_id"],
+                "event_name": event_data.get("event_name", ""),
+                "event_type": event_data.get("event_type", ""),
+                "start_datetime": event_data.get("start_datetime"),
+                "end_datetime": event_data.get("end_datetime")
+            },
+            "registration": {
+                "type": registration_type,
+                "status": "confirmed",
+                "registered_at": datetime.utcnow(),
+                "additional_data": additional_data or {}
+            },
+            "team": team_info,
+            "attendance": self._create_attendance_structure(attendance_strategy, event_data),
+            "feedback": {
+                "submitted": False,
+                "rating": None,
+                "comments": None,
+                "submitted_at": None
+            },
+            "certificate": {
+                "eligible": False,
+                "issued": False,
+                "certificate_id": None,
+                "issued_at": None
+            }
+        }
+        
+        return registration_doc
+    
+    async def _get_event_attendance_strategy(self, event_data: Dict[str, Any]) -> str:
+        """
+        Get attendance strategy for event using the existing 4-day intelligence system.
+        This preserves all the working strategy detection logic.
+        """
+        try:
+            # Import the working strategy detection system
+            from models.dynamic_attendance import AttendanceIntelligenceService
+            
+            # Use the proven 4-day strategy detection system
+            strategy = AttendanceIntelligenceService.detect_attendance_strategy(event_data)
+            return strategy.value
+            
+        except Exception as e:
+            logger.warning(f"Strategy detection failed, using default: {e}")
+            return "single_mark"  # Fallback to simple strategy
+    
+    def _create_attendance_structure(
+        self,
+        strategy: str,
+        event_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Create attendance structure based on strategy.
+        Pre-creates all required fields that attendance service will update.
+        """
+        
+        base_structure = {
+            "strategy": strategy,
+            "status": "pending",  # pending, present, partial, absent
+            "percentage": 0.0,
+            "last_updated": None,
+            "marked_by": None,
+            "marking_method": None
+        }
+        
+        if strategy == "single_mark":
+            base_structure.update({
+                "marked": False,
+                "marked_at": None
+            })
+            
+        elif strategy == "day_based":
+            # Pre-create day slots based on event duration
+            event_days = self._calculate_event_days(event_data)
+            base_structure.update({
+                "days": [
+                    {
+                        "day": i + 1,
+                        "date": None,  # Will be calculated
+                        "marked": False,
+                        "marked_at": None
+                    }
+                    for i in range(event_days)
+                ],
+                "total_days": event_days,
+                "days_attended": 0
+            })
+            
+        elif strategy == "session_based":
+            # Pre-create session slots (will be populated by attendance service)
+            base_structure.update({
+                "sessions": [],  # Will be populated when attendance is initialized
+                "total_sessions": 0,
+                "sessions_attended": 0
+            })
+            
+        elif strategy == "milestone_based":
+            base_structure.update({
+                "milestones": [],  # Will be populated based on event milestones
+                "total_milestones": 0,
+                "milestones_completed": 0
+            })
+            
+        elif strategy == "continuous":
+            base_structure.update({
+                "engagement_periods": [],
+                "total_engagement_time": 0,
+                "active_time": 0
+            })
+        
+        return base_structure
+    
+    def _calculate_event_days(self, event_data: Dict[str, Any]) -> int:
+        """Calculate number of days for an event."""
+        try:
+            start = event_data.get("start_datetime")
+            end = event_data.get("end_datetime")
+            
+            if start and end:
+                if isinstance(start, str):
+                    start = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                if isinstance(end, str):
+                    end = datetime.fromisoformat(end.replace('Z', '+00:00'))
+                
+                return max(1, (end - start).days + 1)
+            
+            return 1  # Default to single day
+            
+        except Exception:
+            return 1  # Fallback to single day
+
+
+# Service instance
+event_registration_service = EventRegistrationService()

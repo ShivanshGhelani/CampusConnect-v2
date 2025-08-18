@@ -1,7 +1,8 @@
 """
-Faculty Organizer Service
-
-Handles faculty as event organizers - assignment and management.
+Faculty Management Service
+==========================
+Handles basic faculty operations - CRUD and management.
+Renamed from faculty_service.py to avoid naming conflicts.
 """
 
 from typing import List, Optional, Dict, Any
@@ -12,7 +13,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class FacultyOrganizerService:
+class FacultyManagementService:
     def __init__(self):
         self.db = DatabaseOperations()
         self.faculty_collection = "faculties"
@@ -199,4 +200,4 @@ class FacultyOrganizerService:
             }
 
 # Create singleton instance
-faculty_organizer_service = FacultyOrganizerService()
+faculty_management_service = FacultyManagementService()

@@ -158,7 +158,7 @@ cp .env.example .env
 
 # 5. Start backend server
 cd backend
-python main.py
+uvircorn main:app --reload --host 0.0.0.0 --port 8000 #can be of your choice`
 ```
 
 ### Frontend Setup

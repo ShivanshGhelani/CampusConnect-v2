@@ -12,7 +12,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
-from services.dynamic_attendance_service import create_dynamic_attendance_service
+from services.event_attendance_service import event_attendance_service
+from services.event_registration_service import event_registration_service
+from models.dynamic_attendance import AttendanceIntelligenceService
 from dependencies.auth import get_current_user
 from core.logger import get_logger
 from models.dynamic_attendance import AttendanceSession, AttendanceStrategy, AttendanceCriteria
@@ -57,7 +59,8 @@ class CriteriaUpdateRequest(BaseModel):
     required_milestones: Optional[List[str]] = Field(None, description="Required milestone session IDs")
 
 # Initialize service
-attendance_service = create_dynamic_attendance_service()
+# Initialize services
+attendance_intelligence = AttendanceIntelligenceService()
 
 @router.get("/preview/{event_id}")
 async def preview_attendance_sessions(
