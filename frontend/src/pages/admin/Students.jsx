@@ -307,7 +307,7 @@ function Students() {
         )}
 
         {/* Enhanced Header with Search */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Students Management</h2>
@@ -321,7 +321,7 @@ function Students() {
                 <i className="fas fa-sync-alt mr-2"></i>
                 Refresh Data
               </button>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center font-medium shadow-sm hover:shadow-md">
+              <button className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
                 <i className="fas fa-download mr-2"></i>
                 Export Students
               </button>
@@ -330,7 +330,7 @@ function Students() {
           
           {/* Enhanced Search Bar with Filters */}
         {/* Search and Filters */}
-        <div className="bg-white p-6 rounded-xl">
+        <div className="bg-white p-6 rounded-xl mt-4">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Search Bar */}
             <div className="flex-1">

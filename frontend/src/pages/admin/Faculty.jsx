@@ -202,10 +202,6 @@ function Faculty() {
               <i className="fas fa-sync-alt mr-2"></i>
               Refresh
             </button>
-            <button className="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
-              <i className="fas fa-plus mr-2"></i>
-              Add Faculty
-            </button>
             <button className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
               <i className="fas fa-download mr-2"></i>
               Export
