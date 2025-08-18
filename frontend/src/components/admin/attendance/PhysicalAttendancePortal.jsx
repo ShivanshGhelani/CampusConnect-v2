@@ -15,7 +15,10 @@ import {
   Grid3X3,
   List,
   ScanLine,
-  Zap
+  Zap,
+  Settings,
+  Activity,
+  Target
 } from 'lucide-react';
 import AdminLayout from '../AdminLayout';
 import PhysicalAttendanceTable from './PhysicalAttendanceTable';
@@ -24,12 +27,36 @@ import AttendanceStatsCard from './AttendanceStatsCard';
 import AttendanceStatusBadge from './AttendanceStatusBadge';
 import LoadingSpinner from '../../LoadingSpinner';
 import api from '../../../api/base';
+import { useDynamicAttendance } from '../../../hooks/useDynamicAttendance';
+import { 
+  StrategyInfoCard, 
+  SessionStatus, 
+  SessionTimer, 
+  AttendanceProgress, 
+  SessionGrid,
+  StrategyRouter 
+} from './StrategyComponents';
 
 const PhysicalAttendancePortal = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   
-  // State management
+  // Initialize Dynamic Attendance Hook
+  const {
+    config,
+    sessions,
+    analytics,
+    loading: dynamicLoading,
+    error: dynamicError,
+    loadConfig,
+    markAttendance,
+    bulkMarkAttendance,
+    getCurrentSession,
+    getSessionProgress,
+    refreshData
+  } = useDynamicAttendance(eventId);
+  
+  // Legacy state management (will be gradually migrated)
   const [registrations, setRegistrations] = useState([]);
   const [filteredRegistrations, setFilteredRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +67,13 @@ const PhysicalAttendancePortal = () => {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState(null);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
-  const [quickMode, setQuickMode] = useState(false); // Enhanced quick marking mode
+  const [quickMode, setQuickMode] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  
+  // Strategy-specific state
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [currentSession, setCurrentSession] = useState(null);
+  const [showStrategyInfo, setShowStrategyInfo] = useState(true);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,9 +84,27 @@ const PhysicalAttendancePortal = () => {
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    fetchRegistrations();
-    fetchAttendanceStats();
-  }, [eventId, currentPage, statusFilter]);
+    // Initialize dynamic attendance configuration
+    loadConfig().then(() => {
+      fetchRegistrations();
+      fetchAttendanceStats();
+    }).catch(err => {
+      console.warn('Dynamic attendance not available, falling back to legacy mode:', err);
+      fetchRegistrations();
+      fetchAttendanceStats();
+    });
+  }, [eventId, currentPage, statusFilter, loadConfig]);
+
+  useEffect(() => {
+    // Update current session when sessions change
+    if (sessions?.length > 0) {
+      const active = getCurrentSession();
+      setCurrentSession(active);
+      if (active && !selectedSessionId) {
+        setSelectedSessionId(active.session_id);
+      }
+    }
+  }, [sessions, getCurrentSession, selectedSessionId]);
 
   useEffect(() => {
     // Apply search filter to registrations
@@ -70,19 +120,31 @@ const PhysicalAttendancePortal = () => {
     }
   }, [searchTerm, registrations]);
 
-  // Auto-refresh effect
+  // Auto-refresh effect with dynamic attendance integration
   useEffect(() => {
     let interval;
     if (autoRefresh) {
-      interval = setInterval(() => {
-        fetchRegistrations();
-        fetchAttendanceStats();
+      interval = setInterval(async () => {
+        // Refresh both legacy and dynamic data
+        await Promise.all([
+          fetchRegistrations(),
+          fetchAttendanceStats(),
+          refreshData()
+        ]);
       }, 30000); // Refresh every 30 seconds
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [autoRefresh, eventId, currentPage, statusFilter]);
+  }, [autoRefresh, eventId, currentPage, statusFilter, refreshData]);
+
+  // Unified error handling
+  useEffect(() => {
+    if (dynamicError) {
+      console.warn('Dynamic attendance error:', dynamicError);
+      // Don't show error to user, fall back to legacy mode
+    }
+  }, [dynamicError]);
 
   const fetchRegistrations = async () => {
     try {
@@ -124,8 +186,36 @@ const PhysicalAttendancePortal = () => {
     }
   };
 
+  // Enhanced attendance marking with dynamic strategy support
   const handleMarkPhysicalAttendance = async (registrationId, notes = '') => {
     try {
+      // Check if dynamic attendance is available
+      if (config && markAttendance) {
+        const result = await markAttendance(registrationId, {
+          notes,
+          session_id: selectedSessionId,
+          verification_method: 'physical'
+        });
+        
+        if (result.success) {
+          showNotification(
+            config.strategy === 'single_mark' 
+              ? 'Attendance marked successfully'
+              : `Attendance marked for ${config.strategy.replace('_', ' ')} strategy`,
+            'success'
+          );
+          
+          // Update local state and refresh data
+          await Promise.all([
+            fetchRegistrations(),
+            fetchAttendanceStats(),
+            refreshData()
+          ]);
+          return;
+        }
+      }
+      
+      // Fallback to legacy API
       const response = await api.patch(`/api/v1/admin/event-registration/attendance/physical/${registrationId}`, {
         registration_id: registrationId,
         notes: notes
@@ -157,9 +247,41 @@ const PhysicalAttendancePortal = () => {
     }
   };
 
+  // Enhanced bulk attendance marking with dynamic strategy support
   const handleBulkMarkAttendance = async (registrationIds, notes) => {
     try {
-            const response = await api.post('/api/v1/admin/event-registration/attendance/physical/bulk', {
+      // Check if dynamic attendance is available
+      if (config && bulkMarkAttendance) {
+        const result = await bulkMarkAttendance(registrationIds, {
+          notes,
+          session_id: selectedSessionId,
+          verification_method: 'physical'
+        });
+        
+        if (result.success) {
+          const successCount = result.successful?.length || registrationIds.length;
+          showNotification(
+            config.strategy === 'single_mark'
+              ? `${successCount} students verified as present`
+              : `${successCount} students marked for ${config.strategy.replace('_', ' ')} strategy`,
+            'success'
+          );
+          
+          setSelectedRegistrations([]);
+          setShowBulkModal(false);
+          
+          // Refresh all data
+          await Promise.all([
+            fetchRegistrations(),
+            fetchAttendanceStats(),
+            refreshData()
+          ]);
+          return;
+        }
+      }
+      
+      // Fallback to legacy API
+      const response = await api.post('/api/v1/admin/event-registration/attendance/physical/bulk', {
         registration_ids: registrationIds,
         notes: notes
       });
@@ -185,6 +307,24 @@ const PhysicalAttendancePortal = () => {
     setTimeout(() => setNotification(null), 5000);
   };
 
+  // Enhanced refresh function
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchRegistrations(),
+        fetchAttendanceStats(),
+        refreshData && refreshData()
+      ]);
+      showNotification('Data refreshed successfully', 'success');
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      showNotification('Error refreshing data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusFilterOptions = () => [
     { value: 'all', label: 'All Students', icon: Users, count: registrations.length },
     { value: 'absent', label: 'Absent', icon: X, count: registrations.filter(r => r.final_attendance_status === 'absent').length },
@@ -202,11 +342,6 @@ const PhysicalAttendancePortal = () => {
     
     const registrationIds = eligibleRegistrations.map(reg => reg.registration_id);
     await handleBulkMarkAttendance(registrationIds, 'Quick mark all - bulk attendance');
-  };
-
-  const handleRefresh = async () => {
-    await Promise.all([fetchRegistrations(), fetchAttendanceStats()]);
-    showNotification('Data refreshed successfully', 'success');
   };
 
   const handleSelectRegistration = (registrationId, isSelected) => {
@@ -251,8 +386,8 @@ const PhysicalAttendancePortal = () => {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Physical Attendance Portal</h1>
-                  <p className="text-gray-600 mt-1">Mark and verify student attendance at the venue</p>
+                  <h1 className="text-3xl font-bold text-gray-900">Attendance Portal</h1>
+                  <p className="text-gray-600 mt-1">Mark and verify student presence</p>
                 </div>
               </div>
               
@@ -312,6 +447,78 @@ const PhysicalAttendancePortal = () => {
             {attendanceStats && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <AttendanceStatsCard stats={attendanceStats} />
+              </div>
+            )}
+
+            {/* Dynamic Attendance Strategy Information */}
+            {config && showStrategyInfo && (
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-blue-600" />
+                    Attendance Strategy
+                  </h3>
+                  <button
+                    onClick={() => setShowStrategyInfo(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <StrategyInfoCard 
+                  strategy={config.strategy}
+                  criteria={config.criteria}
+                  sessions={sessions}
+                />
+
+                {/* Session Management for Session-based Strategy */}
+                {config.strategy === 'session_based' && sessions?.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-md font-medium text-gray-900 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-purple-600" />
+                        Session Management
+                      </h4>
+                      {currentSession && (
+                        <SessionStatus status={currentSession.status} />
+                      )}
+                    </div>
+                    
+                    <div className="max-h-48 overflow-y-auto">
+                      <SessionGrid
+                        sessions={sessions}
+                        selectedSessionId={selectedSessionId}
+                        onSessionSelect={(session) => setSelectedSessionId(session.session_id)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress for applicable strategies */}
+                {analytics && ['session_based', 'day_based', 'milestone_based'].includes(config.strategy) && (
+                  <div className="mt-4">
+                    <h4 className="text-md font-medium text-gray-900 mb-2">Overall Progress</h4>
+                    <AttendanceProgress
+                      current={analytics.current_count || 0}
+                      total={analytics.total_count || 0}
+                      strategy={config.strategy}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show Strategy toggle if hidden */}
+            {config && !showStrategyInfo && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowStrategyInfo(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  Show Strategy Information
+                </button>
               </div>
             )}
           </div>
