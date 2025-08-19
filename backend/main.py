@@ -151,7 +151,7 @@ async def internal_server_error_handler(request: Request, exc):
 
 # Include routes - Now all consolidated in API structure
 from api import router as api_router
-from api.legacy_direct_routes import router as legacy_direct_router
+from api.legacy.direct_routes import router as legacy_direct_router
 from api.v1.storage import router as storage_router
 from api.v1.registrations import router as registrations_router
 

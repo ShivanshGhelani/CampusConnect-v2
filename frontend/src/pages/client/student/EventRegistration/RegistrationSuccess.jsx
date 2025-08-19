@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
+import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
 import { clientAPI } from '../../../../api/client';
 
 const RegistrationSuccess = () => {
@@ -48,82 +49,27 @@ const RegistrationSuccess = () => {
               Object.assign(regData, regData.student_data);
             }
             
-            console.log('=== BACKEND DATA CHECK ===');
-            console.log('Leader department from backend:', regData.department);
-            console.log('Team members from backend:', regData.team_members);
-            if (regData.team_members && regData.team_members.length > 0) {
-              console.log('First team member department:', regData.team_members[0].department);
-            }
             setRegistrationData(regData);
           } else {
-            // Not registered, redirect to registration page
-            navigate(`/student/events/${eventId}/register`);
-            return;
+            setError('Registration not found or invalid');
           }
+        } else {
+          setError('Event ID not provided');
         }
-      } catch (error) {
-        console.error('Error loading registration data:', error);
-        setError('Failed to load registration details');
-      } finally {
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading registration data:', err);
+        setError('Failed to load registration data');
         setLoading(false);
       }
     };
 
     loadRegistrationData();
-  }, [eventId, location.state, navigate]);
+  }, [eventId]);
 
-  // Loading state
-  if (loading) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      </Layout>
-    );
-  }
-
-  // Error state
-  if (error || !registrationData || !event) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Registration Not Found</h1>
-            <p className="text-gray-600 mb-4">{error || 'Unable to find registration details.'}</p>
-            <button
-              onClick={() => navigate('/client/events')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Back to Events
-            </button>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  const isTeamRegistration = registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader';
-  const paymentCompleted = registrationData.payment_status === 'completed';
-
-  // Extract team members from various possible data structures
-  const getTeamMembers = () => {
-    // Check multiple possible locations for team member data
-    if (registrationData.team_members) return registrationData.team_members;
-    if (registrationData.student_data?.team_members) return registrationData.student_data.team_members;
-    if (registrationData.team_info?.participants) return registrationData.team_info.participants;
-    return [];
-  };
-
-  const getTeamName = () => {
-    return registrationData.team_name || 
-           registrationData.student_data?.team_name || 
-           registrationData.team_info?.team_name || 
-           'N/A';
-  };
-
+  // Helper functions
   const getDepartment = (data) => {
-    // Check multiple possible locations for department data
     return data?.department || 
            data?.student_data?.department ||
            data?.dept ||
@@ -131,79 +77,158 @@ const RegistrationSuccess = () => {
            'N/A';
   };
 
-  const teamMembers = getTeamMembers();
-  const teamName = getTeamName();
-
-  // Debug logging
-  console.log('=== REGISTRATION SUCCESS DEBUG ===');
-  console.log('Registration data:', registrationData);
-  console.log('Team members:', teamMembers);
-  console.log('Team name:', teamName);
-  console.log('Leader department check:', {
-    'registrationData.department': registrationData.department,
-    'registrationData.student_data?.department': registrationData.student_data?.department,
-    'getDepartment result': getDepartment(registrationData)
-  });
-  if (teamMembers.length > 0) {
-    console.log('First team member department check:', {
-      'participant.department': teamMembers[0].department,
-      'getDepartment result': getDepartment(teamMembers[0])
-    });
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      </Layout>
+    );
   }
+
+  if (error || !registrationData || !event) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Registration Not Found</h2>
+            <p className="text-gray-600 mb-4">{error || 'Unable to load registration data'}</p>
+            <button
+              onClick={() => navigate('/client/dashboard')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Check registration type
+  const isTeamRegistration = registrationData.registration_type === 'team_leader' || 
+                            registrationData.registration_type === 'team';
+  
+  // Get team data
+  const teamName = registrationData.team_name || registrationData.student_data?.team_name;
+  const teamMembers = registrationData.team_members || registrationData.student_data?.team_members || [];
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Header Section */}
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
+        <div className="container mx-auto px-4 py-8">
+          {/* Success Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto mb-6 w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-              <i className="fas fa-check-circle text-green-600 text-4xl"></i>
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <i className="fas fa-check text-white text-2xl"></i>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Successful!</h1>
-            <p className="text-lg text-gray-600">You have successfully registered for the event</p>
+            <p className="text-lg text-gray-600">
+              You have successfully registered for{' '}
+              <span className="font-semibold text-blue-600">
+                {event?.event_name || event?.title || event?.name || 'the event'}
+              </span>
+            </p>
           </div>
 
-          {/* Payment Success Message (if applicable) */}
-          {paymentCompleted && (
-            <div className="bg-green-50 border-l-4 border-green-400 text-green-700 px-6 py-4 rounded mb-6">
-              <div className="flex items-center">
-                <i className="fas fa-check-circle text-green-600 mr-3 text-xl"></i>
-                <div>
-                  <h3 className="font-semibold text-lg">Payment Completed Successfully!</h3>
-                  <p className="text-sm mt-1">Your registration is now confirmed and payment has been processed.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Registration Details Card */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 mb-6">
-            <div className="px-6 py-4 border-b border-gray-200 bg-blue-50">
-              <h2 className="text-xl font-semibold text-gray-900">Registration Details</h2>
-            </div>
-            <div className="p-6">
-              {/* Event Name */}
-              <div className="mb-6 text-center">
-                <h3 className="text-2xl font-bold text-blue-600 mb-2">
-                  {event?.event_name || event?.title || event?.name || 'Event'}
-                </h3>
-                {isTeamRegistration ? (
-                  <p className="text-lg text-gray-600">Team Registration</p>
-                ) : (
-                  <p className="text-lg text-gray-600">Individual Registration</p>
-                )}
-              </div>
-
-              {/* Registration ID Section */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-center">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {isTeamRegistration ? 'Team Registration ID' : 'Your Registration ID'}
-                </label>
-                <div className="text-3xl font-mono font-bold text-blue-600 bg-white border-2 border-blue-300 rounded-lg py-3 px-4 inline-block">
-                  {registrationData.registration_id || registrationData.registrar_id || 'N/A'}
+          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Registration Confirmed</h2>
+                  <h3 className="text-xl text-blue-100">
+                    {event?.event_name || event?.title || event?.name || 'Event'}
+                  </h3>
+                  {isTeamRegistration ? (
+                    <p className="text-lg text-blue-100">Team Registration</p>
+                  ) : (
+                    <p className="text-lg text-blue-100">Individual Registration</p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">Please save this ID for future reference</p>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* QR Code Section - Single QR for both individual and team */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 text-center flex items-center justify-center">
+                  <i className="fas fa-qrcode mr-2 text-blue-600"></i>
+                  {isTeamRegistration ? 'Team Attendance QR Code' : 'Your Attendance QR Code'}
+                </h4>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* QR Code Display */}
+                  <div className="flex justify-center">
+                    <QRCodeDisplay 
+                      registrationData={registrationData}
+                      eventData={event}
+                      size="medium"
+                      showDownload={true}
+                      showDetails={false}
+                      style="blue"
+                    />
+                  </div>
+                  
+                  {/* Registration Details */}
+                  <div className="space-y-4">
+                    <div className="bg-white border border-blue-300 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Registration ID
+                      </label>
+                      <div className="text-2xl font-mono font-bold text-blue-600 break-all">
+                        {registrationData.registration_id || registrationData.registrar_id || 'N/A'}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">Keep this ID for backup verification</p>
+                    </div>
+
+                    {isTeamRegistration && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Team Information
+                        </label>
+                        <div className="text-lg font-bold text-purple-600">
+                          {registrationData.team_name || 'Team Name'}
+                        </div>
+                        <p className="text-sm text-purple-700 mt-1">
+                          Size: {((registrationData.team_members || []).length + 1)} members
+                        </p>
+                      </div>
+                    )}
+
+                    <div className={`border rounded-lg p-4 ${isTeamRegistration ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+                      <div className={`flex items-start gap-3 ${isTeamRegistration ? 'text-blue-800' : 'text-green-800'}`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isTeamRegistration ? 'bg-blue-100' : 'bg-green-100'}`}>
+                          <svg className={`w-3 h-3 ${isTeamRegistration ? 'text-blue-600' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h5 className={`font-medium mb-2 ${isTeamRegistration ? 'text-blue-900' : 'text-green-900'}`}>
+                            {isTeamRegistration ? 'Team Attendance Instructions' : 'Attendance Instructions'}
+                          </h5>
+                          {isTeamRegistration ? (
+                            <ul className="text-sm space-y-1">
+                              <li>• Present this QR code to event organizers</li>
+                              <li>• Organizers can mark attendance for individual team members</li>
+                              <li>• Team members don't need to be together for attendance</li>
+                              <li>• One QR code covers your entire team</li>
+                            </ul>
+                          ) : (
+                            <p className="text-sm">
+                              Present this QR code to event organizers for attendance marking. 
+                              Keep it saved on your device or download a copy.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Team Information Section */}
@@ -224,7 +249,6 @@ const RegistrationSuccess = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Team Size</label>
                       <p className="text-lg font-semibold text-gray-900">
-                        {/* Calculate team size: leader + team members */}
                         {teamMembers.length + 1} members
                       </p>
                     </div>
@@ -246,17 +270,17 @@ const RegistrationSuccess = () => {
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Team Participants</label>
                       <div className="space-y-2">
-                        {teamMembers.map((participant, index) => (
-                          <div key={index} className="bg-white border border-gray-300 rounded-lg p-3 flex justify-between items-center">
+                        {teamMembers.map((member, index) => (
+                          <div key={index} className="bg-white border border-gray-300 rounded-lg p-3 flex items-center justify-between">
                             <div>
-                              <p className="font-semibold text-gray-900">
-                                {participant.name || participant.full_name || 'N/A'}
-                              </p>
+                              <p className="font-medium text-gray-900">{member.name || member.full_name}</p>
                               <p className="text-sm text-gray-600">
-                                {participant.enrollment_no || 'N/A'} | {getDepartment(participant)}
+                                {member.enrollment_no} | {getDepartment(member)}
                               </p>
                             </div>
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Verified</span>
+                            <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                              Member {index + 1}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -272,17 +296,18 @@ const RegistrationSuccess = () => {
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">Important Information</h4>
                     <ul className="text-sm text-gray-700 space-y-1">
-                      <li>• Keep your Registration ID safe for attendance marking</li>
+                      <li>• Present your QR code or Registration ID for attendance marking</li>
                       {isTeamRegistration && (
                         <>
-                          <li>• All team members must be present on the event day</li>
+                          <li>• Team attendance is managed individually using the single team QR code</li>
                           <li>• Team leader is responsible for team communication</li>
                           <li>• Changes to team composition are not allowed after registration</li>
                         </>
                       )}
-                      <li>• You will receive event updates via email</li>
-                      <li>• Bring a valid ID card on the event day</li>
-                      <li>• Check your dashboard for event status updates</li>
+                      <li>• You will receive event updates via email and dashboard notifications</li>
+                      <li>• Bring a valid college ID card on the event day</li>
+                      <li>• Download and save your QR code for quick access during the event</li>
+                      <li>• Check your dashboard regularly for event status updates</li>
                     </ul>
                   </div>
                 </div>
@@ -291,7 +316,7 @@ const RegistrationSuccess = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             <button
               onClick={() => navigate('/client/dashboard')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center"
@@ -303,24 +328,31 @@ const RegistrationSuccess = () => {
               onClick={() => navigate('/client/events')}
               className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors text-center flex items-center justify-center"
             >
-              <i className="fas fa-calendar mr-2"></i>
+              <i className="fas fa-calendar-alt mr-2"></i>
               Browse More Events
             </button>
           </div>
 
-          {/* Contact Information */}
-          <div className="mt-8 bg-white rounded-lg shadow-md border border-gray-200 p-6 text-center">
+          {/* Help Section */}
+          <div className="mt-8 bg-white rounded-lg shadow-md border border-gray-200 p-6 text-center max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Need Help?</h3>
-            <p className="text-gray-600 mb-4">If you have any questions about your registration, please contact us:</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center text-sm">
-              <div className="flex items-center justify-center">
-                <i className="fas fa-envelope text-blue-600 mr-2"></i>
-                <span>events@college.edu</span>
-              </div>
-              <div className="flex items-center justify-center">
-                <i className="fas fa-phone text-blue-600 mr-2"></i>
-                <span>+91 XXXXX XXXXX</span>
-              </div>
+            <p className="text-gray-600 mb-4">
+              If you have any questions about your registration, please contact us or check your dashboard for updates.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <a
+                href="mailto:support@campusconnect.edu"
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
+              >
+                Contact Support
+              </a>
+              <span className="hidden sm:inline text-gray-400">•</span>
+              <button
+                onClick={() => navigate('/client/events/help')}
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
+              >
+                Event Guidelines
+              </button>
             </div>
           </div>
         </div>

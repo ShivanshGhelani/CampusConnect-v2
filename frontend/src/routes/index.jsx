@@ -14,6 +14,12 @@ import FeedbackForm from '../pages/client/FeedbackForm';
 import FeedbackSuccess from '../pages/client/FeedbackSuccess';
 import FeedbackConfirm from '../pages/client/FeedbackConfirm';
 import CertificateDownload from '../pages/client/CertificateDownload';
+import QRCodeDemo from '../pages/QRCodeDemo'; // QR Code Demo Page
+import QRTest from '../pages/QRTest'; // QR Code Test Page
+import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page
+import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
+import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
+import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -439,6 +445,60 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <SettingsProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* QR Code Demo Route (for development/testing) */}
+        <Route
+          path="/demo/qr"
+          element={<QRCodeDemo />}
+        />
+        <Route
+          path="/test/qr"
+          element={<QRTest />}
+        />
+        <Route
+          path="/admin/qr-scanner"
+          element={
+            <ProtectedRoute userType="admin">
+              <QRScannerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faculty/qr-scanner"
+          element={
+            <ProtectedRoute userType="faculty">
+              <QRScannerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mobile/qr-scanner"
+          element={<MobileQRScanner />}
+        />
+        
+        {/* Reusable Invitation Link System - Production Endpoints */}
+        <Route
+          path="/scan/join/:invitationCode"
+          element={<VolunteerScanner />}
+        />
+        
+        {/* Organizer Portal - Create Invitation Links */}
+        <Route
+          path="/admin/create-volunteer-link"
+          element={
+            <ProtectedRoute userType="admin">
+              <CreateInvitationLink />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/:eventId/volunteers"
+          element={
+            <ProtectedRoute userType="admin">
+              <CreateInvitationLink />
             </ProtectedRoute>
           }
         />

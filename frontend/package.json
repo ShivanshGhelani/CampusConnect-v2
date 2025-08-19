@@ -18,10 +18,13 @@
     "@tailwindcss/vite": "^4.1.10",
     "axios": "^1.10.0",
     "framer-motion": "^12.23.12",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.534.0",
+    "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-image-crop": "^11.0.10",
+    "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.6.2",
     "tailwindcss": "^4.1.10",
     "unsplash-js": "^7.0.19"
