@@ -284,7 +284,7 @@ class PasswordResetService:
                     {'employee_id': user_info['employee_id']},
                     {
                         '$set': {
-                            'password_hash': password_hash,
+                            'password': password_hash,  # Fixed: use 'password' instead of 'password_hash'
                             'last_password_reset': datetime.utcnow().isoformat()
                         }
                     }
