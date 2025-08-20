@@ -309,6 +309,7 @@ export const useDynamicAttendance = (eventId) => {
     markingInProgress,
     
     // Actions
+    loadConfig,
     markAttendance,
     bulkMarkAttendance,
     getStudentStatus,

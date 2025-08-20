@@ -20,6 +20,8 @@ import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page
 import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
+import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
+import AttendanceShowcase from '../pages/AttendanceShowcase'; // Attendance Components Showcase
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -458,6 +460,19 @@ function AppRoutes() {
           path="/test/qr"
           element={<QRTest />}
         />
+        
+        {/* Test Mode - Overview of All Pages */}
+        <Route
+          path="/test/all-pages"
+          element={<TestMode />}
+        />
+        
+        {/* Attendance Components Showcase */}
+        <Route
+          path="/test/attendance"
+          element={<AttendanceShowcase />}
+        />
+        
         <Route
           path="/admin/qr-scanner"
           element={

@@ -17,7 +17,6 @@ import {
   BarChart3,
   Eye,
   Zap,
-  Pulse,
   Radio,
   WifiOff,
   Wifi,
