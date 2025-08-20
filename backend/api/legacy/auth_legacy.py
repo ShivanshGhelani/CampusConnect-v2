@@ -60,25 +60,45 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
         {
             "employee_id": username,
             "is_active": True,
-            "organizer_access.is_approved": True,
-            "organizer_access.is_active": True
+            "$or": [
+                # New format with organizer_access
+                {
+                    "organizer_access.is_approved": True,
+                    "organizer_access.is_active": True
+                },
+                # Legacy format with is_organizer flag
+                {
+                    "is_organizer": True
+                }
+            ]
         }
     )
     
     if faculty and await verify_password(password, faculty.get("password", "")):
         # Create AdminUser object for faculty organizer
+        # Handle both new and legacy formats
+        if faculty.get("organizer_access"):
+            # New format
+            permissions = faculty.get("organizer_access", {}).get("permissions", [])
+            assigned_events = faculty.get("organizer_access", {}).get("assigned_events", [])
+        else:
+            # Legacy format
+            permissions = faculty.get("organizer_permissions", [])
+            assigned_events = faculty.get("assigned_events", [])
+        
         admin_data = {
             "username": faculty["employee_id"],
+            "employee_id": faculty["employee_id"],  # Add employee_id field
             "email": faculty["email"],
             "full_name": faculty["full_name"],
             "role": AdminRole.ORGANIZER_ADMIN,
-            "permissions": faculty.get("organizer_access", {}).get("permissions", []),
-            "assigned_events": faculty.get("organizer_access", {}).get("assigned_events", []),
+            "permissions": permissions,
+            "assigned_events": assigned_events,
             "is_active": True,
             "created_at": faculty.get("created_at", datetime.utcnow()),
             "last_login": datetime.utcnow()
         }
-        logger.info(f"Faculty organizer authenticated: {username}")
+        logger.info(f"Faculty organizer authenticated: {username} with {len(assigned_events)} assigned events")
         return AdminUser(**admin_data)
     
     logger.warning(f"Authentication failed for username: {username}")

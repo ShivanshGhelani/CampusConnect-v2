@@ -16,25 +16,36 @@ class EventStatusManager:
         """Get available events based on status
         
         Args:
-            status: Event status filter ("all", "upcoming", "active", etc.)
+            status: Event status filter ("all", "upcoming", "active", "pending_approval", etc.)
             include_pending_approval: Whether to include events pending approval (for admin use)
         """
         try:
             query = {}
             
-            if status == "upcoming":
+            if status == "pending_approval":
+                # Specifically query for events pending approval
+                query["event_approval_status"] = "pending_approval"
+            elif status == "upcoming":
                 query["event_date"] = {"$gte": datetime.utcnow().isoformat()}
+                # Exclude pending approval events from regular upcoming list
+                if not include_pending_approval:
+                    query["event_approval_status"] = {"$ne": "pending_approval"}
             elif status == "active":
                 query["registration_open"] = True
+                # Exclude pending approval events from regular active list
+                if not include_pending_approval:
+                    query["event_approval_status"] = {"$ne": "pending_approval"}
+            elif status != "all":
+                # For other specific statuses, use the regular status field
+                query["status"] = status
+                # Exclude pending approval events from regular status queries
+                if not include_pending_approval:
+                    query["event_approval_status"] = {"$ne": "pending_approval"}
             
-            # If include_pending_approval is True, don't filter by status
-            if include_pending_approval:
-                # For admin views, include all events regardless of approval status
-                pass
-            else:
+            # If include_pending_approval is True and status is "all", include all events
+            if status == "all" and not include_pending_approval:
                 # For regular views, exclude pending approval events
-                if "status" not in query:
-                    query["status"] = {"$ne": "pending_approval"}
+                query["event_approval_status"] = {"$ne": "pending_approval"}
             
             events = await DatabaseOperations.find_many("events", query)
             return events or []

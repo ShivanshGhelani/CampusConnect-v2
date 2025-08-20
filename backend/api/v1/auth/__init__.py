@@ -1070,10 +1070,17 @@ async def authenticate_faculty(employee_id: str, password: str):
         )
         
         if faculty and pwd_context.verify(password, faculty.get("password", "")):
-            # Convert to Faculty model
+            # Convert to Faculty model - normalize gender case
             from models.faculty import Faculty
-            return Faculty(**faculty)
+            # Normalize gender to lowercase for enum validation
+            if 'gender' in faculty and faculty['gender']:
+                faculty['gender'] = faculty['gender'].lower()
+            
+            faculty_obj = Faculty(**faculty)
+            logger.info(f"✅ Faculty authenticated: {faculty_obj.name} (employee_id: {faculty_obj.employee_id})")
+            return faculty_obj
         
+        logger.warning(f"❌ Faculty authentication failed for employee_id: {employee_id}")
         return None
     except Exception as e:
         logger.error(f"Error authenticating faculty: {str(e)}")

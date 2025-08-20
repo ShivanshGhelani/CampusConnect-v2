@@ -22,6 +22,9 @@ class AdminUser(BaseModel):
     last_login: Optional[datetime] = Field(default=None, description="Last successful login timestamp")
     created_by: Optional[str] = Field(default=None, description="Username of the admin who created this account")
     
+    # Faculty-specific field for organizer admins
+    employee_id: Optional[str] = Field(default=None, description="Employee ID for faculty organizers")
+    
     # Event-specific permissions for Event Admins
     assigned_events: Optional[List[str]] = Field(default=[], description="Event IDs that this admin can manage (for Event Admins)")
     permissions: Optional[List[str]] = Field(default=[], description="Specific permissions granted to this admin")
