@@ -473,7 +473,7 @@ function EventCreatedSuccess() {
                         eventData.certificateTemplate?.name ||
                         eventData.certificateTemplate ||
                         eventData.certificate_template ||
-                        (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? 'âœ“ Template Uploaded' : 'âš ï¸ Template Required'}
+                        (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? '✓ Template Uploaded' : '✗ Template Required'}
                     </Text>
                   </View>
                   <View style={styles.field}>
@@ -1439,7 +1439,7 @@ function EventCreatedSuccess() {
                                 eventData.certificateTemplate?.name ||
                                 eventData.certificateTemplate ||
                                 eventData.certificate_template ||
-                                (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? 'âœ“ Template Uploaded' : 'âš ï¸ Template Required'}
+                                (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? '✓ Template Uploaded' : '✗ Template Required'}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
@@ -1513,7 +1513,7 @@ function EventCreatedSuccess() {
                                 )}
                                 {organizer.selected && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-50 text-green-800 border border-green-200">
-                                    âœ“ Selected
+                                    Selected
                                   </span>
                                 )}
                               </div>
