@@ -360,6 +360,41 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Function to refresh user data (especially assigned_events for organizer admins)
+  const refreshUserData = async () => {
+    if (!state.user || !state.isAuthenticated) {
+      return;
+    }
+
+    try {
+      let response;
+      if (state.userType === 'admin') {
+        response = await authAPI.adminStatus();
+      } else if (state.userType === 'faculty') {
+        response = await authAPI.facultyStatus();
+      } else if (state.userType === 'student') {
+        response = await authAPI.studentStatus();
+      }
+
+      if (response?.data?.success && response.data.user) {
+        // Update user data in state
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: {
+            user: response.data.user,
+            userType: state.userType,
+          },
+        });
+        
+        // Update localStorage
+        localStorage.setItem('user_data', JSON.stringify(response.data.user));
+        console.log('✅ User data refreshed successfully');
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
   const value = {
     ...state,
     login,
@@ -368,6 +403,7 @@ export function AuthProvider({ children }) {
     clearError,
     checkAuthStatus,
     transitionToOrganizerAdmin,
+    refreshUserData,
   };
 
   return (

@@ -22,7 +22,7 @@ const steps = [
 
 function CreateEvent() {
   const navigate = useNavigate();
-  const { user, userType, isAuthenticated, logout } = useAuth();
+  const { user, userType, isAuthenticated, logout, refreshUserData } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = steps.length;
   const [venues, setVenues] = useState([]);
@@ -759,35 +759,50 @@ function CreateEvent() {
         stepErrors.contacts = 'At least one contact with name and contact is required';
       }
     } else if (step === 3) {
+      // Date/Time validation - ALL fields required
+      if (!form.registration_start_date) stepErrors.registration_start_date = 'Registration start date is required';
+      if (!form.registration_start_time) stepErrors.registration_start_time = 'Registration start time is required';
+      if (!form.registration_end_date) stepErrors.registration_end_date = 'Registration end date is required';
+      if (!form.registration_end_time) stepErrors.registration_end_time = 'Registration end time is required';
+      if (!form.start_date) stepErrors.start_date = 'Event start date is required';
+      if (!form.start_time) stepErrors.start_time = 'Event start time is required';
+      if (!form.end_date) stepErrors.end_date = 'Event end date is required';
+      if (!form.end_time) stepErrors.end_time = 'Event end time is required';
+      if (!form.certificate_end_date) stepErrors.certificate_end_date = 'Certificate distribution end date is required';
+      if (!form.certificate_end_time) stepErrors.certificate_end_time = 'Certificate distribution end time is required';
+      
+      // Only validate time logic if all dates and times are provided
+      if (form.start_date && form.start_time && form.end_date && form.end_time &&
+          form.registration_start_date && form.registration_start_time &&
+          form.registration_end_date && form.registration_end_time) {
+        
+        const start = new Date(`${form.start_date}T${form.start_time}`);
+        const end = new Date(`${form.end_date}T${form.end_time}`);
+        const regStart = new Date(`${form.registration_start_date}T${form.registration_start_time}`);
+        const regEnd = new Date(`${form.registration_end_date}T${form.registration_end_time}`);
+        
+        // Basic time ordering checks
+        if (end <= start) stepErrors.end_time = 'Event end must be after event start';
+        if (regEnd <= regStart) stepErrors.registration_end_time = 'Registration end must be after registration start';
+        
+        // Registration period constraint - event cannot start before registration ends
+        if (start < regEnd) stepErrors.start_date = 'Event cannot start before registration period ends';
+        
+        // Ensure reasonable gap between registration end and event start (optional warning)
+        const timeDiff = start - regEnd;
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        if (hoursDiff < 1 && hoursDiff >= 0) {
+          stepErrors.start_time = 'Recommend at least 1 hour gap between registration end and event start';
+        }
+      }
+      
+      // Event Mode and Venue validation
       if (!form.mode) stepErrors.mode = 'Event Mode is required';
       if ((form.mode === 'offline' || form.mode === 'hybrid') && !form.venue) {
         stepErrors.venue = 'Venue selection is required for offline/hybrid events';
       }
       if (form.mode === 'online' && !form.venue) {
         stepErrors.venue = 'Platform/Meeting link is required for online events';
-      }
-    } else if (step === 3) {
-      // Date/Time validation
-      ['start_date','start_time','end_date','end_time','registration_start_date','registration_start_time','registration_end_date','registration_end_time','certificate_end_date','certificate_end_time'].forEach((f) => { if (!form[f]) stepErrors[f] = 'Required'; });
-      
-      // Date/time logic validation
-      const start = new Date(`${form.start_date}T${form.start_time}`);
-      const end = new Date(`${form.end_date}T${form.end_time}`);
-      const regStart = new Date(`${form.registration_start_date}T${form.registration_start_time}`);
-      const regEnd = new Date(`${form.registration_end_date}T${form.registration_end_time}`);
-      
-      // Basic time ordering checks
-      if (end <= start) stepErrors.end_time = 'Event end must be after event start';
-      if (regEnd <= regStart) stepErrors.registration_end_time = 'Registration end must be after registration start';
-      
-      // Registration period constraint - event cannot start before registration ends
-      if (start < regEnd) stepErrors.start_date = 'Event cannot start before registration period ends';
-      
-      // Ensure reasonable gap between registration end and event start (optional warning)
-      const timeDiff = start - regEnd;
-      const hoursDiff = timeDiff / (1000 * 60 * 60);
-      if (hoursDiff < 1 && hoursDiff >= 0) {
-        stepErrors.start_time = 'Recommend at least 1 hour gap between registration end and event start';
       }
       
       // Registration validation
@@ -1710,6 +1725,15 @@ function CreateEvent() {
           // Add attendance strategy data for display
           attendance_strategy: customAttendanceStrategy
         };
+
+        // Refresh user data to update assigned_events (especially important for organizer_admin)
+        try {
+          await refreshUserData();
+          console.log('✅ User data refreshed after event creation');
+        } catch (error) {
+          console.error('⚠️ Failed to refresh user data after event creation:', error);
+          // Don't fail the entire flow if refresh fails
+        }
 
         navigate('/admin/events/created-success', {
           state: { 

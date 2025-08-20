@@ -6,6 +6,27 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useToast, ToastContainer } from '../../components/ui/Alert';
 // Phase 1 Integration: Enhanced Validation
 import { validators } from '../../utils/validators';
+import Dropdown from '../../components/ui/Dropdown';
+import TextInput from '../../components/ui/TextInput';
+import dropdownOptionsService from '../../services/dropdownOptionsService';
+
+// Hardcoded options for genders and semesters
+const GENDER_OPTIONS = [
+  { value: 'Male', label: 'Male' },
+  { value: 'Female', label: 'Female' },
+  { value: 'Other', label: 'Other' }
+];
+
+const SEMESTER_OPTIONS = [
+  { value: 1, label: 'Semester 1' },
+  { value: 2, label: 'Semester 2' },
+  { value: 3, label: 'Semester 3' },
+  { value: 4, label: 'Semester 4' },
+  { value: 5, label: 'Semester 5' },
+  { value: 6, label: 'Semester 6' },
+  { value: 7, label: 'Semester 7' },
+  { value: 8, label: 'Semester 8' }
+];
 
 function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -206,11 +227,11 @@ function RegisterPage() {
           const today = new Date();
           let age = today.getFullYear() - birthDate.getFullYear();
           const monthDiff = today.getMonth() - birthDate.getMonth();
-          
+
           if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
             age--;
           }
-          
+
           if (age < 16) {
             error = 'Must be at least 16 years old';
           } else if (age > 100) {
@@ -267,7 +288,7 @@ function RegisterPage() {
   const validateFieldRealTime = useCallback(
     async (fieldName, fieldValue) => {
       console.log('🎯 validateFieldRealTime CALLED with:', { fieldName, fieldValue, activeTab });
-      
+
       // Only validate specific fields that need database checks
       const fieldsToValidate = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
       if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
@@ -281,7 +302,7 @@ function RegisterPage() {
       try {
         const response = await authAPI.validateField(fieldName, fieldValue, activeTab);
         console.log('🔍 Validation response for', fieldName, ':', response);
-        
+
         if (response.data.success) {
           setFieldValidation(prev => ({
             ...prev,
@@ -301,8 +322,8 @@ function RegisterPage() {
             // Clear the error if field is available and no other validation errors
             setValidationErrors(prev => {
               const newErrors = { ...prev };
-              if (newErrors[fieldName] === response.data.message || 
-                  newErrors[fieldName]?.includes('already registered')) {
+              if (newErrors[fieldName] === response.data.message ||
+                newErrors[fieldName]?.includes('already registered')) {
                 delete newErrors[fieldName];
               }
               return newErrors;
@@ -474,7 +495,7 @@ function RegisterPage() {
       // Don't clear form data on error - let user fix the issue
       console.error('Registration failed:', result.error);
       addToast({
-        type: 'error', 
+        type: 'error',
         title: 'Registration Failed',
         message: result.error || 'Please check your information and try again.',
         duration: 8000
@@ -501,8 +522,8 @@ function RegisterPage() {
         <div className="text-center">
           <div className="flex items-center justify-center mb-6">
             <div className={`h-20 w-20 flex items-center justify-center rounded-full shadow-lg ${activeTab === 'faculty'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
-                : 'bg-gradient-to-r from-green-600 to-emerald-600'
+              ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
+              : 'bg-gradient-to-r from-green-600 to-emerald-600'
               }`}>
               <i className={`${activeTab === 'faculty' ? 'fas fa-chalkboard-teacher' : 'fas fa-user-plus'
                 } text-white text-3xl`}></i>
@@ -524,8 +545,8 @@ function RegisterPage() {
               type="button"
               onClick={() => handleTabSwitch('student')}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${activeTab === 'student'
-                  ? 'bg-green-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               <i className="fas fa-user-graduate mr-2"></i>
@@ -535,8 +556,8 @@ function RegisterPage() {
               type="button"
               onClick={() => handleTabSwitch('faculty')}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${activeTab === 'faculty'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
                 }`}
             >
               <i className="fas fa-chalkboard-teacher mr-2"></i>
@@ -571,221 +592,118 @@ function RegisterPage() {
                     Personal Information
                   </h3>              {/* Full Name and Enrollment Number Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Full Name *
-                      </label>
-                      <input
-                        id="full_name"
-                        name="full_name"
-                        type="text"
-                        required
-                        placeholder="Enter your full name"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                        value={formData.full_name}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                      />
-                    </div>
+                    <TextInput
+                      id="full_name"
+                      name="full_name"
+                      type="text"
+                      required
+                      placeholder="Enter your full name"
+                      label="Full Name"
+                      value={formData.full_name}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                    />
 
-                    <div>
-                      <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Enrollment Number *
-                      </label>
-                      <input
-                        id="enrollment_no"
-                        name="enrollment_no"
-                        type="text"
-                        required
-                        placeholder="e.g., 21BECE40015"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.enrollment_no 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.enrollment_no?.available === false
-                            ? 'border-red-400 focus:ring-red-500'
+                    <TextInput
+                      id="enrollment_no"
+                      name="enrollment_no"
+                      type="text"
+                      required
+                      placeholder="e.g., 21BECE40015"
+                      label="Enrollment Number"
+                      value={formData.enrollment_no}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      loading={validationLoading.enrollment_no}
+                      error={!!validationErrors.enrollment_no || fieldValidation.enrollment_no?.available === false}
+                      success={fieldValidation.enrollment_no?.available === true}
+                      helperText={
+                        validationErrors.enrollment_no
+                          ? validationErrors.enrollment_no
+                          : fieldValidation.enrollment_no?.available === false
+                            ? fieldValidation.enrollment_no?.message || 'This enrollment number is already registered'
                             : fieldValidation.enrollment_no?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-green-500'
-                        }`}
-                        value={formData.enrollment_no}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                      />
-                      {validationLoading.enrollment_no && (
-                        <p className="mt-1 text-sm text-blue-600">
-                          <i className="fas fa-spinner fa-spin mr-1"></i>
-                          Checking availability...
-                        </p>
-                      )}
-                      {validationErrors.enrollment_no && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {validationErrors.enrollment_no}
-                        </p>
-                      )}
-                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && fieldValidation.enrollment_no?.available === true && formData.enrollment_no && (
-                        <p className="mt-1 text-sm text-green-600">
-                          <i className="fas fa-check mr-1"></i>
-                          Enrollment number is available
-                        </p>
-                      )}
-                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && fieldValidation.enrollment_no?.available === false && formData.enrollment_no && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {fieldValidation.enrollment_no?.message || 'This enrollment number is already registered'}
-                        </p>
-                      )}
-                      {!validationErrors.enrollment_no && !validationLoading.enrollment_no && formData.enrollment_no && !fieldValidation.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no) && (
-                        <p className="mt-1 text-sm text-green-600">
-                          <i className="fas fa-check mr-1"></i>
-                          Valid format
-                        </p>
-                      )}
-                    </div>
+                              ? 'Enrollment number is available'
+                              : !validationErrors.enrollment_no && !validationLoading.enrollment_no && formData.enrollment_no && !fieldValidation.enrollment_no && /^\d{2}[A-Z]{2,4}\d{5}$/.test(formData.enrollment_no)
+                                ? 'Valid format'
+                                : ''
+                      }
+                    />
                   </div>              {/* Email and Mobile Number Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Email Address *
-                      </label>
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="Enter your email address"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.email 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.email?.available === false
-                            ? 'border-red-400 focus:ring-red-500'
-                            : fieldValidation.email?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-green-500'
-                        }`}
-                        value={formData.email}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                      />
-                      {validationLoading.email && (
-                        <p className="mt-1 text-sm text-blue-600">
-                          <i className="fas fa-spinner fa-spin mr-1"></i>
-                          Checking availability...
-                        </p>
-                      )}
-                      {validationErrors.email && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {validationErrors.email}
-                        </p>
-                      )}
-                      {!validationErrors.email && !validationLoading.email && fieldValidation.email?.available === true && formData.email && (
-                        <p className="mt-1 text-sm text-green-600">
-                          <i className="fas fa-check mr-1"></i>
-                          Email is available
-                        </p>
-                      )}
-                    </div>
+                    <TextInput
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="Enter your email address"
+                      label="Email Address"
+                      value={formData.email}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      loading={validationLoading.email}
+                      error={!!validationErrors.email || fieldValidation.email?.available === false}
+                      success={fieldValidation.email?.available === true}
+                      helperText={
+                        validationErrors.email
+                          ? validationErrors.email
+                          : fieldValidation.email?.available === true
+                            ? 'Email is available'
+                            : ''
+                      }
+                    />
 
-                    <div>
-                      <label htmlFor="mobile_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Mobile Number *
-                      </label>
-                      <input
-                        id="mobile_no"
-                        name="mobile_no"
-                        type="tel"
-                        required
-                        placeholder="10-digit mobile number"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.mobile_no 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.mobile_no?.available === false
-                            ? 'border-red-400 focus:ring-red-500'
+                    <TextInput
+                      id="mobile_no"
+                      name="mobile_no"
+                      type="tel"
+                      required
+                      placeholder="10-digit mobile number"
+                      label="Mobile Number"
+                      value={formData.mobile_no}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      loading={validationLoading.mobile_no}
+                      error={!!validationErrors.mobile_no || fieldValidation.mobile_no?.available === false}
+                      success={fieldValidation.mobile_no?.available === true}
+                      helperText={
+                        validationErrors.mobile_no
+                          ? validationErrors.mobile_no
+                          : fieldValidation.mobile_no?.available === false
+                            ? fieldValidation.mobile_no?.message || 'This mobile number is already registered'
                             : fieldValidation.mobile_no?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-green-500'
-                        }`}
-                        value={formData.mobile_no}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                      />
-                      {validationLoading.mobile_no && (
-                        <p className="mt-1 text-sm text-blue-600">
-                          <i className="fas fa-spinner fa-spin mr-1"></i>
-                          Checking availability...
-                        </p>
-                      )}
-                      {validationErrors.mobile_no && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {validationErrors.mobile_no}
-                        </p>
-                      )}
-                      {!validationErrors.mobile_no && !validationLoading.mobile_no && fieldValidation.mobile_no?.available === true && formData.mobile_no && (
-                        <p className="mt-1 text-sm text-green-600">
-                          <i className="fas fa-check mr-1"></i>
-                          Mobile number is available
-                        </p>
-                      )}
-                      {!validationErrors.mobile_no && !validationLoading.mobile_no && fieldValidation.mobile_no?.available === false && formData.mobile_no && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {fieldValidation.mobile_no?.message || 'This mobile number is already registered'}
-                        </p>
-                      )}
-                    </div>
+                              ? 'Mobile number is available'
+                              : ''
+                      }
+                    />
                   </div>              {/* Gender and Date of Birth Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Gender *
-                      </label>
-                      <select
-                        id="gender"
-                        name="gender"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        label="Gender"
+                        placeholder="Select your gender"
+                        options={GENDER_OPTIONS}
                         value={formData.gender}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select your gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
-                      </select>
+                        error={!!validationErrors.gender}
+                        helperText={validationErrors.gender}
+                      />
                     </div>
 
-                    <div>
-                      <label htmlFor="date_of_birth" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Date of Birth *
-                      </label>
-                      <input
-                        id="date_of_birth"
-                        name="date_of_birth"
-                        type="date"
-                        required
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.date_of_birth ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
-                          }`}
-                        value={formData.date_of_birth}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                      />
-                      {validationErrors.date_of_birth && (
-                        <p className="mt-1 text-sm text-red-600">
-                          <i className="fas fa-times mr-1"></i>
-                          {validationErrors.date_of_birth}
-                        </p>
-                      )}
-                    </div>
+                    <TextInput
+                      id="date_of_birth"
+                      name="date_of_birth"
+                      type="date"
+                      required
+                      label="Date of Birth"
+                      value={formData.date_of_birth}
+                      onChange={handleChange}
+                      disabled={isLoading}
+                      error={!!validationErrors.date_of_birth}
+                      helperText={validationErrors.date_of_birth}
+                    />
                   </div>
                 </div>
 
@@ -807,7 +725,7 @@ function RegisterPage() {
                           type={showPassword.password ? "text" : "password"}
                           required
                           placeholder="Create a strong password"
-                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                          className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
                           value={formData.password}
                           onChange={handleChange}
                           disabled={isLoading}
@@ -861,7 +779,7 @@ function RegisterPage() {
                           type={showPassword.confirm_password ? "text" : "password"}
                           required
                           placeholder="Re-enter your password"
-                          className={`w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.confirm_password ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
+                          className={`w-full px-4 py-3 pr-12 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.confirm_password ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500'
                             }`}
                           value={formData.confirm_password}
                           onChange={handleChange}
@@ -902,70 +820,32 @@ function RegisterPage() {
                   </h3>              {/* Department and Current Semester Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Department *
-                      </label>
-                      <select
-                        id="department"
-                        name="department"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        label="Department"
+                        placeholder="Select your department"
+                        options={dropdownOptionsService.getOptions('student', 'departments')}
                         value={formData.department}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select your department</option>
-                        <option value="Computer Science and Engineering">Computer Science and Engineering</option>
-                        <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
-                        <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
-                        <option value="Mechanical Engineering">Mechanical Engineering</option>
-                        <option value="Civil Engineering">Civil Engineering</option>
-                        <option value="Chemical Engineering">Chemical Engineering</option>
-                        <option value="Information Technology">Information Technology</option>
-                        <option value="Biotechnology">Biotechnology</option>
-                        <option value="Aeronautical Engineering">Aeronautical Engineering</option>
-                        <option value="Automobile Engineering">Automobile Engineering</option>
-                        <option value="Master of Business Administration">Master of Business Administration</option>
-                        <option value="Master of Computer Applications">Master of Computer Applications</option>
-                        <option value="Other">Other</option>
-                      </select>
+                        searchable={true}
+                        error={!!validationErrors.department}
+                        helperText={validationErrors.department}
+                      />
                     </div>
 
                     <div>
-                      <label htmlFor="semester" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Current Semester *
-                      </label>
-                      <select
-                        id="semester"
-                        name="semester"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        label="Current Semester"
+                        placeholder="Select your current semester"
+                        options={SEMESTER_OPTIONS}
                         value={formData.semester}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select your current semester</option>
-                        <option value="1">1st Semester</option>
-                        <option value="2">2nd Semester</option>
-                        <option value="3">3rd Semester</option>
-                        <option value="4">4th Semester</option>
-                        <option value="5">5th Semester</option>
-                        <option value="6">6th Semester</option>
-                        <option value="7">7th Semester</option>
-                        <option value="8">8th Semester</option>
-                      </select>
+                        error={!!validationErrors.semester}
+                        helperText={validationErrors.semester}
+                      />
                     </div>
                   </div>
                 </div>
@@ -1011,15 +891,14 @@ function RegisterPage() {
                         type="text"
                         required
                         placeholder="e.g., EMP001"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.employee_id 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.employee_id?.available === false
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.employee_id
                             ? 'border-red-400 focus:ring-red-500'
-                            : fieldValidation.employee_id?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-blue-500'
-                        }`}
+                            : fieldValidation.employee_id?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.employee_id?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.employee_id}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1054,7 +933,14 @@ function RegisterPage() {
                         type="text"
                         required
                         placeholder="Enter your full name"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.full_name}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1077,15 +963,14 @@ function RegisterPage() {
                         type="email"
                         required
                         placeholder="your.email@example.com"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.email 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.email?.available === false
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
                             ? 'border-red-400 focus:ring-red-500'
-                            : fieldValidation.email?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-blue-500'
-                        }`}
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.email}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1120,15 +1005,14 @@ function RegisterPage() {
                         type="tel"
                         required
                         placeholder="1234567890"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
-                          validationErrors.contact_no 
-                            ? 'border-red-400 focus:ring-red-500' 
-                            : fieldValidation.contact_no?.available === false
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.contact_no
                             ? 'border-red-400 focus:ring-red-500'
-                            : fieldValidation.contact_no?.available === true
-                            ? 'border-green-400 focus:ring-green-500'
-                            : 'border-gray-200 focus:ring-blue-500'
-                        }`}
+                            : fieldValidation.contact_no?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.contact_no?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.contact_no}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1158,38 +1042,21 @@ function RegisterPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Department *
+                        Department
                       </label>
-                      <select
-                        id="department"
-                        name="department"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        
+                        placeholder="Select Department"
+                        options={dropdownOptionsService.getOptions('faculty', 'departments')}
                         value={formData.department}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select Department</option>
-                        <option value="Computer Science">Computer Science</option>
-                        <option value="Information Technology">Information Technology</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Mechanical">Mechanical</option>
-                        <option value="Civil">Civil</option>
-                        <option value="Chemical">Chemical</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="Physics">Physics</option>
-                        <option value="Chemistry">Chemistry</option>
-                        <option value="Management">Management</option>
-                      </select>
-                      {validationErrors.department && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.department}</p>
-                      )}
+                        searchable={true}
+                        error={!!validationErrors.department}
+                        helperText={validationErrors.department}
+                        className={'mt-2 w-full'}
+                      />
                     </div>
 
                     <div>
@@ -1201,8 +1068,14 @@ function RegisterPage() {
                         name="seating"
                         type="text"
                         placeholder="e.g., Room 301, Block A"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        value={formData.seating}
+                        className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         onChange={handleChange}
                         disabled={isLoading}
                       />
@@ -1213,80 +1086,35 @@ function RegisterPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="designation" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Designation *
+                        Designation
                       </label>
-                      <select
-                        id="designation"
-                        name="designation"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        placeholder="Select Designation"
+                        options={dropdownOptionsService.getOptions('faculty', 'designations')}
                         value={formData.designation}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, designation: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select Designation</option>
-                        <option value="Professor">Professor</option>
-                        <option value="Associate Professor">Associate Professor</option>
-                        <option value="Assistant Professor">Assistant Professor</option>
-                        <option value="Lecturer">Lecturer</option>
-                        <option value="Senior Lecturer">Senior Lecturer</option>
-                        <option value="Principal">Principal</option>
-                        <option value="Vice Principal">Vice Principal</option>
-                        <option value="Head of Department">Head of Department</option>
-                        <option value="Dean">Dean</option>
-                        <option value="Director">Director</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      {validationErrors.designation && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.designation}</p>
-                      )}
+                        searchable={true}
+                        error={!!validationErrors.designation}
+                        helperText={validationErrors.designation}
+                      />
                     </div>
-
                     <div>
-                      <label htmlFor="qualification" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Highest Qualification *
+                      <label htmlFor="highest_qualification" className="block text-sm font-semibold text-gray-800 mb-2">
+                        Highest Qualification
                       </label>
-                      <select
-                        id="qualification"
-                        name="qualification"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+                        placeholder="Select Qualification"
+                        options={dropdownOptionsService.getOptions('faculty', 'qualifications')}
                         value={formData.qualification}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, qualification: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select Qualification</option>
-                        <option value="Ph.D.">Ph.D.</option>
-                        <option value="M.Tech">M.Tech</option>
-                        <option value="M.E.">M.E.</option>
-                        <option value="M.S.">M.S.</option>
-                        <option value="M.Sc.">M.Sc.</option>
-                        <option value="M.A.">M.A.</option>
-                        <option value="M.Com.">M.Com.</option>
-                        <option value="MBA">MBA</option>
-                        <option value="MCA">MCA</option>
-                        <option value="B.Tech">B.Tech</option>
-                        <option value="B.E.">B.E.</option>
-                        <option value="B.Sc.">B.Sc.</option>
-                        <option value="B.A.">B.A.</option>
-                        <option value="B.Com.">B.Com.</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      {validationErrors.qualification && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.qualification}</p>
-                      )}
+                        searchable={true}
+                        error={!!validationErrors.qualification}
+                        helperText={validationErrors.qualification}
+                      />
                     </div>
                   </div>
 
@@ -1301,7 +1129,14 @@ function RegisterPage() {
                         name="specialization"
                         type="text"
                         placeholder="e.g., Machine Learning, Data Structures, etc."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.specialization}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1319,7 +1154,14 @@ function RegisterPage() {
                         id="date_of_joining"
                         name="date_of_joining"
                         type="date"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.date_of_joining}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1338,7 +1180,14 @@ function RegisterPage() {
                         min="0"
                         max="50"
                         placeholder="e.g., 5"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.experience_years}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1353,31 +1202,19 @@ function RegisterPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
-                        Gender *
+                        Gender
                       </label>
-                      <select
-                        id="gender"
-                        name="gender"
-                        required
-                        className="w-full px-4 py-3 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                      <Dropdown
+
+                        placeholder="Select Gender"
+                        options={GENDER_OPTIONS}
                         value={formData.gender}
-                        onChange={handleChange}
+                        onChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+                        required={true}
                         disabled={isLoading}
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 12px center',
-                          backgroundSize: '16px'
-                        }}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                      {validationErrors.gender && (
-                        <p className="mt-1 text-sm text-red-600">{validationErrors.gender}</p>
-                      )}
+                        error={!!validationErrors.gender}
+                        helperText={validationErrors.gender}
+                      />
                     </div>
 
                     <div>
@@ -1389,7 +1226,14 @@ function RegisterPage() {
                         name="date_of_birth"
                         type="date"
                         required
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                         value={formData.date_of_birth}
                         onChange={handleChange}
                         disabled={isLoading}
@@ -1421,8 +1265,14 @@ function RegisterPage() {
                           name="faculty_password"
                           type={showPassword.faculty_password ? "text" : "password"}
                           required
-                          placeholder="Enter your password"
-                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                           value={formData.faculty_password}
                           onChange={handleChange}
                           disabled={isLoading}
@@ -1469,8 +1319,14 @@ function RegisterPage() {
                           name="faculty_confirm_password"
                           type={showPassword.faculty_confirm_password ? "text" : "password"}
                           required
-                          placeholder="Confirm your password"
-                          className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${validationErrors.email
+                            ? 'border-red-400 focus:ring-red-500'
+                            : fieldValidation.email?.available === false
+                              ? 'border-red-400 focus:ring-red-500'
+                              : fieldValidation.email?.available === true
+                                ? 'border-green-400 focus:ring-green-500'
+                                : 'border-gray-200 focus:ring-blue-500'
+                          }`}
                           value={formData.faculty_confirm_password}
                           onChange={handleChange}
                           disabled={isLoading}
@@ -1519,11 +1375,10 @@ function RegisterPage() {
             <p className="text-gray-600 mb-4">Already have an account?</p>
             <Link
               to={`/auth/login?tab=${activeTab}`}
-              className={`inline-flex items-center px-6 py-3 border-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'faculty'
+              className={`inline-flex items-center px-6 py-3 border-2 rounded-lg text-sm font-semibold transition-all duration-200 ${activeTab === 'faculty'
                   ? 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
                   : 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-300'
-              }`}
+                }`}
             >
               <i className="fas fa-sign-in-alt mr-2"></i>
               {activeTab === 'faculty' ? 'Sign In to Faculty Portal' : 'Sign In to Student Portal'}
@@ -1531,10 +1386,10 @@ function RegisterPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Toast Container */}
-      <ToastContainer 
-        toasts={toasts} 
+      <ToastContainer
+        toasts={toasts}
         onRemove={removeToast}
         position="top-right"
       />

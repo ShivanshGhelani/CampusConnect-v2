@@ -1023,7 +1023,12 @@ function EventCreatedSuccess() {
                 <div className="flex gap-3">
                   {user?.role === 'admin' && (
                     <button
-                      onClick={() => navigate('/admin/events')}
+                      onClick={() => {
+                        // Clear the events cache to ensure fresh data is loaded
+                        const cacheKey = `admin_events_${user?.username || 'anonymous'}`;
+                        localStorage.removeItem(cacheKey);
+                        navigate('/admin/events');
+                      }}
                       className="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                       aria-label="Navigate to all events page"
                     >

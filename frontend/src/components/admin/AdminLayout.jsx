@@ -466,6 +466,22 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                         </div>
                                         <span className="font-semibold text-sm">Manage Admins</span>
                                     </Link>
+
+                                    <Link
+                                        to="/admin/dropdown-management"
+                                        className={`group flex items-center gap-3 px-3 py-2.5 text-white-700 hover:text-orange-700 hover:bg-orange-50/80 rounded-xl transition-all duration-200 hover:scale-[1.02] ${isActive('/admin/dropdown-management') ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white hover:text-white shadow-lg shadow-orange-500/25' : ''}`}
+                                        onClick={closeMobileMenu}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-semibold text-sm">Deparments  </span>
+                                        {isActive('/admin/dropdown-management') && (
+                                                <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
+                                            )}
+                                    </Link>
                                 </div>
                             </div>
                         )}

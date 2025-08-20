@@ -4,6 +4,16 @@ import { useAuth } from '../../../../context/AuthContext';
 import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
+import Dropdown from '../../../../components/ui/Dropdown';
+import TextInput from '../../../../components/ui/TextInput';
+import dropdownOptionsService from '../../../../services/dropdownOptionsService';
+
+// Hardcoded options for genders
+const GENDER_OPTIONS = [
+  { value: 'Male', label: 'Male' },
+  { value: 'Female', label: 'Female' },
+  { value: 'Other', label: 'Other' }
+];
 
 function FacultyProfileEdit() {
   const { user } = useAuth();
@@ -368,26 +378,21 @@ function FacultyProfileEdit() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Full Name */}
                   <div className="md:col-span-2">
-                    <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Full Name *
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="full_name" 
-                        name="full_name" 
-                        type="text" 
-                        required
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="Enter your full name as per official records"
-                        value={formData.full_name}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <TextInput
+                      id="full_name" 
+                      name="full_name" 
+                      type="text" 
+                      required
+                      placeholder="Enter your full name as per official records"
+                      label="Full Name"
+                      value={formData.full_name}
+                      onChange={handleInputChange}
+                      icon={
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                      </div>
-                    </div>
+                      }
+                    />
                   </div>
 
                   {/* Email */}
@@ -464,28 +469,14 @@ function FacultyProfileEdit() {
 
                   {/* Gender */}
                   <div>
-                    <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Gender
-                    </label>
-                    <div className="relative">
-                      <select 
-                        id="gender" 
-                        name="gender"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
-                        value={formData.gender}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    <Dropdown
+                      label="Gender"
+                      placeholder="Select your gender"
+                      options={GENDER_OPTIONS}
+                      value={formData.gender}
+                      onChange={(value) => setFormData(prev => ({...prev, gender: value}))}
+                      required={true}
+                    />
                   </div>
 
                   {/* Date of Birth */}
@@ -525,7 +516,7 @@ function FacultyProfileEdit() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Employee ID */}
                   <div>
-                    <label htmlFor="employee_id" className="block text-sm font-semibold text-gray-800 mb-2">
+                    <label htmlFor="employee_id" className="block text-sm font-semibold text-gray-800 mb-1">
                       Employee ID
                     </label>
                     <div className="relative">
@@ -534,7 +525,7 @@ function FacultyProfileEdit() {
                         name="employee_id" 
                         type="text"
                         readOnly
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
+                        className="w-full px-4 py-2.5 border-2 shadow-md border-gray-200 rounded-lg placeholder-gray-400 bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                         placeholder="Employee ID (Cannot be changed)"
                         value={formData.employee_id}
                         title="Employee ID cannot be modified"
@@ -550,71 +541,50 @@ function FacultyProfileEdit() {
 
                   {/* Department */}
                   <div>
-                    <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Department
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="department" 
-                        name="department" 
-                        type="text"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="e.g., Computer Science, Mathematics"
-                        value={formData.department}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                      </div>
-                    </div>
+                    <Dropdown
+                      label="Department"
+                      placeholder="Select your department"
+                      options={dropdownOptionsService.getOptions('faculty', 'departments')}
+                      value={formData.department}
+                      onChange={(value) => setFormData(prev => ({...prev, department: value}))}
+                      searchable={true}
+                      required={true}
+                      icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>}
+                    />
                   </div>
 
                   {/* Designation */}
                   <div>
-                    <label htmlFor="designation" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Designation
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="designation" 
-                        name="designation" 
-                        type="text"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="e.g., Professor, Associate Professor, Assistant Professor"
-                        value={formData.designation}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                        </svg>
-                      </div>
-                    </div>
+                    <Dropdown
+                      label="Designation"
+                      placeholder="Select your designation"
+                      options={dropdownOptionsService.getOptions('faculty', 'designations')}
+                      value={formData.designation}
+                      onChange={(value) => setFormData(prev => ({...prev, designation: value}))}
+                      searchable={true}
+                      required={true}
+                      icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>}
+                    />
                   </div>
 
                   {/* Qualification */}
                   <div>
-                    <label htmlFor="qualification" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Qualification
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="qualification" 
-                        name="qualification" 
-                        type="text"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="e.g., M.Tech, Ph.D, B.Tech"
-                        value={formData.qualification}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                      </div>
-                    </div>
+                    <Dropdown
+                      label="Qualification"
+                      placeholder="Select your highest qualification"
+                      options={dropdownOptionsService.getOptions('faculty', 'qualifications')}
+                      value={formData.qualification}
+                      onChange={(value) => setFormData(prev => ({...prev, qualification: value}))}
+                      searchable={true}
+                      required={true}
+                      icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>}
+                    />
                   </div>
 
                   {/* Experience */}

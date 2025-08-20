@@ -57,6 +57,7 @@ import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 import CertificateEditor from '../pages/admin/CertificateEditor';
+import DropdownManagement from '../components/admin/SuperAdmin/DropdownManagement';
 
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -440,6 +441,14 @@ function AppRoutes() {
             <ProtectedRoute userType="admin">
               <ManageAdmin />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dropdown-management"
+          element={
+            <SuperAdminRoute>
+              <DropdownManagement />
+            </SuperAdminRoute>
           }
         />
         <Route

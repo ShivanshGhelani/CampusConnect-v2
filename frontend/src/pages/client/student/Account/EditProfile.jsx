@@ -4,6 +4,27 @@ import { useAuth } from '../../../../context/AuthContext';
 import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
+import Dropdown from '../../../../components/ui/Dropdown';
+import TextInput from '../../../../components/ui/TextInput';
+import dropdownOptionsService from '../../../../services/dropdownOptionsService';
+
+// Hardcoded options for genders and semesters
+const GENDER_OPTIONS = [
+  { value: 'Male', label: 'Male' },
+  { value: 'Female', label: 'Female' },
+  { value: 'Other', label: 'Other' }
+];
+
+const SEMESTER_OPTIONS = [
+  { value: 1, label: 'Semester 1' },
+  { value: 2, label: 'Semester 2' },
+  { value: 3, label: 'Semester 3' },
+  { value: 4, label: 'Semester 4' },
+  { value: 5, label: 'Semester 5' },
+  { value: 6, label: 'Semester 6' },
+  { value: 7, label: 'Semester 7' },
+  { value: 8, label: 'Semester 8' }
+];
 
 function EditProfile() {
   const { user } = useAuth();
@@ -332,120 +353,73 @@ function EditProfile() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   
                   {/* Full Name */}
-                  <div>
-                    <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Full Name *
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="full_name" 
-                        name="full_name" 
-                        type="text" 
-                        required
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                        placeholder="Enter your full name"
-                        value={formData.full_name}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
+                  <TextInput
+                    id="full_name" 
+                    name="full_name" 
+                    type="text" 
+                    required
+                    placeholder="Enter your full name"
+                    label="Full Name"
+                    value={formData.full_name}
+                    onChange={handleInputChange}
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    }
+                  />
 
                   {/* Email */}
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Email Address *
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="email" 
-                        name="email" 
-                        type="email" 
-                        required
-                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
-                          validationErrors.email 
-                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
-                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
-                        }`}
-                        placeholder="Enter your email address"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        {validationLoading.email ? (
-                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
-                        ) : (
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    {validationErrors.email && (
-                      <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-                    )}
-                  </div>
+                  <TextInput
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    required
+                    placeholder="Enter your email address"
+                    label="Email Address"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    loading={validationLoading.email}
+                    error={!!validationErrors.email}
+                    helperText={validationErrors.email}
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    }
+                  />
 
                   {/* Mobile Number */}
-                  <div>
-                    <label htmlFor="mobile_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Mobile Number *
-                    </label>
-                    <div className="relative">
-                      <input 
-                        id="mobile_no" 
-                        name="mobile_no" 
-                        type="tel" 
-                        required 
-                        pattern="[0-9]{10}"
-                        className={`w-full px-4 py-3 border-2 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
-                          validationErrors.mobile_no 
-                            ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' 
-                            : 'border-gray-200 focus:ring-purple-500/20 focus:border-purple-500'
-                        }`}
-                        placeholder="10-digit mobile number"
-                        value={formData.mobile_no}
-                        onChange={handleInputChange}
-                      />
-                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-                        {validationLoading.mobile_no ? (
-                          <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
-                        ) : (
-                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h5.5a2 2 0 012 2v6.5a1 1 0 01-1 1H10a1 1 0 01-1-1v-1M7 13h5.5a1 1 0 011 1v5.5a2 2 0 01-2 2H4a1 1 0 01-1-1V14a1 1 0 011-1h3z" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    {validationErrors.mobile_no && (
-                      <p className="mt-1 text-sm text-red-600">{validationErrors.mobile_no}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">Your active mobile number for notifications</p>
-                  </div>
+                  <TextInput
+                    id="mobile_no" 
+                    name="mobile_no" 
+                    type="tel" 
+                    required 
+                    placeholder="10-digit mobile number"
+                    label="Mobile Number"
+                    value={formData.mobile_no}
+                    onChange={handleInputChange}
+                    loading={validationLoading.mobile_no}
+                    error={!!validationErrors.mobile_no}
+                    helperText={validationErrors.mobile_no || "Your active mobile number for notifications"}
+                    pattern="[0-9]{10}"
+                    icon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h5.5a2 2 0 012 2v6.5a1 1 0 01-1 1H10a1 1 0 01-1-1v-1M7 13h5.5a1 1 0 011 1v5.5a2 2 0 01-2 2H4a1 1 0 01-1-1V14a1 1 0 011-1h3z" />
+                      </svg>
+                    }
+                  />
 
                   {/* Gender */}
                   <div>
-                    <label htmlFor="gender" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Gender
-                    </label>
-                    <div className="relative">
-                      <select 
-                        id="gender" 
-                        name="gender"
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
-                        value={formData.gender}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+                    <Dropdown
+                      label="Gender"
+                      placeholder="Select your gender"
+                      options={GENDER_OPTIONS}
+                      value={formData.gender}
+                      onChange={(value) => setFormData(prev => ({...prev, gender: value}))}
+                      required={true}
+                    />
                   </div>
 
                   {/* Date of Birth */}
@@ -489,37 +463,27 @@ function EditProfile() {
 
                   {/* Department */}
                   <div>
-                    <label htmlFor="department" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Department
-                    </label>
-                    <input 
-                      id="department" 
-                      name="department" 
-                      type="text"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
-                      placeholder="Your department"
+                    <Dropdown
+                      label="Department"
+                      placeholder="Select your department"
+                      options={dropdownOptionsService.getOptions('student', 'departments')}
                       value={formData.department}
-                      onChange={handleInputChange}
+                      onChange={(value) => setFormData(prev => ({...prev, department: value}))}
+                      searchable={true}
+                      required={true}
                     />
                   </div>
 
                   {/* Semester */}
                   <div>
-                    <label htmlFor="semester" className="block text-sm font-semibold text-gray-800 mb-2">
-                      Semester
-                    </label>
-                    <select 
-                      id="semester" 
-                      name="semester"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 appearance-none"
+                    <Dropdown
+                      label="Semester"
+                      placeholder="Select your semester"
+                      options={SEMESTER_OPTIONS}
                       value={formData.semester}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Select Semester</option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                        <option key={sem} value={sem}>{sem}</option>
-                      ))}
-                    </select>
+                      onChange={(value) => setFormData(prev => ({...prev, semester: value}))}
+                      required={true}
+                    />
                   </div>
                 </div>
               </div>

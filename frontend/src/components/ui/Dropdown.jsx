@@ -58,11 +58,11 @@ const Dropdown = ({
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
-        return 'px-3 h-8 text-sm';
+        return 'px-3 py-2 text-sm';
       case 'lg':
-        return 'px-4 h-12 text-base';
+        return 'px-4 py-4 text-base';
       default:
-        return 'px-3 h-10 text-sm';
+        return 'px-4 py-3 text-sm'; // Changed to match text inputs
     }
   };
 
@@ -70,9 +70,9 @@ const Dropdown = ({
   const getVariantClasses = () => {
     switch (variant) {
       case 'minimal':
-        return 'border-0 border-b border-gray-300 rounded-none focus:border-blue-500 bg-transparent';
+        return 'border-0 border-b-2 border-gray-300 rounded-none focus:border-blue-500 bg-transparent';
       default:
-        return 'border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white';
+        return 'border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white';
     }
   };
 

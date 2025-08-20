@@ -413,7 +413,8 @@ export class EventPDFService {
         TEAM_SETTINGS: this.generateTeamSettings(eventData),
 
         // Certificate details
-        CERTIFICATE_TEMPLATE: eventData.certificate_template?.name || 
+        CERTIFICATE_TEMPLATE: eventData.is_certificate_based ? (
+                              eventData.certificate_template?.name || 
                               eventData.certificate_template?.fileName || 
                               eventData.certificate_template?.originalName || 
                               eventData.certificate_template_name || 
@@ -423,22 +424,27 @@ export class EventPDFService {
                               // Check certificate_templates object for any template
                               (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0 ? 
                                 `${Object.keys(eventData.certificate_templates).length} template(s) uploaded` : null) ||
-                              'No template selected',
-        CERTIFICATE_STATUS: (eventData.certificate_template?.name || 
+                              'No template selected'
+                              ) : 'No certificates needed for this event',
+        CERTIFICATE_STATUS: eventData.is_certificate_based ? (
+                             (eventData.certificate_template?.name || 
                              eventData.certificate_template?.fileName || 
                              eventData.certificate_template?.originalName || 
                              eventData.certificate_template_name || 
                              eventData.certificateTemplate?.name ||
                              eventData.certificateTemplate ||
                              (eventData.certificate_template && typeof eventData.certificate_template === 'string' ? eventData.certificate_template : null) ||
-                             (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? '✓ Template Uploaded' : '⚠️ Template Required',
+                             (eventData.certificate_templates && Object.keys(eventData.certificate_templates).length > 0)) ? '✓ Template Uploaded' : '⚠️ Template Required'
+                             ) : '✓ No certificates required',
         ADDITIONAL_ASSETS: (eventData.assets && eventData.assets.length > 0) ? `
           <div class="field">
             <span class="field-label">Additional Assets:</span>
             <span class="field-value">${eventData.assets.length} file(s) uploaded</span>
           </div>
         ` : '',
-        CERTIFICATE_AVAILABILITY: `${this.formatDate(eventData.certificate_end_date)} at ${this.formatTime(eventData.certificate_end_time)}`,
+        CERTIFICATE_AVAILABILITY: eventData.is_certificate_based ? 
+                                   `${this.formatDate(eventData.certificate_end_date)} at ${this.formatTime(eventData.certificate_end_time)}` : 
+                                   'No certificates will be issued',
 
         // Registration fee value for budget section
         REGISTRATION_FEE_VALUE: eventData.registration_fee_enabled ? `₹${eventData.registration_fee || 0}` : 'Free',
