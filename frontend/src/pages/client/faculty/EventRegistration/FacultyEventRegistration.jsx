@@ -158,6 +158,12 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         // Initialize form with user data (using cached data for now)
         // TODO: Fix fresh API data fetching later
         if (user) {
+          // Transform gender to match frontend options (capitalize first letter)
+          const transformGender = (gender) => {
+            if (!gender) return '';
+            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+          };
+          
           const newFormData = {
             ...formData,
             full_name: user.full_name || '',
@@ -166,7 +172,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
             mobile_no: user.mobile_no || user.phone_number || '',
             department: user.department || '',
             designation: user.designation || '',
-            gender: user.gender || '',
+            gender: transformGender(user.gender) || '',
             date_of_birth: user.date_of_birth ? formatDateForInput(user.date_of_birth) : ''
           };
           

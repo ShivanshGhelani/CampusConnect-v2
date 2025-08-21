@@ -55,6 +55,7 @@ class Event(BaseModel):
     end_datetime: datetime
     venue: str
     mode: str
+    online_meeting_link: Optional[str] = Field(default=None, description="Online meeting link for hybrid/online events")
     status: str = "upcoming"  # Values: "upcoming", "ongoing", "completed"
     sub_status: Optional[str] = "registration_not_started"  # Detailed status
     
@@ -288,14 +289,15 @@ class CreateEvent(BaseModel):
     registration_start_time: str = Field(..., description="Registration start time")
     registration_end_date: str = Field(..., description="Registration end date")
     registration_end_time: str = Field(..., description="Registration end time")
-    certificate_end_date: str = Field(..., description="Certificate availability end date")
-    certificate_end_time: str = Field(..., description="Certificate availability end time")
+    certificate_end_date: Optional[str] = Field(default=None, description="Certificate availability end date")
+    certificate_end_time: Optional[str] = Field(default=None, description="Certificate availability end time")
     
     # Venue and mode
     mode: str = Field(..., description="Event mode: online, offline, hybrid")
     venue: str = Field(..., description="Venue name or platform link")
     venue_id: Optional[str] = Field(default=None, description="Venue ID if selecting existing venue")
     venue_type: Optional[str] = Field(default=None, description="Type of venue: existing or custom")
+    online_meeting_link: Optional[str] = Field(default=None, description="Online meeting link for hybrid/online events")
     
     # New targeting fields
     target_audience: str = Field(..., description="student, faculty, or both")
@@ -360,6 +362,7 @@ class UpdateEvent(BaseModel):
     certificate_end_time: Optional[str] = None
     mode: Optional[str] = None
     venue: Optional[str] = None
+    online_meeting_link: Optional[str] = None
     target_audience: Optional[str] = None
     is_xenesis_event: Optional[bool] = None
     faculty_organizers: Optional[List[str]] = None
@@ -386,6 +389,7 @@ class EventResponse(BaseModel):
     end_datetime: datetime
     venue: str
     mode: str
+    online_meeting_link: Optional[str] = None
     status: str
     sub_status: Optional[str] = None
     target_audience: str

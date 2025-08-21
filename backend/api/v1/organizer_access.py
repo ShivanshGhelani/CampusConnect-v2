@@ -195,8 +195,13 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
     try:
         logger.info(f"Faculty {faculty.employee_id} attempting to access organizer portal")
         
-        # Check if faculty has organizer access
-        if not getattr(faculty, 'is_organizer', False):
+        # Check if faculty has organizer access (either is_organizer flag or organizer_permissions)
+        has_organizer_access = (
+            getattr(faculty, 'is_organizer', False) or 
+            len(getattr(faculty, 'organizer_permissions', [])) > 0
+        )
+        
+        if not has_organizer_access:
             logger.warning(f"Faculty {faculty.employee_id} does not have organizer access")
             return JSONResponse(
                 content={
@@ -213,6 +218,7 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         admin_data = {
             "fullname": faculty.full_name,
             "username": faculty.employee_id,
+            "employee_id": faculty.employee_id,  # Add this critical field!
             "email": faculty.email,
             "password": faculty.password,
             "is_active": True,

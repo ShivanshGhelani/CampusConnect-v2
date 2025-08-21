@@ -127,11 +127,18 @@ function FacultyProfileEdit() {
         const response = await api.get('/api/v1/client/profile/faculty/info');
         if (response.data.success) {
           const profile = response.data.profile;
+          
+          // Transform gender to match frontend options (capitalize first letter)
+          const transformGender = (gender) => {
+            if (!gender) return '';
+            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+          };
+          
           setFormData({
             full_name: profile.full_name || '',
             email: profile.email || user?.email || '',
             contact_no: profile.contact_no || '',
-            gender: profile.gender || '',
+            gender: transformGender(profile.gender) || '',
             date_of_birth: profile.date_of_birth ? formatDateForInput(profile.date_of_birth) : '',
             employee_id: profile.employee_id || user?.employee_id || '',
             department: profile.department || '',

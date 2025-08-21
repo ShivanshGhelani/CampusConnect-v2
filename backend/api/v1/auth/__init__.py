@@ -112,7 +112,8 @@ async def admin_auth_status(request: Request):
                 "username": admin.username,
                 "fullname": admin.fullname,
                 "role": admin.role.value if admin.role else None,
-                "user_type": "admin"
+                "user_type": "admin",
+                "employee_id": admin.employee_id  # Add missing employee_id
             },
             "redirect_url": "/admin/dashboard"
         }
@@ -253,7 +254,8 @@ async def admin_login_api(request: Request, login_data: AdminLoginRequest):
                 "username": admin.username,
                 "fullname": admin.fullname,
                 "role": admin.role.value if admin.role else None,
-                "user_type": "admin"
+                "user_type": "admin",
+                "employee_id": admin.employee_id
             },
             "auth_type": "token" if tokens else "session",
             "remember_me": remember_me
@@ -615,7 +617,7 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         password = register_data.password
         department = register_data.department.strip()
         semester = register_data.semester
-        gender = register_data.gender.strip()
+        gender = register_data.gender.strip().lower()  # Normalize to lowercase
         date_of_birth = register_data.date_of_birth.strip()
         
         # Validation
@@ -644,7 +646,7 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         # Gender validation
         if not gender:
             errors.append("Gender is required")
-        elif gender not in ["Male", "Female", "Other", "Prefer not to say"]:
+        elif gender not in ["male", "female", "other"]:
             errors.append("Please select a valid gender option")
         
         # Department validation
@@ -763,7 +765,7 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         specialization = register_data.specialization.strip() if register_data.specialization else None
         experience_years = register_data.experience_years
         seating = register_data.seating.strip() if register_data.seating else None
-        gender = register_data.gender.strip()
+        gender = register_data.gender.strip().lower()  # Normalize to lowercase
         date_of_birth = register_data.date_of_birth.strip()
         date_of_joining = register_data.date_of_joining.strip() if register_data.date_of_joining else None
         employment_type = register_data.employment_type.strip() if register_data.employment_type else None
@@ -1077,7 +1079,7 @@ async def authenticate_faculty(employee_id: str, password: str):
                 faculty['gender'] = faculty['gender'].lower()
             
             faculty_obj = Faculty(**faculty)
-            logger.info(f"✅ Faculty authenticated: {faculty_obj.name} (employee_id: {faculty_obj.employee_id})")
+            logger.info(f"✅ Faculty authenticated: {faculty_obj.full_name} (employee_id: {faculty_obj.employee_id})")
             return faculty_obj
         
         logger.warning(f"❌ Faculty authentication failed for employee_id: {employee_id}")

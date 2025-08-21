@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/admin';
+import { organizerAPI } from '../../api/organizer';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 
 function Events() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, transitionToOrganizerAdmin } = useAuth();
   const [events, setEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]); // Store all events for client-side filtering
   const [isLoading, setIsLoading] = useState(true);
@@ -20,16 +21,41 @@ function Events() {
   const CACHE_DURATION = 30000; // 30 seconds
   const CACHE_KEY = `admin_events_${user?.username || 'anonymous'}`;
 
+  // Session refresh function for organizer admins missing employee_id
+  const refreshOrganizerSession = useCallback(async () => {
+    if (user?.role === 'organizer_admin' && !user?.employee_id) {
+      try {
+        const response = await organizerAPI.accessOrganizerPortal();
+        if (response.data.success) {
+          await transitionToOrganizerAdmin(response.data);
+          return true;
+        }
+      } catch (error) {
+        console.error('Failed to refresh organizer session:', error);
+      }
+    }
+    return false;
+  }, [user?.role, user?.employee_id, transitionToOrganizerAdmin]);
+
+  // REMOVED: Automatic refresh to prevent infinite loop
+  // useEffect(() => {
+  //   refreshOrganizerSession();
+  // }, [refreshOrganizerSession]);
+
   // Memoized filtered events for client-side filtering
   const filteredEvents = useMemo(() => {
     let filtered = [...allEvents];
 
-    // Apply status filter
-    if (currentFilter !== 'all') {
-      filtered = filtered.filter(event => event.status === currentFilter);
-    }
-
-    // Apply audience filter
+        // Apply status filter
+        if (currentFilter !== 'all') {
+          if (currentFilter === 'pending_approval') {
+            // Special case: filter by event_approval_status for pending approval
+            filtered = filtered.filter(event => event.event_approval_status === 'pending_approval');
+          } else {
+            // Normal case: filter by status
+            filtered = filtered.filter(event => event.status === currentFilter);
+          }
+        }    // Apply audience filter
     if (audienceFilter !== 'all') {
       filtered = filtered.filter(event => event.target_audience === audienceFilter);
     }
@@ -69,7 +95,6 @@ function Events() {
         try {
           const parsed = JSON.parse(cachedData);
           if (parsed.events && parsed.timestamp) {
-            console.log('📱 Using cached events from localStorage');
             setAllEvents(parsed.events);
             setLastFetchTime(parsed.timestamp);
             setIsLoading(false);
@@ -93,7 +118,6 @@ function Events() {
   // Fetch events from API and cache the result
   const fetchEventsFromAPI = async () => {
     try {
-      console.log('🔄 Fetching fresh events from API');
       const response = await adminAPI.getEvents({ status: 'all', target_audience: 'all' });
       
       if (response.data.success) {
@@ -108,8 +132,6 @@ function Events() {
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
         setLastFetchTime(Date.now());
-        
-        console.log(`💾 Cached ${eventsData.length} events in localStorage`);
       } else {
         throw new Error(response.data.message || 'Failed to fetch events');
       }
@@ -163,7 +185,7 @@ function Events() {
       upcoming: allEvents.filter(event => event.status === 'upcoming').length,
       completed: allEvents.filter(event => event.status === 'completed').length,
       cancelled: allEvents.filter(event => event.status === 'cancelled').length,
-      pending_approval: allEvents.filter(event => event.status === 'pending_approval').length
+      pending_approval: allEvents.filter(event => event.event_approval_status === 'pending_approval').length
     };
     return counts;
   };
@@ -259,6 +281,11 @@ const formatDate = (dateString) => {
   const canApproveDecline = (event) => {
     if (!user) return false;
     
+    // Only pending approval events can be approved/declined
+    if (event.event_approval_status !== 'pending_approval') {
+      return false;
+    }
+    
     // Super Admin can approve/decline any pending event
     if (user.role === 'super_admin') {
       return true;
@@ -301,6 +328,7 @@ const formatDate = (dateString) => {
                   : 'Manage and monitor all campus events'
                 }
               </p>
+              
             </div>
             {user && ['super_admin', 'executive_admin'].includes(user.role) && (
               <div className="flex items-center space-x-3">
@@ -351,10 +379,10 @@ const formatDate = (dateString) => {
                       <span className="text-blue-600 font-medium">{events.filter(event => event.status === 'upcoming').length} Upcoming</span>
                     </div>
                   )}
-                  {events.filter(event => event.status === 'pending_approval').length > 0 && (
+                  {events.filter(event => event.event_approval_status === 'pending_approval').length > 0 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span className="text-orange-600 font-medium">{events.filter(event => event.status === 'pending_approval').length} Pending</span>
+                      <span className="text-orange-600 font-medium">{events.filter(event => event.event_approval_status === 'pending_approval').length} Pending</span>
                     </div>
                   )}
                   {events.filter(event => event.status === 'completed').length > 0 && (
@@ -626,7 +654,7 @@ const formatDate = (dateString) => {
                     
                     {/* Action Buttons with conditional rendering based on event status and user permissions */}
                     <div className="mt-auto">
-                      {event.status === 'pending_approval' && canApproveDecline(event) ? (
+                      {event.event_approval_status === 'pending_approval' && canApproveDecline(event) ? (
                         // Show approve/decline buttons for pending events that user can approve
                         <div className="space-y-2">
                           {/* View Details Button */}

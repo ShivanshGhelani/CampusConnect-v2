@@ -148,6 +148,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           const profileData = response.data.student;
           console.log('Profile data loaded:', profileData);
           
+          // Transform gender to match frontend options (capitalize first letter)
+          const transformGender = (gender) => {
+            if (!gender) return '';
+            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+          };
+          
           setFormData(prev => ({
             ...prev,
             full_name: profileData.full_name || prev.full_name,
@@ -156,7 +162,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             mobile_no: profileData.phone_number || profileData.mobile_no || prev.mobile_no,
             department: profileData.department || prev.department,
             semester: profileData.semester || prev.semester,
-            gender: profileData.gender || prev.gender,
+            gender: transformGender(profileData.gender) || prev.gender,
             date_of_birth: profileData.date_of_birth ? formatDateForInput(profileData.date_of_birth) : prev.date_of_birth,
           }));
           
@@ -245,6 +251,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
         // Initialize form with user data (only if profile not already loaded)        
         if (user && !profileLoaded) {
+          // Transform gender to match frontend options (capitalize first letter)
+          const transformGender = (gender) => {
+            if (!gender) return '';
+            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+          };
+          
           const newFormData = {
             full_name: user.full_name || '',
             enrollment_no: user.enrollment_no || '',
@@ -252,7 +264,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             mobile_no: user.mobile_no || user.phone_number || '',
             department: user.department || '',
             semester: user.semester || '',
-            gender: user.gender || '',
+            gender: transformGender(user.gender) || '',
             date_of_birth: user.date_of_birth ? formatDateForInput(user.date_of_birth) : '',
             team_name: '',
             participants: []

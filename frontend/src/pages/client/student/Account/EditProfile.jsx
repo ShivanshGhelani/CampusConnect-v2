@@ -133,11 +133,18 @@ function EditProfile() {
         const response = await api.get('/api/v1/client/profile/info');
         if (response.data.success) {
           const profile = response.data.profile;
+          
+          // Transform gender to match frontend options (capitalize first letter)
+          const transformGender = (gender) => {
+            if (!gender) return '';
+            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+          };
+          
           setFormData({
             full_name: profile.full_name || '',
             email: profile.email || user?.email || '',
             mobile_no: profile.mobile_no || '',
-            gender: profile.gender || '',
+            gender: transformGender(profile.gender) || '',
             date_of_birth: profile.date_of_birth ? formatDateForInput(profile.date_of_birth) : '',
             enrollment_no: profile.enrollment_no || user?.enrollment_no || '',
             department: profile.department || '',

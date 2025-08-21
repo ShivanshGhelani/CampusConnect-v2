@@ -4,6 +4,7 @@ import { clientAPI } from '../../api/client';
 import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import Dropdown from '../../components/ui/Dropdown';
 
 // Enhanced cache for events data with localStorage support
 const eventsCache = {
@@ -97,17 +98,25 @@ function EventList() {
   const location = useLocation();
   const [allEvents, setAllEvents] = useState([]); // Store all events
   const [filteredEvents, setFilteredEvents] = useState([]);
+  const [paginatedEvents, setPaginatedEvents] = useState([]); // Events for current page
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [backgroundImage, setBackgroundImage] = useState('');
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [eventsPerPage] = useState(9); // Fixed at 9 events per page
+  const [totalPages, setTotalPages] = useState(0);
+  
   // Event type counts for filter buttons
   const [eventTypeCounts, setEventTypeCounts] = useState({});
+  const [categoryOptions, setCategoryOptions] = useState([]);
     // Ref to prevent multiple simultaneous API calls
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -118,8 +127,20 @@ function EventList() {
     setStatusFilter(filterParam);
     // Clear search and category filters when switching event status to avoid confusion
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setSelectedCategory('all');
+    // Reset to first page when filter changes
+    setCurrentPage(1);
   }, [searchParams.get('filter')]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // College event background images
   const eventBackgrounds = [
@@ -157,7 +178,18 @@ function EventList() {
       applyFilters();
       calculateEventTypeCounts();
     }
-  }, [allEvents, searchTerm, selectedCategory, statusFilter]);const fetchEventsOnce = async () => {
+    // Reset to first page when filters change
+    setCurrentPage(1);
+  }, [allEvents, debouncedSearchTerm, selectedCategory, statusFilter]);
+
+  // Pagination effect - update paginated events when filteredEvents or currentPage changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * eventsPerPage;
+    const endIndex = startIndex + eventsPerPage;
+    const paginatedData = filteredEvents.slice(startIndex, endIndex);
+    setPaginatedEvents(paginatedData);
+    setTotalPages(Math.ceil(filteredEvents.length / eventsPerPage));
+  }, [filteredEvents, currentPage, eventsPerPage]);const fetchEventsOnce = async () => {
     // Prevent multiple simultaneous calls
     if (fetchingRef.current) {
       console.log('Fetch already in progress, skipping...');
@@ -191,7 +223,11 @@ function EventList() {
         setError('');
       }
       
-      const response = await clientAPI.getEvents();
+      // First, try to get all events with a high limit
+      let response = await clientAPI.getEvents({ 
+        status: 'all', 
+        limit: 1000 // Set high limit to get all events
+      });
       
       // Check if component is still mounted before processing response
       if (!mountedRef.current) {
@@ -200,15 +236,43 @@ function EventList() {
       }
 
       if (response.data && response.data.success) {
-        const fetchedEvents = response.data.events || [];
-        console.log('Successfully fetched events from API:', fetchedEvents.length, 'events');
+        let allFetchedEvents = response.data.events || [];
+        console.log('Successfully fetched events from API (first request):', allFetchedEvents.length, 'events');
+        console.log('Pagination info:', response.data.pagination);
         
-        // Cache the events (both memory and localStorage)
-        eventsCache.set(fetchedEvents);
+        // If there are more pages, fetch them all
+        if (response.data.pagination && response.data.pagination.total_pages > 1) {
+          console.log(`Detected ${response.data.pagination.total_pages} pages, fetching remaining pages...`);
+          
+          for (let page = 2; page <= response.data.pagination.total_pages; page++) {
+            if (!mountedRef.current) break; // Stop if component unmounted
+            
+            try {
+              const pageResponse = await clientAPI.getEvents({ 
+                status: 'all', 
+                page: page,
+                limit: 1000 
+              });
+              
+              if (pageResponse.data && pageResponse.data.success) {
+                const pageEvents = pageResponse.data.events || [];
+                allFetchedEvents = [...allFetchedEvents, ...pageEvents];
+                console.log(`Fetched page ${page}: ${pageEvents.length} events (total: ${allFetchedEvents.length})`);
+              }
+            } catch (pageError) {
+              console.warn(`Failed to fetch page ${page}:`, pageError);
+            }
+          }
+        }
+        
+        console.log('Final total events fetched:', allFetchedEvents.length);
+        
+        // Cache the complete events list
+        eventsCache.set(allFetchedEvents);
         
         // Update state only if component is still mounted
         if (mountedRef.current) {
-          setAllEvents(fetchedEvents);
+          setAllEvents(allFetchedEvents);
           setError('');
         }
         
@@ -233,14 +297,21 @@ function EventList() {
   const applyFilters = () => {
     let filtered = [...allEvents];
 
+    // Sort events by date (most recent first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.event_date || a.created_at || 0);
+      const dateB = new Date(b.event_date || b.created_at || 0);
+      return dateB - dateA; // Descending order (newest first)
+    });
+
     // Apply status filter first (most selective)
     if (statusFilter !== 'all') {
       filtered = filtered.filter(event => event.status === statusFilter);
     }
 
     // Apply search filter
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase();
+    if (debouncedSearchTerm.trim()) {
+      const search = debouncedSearchTerm.toLowerCase();
       filtered = filtered.filter(event => 
         event.event_name?.toLowerCase().includes(search) ||
         event.description?.toLowerCase().includes(search) ||
@@ -272,15 +343,77 @@ function EventList() {
       counts[type] = (counts[type] || 0) + 1;
     });
     setEventTypeCounts(counts);
+
+    // Create category options for dropdown
+    const options = [
+      { value: 'all', label: `All Categories (${eventsToCount.length})` }
+    ];
+    
+    Object.entries(counts).forEach(([type, count]) => {
+      options.push({
+        value: type.toLowerCase(),
+        label: `${type} (${count})`
+      });
+    });
+    
+    setCategoryOptions(options);
   };
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
+    setCurrentPage(1); // Reset to first page when category changes
   };
 
   const clearFilters = () => {
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setSelectedCategory('all');
+    setCurrentPage(1); // Reset to first page when clearing filters
+  };
+
+  // Pagination functions
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      // Scroll to top of events grid
+      document.getElementById('eventsGrid')?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    const halfVisible = Math.floor(maxVisiblePages / 2);
+
+    let startPage = Math.max(1, currentPage - halfVisible);
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return pageNumbers;
   };
 
   const getPageTitle = () => {
@@ -392,39 +525,26 @@ function EventList() {
 
               {/* Category Filters */}
               <div className="lg:w-auto">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Category</label>
-                <div className="flex flex-wrap gap-2 max-w-full overflow-hidden">
-                  <button 
-                    className={`category-filter px-4 py-2 text-sm rounded-lg font-medium transition-all shadow-md whitespace-nowrap ${
-                      selectedCategory === 'all' 
-                        ? 'bg-gradient-to-r from-teal-500 to-sky-600 text-white' 
-                        : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
-                    }`}
-                    onClick={() => handleCategoryChange('all')}
-                  >
-                    All Categories ({statusFilter === 'all' ? allEvents.length : allEvents.filter(e => e.status === statusFilter).length})
-                  </button>
-                  {Object.entries(eventTypeCounts).map(([type, count]) => (
-                    <button 
-                      key={type}
-                      className={`category-filter px-4 py-2 text-sm rounded-lg font-medium transition-all whitespace-nowrap ${
-                        selectedCategory === type.toLowerCase() 
-                          ? 'bg-gradient-to-r from-teal-500 to-sky-600 text-white' 
-                          : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
-                      }`}
-                      onClick={() => handleCategoryChange(type.toLowerCase())}
-                    >
-                      {type} ({count})
-                    </button>
-                  ))}
-                </div>
+                <Dropdown
+                  label="Filter by Category"
+                  placeholder="Select category"
+                  options={categoryOptions}
+                  value={selectedCategory}
+                  onChange={handleCategoryChange}
+                  className="min-w-64"
+                />
               </div>
             </div>            {/* Quick Stats */}
             {allEvents.length > 0 && (
               <div className="mt-6 pt-6 border-t border-teal-200">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">
-                    Showing <span className="font-semibold text-gray-900">{filteredEvents.length}</span> events
+                    Showing <span className="font-semibold text-gray-900">{paginatedEvents.length}</span> of <span className="font-semibold text-gray-900">{filteredEvents.length}</span> events
+                    {totalPages > 1 && (
+                      <span className="ml-2">
+                        (Page {currentPage} of {totalPages})
+                      </span>
+                    )}
                   </span>
                   <div className="flex items-center space-x-6">
                     {statusCounts.ongoing > 0 && (
@@ -473,12 +593,69 @@ function EventList() {
           {/* Events Grid */}
           <div className="max-w-6xl mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="eventsGrid">
-              {filteredEvents.map((event) => (
+              {paginatedEvents.map((event) => (
                 <EventCard key={event.event_id} event={event} />
               ))}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center mt-12 mb-8">
+                <div className="bg-white rounded-xl shadow-lg border border-teal-200/50 p-4">
+                  <div className="flex items-center space-x-2">
+                    {/* Previous Button */}
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
+                      }`}
+                    >
+                      <i className="fas fa-chevron-left mr-1"></i> Previous
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {getPageNumbers().map((pageNumber) => (
+                        <button
+                          key={pageNumber}
+                          onClick={() => goToPage(pageNumber)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            currentPage === pageNumber
+                              ? 'bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-md'
+                              : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
+                      }`}
+                    >
+                      Next <i className="fas fa-chevron-right ml-1"></i>
+                    </button>
+                  </div>
+
+                  {/* Page Info */}
+                  <div className="text-center mt-3 text-xs text-gray-500">
+                    Page {currentPage} of {totalPages} • {filteredEvents.length} total events
+                  </div>
+                </div>
+              </div>
+            )}
           </div>          {/* No Events State */}
-          {!isLoading && filteredEvents.length === 0 && (
+          {!isLoading && paginatedEvents.length === 0 && (
             <div className="max-w-6xl mx-auto px-4">
               <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
                 <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">

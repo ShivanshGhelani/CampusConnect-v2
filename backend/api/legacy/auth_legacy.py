@@ -54,22 +54,16 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
     if legacy_admin and await verify_password(password, legacy_admin.get("password", "")):
         return AdminUser(**legacy_admin)
     
-    # Check faculty collection for faculty organizers
+    # Check faculties collection for faculty organizers
     faculty = await DatabaseOperations.find_one(
-        "faculty",
+        "faculties",
         {
             "employee_id": username,
-            "is_active": True,
             "$or": [
-                # New format with organizer_access
-                {
-                    "organizer_access.is_approved": True,
-                    "organizer_access.is_active": True
-                },
+                # Check if faculty has organizer permissions
+                {"organizer_permissions": {"$exists": True, "$ne": []}},
                 # Legacy format with is_organizer flag
-                {
-                    "is_organizer": True
-                }
+                {"is_organizer": True}
             ]
         }
     )
@@ -77,20 +71,15 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
     if faculty and await verify_password(password, faculty.get("password", "")):
         # Create AdminUser object for faculty organizer
         # Handle both new and legacy formats
-        if faculty.get("organizer_access"):
-            # New format
-            permissions = faculty.get("organizer_access", {}).get("permissions", [])
-            assigned_events = faculty.get("organizer_access", {}).get("assigned_events", [])
-        else:
-            # Legacy format
-            permissions = faculty.get("organizer_permissions", [])
-            assigned_events = faculty.get("assigned_events", [])
+        permissions = faculty.get("organizer_permissions", [])
+        assigned_events = faculty.get("assigned_events", [])
         
         admin_data = {
             "username": faculty["employee_id"],
             "employee_id": faculty["employee_id"],  # Add employee_id field
-            "email": faculty["email"],
-            "full_name": faculty["full_name"],
+            "email": faculty.get("email", ""),
+            "fullname": faculty.get("full_name", ""),
+            "password": faculty.get("password", ""),  # Required field
             "role": AdminRole.ORGANIZER_ADMIN,
             "permissions": permissions,
             "assigned_events": assigned_events,

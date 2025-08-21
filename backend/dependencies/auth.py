@@ -40,20 +40,18 @@ async def refresh_admin_session(request: Request) -> AdminUser:
     if admin.role == AdminRole.ORGANIZER_ADMIN:
         from database.operations import DatabaseOperations
         faculty = await DatabaseOperations.find_one(
-            "faculty",
+            "faculties",
             {
-                "employee_id": admin.username,
-                "is_active": True,
-                "organizer_access.is_approved": True,
-                "organizer_access.is_active": True
+                "employee_id": admin.username
             }
         )
         
         if faculty:
             # Update admin data with latest organizer info
             admin_data = admin.model_dump()
-            admin_data["assigned_events"] = faculty.get("organizer_access", {}).get("assigned_events", [])
-            admin_data["permissions"] = faculty.get("organizer_access", {}).get("permissions", [])
+            admin_data["assigned_events"] = faculty.get("assigned_events", [])
+            admin_data["permissions"] = faculty.get("organizer_permissions", [])
+            admin_data["employee_id"] = faculty.get("employee_id")  # Add employee_id
             
             # Update session
             for key, value in admin_data.items():
