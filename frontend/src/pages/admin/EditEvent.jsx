@@ -1,46 +1,316 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
+import DateRangePicker from '../../components/common/DateRangePicker';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Dropdown } from '../../components/ui';
 
 function EditEvent() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const { user, userType } = useAuth();
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Venue management states
+  const [venues, setVenues] = useState([]);
+  const [filteredVenues, setFilteredVenues] = useState([]);
+  const [showVenueDropdown, setShowVenueDropdown] = useState(false);
+  const venueDropdownRef = useRef(null);
+  
+  // Organizer management states
+  const [activeOrganizerDropdown, setActiveOrganizerDropdown] = useState(null);
+  const [existingOrganizers, setExistingOrganizers] = useState([]);
+  const [filteredOrganizers, setFilteredOrganizers] = useState([]);
+  const [organizerNotification, setOrganizerNotification] = useState(null);
+
+  // Tab management
+  const [activeTab, setActiveTab] = useState(1);
 
   // Form data state
   const [formData, setFormData] = useState({
     event_name: '',
     event_type: '',
+    target_audience: '',
+    is_xenesis_event: false,
     organizing_department: '',
     short_description: '',
     detailed_description: '',
-    start_datetime: '',
-    end_datetime: '',
+    organizers: [{ 
+      id: null, 
+      name: '', 
+      email: '', 
+      employee_id: '', 
+      searchQuery: '',
+      selected: false, 
+      isNew: false 
+    }],
+    contacts: [{ name: '', contact: '' }],
+    start_date: '',
+    start_time: '',
+    end_date: '',
+    end_time: '',
     registration_start_date: '',
+    registration_start_time: '',
     registration_end_date: '',
+    registration_end_time: '',
     certificate_end_date: '',
+    certificate_end_time: '',
     venue: '',
+    venue_id: '',
     mode: 'Offline',
-    target_outcomes: '',
-    prerequisites: '',
-    what_to_bring: '',
     registration_type: 'free',
     registration_mode: 'individual',
     registration_fee: '',
     fee_description: '',
     team_size_min: '',
     team_size_max: '',
+    allow_multiple_team_registrations: false,
     min_participants: 1,
     max_participants: '',
-    organizers: '',
-    contacts: ''
+    attendance_mandatory: true,
+    is_certificate_based: false,
+    certificate_templates: {},
+    event_poster: null,
+    assets: []
   });
+
+  // Load venues and organizers on component mount
+  useEffect(() => {
+    if (eventId) {
+      fetchEvent();
+    }
+    loadVenues();
+    loadExistingOrganizers();
+  }, [eventId]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (venueDropdownRef.current && !venueDropdownRef.current.contains(event.target)) {
+        setShowVenueDropdown(false);
+      }
+      if (activeOrganizerDropdown !== null) {
+        setActiveOrganizerDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeOrganizerDropdown, showVenueDropdown]);
+
+  // Load venues
+  const loadVenues = async () => {
+    try {
+      const response = await adminAPI.getVenues();
+      if (response.success) {
+        setVenues(response.venues || []);
+        setFilteredVenues(response.venues || []);
+      }
+    } catch (error) {
+      console.error('Error loading venues:', error);
+    }
+  };
+
+  // Load existing organizers (faculty)
+  const loadExistingOrganizers = async () => {
+    try {
+      const response = await adminAPI.getFaculty();
+      if (response.success) {
+        setExistingOrganizers(response.faculty || []);
+      }
+    } catch (error) {
+      console.error('Error loading faculty:', error);
+    }
+  };
+
+  // Venue search and selection
+  const handleVenueSearch = (searchTerm) => {
+    const filtered = venues.filter(venue =>
+      venue.venue_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      venue.building.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredVenues(filtered);
+  };
+
+  const selectVenue = (venue) => {
+    setFormData(prev => ({
+      ...prev,
+      venue: venue.venue_name,
+      venue_id: venue.venue_id
+    }));
+    setShowVenueDropdown(false);
+  };
+
+  // Organizer management functions
+  const addOrganizer = () => {
+    setFormData(prev => ({
+      ...prev,
+      organizers: [...prev.organizers, { 
+        id: null, 
+        name: '', 
+        email: '', 
+        employee_id: '', 
+        searchQuery: '',
+        selected: false, 
+        isNew: false 
+      }]
+    }));
+  };
+
+  const removeOrganizer = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      organizers: prev.organizers.filter((_, i) => i !== idx)
+    }));
+    setActiveOrganizerDropdown(null);
+  };
+
+  const handleOrganizerSearch = (idx, searchQuery) => {
+    setFormData(prev => {
+      const updated = [...prev.organizers];
+      updated[idx] = { ...updated[idx], searchQuery, selected: false };
+      return { ...prev, organizers: updated };
+    });
+
+    if (searchQuery.length > 0) {
+      const filtered = existingOrganizers.filter(faculty =>
+        faculty.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        faculty.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        faculty.employee_id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredOrganizers(filtered);
+      setActiveOrganizerDropdown(idx);
+    } else {
+      setFilteredOrganizers([]);
+      setActiveOrganizerDropdown(null);
+    }
+  };
+
+  const selectExistingOrganizer = (idx, faculty) => {
+    // Check if this organizer is already selected
+    const isAlreadySelected = formData.organizers.some((org, i) => 
+      i !== idx && org.selected && org.id === faculty.faculty_id
+    );
+
+    if (isAlreadySelected) {
+      setOrganizerNotification({
+        message: `${faculty.name} is already selected as an organizer.`,
+        type: 'warning'
+      });
+      setTimeout(() => setOrganizerNotification(null), 3000);
+      return;
+    }
+
+    setFormData(prev => {
+      const updated = [...prev.organizers];
+      updated[idx] = {
+        ...updated[idx],
+        id: faculty.faculty_id,
+        name: faculty.name,
+        email: faculty.email,
+        employee_id: faculty.employee_id,
+        searchQuery: faculty.name,
+        selected: true,
+        isNew: false
+      };
+      return { ...prev, organizers: updated };
+    });
+
+    setActiveOrganizerDropdown(null);
+    setFilteredOrganizers([]);
+  };
+
+  const clearOrganizerSelection = (idx) => {
+    setFormData(prev => {
+      const updated = [...prev.organizers];
+      updated[idx] = {
+        ...updated[idx],
+        id: null,
+        name: '',
+        email: '',
+        employee_id: '',
+        searchQuery: '',
+        selected: false,
+        isNew: false
+      };
+      return { ...prev, organizers: updated };
+    });
+  };
+
+  // Contact management
+  const handleContactChange = (idx, field, value) => {
+    setFormData(prev => {
+      const updated = [...prev.contacts];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...prev, contacts: updated };
+    });
+  };
+
+  const addContact = () => {
+    setFormData(prev => ({
+      ...prev,
+      contacts: [...prev.contacts, { name: '', contact: '' }]
+    }));
+  };
+
+  const removeContact = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      contacts: prev.contacts.filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Date and time handlers
+  const handleEventDateChange = (startDate, endDate) => {
+    setFormData(prev => ({
+      ...prev,
+      start_date: startDate ? startDate.toISOString().split('T')[0] : '',
+      end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+    }));
+  };
+
+  const handleEventTimeChange = (startTime, endTime) => {
+    setFormData(prev => ({
+      ...prev,
+      start_time: startTime || '',
+      end_time: endTime || ''
+    }));
+  };
+
+  const handleRegistrationDateChange = (startDate, endDate) => {
+    setFormData(prev => ({
+      ...prev,
+      registration_start_date: startDate ? startDate.toISOString().split('T')[0] : '',
+      registration_end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+    }));
+  };
+
+  const handleRegistrationTimeChange = (startTime, endTime) => {
+    setFormData(prev => ({
+      ...prev,
+      registration_start_time: startTime || '',
+      registration_end_time: endTime || ''
+    }));
+  };
+
+  const handleCertificateDateChange = (endDate) => {
+    setFormData(prev => ({
+      ...prev,
+      certificate_end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+    }));
+  };
+
+  const handleCertificateTimeChange = (endTime) => {
+    setFormData(prev => ({
+      ...prev,
+      certificate_end_time: endTime || ''
+    }));
+  };
 
   useEffect(() => {
     if (eventId) {
@@ -57,56 +327,116 @@ function EditEvent() {
         const eventData = response.data.event;
         setEvent(eventData);
         
-        // Format datetime fields for datetime-local inputs
-        const formatDateTimeLocal = (dateString) => {
-          if (!dateString) return '';
-          const date = new Date(dateString);
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        // Parse datetime strings to separate date and time
+        const parseDateTimeToComponents = (dateTimeString) => {
+          if (!dateTimeString) return { date: '', time: '' };
+          const date = new Date(dateTimeString);
+          const dateStr = date.toISOString().split('T')[0];
+          const timeStr = date.toTimeString().split(' ')[0].substring(0, 5); // Hours and minutes format
+          return { date: dateStr, time: timeStr };
         };
 
-        // Format organizers array to string
-        const formatOrganizers = (organizers) => {
-          if (!organizers || !Array.isArray(organizers)) return '';
-          return organizers.join('\n');
+        // Parse organizers - handle both string and array formats
+        const parseOrganizers = (organizersData) => {
+          if (!organizersData) return [{ 
+            id: null, name: '', email: '', employee_id: '', 
+            searchQuery: '', selected: false, isNew: false 
+          }];
+          
+          if (Array.isArray(organizersData)) {
+            return organizersData.map(org => ({
+              id: org.faculty_id || org.id || null,
+              name: org.name || '',
+              email: org.email || '',
+              employee_id: org.employee_id || '',
+              searchQuery: org.name || '',
+              selected: !!(org.name),
+              isNew: false
+            }));
+          }
+          
+          // Handle string format (legacy)
+          if (typeof organizersData === 'string' && organizersData.trim()) {
+            return organizersData.split('\n').filter(org => org.trim()).map(org => ({
+              id: null,
+              name: org.trim(),
+              email: '',
+              employee_id: '',
+              searchQuery: org.trim(),
+              selected: true,
+              isNew: true
+            }));
+          }
+          
+          return [{ 
+            id: null, name: '', email: '', employee_id: '', 
+            searchQuery: '', selected: false, isNew: false 
+          }];
         };
 
-        // Format contacts array to string
-        const formatContacts = (contacts) => {
-          if (!contacts || !Array.isArray(contacts)) return '';
-          return contacts.map(contact => `${contact.name}: ${contact.contact}`).join('\n');
+        // Parse contacts
+        const parseContacts = (contactsData) => {
+          if (!contactsData) return [{ name: '', contact: '' }];
+          
+          if (Array.isArray(contactsData)) {
+            return contactsData.length > 0 ? contactsData : [{ name: '', contact: '' }];
+          }
+          
+          // Handle string format (legacy)
+          if (typeof contactsData === 'string' && contactsData.trim()) {
+            return contactsData.split('\n').filter(contact => contact.trim()).map(contact => {
+              const [name, contactInfo] = contact.split(':').map(part => part.trim());
+              return { name: name || '', contact: contactInfo || '' };
+            });
+          }
+          
+          return [{ name: '', contact: '' }];
         };
+
+        // Parse date/time components
+        const startDateTime = parseDateTimeToComponents(eventData.start_datetime);
+        const endDateTime = parseDateTimeToComponents(eventData.end_datetime);
+        const regStartDateTime = parseDateTimeToComponents(eventData.registration_start_date);
+        const regEndDateTime = parseDateTimeToComponents(eventData.registration_end_date);
+        const certEndDateTime = parseDateTimeToComponents(eventData.certificate_end_date);
 
         setFormData({
           event_name: eventData.event_name || '',
           event_type: eventData.event_type || '',
+          target_audience: eventData.target_audience || '',
+          is_xenesis_event: eventData.is_xenesis_event || false,
           organizing_department: eventData.organizing_department || '',
           short_description: eventData.short_description || '',
           detailed_description: eventData.detailed_description || '',
-          start_datetime: formatDateTimeLocal(eventData.start_datetime),
-          end_datetime: formatDateTimeLocal(eventData.end_datetime),
-          registration_start_date: formatDateTimeLocal(eventData.registration_start_date),
-          registration_end_date: formatDateTimeLocal(eventData.registration_end_date),
-          certificate_end_date: formatDateTimeLocal(eventData.certificate_end_date),
+          organizers: parseOrganizers(eventData.organizers),
+          contacts: parseContacts(eventData.contacts),
+          start_date: startDateTime.date,
+          start_time: startDateTime.time,
+          end_date: endDateTime.date,
+          end_time: endDateTime.time,
+          registration_start_date: regStartDateTime.date,
+          registration_start_time: regStartDateTime.time,
+          registration_end_date: regEndDateTime.date,
+          registration_end_time: regEndDateTime.time,
+          certificate_end_date: certEndDateTime.date,
+          certificate_end_time: certEndDateTime.time,
           venue: eventData.venue || '',
+          venue_id: eventData.venue_id || '',
           mode: eventData.mode || 'Offline',
-          target_outcomes: eventData.target_outcomes || '',
-          prerequisites: eventData.prerequisites || '',
-          what_to_bring: eventData.what_to_bring || '',
           registration_type: eventData.registration_type || 'free',
           registration_mode: eventData.registration_mode || 'individual',
           registration_fee: eventData.registration_fee || '',
           fee_description: eventData.fee_description || '',
           team_size_min: eventData.team_size_min || '',
           team_size_max: eventData.team_size_max || '',
+          allow_multiple_team_registrations: eventData.allow_multiple_team_registrations || false,
           min_participants: eventData.min_participants || 1,
           max_participants: eventData.max_participants || '',
-          organizers: formatOrganizers(eventData.organizers),
-          contacts: formatContacts(eventData.event_contacts)
+          attendance_mandatory: eventData.attendance_mandatory !== false,
+          is_certificate_based: eventData.is_certificate_based || false,
+          certificate_templates: eventData.certificate_templates || {},
+          event_poster: null, // Will be loaded separately if needed
+          assets: eventData.assets || []
         });
         
         setError('');
@@ -122,10 +452,18 @@ function EditEvent() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Handle checkbox changes with explicit state updates
+  const handleCheckboxChange = (name, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
     }));
   };
 
@@ -160,31 +498,59 @@ function EditEvent() {
     try {
       setIsSaving(true);
       
+      // Combine date and time for datetime fields
+      const combineDateAndTime = (date, time) => {
+        if (!date) return null;
+        if (!time) return `${date}T00:00:00Z`;
+        return `${date}T${time}:00Z`;
+      };
+
+      // Process organizers - extract selected ones
+      const processOrganizers = (organizers) => {
+        return organizers
+          .filter(org => org.selected && org.name)
+          .map(org => ({
+            faculty_id: org.id,
+            name: org.name,
+            email: org.email,
+            employee_id: org.employee_id
+          }));
+      };
+
+      // Process contacts - filter out empty ones
+      const processContacts = (contacts) => {
+        return contacts.filter(contact => contact.name && contact.contact);
+      };
+      
       // Prepare the data for submission
       const submitData = {
         event_name: formData.event_name,
         event_type: formData.event_type,
+        target_audience: formData.target_audience,
+        is_xenesis_event: formData.is_xenesis_event,
         organizing_department: formData.organizing_department,
         short_description: formData.short_description,
         detailed_description: formData.detailed_description || null,
-        start_datetime: formData.start_datetime,
-        end_datetime: formData.end_datetime,
-        registration_start_date: formData.registration_start_date || null,
-        registration_end_date: formData.registration_end_date || null,
-        certificate_end_date: formData.certificate_end_date || null,
+        start_datetime: combineDateAndTime(formData.start_date, formData.start_time),
+        end_datetime: combineDateAndTime(formData.end_date, formData.end_time),
+        registration_start_date: combineDateAndTime(formData.registration_start_date, formData.registration_start_time),
+        registration_end_date: combineDateAndTime(formData.registration_end_date, formData.registration_end_time),
+        certificate_end_date: combineDateAndTime(formData.certificate_end_date, formData.certificate_end_time),
         venue: formData.venue,
+        venue_id: formData.venue_id,
         mode: formData.mode,
-        target_outcomes: formData.target_outcomes || null,
-        prerequisites: formData.prerequisites || null,
-        what_to_bring: formData.what_to_bring || null,
         registration_type: formData.registration_type,
         registration_mode: formData.registration_mode,
         registration_fee: formData.registration_fee ? parseFloat(formData.registration_fee) : null,
         fee_description: formData.fee_description || null,
         team_size_min: formData.team_size_min ? parseInt(formData.team_size_min) : null,
         team_size_max: formData.team_size_max ? parseInt(formData.team_size_max) : null,
+        allow_multiple_team_registrations: formData.allow_multiple_team_registrations,
         min_participants: formData.min_participants ? parseInt(formData.min_participants) : 1,
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
+        attendance_mandatory: formData.attendance_mandatory,
+        is_certificate_based: formData.is_certificate_based,
+        certificate_templates: formData.certificate_templates,
         organizers: processOrganizers(formData.organizers),
         event_contacts: processContacts(formData.contacts)
       };
@@ -227,432 +593,710 @@ function EditEvent() {
     );
   }
 
-  return (
-    <AdminLayout pageTitle="Edit Event">
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white shadow-lg rounded-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Edit Event</h1>
-            <button 
-              onClick={() => navigate('/admin/events')}
-              className="text-blue-600 hover:text-blue-700 flex items-center"
-            >
-              <i className="fas fa-arrow-left mr-1"></i>Back to Events
-            </button>
-          </div>
+  // Dynamic fields for registration/fee/team
+  const showFeeFields = formData.registration_type === 'paid';
+  const showTeamFields = formData.registration_mode === 'team';
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
+  const tabs = [
+    { id: 1, name: 'Basic Info', icon: 'fas fa-info-circle' },
+    { id: 2, name: 'Organizers', icon: 'fas fa-users' },
+    { id: 3, name: 'Schedule', icon: 'fas fa-calendar' },
+    { id: 4, name: 'Registration', icon: 'fas fa-user-plus' }
+  ];
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Event Information */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Basic Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="event_name" className="block text-sm font-medium text-gray-700">Event Name</label>
-                  <input 
-                    type="text" 
-                    id="event_name" 
-                    name="event_name" 
-                    value={formData.event_name}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="event_type" className="block text-sm font-medium text-gray-700">Event Type</label>
-                  <input 
-                    type="text" 
-                    id="event_type" 
-                    name="event_type" 
-                    value={formData.event_type}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="event_name"
+                  value={formData.event_name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter event name"
+                  required
+                />
               </div>
-            </div>
 
-            {/* Dates and Times */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Dates and Times</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="start_datetime" className="block text-sm font-medium text-gray-700">Start Date & Time</label>
-                  <input 
-                    type="datetime-local" 
-                    id="start_datetime" 
-                    name="start_datetime" 
-                    value={formData.start_datetime}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="end_datetime" className="block text-sm font-medium text-gray-700">End Date & Time</label>
-                  <input 
-                    type="datetime-local" 
-                    id="end_datetime" 
-                    name="end_datetime" 
-                    value={formData.end_datetime}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="registration_start_date" className="block text-sm font-medium text-gray-700">Registration Start Date & Time</label>
-                  <input 
-                    type="datetime-local" 
-                    id="registration_start_date" 
-                    name="registration_start_date" 
-                    value={formData.registration_start_date}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="registration_end_date" className="block text-sm font-medium text-gray-700">Registration End Date & Time</label>
-                  <input 
-                    type="datetime-local" 
-                    id="registration_end_date" 
-                    name="registration_end_date" 
-                    value={formData.registration_end_date}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="certificate_end_date" className="block text-sm font-medium text-gray-700">Certificate End Date & Time</label>
-                  <input 
-                    type="datetime-local" 
-                    id="certificate_end_date" 
-                    name="certificate_end_date" 
-                    value={formData.certificate_end_date}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Department and Venue */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Location & Department</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="organizing_department" className="block text-sm font-medium text-gray-700">Organizing Department</label>
-                  <input 
-                    type="text" 
-                    id="organizing_department" 
-                    name="organizing_department" 
-                    value={formData.organizing_department}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="venue" className="block text-sm font-medium text-gray-700">Venue</label>
-                  <input 
-                    type="text" 
-                    id="venue" 
-                    name="venue" 
-                    value={formData.venue}
-                    onChange={handleInputChange}
-                    required 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="mode" className="block text-sm font-medium text-gray-700">Mode</label>
-                  <Dropdown
-                    options={[
-                      { value: "Online", label: "Online" },
-                      { value: "Offline", label: "Offline" },
-                      { value: "Hybrid", label: "Hybrid" }
-                    ]}
-                    value={formData.mode}
-                    onChange={(value) => handleInputChange({ target: { name: 'mode', value } })}
-                    placeholder="Select Mode"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Descriptions */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Descriptions</h2>
               <div>
-                <label htmlFor="short_description" className="block text-sm font-medium text-gray-700">Short Description</label>
-                <textarea 
-                  id="short_description" 
-                  name="short_description" 
-                  rows="2" 
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="event_type"
+                  value={formData.event_type}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select event type</option>
+                  <option value="Technical">Technical</option>
+                  <option value="Cultural">Cultural</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Academic">Academic</option>
+                  <option value="Workshops">Workshops</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target Audience <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="target_audience"
+                  value={formData.target_audience}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select target audience</option>
+                  <option value="Students">Students</option>
+                  <option value="Faculty">Faculty</option>
+                  <option value="Both">Both Students & Faculty</option>
+                  <option value="External">External Participants</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Organizing Department <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="organizing_department"
+                  value={formData.organizing_department}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select department</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Information Technology">Information Technology</option>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Mechanical">Mechanical</option>
+                  <option value="Civil">Civil</option>
+                  <option value="Student Affairs">Student Affairs</option>
+                </select>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_xenesis_event"
+                  name="is_xenesis_event"
+                  checked={formData.is_xenesis_event}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="is_xenesis_event" className="ml-2 text-sm text-gray-700">
+                  This is a Xenesis event
+                </label>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Short Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="short_description"
                   value={formData.short_description}
                   onChange={handleInputChange}
-                  required 
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows="3"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Brief description of the event"
+                  required
                 />
               </div>
-              <div>
-                <label htmlFor="detailed_description" className="block text-sm font-medium text-gray-700">Detailed Description</label>
-                <textarea 
-                  id="detailed_description" 
-                  name="detailed_description" 
-                  rows="4" 
+
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Detailed Description
+                </label>
+                <textarea
+                  name="detailed_description"
                   value={formData.detailed_description}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows="6"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Detailed event description, objectives, and agenda"
                 />
               </div>
             </div>
+          </div>
+        );
 
-            {/* Target Outcomes / Goals */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Target Outcomes & Goals</h2>
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Event Organizers <span className="text-red-500">*</span>
+              </label>
+              {formData.organizers.map((organizer, idx) => (
+                <div key={idx} className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Organizer {idx + 1}
+                    </span>
+                    {formData.organizers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOrganizer(idx)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        <i className="fas fa-times"></i> Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search faculty by name, email, or employee ID..."
+                      value={organizer.searchQuery}
+                      onChange={(e) => handleOrganizerSearch(idx, e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    
+                    {organizer.selected && (
+                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-green-800">{organizer.name}</div>
+                            <div className="text-sm text-green-600">
+                              {organizer.email} • {organizer.employee_id}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => clearOrganizerSelection(idx)}
+                            className="text-green-600 hover:text-green-800"
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activeOrganizerDropdown === idx && filteredOrganizers.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredOrganizers.map((faculty) => (
+                          <button
+                            key={faculty.faculty_id}
+                            type="button"
+                            className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                            onClick={() => selectExistingOrganizer(idx, faculty)}
+                          >
+                            <div className="font-medium text-gray-900">{faculty.name}</div>
+                            <div className="text-sm text-gray-600">
+                              {faculty.email} • {faculty.employee_id}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={addOrganizer}
+                className="mt-3 px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <i className="fas fa-plus mr-2"></i>Add Another Organizer
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Contact Information
+              </label>
+              {formData.contacts.map((contact, idx) => (
+                <div key={idx} className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">
+                      Contact {idx + 1}
+                    </span>
+                    {formData.contacts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeContact(idx)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        <i className="fas fa-times"></i> Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      placeholder="Contact person name"
+                      value={contact.name}
+                      onChange={(e) => handleContactChange(idx, 'name', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone number or email"
+                      value={contact.contact}
+                      onChange={(e) => handleContactChange(idx, 'contact', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              <button
+                type="button"
+                onClick={addContact}
+                className="mt-3 px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <i className="fas fa-plus mr-2"></i>Add Another Contact
+              </button>
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            {/* Event Schedule */}
+            <DateRangePicker
+              label="Event Schedule"
+              description="Select the event start and end dates and times"
+              startDate={formData.start_date ? new Date(formData.start_date) : null}
+              endDate={formData.end_date ? new Date(formData.end_date) : null}
+              startTime={formData.start_time}
+              endTime={formData.end_time}
+              onDateChange={handleEventDateChange}
+              onTimeChange={handleEventTimeChange}
+              includeTime={true}
+              theme="purple"
+              required={true}
+            />
+
+            {/* Registration Schedule */}
+            <DateRangePicker
+              label="Registration Period"
+              description="When participants can register for the event"
+              startDate={formData.registration_start_date ? new Date(formData.registration_start_date) : null}
+              endDate={formData.registration_end_date ? new Date(formData.registration_end_date) : null}
+              startTime={formData.registration_start_time}
+              endTime={formData.registration_end_time}
+              onDateChange={handleRegistrationDateChange}
+              onTimeChange={handleRegistrationTimeChange}
+              includeTime={true}
+              theme="green"
+              constrainToRegistration={true}
+            />
+
+            {/* Certificate Distribution */}
+            <DateRangePicker
+              label="Certificate Distribution Deadline"
+              description="Last date for certificate distribution"
+              startDate={formData.certificate_end_date ? new Date(formData.certificate_end_date) : null}
+              endDate={null}
+              startTime={formData.certificate_end_time}
+              endTime={null}
+              onDateChange={handleCertificateDateChange}
+              onTimeChange={handleCertificateTimeChange}
+              includeTime={true}
+              singleDate={true}
+              theme="blue"
+            />
+
+            {/* Mode */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Event Mode <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['Offline', 'Online', 'Hybrid'].map((mode) => (
+                  <label key={mode} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="mode"
+                      value={mode}
+                      checked={formData.mode === mode}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="ml-3 text-sm font-medium text-gray-700">{mode}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Venue Selection */}
+            {(formData.mode === 'Offline' || formData.mode === 'Hybrid') && (
+              <div className="relative" ref={venueDropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Venue <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.venue}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, venue: e.target.value }));
+                    handleVenueSearch(e.target.value);
+                    setShowVenueDropdown(true);
+                  }}
+                  onFocus={() => {
+                    setShowVenueDropdown(true);
+                    setFilteredVenues(venues);
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Search or enter venue name"
+                  required={formData.mode !== 'Online'}
+                />
+                
+                {showVenueDropdown && filteredVenues.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {filteredVenues.map((venue) => (
+                      <button
+                        key={venue.venue_id}
+                        type="button"
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                        onClick={() => selectVenue(venue)}
+                      >
+                        <div className="font-medium text-gray-900">{venue.venue_name}</div>
+                        <div className="text-sm text-gray-600">
+                          {venue.building} • Capacity: {venue.capacity}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="target_outcomes" className="block text-sm font-medium text-gray-700">Learning Objectives & Goals</label>
-                <textarea 
-                  id="target_outcomes" 
-                  name="target_outcomes" 
-                  rows="6" 
-                  value={formData.target_outcomes}
-                  onChange={handleInputChange}
-                  placeholder="Define measurable outcomes or learning objectives for this event..." 
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Specify what participants will learn or achieve by attending this event</p>
-              </div>
-            </div>
-
-            {/* Prerequisites & What to Bring */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Prerequisites & Requirements</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="prerequisites" className="block text-sm font-medium text-gray-700">Prerequisites</label>
-                  <textarea 
-                    id="prerequisites" 
-                    name="prerequisites" 
-                    rows="4" 
-                    value={formData.prerequisites}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Basic knowledge of Python programming, Laptop with Python installed, etc." 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">List any prerequisites, prior knowledge, or qualifications required</p>
-                </div>
-                <div>
-                  <label htmlFor="what_to_bring" className="block text-sm font-medium text-gray-700">What to Bring</label>
-                  <textarea 
-                    id="what_to_bring" 
-                    name="what_to_bring" 
-                    rows="4" 
-                    value={formData.what_to_bring}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Laptop, notebook, pen, ID card, etc." 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">List any items, materials, or equipment participants should bring</p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Registration Type <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3">
+                  {['free', 'paid'].map((type) => (
+                    <label key={type} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="registration_type"
+                        value={type}
+                        checked={formData.registration_type === type}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700 capitalize">{type}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Registration Details */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Registration Configuration</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="registration_type" className="block text-sm font-medium text-gray-700">Registration Type</label>
-                  <Dropdown
-                    options={[
-                      { value: "free", label: "Free Registration" },
-                      { value: "paid", label: "Paid Registration" },
-                      { value: "sponsored", label: "Sponsored Event" }
-                    ]}
-                    value={formData.registration_type}
-                    onChange={(value) => handleInputChange({ target: { name: 'registration_type', value } })}
-                    placeholder="Select Registration Type"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="registration_mode" className="block text-sm font-medium text-gray-700">Registration Mode</label>
-                  <Dropdown
-                    options={[
-                      { value: "individual", label: "Individual Registration" },
-                      { value: "team", label: "Team Registration" }
-                    ]}
-                    value={formData.registration_mode}
-                    onChange={(value) => handleInputChange({ target: { name: 'registration_mode', value } })}
-                    placeholder="Select Registration Mode"
-                  />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Registration Mode <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3">
+                  {['individual', 'team'].map((mode) => (
+                    <label key={mode} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="registration_mode"
+                        value={mode}
+                        checked={formData.registration_mode === mode}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700 capitalize">{mode}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
               {/* Fee Fields */}
-              {formData.registration_type === 'paid' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="registration_fee" className="block text-sm font-medium text-gray-700">Registration Fee (₹)</label>
-                      <input 
-                        type="number" 
-                        id="registration_fee" 
-                        name="registration_fee" 
-                        min="0" 
-                        step="0.01" 
-                        value={formData.registration_fee}
-                        onChange={handleInputChange}
-                        placeholder="e.g., 500.00" 
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="fee_description" className="block text-sm font-medium text-gray-700">Fee Description</label>
-                      <textarea 
-                        id="fee_description" 
-                        name="fee_description" 
-                        rows="2" 
-                        value={formData.fee_description}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Includes lunch, materials, certificate, etc." 
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
+              {showFeeFields && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Registration Fee <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="registration_fee"
+                      value={formData.registration_fee}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter fee amount"
+                      min="0"
+                      step="0.01"
+                    />
                   </div>
-                </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fee Description
+                    </label>
+                    <textarea
+                      name="fee_description"
+                      value={formData.fee_description}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="What does the fee include?"
+                    />
+                  </div>
+                </>
               )}
 
               {/* Team Fields */}
-              {formData.registration_mode === 'team' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="team_size_min" className="block text-sm font-medium text-gray-700">Minimum Team Size</label>
-                      <input 
-                        type="number" 
-                        id="team_size_min" 
-                        name="team_size_min" 
-                        min="1" 
-                        value={formData.team_size_min}
-                        onChange={handleInputChange}
-                        placeholder="e.g., 2" 
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="team_size_max" className="block text-sm font-medium text-gray-700">Maximum Team Size</label>
-                      <input 
-                        type="number" 
-                        id="team_size_max" 
-                        name="team_size_max" 
-                        min="1" 
-                        value={formData.team_size_max}
-                        onChange={handleInputChange}
-                        placeholder="e.g., 5" 
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
+              {showTeamFields && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Team Size <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="team_size_min"
+                      value={formData.team_size_min}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Minimum team size"
+                      min="2"
+                    />
                   </div>
-                </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Team Size <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="team_size_max"
+                      value={formData.team_size_max}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Maximum team size"
+                      min="2"
+                    />
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="allow_multiple_team_registrations"
+                        checked={formData.allow_multiple_team_registrations}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        Allow participants to register with multiple teams
+                      </span>
+                    </label>
+                  </div>
+                </>
               )}
 
-              {/* Participant Limits */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="min_participants" className="block text-sm font-medium text-gray-700">Minimum Participants</label>
-                  <input 
-                    type="number" 
-                    id="min_participants" 
-                    name="min_participants" 
-                    min="1" 
-                    value={formData.min_participants}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minimum Participants <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="min_participants"
+                  value={formData.min_participants}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Minimum participants needed"
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Maximum Participants
+                </label>
+                <input
+                  type="number"
+                  name="max_participants"
+                  value={formData.max_participants}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Maximum participants allowed"
+                  min="1"
+                />
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="attendance_mandatory"
+                    checked={formData.attendance_mandatory}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                </div>
-                <div>
-                  <label htmlFor="max_participants" className="block text-sm font-medium text-gray-700">Maximum Participants</label>
-                  <input 
-                    type="number" 
-                    id="max_participants" 
-                    name="max_participants" 
-                    min="1" 
-                    value={formData.max_participants}
+                  <span className="ml-2 text-sm text-gray-700">
+                    Attendance is mandatory for participants
+                  </span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_certificate_based"
+                    checked={formData.is_certificate_based}
                     onChange={handleInputChange}
-                    placeholder="Leave empty for unlimited" 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                </div>
+                  <span className="ml-2 text-sm text-gray-700">
+                    This event will provide certificates
+                  </span>
+                </label>
               </div>
             </div>
+          </div>
+        );
 
-            {/* Organizers and Contacts */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-700">Organizers & Contacts</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="organizers" className="block text-sm font-medium text-gray-700">Organizers</label>
-                  <textarea 
-                    id="organizers" 
-                    name="organizers" 
-                    rows="3" 
-                    value={formData.organizers}
-                    onChange={handleInputChange}
-                    placeholder="Enter organizer names, one per line" 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Enter each organizer name on a new line</p>
-                </div>
-                <div>
-                  <label htmlFor="contacts" className="block text-sm font-medium text-gray-700">Contact Information</label>
-                  <textarea 
-                    id="contacts" 
-                    name="contacts" 
-                    rows="3" 
-                    value={formData.contacts}
-                    onChange={handleInputChange}
-                    placeholder="Name: Email/Phone (one per line)" 
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Format: Name: Email/Phone (one contact per line)</p>
-                </div>
-              </div>
-            </div>
+      default:
+        return null;
+    }
+  };
 
-            <div className="flex justify-end pt-6 space-x-4">
-              <button 
-                type="button"
+  return (
+    <AdminLayout pageTitle="Edit Event">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center space-x-4 mb-4">
+              <button
                 onClick={() => navigate('/admin/events')}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
               >
-                Cancel
-              </button>
-              <button 
-                type="submit"
-                disabled={isSaving}
-                className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {isSaving ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
+                <i className="fas fa-arrow-left mr-2"></i>
+                Back to Events
               </button>
             </div>
-          </form>
+            <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
+            <p className="text-gray-600 mt-2">Update event information and settings</p>
+          </div>
+
+          {/* Error notification */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          {/* Organizer notification */}
+          {organizerNotification && (
+            <div className={`mb-6 border px-4 py-3 rounded-lg ${
+              organizerNotification.type === 'warning' 
+                ? 'bg-yellow-50 border-yellow-200 text-yellow-800' 
+                : 'bg-blue-50 border-blue-200 text-blue-800'
+            }`}>
+              {organizerNotification.message}
+            </div>
+          )}
+
+          {/* Main Content Card */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 px-8" aria-label="Tabs">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <i className={`${tab.icon} mr-2`}></i>
+                    {tab.name}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <form onSubmit={handleSubmit}>
+              <div className="p-8">
+                {renderTabContent()}
+              </div>
+
+              {/* Navigation & Submit */}
+              <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                <div className="flex space-x-2">
+                  {activeTab > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(activeTab - 1)}
+                      className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <i className="fas fa-arrow-left mr-2"></i>Previous
+                    </button>
+                  )}
+                  {activeTab < tabs.length && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(activeTab + 1)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Next<i className="fas fa-arrow-right ml-2"></i>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/events')}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-8 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors flex items-center"
+                  >
+                    {isSaving ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Updating Event...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-save mr-2"></i>
+                        Update Event
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </AdminLayout>
