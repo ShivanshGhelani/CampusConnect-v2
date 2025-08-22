@@ -5,7 +5,42 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DateRangePicker from '../../components/common/DateRangePicker';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { Dropdown } from '../../components/ui';
+import Dropdown from '../../components/ui/Dropdown';
+
+// Dropdown options
+const eventTypeOptions = [
+  { value: 'technical', label: 'Technical' },
+  { value: 'cultural', label: 'Cultural' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'academic', label: 'Academic' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'seminar', label: 'Seminar' },
+  { value: 'conference', label: 'Conference' },
+  { value: 'competition', label: 'Competition' }
+];
+
+const targetAudienceOptions = [
+  { value: 'students', label: 'Students' },
+  { value: 'faculty', label: 'Faculty' },
+  { value: 'both', label: 'Both Students & Faculty' },
+  { value: 'external', label: 'External Participants' }
+];
+
+const modeOptions = [
+  { value: 'offline', label: 'Offline' },
+  { value: 'online', label: 'Online' },
+  { value: 'hybrid', label: 'Hybrid' }
+];
+
+const registrationTypeOptions = [
+  { value: 'free', label: 'Free' },
+  { value: 'paid', label: 'Paid' }
+];
+
+const registrationModeOptions = [
+  { value: 'individual', label: 'Individual' },
+  { value: 'team', label: 'Team' }
+];
 
 function EditEvent() {
   const { eventId } = useParams();
@@ -62,7 +97,7 @@ function EditEvent() {
     certificate_end_time: '',
     venue: '',
     venue_id: '',
-    mode: 'Offline',
+    mode: 'offline',
     registration_type: 'free',
     registration_mode: 'individual',
     registration_fee: '',
@@ -315,6 +350,8 @@ function EditEvent() {
   useEffect(() => {
     if (eventId) {
       fetchEvent();
+      loadVenues();
+      loadExistingOrganizers();
     }
   }, [eventId]);
 
@@ -400,7 +437,7 @@ function EditEvent() {
         const regEndDateTime = parseDateTimeToComponents(eventData.registration_end_date);
         const certEndDateTime = parseDateTimeToComponents(eventData.certificate_end_date);
 
-        setFormData({
+        const newFormData = {
           event_name: eventData.event_name || '',
           event_type: eventData.event_type || '',
           target_audience: eventData.target_audience || '',
@@ -422,7 +459,7 @@ function EditEvent() {
           certificate_end_time: certEndDateTime.time,
           venue: eventData.venue || '',
           venue_id: eventData.venue_id || '',
-          mode: eventData.mode || 'Offline',
+          mode: eventData.mode || 'offline',
           registration_type: eventData.registration_type || 'free',
           registration_mode: eventData.registration_mode || 'individual',
           registration_fee: eventData.registration_fee || '',
@@ -437,7 +474,9 @@ function EditEvent() {
           certificate_templates: eventData.certificate_templates || {},
           event_poster: null, // Will be loaded separately if needed
           assets: eventData.assets || []
-        });
+        };
+
+        setFormData(newFormData);
         
         setError('');
       } else {
@@ -456,6 +495,14 @@ function EditEvent() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Handle dropdown changes
+  const handleDropdownChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -626,63 +673,40 @@ function EditEvent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="event_type"
+                <Dropdown
+                  label="Event Type"
+                  placeholder="Select event type"
+                  options={eventTypeOptions}
                   value={formData.event_type}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select event type</option>
-                  <option value="Technical">Technical</option>
-                  <option value="Cultural">Cultural</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Academic">Academic</option>
-                  <option value="Workshops">Workshops</option>
-                </select>
+                  onChange={(value) => handleDropdownChange('event_type', value)}
+                  required={true}
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target Audience <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="target_audience"
+                <Dropdown
+                  label="Target Audience"
+                  placeholder="Select target audience"
+                  options={targetAudienceOptions}
                   value={formData.target_audience}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">Select target audience</option>
-                  <option value="Students">Students</option>
-                  <option value="Faculty">Faculty</option>
-                  <option value="Both">Both Students & Faculty</option>
-                  <option value="External">External Participants</option>
-                </select>
+                  onChange={(value) => handleDropdownChange('target_audience', value)}
+                  required={true}
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Organizing Department <span className="text-red-500">*</span>
+                  Organizing Department/Club <span className="text-red-500">*</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   name="organizing_department"
                   value={formData.organizing_department}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter department or club name"
                   required
-                >
-                  <option value="">Select department</option>
-                  <option value="Computer Science">Computer Science</option>
-                  <option value="Information Technology">Information Technology</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Mechanical">Mechanical</option>
-                  <option value="Civil">Civil</option>
-                  <option value="Student Affairs">Student Affairs</option>
-                </select>
+                />
               </div>
 
               <div className="flex items-center">
@@ -735,9 +759,33 @@ function EditEvent() {
         return (
           <div className="space-y-6">
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Organizing Department/Club <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="organizing_department"
+                value={formData.organizing_department}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter department or club name"
+                required
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Event Organizers <span className="text-red-500">*</span>
               </label>
+              {organizerNotification && (
+                <div className={`mb-4 p-3 rounded-lg border ${
+                  organizerNotification.type === 'warning' 
+                    ? 'bg-amber-50 border-amber-200 text-amber-800' 
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}>
+                  {organizerNotification.message}
+                </div>
+              )}
               {formData.organizers.map((organizer, idx) => (
                 <div key={idx} className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
@@ -915,24 +963,14 @@ function EditEvent() {
 
             {/* Mode */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Mode <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {['Offline', 'Online', 'Hybrid'].map((mode) => (
-                  <label key={mode} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={mode}
-                      checked={formData.mode === mode}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="ml-3 text-sm font-medium text-gray-700">{mode}</span>
-                  </label>
-                ))}
-              </div>
+              <Dropdown
+                label="Event Mode"
+                placeholder="Select event mode"
+                options={modeOptions}
+                value={formData.mode}
+                onChange={(value) => handleDropdownChange('mode', value)}
+                required={true}
+              />
             </div>
 
             {/* Venue Selection */}
@@ -985,45 +1023,25 @@ function EditEvent() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Registration Type <span className="text-red-500">*</span>
-                </label>
-                <div className="space-y-3">
-                  {['free', 'paid'].map((type) => (
-                    <label key={type} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="registration_type"
-                        value={type}
-                        checked={formData.registration_type === type}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="ml-3 text-sm font-medium text-gray-700 capitalize">{type}</span>
-                    </label>
-                  ))}
-                </div>
+                <Dropdown
+                  label="Registration Type"
+                  placeholder="Select registration type"
+                  options={registrationTypeOptions}
+                  value={formData.registration_type}
+                  onChange={(value) => handleDropdownChange('registration_type', value)}
+                  required={true}
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Registration Mode <span className="text-red-500">*</span>
-                </label>
-                <div className="space-y-3">
-                  {['individual', 'team'].map((mode) => (
-                    <label key={mode} className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="registration_mode"
-                        value={mode}
-                        checked={formData.registration_mode === mode}
-                        onChange={handleInputChange}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <span className="ml-3 text-sm font-medium text-gray-700 capitalize">{mode}</span>
-                    </label>
-                  ))}
-                </div>
+                <Dropdown
+                  label="Registration Mode"
+                  placeholder="Select registration mode"
+                  options={registrationModeOptions}
+                  value={formData.registration_mode}
+                  onChange={(value) => handleDropdownChange('registration_mode', value)}
+                  required={true}
+                />
               </div>
 
               {/* Fee Fields */}
@@ -1179,7 +1197,7 @@ function EditEvent() {
 
   return (
     <AdminLayout pageTitle="Edit Event">
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen flex max-w-5xl justify-center items-center mx-auto">
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
