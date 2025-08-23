@@ -61,6 +61,9 @@ class Event(BaseModel):
     
     # New fields for event targeting and categorization
     target_audience: str = Field(..., description="Target audience: student, faculty, or both")
+    student_department: Optional[Union[List[str], str]] = Field(default=None, description="Department(s) for student-targeted events - can be list or single string for backward compatibility")
+    student_semester: Optional[Union[List[str], str]] = Field(default=None, description="Semester(s) for student-targeted events - can be list or single string for backward compatibility")
+    custom_text: Optional[str] = Field(default=None, description="Additional custom information for events")
     is_xenesis_event: bool = Field(default=False, description="Whether this is a Xenesis event")
     
     # Additional event details
@@ -301,6 +304,9 @@ class CreateEvent(BaseModel):
     
     # New targeting fields
     target_audience: str = Field(..., description="student, faculty, or both")
+    student_department: Optional[Union[List[str], str]] = Field(default=None, description="Department(s) for student-targeted events - can be list or single string")
+    student_semester: Optional[Union[List[str], str]] = Field(default=None, description="Semester(s) for student-targeted events - can be list or single string")
+    custom_text: Optional[str] = Field(default=None, description="Additional custom information for events")
     is_xenesis_event: bool = Field(default=False, description="Xenesis event flag")
     
     # Contact information
@@ -364,6 +370,9 @@ class UpdateEvent(BaseModel):
     venue: Optional[str] = None
     online_meeting_link: Optional[str] = None
     target_audience: Optional[str] = None
+    student_department: Optional[Union[List[str], str]] = None
+    student_semester: Optional[Union[List[str], str]] = None
+    custom_text: Optional[str] = None
     is_xenesis_event: Optional[bool] = None
     faculty_organizers: Optional[List[str]] = None
     contacts: Optional[List[Dict[str, str]]] = None
@@ -393,6 +402,9 @@ class EventResponse(BaseModel):
     status: str
     sub_status: Optional[str] = None
     target_audience: str
+    student_department: Optional[Union[List[str], str]] = None
+    student_semester: Optional[Union[List[str], str]] = None
+    custom_text: Optional[str] = None
     is_xenesis_event: bool
     faculty_organizers: List[str] = []
     contacts: List[Dict[str, str]] = []

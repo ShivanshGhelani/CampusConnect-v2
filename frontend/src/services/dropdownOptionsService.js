@@ -18,14 +18,17 @@ class DropdownOptionsService {
         // Student-related options
         student: {
           departments: [
-            { value: 'Computer Science & Engineering', label: 'Computer Science & Engineering' },
+            { value: 'Computer Engineering', label: 'Computer Engineering' },
             { value: 'Information Technology', label: 'Information Technology' },
             { value: 'Electronics & Communication', label: 'Electronics & Communication' },
             { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
             { value: 'Civil Engineering', label: 'Civil Engineering' },
             { value: 'Electrical Engineering', label: 'Electrical Engineering' },
-            { value: 'Chemical Engineering', label: 'Chemical Engineering' },
-            { value: 'Biotechnology', label: 'Biotechnology' }
+            { value: 'Electronics & Communication Engineering', label: 'Electronics & Communication Engineering' },
+            { value: 'Automobile Engineering', label: 'Automobile Engineering' },
+            { value: 'MBA', label: 'MBA (Master of Business Administration)' },
+            { value: 'MCA', label: 'MCA (Master of Computer Applications)' },
+            { value: 'Science and Humanities', label: 'Science and Humanities' }
           ]
         },
         // Faculty-related options
@@ -37,22 +40,19 @@ class DropdownOptionsService {
             { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
             { value: 'Civil Engineering', label: 'Civil Engineering' },
             { value: 'Electrical Engineering', label: 'Electrical Engineering' },
-            { value: 'Chemical Engineering', label: 'Chemical Engineering' },
-            { value: 'Biotechnology', label: 'Biotechnology' },
-            { value: 'Mathematics', label: 'Mathematics' },
-            { value: 'Physics', label: 'Physics' },
-            { value: 'Chemistry', label: 'Chemistry' },
-            { value: 'English', label: 'English' },
-            { value: 'Management', label: 'Management' }
+            { value: 'Electronics & Communication Engineering', label: 'Electronics & Communication Engineering' },
+            { value: 'Automobile Engineering', label: 'Automobile Engineering' },
+            { value: 'MBA', label: 'MBA (Master of Business Administration)' },
+            { value: 'MCA', label: 'MCA (Master of Computer Applications)' },
+            { value: 'Science and Humanities', label: 'Science and Humanities' },
+
+
           ],
           designations: [
             { value: 'Professor', label: 'Professor' },
             { value: 'Associate Professor', label: 'Associate Professor' },
             { value: 'Assistant Professor', label: 'Assistant Professor' },
-            { value: 'Lecturer', label: 'Lecturer' },
-            { value: 'Senior Lecturer', label: 'Senior Lecturer' },
             { value: 'Head of Department', label: 'Head of Department' },
-            { value: 'Dean', label: 'Dean' },
             { value: 'Director', label: 'Director' },
             { value: 'Principal', label: 'Principal' },
             { value: 'Vice Principal', label: 'Vice Principal' }
@@ -64,12 +64,9 @@ class DropdownOptionsService {
             { value: 'M.Sc.', label: 'M.Sc. (Master of Science)' },
             { value: 'M.A.', label: 'M.A. (Master of Arts)' },
             { value: 'M.Com.', label: 'M.Com. (Master of Commerce)' },
-            { value: 'MBA', label: 'MBA (Master of Business Administration)' },
             { value: 'B.Tech', label: 'B.Tech (Bachelor of Technology)' },
             { value: 'B.E.', label: 'B.E. (Bachelor of Engineering)' },
             { value: 'B.Sc.', label: 'B.Sc. (Bachelor of Science)' },
-            { value: 'B.A.', label: 'B.A. (Bachelor of Arts)' },
-            { value: 'B.Com.', label: 'B.Com. (Bachelor of Commerce)' }
           ]
         }
       };

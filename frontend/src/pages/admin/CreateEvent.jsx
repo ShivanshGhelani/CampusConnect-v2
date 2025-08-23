@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import { formatDateToLocal } from '../../utils/dateHelpers';
 import { Dropdown, SearchBox, Checkbox } from '../../components/ui';
+import MultiSelect from '../../components/ui/MultiSelect';
+import dropdownOptionsService from '../../services/dropdownOptionsService';
 import unifiedStorage from '../../services/unifiedStorage';
 
 // Helper for step progress
@@ -23,12 +25,20 @@ const steps = [
 function CreateEvent() {
   const navigate = useNavigate();
   const { user, userType, isAuthenticated, logout, refreshUserData } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const savedStep = localStorage.getItem('createEventCurrentStep');
+      return savedStep ? parseInt(savedStep) : 1;
+    } catch (error) {
+      console.log('Error loading step from localStorage:', error);
+      return 1;
+    }
+  });
   const totalSteps = steps.length;
   const [venues, setVenues] = useState([]);
   const [filteredVenues, setFilteredVenues] = useState([]);
   const [showVenueDropdown, setShowVenueDropdown] = useState(false);
-  
+
   // Session management for Executive Admin
   const [eventCreatorSession, setEventCreatorSession] = useState(null);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
@@ -47,7 +57,7 @@ function CreateEvent() {
   // Attendance preview and customization states
   const [showAttendanceCustomization, setShowAttendanceCustomization] = useState(false);
   const [customAttendanceStrategy, setCustomAttendanceStrategy] = useState(null);
-  
+
   // Loading state for form submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
@@ -57,7 +67,7 @@ function CreateEvent() {
     if (user && user.role === 'executive_admin') {
       // Create unique session key for this user
       const sessionKey = `eventCreatorSession_${user.username || user.id || 'default'}`;
-      
+
       const sessionData = {
         creatorName: name || user.fullname || user.username || 'Executive Admin',
         creatorEmail: email || '',
@@ -66,28 +76,28 @@ function CreateEvent() {
         userId: user.username || user.id || 'default', // Track which user created this session
         sessionId: Date.now() + '_' + Math.random().toString(36).substr(2, 9) // Unique session ID
       };
-      
+
       // Store in both state and sessionStorage with user-specific key
       setEventCreatorSession(sessionData);
       sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
       setLastActivityTime(Date.now());
-      
+
       console.log('Event creator session created for user:', user.username, sessionData);
     }
   };
 
   const getEventCreatorSession = () => {
     if (!user || user.role !== 'executive_admin') return null;
-    
+
     // Use user-specific session key
     const sessionKey = `eventCreatorSession_${user.username || user.id || 'default'}`;
     const stored = sessionStorage.getItem(sessionKey);
-    
+
     if (stored) {
       const sessionData = JSON.parse(stored);
       const now = new Date().getTime();
       const timeSinceLastActivity = now - sessionData.lastActivity;
-      
+
       // Verify this session belongs to the current user
       const currentUserId = user.username || user.id || 'default';
       if (sessionData.userId !== currentUserId) {
@@ -97,7 +107,7 @@ function CreateEvent() {
         console.log('Session belongs to different user, removing...');
         return null;
       }
-      
+
       // Check if 60 minutes have passed since last activity
       if (timeSinceLastActivity < (60 * 60 * 1000)) {
         setEventCreatorSession(sessionData);
@@ -120,10 +130,10 @@ function CreateEvent() {
 
   const updateLastActivity = () => {
     if (!user || user.role !== 'executive_admin') return;
-    
+
     const now = Date.now();
     setLastActivityTime(now);
-    
+
     if (eventCreatorSession) {
       const sessionKey = `eventCreatorSession_${user.username || user.id || 'default'}`;
       const updatedSession = {
@@ -167,24 +177,66 @@ function CreateEvent() {
       setCreatorEmail('');
     }
   };
-  // Form state (expanded for all fields) - Move this before useEffect that uses it
-  const [form, setForm] = useState({
+
+  // Function to load form data from localStorage
+  const loadFormFromStorage = () => {
+    try {
+      const savedForm = localStorage.getItem('createEventForm');
+      const savedStep = localStorage.getItem('createEventCurrentStep');
+      
+      if (savedForm) {
+        const parsedForm = JSON.parse(savedForm);
+        return parsedForm;
+      }
+    } catch (error) {
+      console.log('Error loading form from localStorage:', error);
+    }
+    return null;
+  };
+
+  // Function to save form data to localStorage
+  const saveFormToStorage = (formData, step) => {
+    try {
+      localStorage.setItem('createEventForm', JSON.stringify(formData));
+      localStorage.setItem('createEventCurrentStep', step.toString());
+    } catch (error) {
+      console.log('Error saving form to localStorage:', error);
+    }
+  };
+
+  // Function to clear form data from localStorage
+  const clearFormFromStorage = () => {
+    try {
+      localStorage.removeItem('createEventForm');
+      localStorage.removeItem('createEventCurrentStep');
+    } catch (error) {
+      console.log('Error clearing form from localStorage:', error);
+    }
+  };
+
+  // Form state (expanded for all fields) - Initialize with localStorage data if available
+  const [form, setForm] = useState(() => {
+    const savedForm = loadFormFromStorage();
+    return savedForm || {
     event_id: '',
     event_name: '',
     event_type: '',
     target_audience: '',
+    student_department: [], // Changed to array for multiple selection
+    student_semester: [], // Changed to array for multiple selection
+    custom_text: '',
     is_xenesis_event: false,
     short_description: '',
     detailed_description: '',
     organizing_department: '',
-    organizers: [{ 
-      id: null, 
-      name: '', 
-      email: '', 
-      employee_id: '', 
+    organizers: [{
+      id: null,
+      name: '',
+      email: '',
+      employee_id: '',
       searchQuery: '',
-      selected: false, 
-      isNew: false 
+      selected: false,
+      isNew: false
     }],
     contacts: [{ name: '', contact: '' }],
     start_date: '',
@@ -200,6 +252,7 @@ function CreateEvent() {
     mode: '',
     venue: '',
     venue_id: '',
+    online_meeting_link: '',
     registration_type: '',
     registration_fee: '',
     fee_description: '',
@@ -214,6 +267,7 @@ function CreateEvent() {
     certificate_templates: {},
     event_poster: null,
     assets: [],
+    };
   });
   const [errors, setErrors] = useState({});
   const [existingEventIds, setExistingEventIds] = useState([]);
@@ -229,7 +283,7 @@ function CreateEvent() {
       'continuous': 'Continuous',
       'hybrid': 'Hybrid'
     };
-    
+
     return strategyMapping[strategyType] || (strategyType ? strategyType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Auto-detected');
   };
 
@@ -274,7 +328,7 @@ function CreateEvent() {
         'Certificate of Participation'
       ]
     };
-    
+
     return certificateMapping[eventType?.toLowerCase()] || certificateMapping['other'];
   };
 
@@ -291,9 +345,9 @@ function CreateEvent() {
     if (isAuthenticated && userType === 'admin' && user && user.role === 'executive_admin') {
       // Check if there's an existing valid session
       const existingSession = getEventCreatorSession();
-      
+
       console.log('🔍 Existing Session:', existingSession);
-      
+
       if (!existingSession) {
         // Show modal to ask for creator name
         console.log('🔔 Showing creator modal for Executive Admin');
@@ -310,7 +364,7 @@ function CreateEvent() {
 
     // Add event listeners for user activity
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+
     events.forEach(event => {
       document.addEventListener(event, trackActivity, true);
     });
@@ -327,7 +381,7 @@ function CreateEvent() {
     if (user?.role === 'executive_admin' && eventCreatorSession) {
       const timer = setInterval(() => {
         const timeRemaining = getTimeRemaining();
-        
+
         if (timeRemaining <= 0) {
           // Session expired due to inactivity
           clearEventCreatorSession();
@@ -360,16 +414,16 @@ function CreateEvent() {
     try {
       console.log('Loading venues from API...');
       console.log('Auth status:', { isAuthenticated, userType, user: user?.username });
-      
+
       if (!isAuthenticated || userType !== 'admin') {
         console.error('Not authenticated as admin');
         alert('Please log in as an admin to access this feature.');
         return;
       }
-      
+
       const response = await adminAPI.getVenues();
       console.log('Venues API response:', response);
-      
+
       if (response.data) {
         // The API returns { success: true, data: [venues], message: "..." }
         // So we need to access response.data.data, not just response.data
@@ -385,7 +439,7 @@ function CreateEvent() {
       }
     } catch (err) {
       console.error('Error loading venues:', err);
-      
+
       if (err.response?.status === 401) {
         alert('Authentication required. Please log in as admin first.');
       } else {
@@ -399,13 +453,13 @@ function CreateEvent() {
   const generateSuggestedEventId = (originalId) => {
     const currentYear = new Date().getFullYear();
     const baseId = originalId.replace(/\d+$/, ''); // Remove trailing numbers
-    
+
     // Try with current year
     const withYear = `${baseId}${currentYear}`;
     if (!existingEventIds.includes(withYear)) {
       return withYear;
     }
-    
+
     // Try with incremental numbers
     for (let i = 1; i <= 99; i++) {
       const numbered = `${baseId}${i}`;
@@ -423,38 +477,38 @@ function CreateEvent() {
 
     // Create abbreviations
     const titleWords = title.trim().split(/\s+/).filter(word => word.length > 0);
-    const titleAbbr = titleWords.length > 1 
+    const titleAbbr = titleWords.length > 1
       ? titleWords.map(word => word[0].toUpperCase()).join('').slice(0, 4)
       : title.slice(0, 4).toUpperCase();
 
-    const typeAbbr = type.slice(0, 2).toUpperCase();
-    const audienceAbbr = audience === 'students' ? 'STU' 
-                      : audience === 'faculty' ? 'FAC'
-                      : audience === 'both' ? 'ALL'
-                      : audience.slice(0, 3).toUpperCase();
+    const typeAbbr = type === 'xenesis' ? 'XEN' : type.slice(0, 2).toUpperCase();
+    const audienceAbbr = audience === 'students' ? 'STU'
+      : audience === 'faculty' ? 'FAC'
+        : audience === 'both' ? 'ALL'
+          : audience.slice(0, 3).toUpperCase();
 
     const year = new Date().getFullYear();
-    
+
     // Create continuous base ID without underscores
     let baseId;
-    if (isXenesisEvent) {
+    if (type === 'xenesis' || isXenesisEvent) {
       baseId = `XEN${titleAbbr}${typeAbbr}${audienceAbbr}${year}`;
     } else {
       baseId = `${titleAbbr}${typeAbbr}${audienceAbbr}${year}`;
     }
-    
+
     // Clean up: remove special characters and ensure valid format
     baseId = baseId.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    
+
     // Check if this ID already exists, if so add a number
     let finalId = baseId;
     let counter = 1;
-    
+
     while (existingEventIds.includes(finalId)) {
       finalId = `${baseId}${counter}`;
       counter++;
     }
-    
+
     return finalId;
   };
 
@@ -473,18 +527,18 @@ function CreateEvent() {
     const fetchFacultyOrganizers = async () => {
       try {
         console.log('Loading faculty organizers...');
-        
+
         const response = await adminAPI.getFacultyOrganizers({ limit: 100 });
         console.log('✅ Loaded faculty organizers from API:', response.data);
         console.log('🔍 Faculty data structure:', response.data.data);
         console.log('🔍 Faculty count:', response.data.data?.length || 0);
-        
+
         const facultyData = response.data.data || [];
         setExistingOrganizers(facultyData);
         setFilteredOrganizers(facultyData);
-        
+
         console.log('✅ Set faculty organizers in state:', facultyData.length);
-        
+
         // If current user is faculty/organizer, pre-select them
         if (userType === 'admin' && user?.role === 'organizer_admin' && user?.employee_id) {
           const currentFaculty = facultyData.find(f => f.employee_id === user.employee_id);
@@ -537,8 +591,8 @@ function CreateEvent() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (activeOrganizerDropdown !== null && 
-          !event.target.closest('.organizer-dropdown-container')) {
+      if (activeOrganizerDropdown !== null &&
+        !event.target.closest('.organizer-dropdown-container')) {
         setActiveOrganizerDropdown(null);
       }
       // Close venue dropdown when clicking outside
@@ -551,6 +605,30 @@ function CreateEvent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeOrganizerDropdown, showVenueDropdown]);
 
+  // Handle mode changes and clear inappropriate fields
+  useEffect(() => {
+    if (form.mode === 'online') {
+      // Clear venue fields for online-only events
+      setForm(prev => ({
+        ...prev,
+        venue: '',
+        venue_id: ''
+      }));
+    } else if (form.mode === 'offline') {
+      // Clear meeting link for offline-only events
+      setForm(prev => ({
+        ...prev,
+        online_meeting_link: ''
+      }));
+    }
+    // For hybrid mode, keep both fields as they're both needed
+  }, [form.mode]);
+
+  // Save form data to localStorage whenever form or currentStep changes
+  useEffect(() => {
+    saveFormToStorage(form, currentStep);
+  }, [form, currentStep]);
+
   // Handle checkbox changes with explicit state updates
   const handleCheckboxChange = (name, checked) => {
     setForm(prev => ({
@@ -559,10 +637,45 @@ function CreateEvent() {
     }));
   };
 
+  // Special handler for multi-select student fields
+  const handleStudentFieldChange = (fieldName, selectedValues) => {
+    // Handle "All" selection logic
+    if (fieldName === 'student_department') {
+      const allDepartments = dropdownOptionsService.getOptions('student', 'departments').map(opt => opt.value);
+      
+      if (selectedValues.includes('all')) {
+        // If "All" is selected, select all departments except "all"
+        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
+          ? allDepartments 
+          : selectedValues.filter(val => val !== 'all');
+        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+      } else {
+        setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
+      }
+    } else if (fieldName === 'student_semester') {
+      const allSemesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
+      
+      if (selectedValues.includes('all')) {
+        // If "All" is selected, select all semesters except "all"
+        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
+          ? allSemesters 
+          : selectedValues.filter(val => val !== 'all');
+        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+      } else {
+        setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
+      }
+    } else {
+      setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
+    }
+    
+    // Update last activity
+    updateLastActivity();
+  };
+
   // Handlers
   const handleChange = (e) => {
     const { name, value, type, files, checked } = e.target;
-    
+
     if (type === 'file') {
       if (name === 'certificate_template') {
         setForm((prev) => ({ ...prev, certificate_template: files[0] }));
@@ -582,30 +695,30 @@ function CreateEvent() {
     newOrganizers[idx] = value;
     setForm((prev) => ({ ...prev, organizers: newOrganizers }));
   };
-  
+
   // New organizer management functions
   const addOrganizer = () => {
     // Clear any existing notification when adding new organizer
     setOrganizerNotification(null);
-    
-    setForm(prev => ({ 
-      ...prev, 
-      organizers: [...prev.organizers, { 
-        id: null, 
-        name: '', 
-        email: '', 
-        employee_id: '', 
+
+    setForm(prev => ({
+      ...prev,
+      organizers: [...prev.organizers, {
+        id: null,
+        name: '',
+        email: '',
+        employee_id: '',
         searchQuery: '',
-        selected: false, 
-        isNew: false 
-      }] 
+        selected: false,
+        isNew: false
+      }]
     }));
   };
-  
+
   const removeOrganizer = (idx) => {
     // Clear any existing notification
     setOrganizerNotification(null);
-    
+
     const newOrganizers = form.organizers.filter((_, i) => i !== idx);
     setForm((prev) => ({ ...prev, organizers: newOrganizers }));
   };
@@ -622,7 +735,7 @@ function CreateEvent() {
     }
 
     // Filter existing faculty organizers based on search
-    const filtered = existingOrganizers.filter(faculty => 
+    const filtered = existingOrganizers.filter(faculty =>
       faculty.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faculty.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faculty.employee_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -633,7 +746,7 @@ function CreateEvent() {
 
   const selectExistingOrganizer = (idx, faculty) => {
     // Check if this faculty is already selected in any other organizer slot
-    const isAlreadySelected = form.organizers.some((organizer, index) => 
+    const isAlreadySelected = form.organizers.some((organizer, index) =>
       index !== idx && organizer.employee_id === faculty.employee_id && organizer.selected
     );
 
@@ -676,7 +789,7 @@ function CreateEvent() {
   const clearOrganizerSelection = (idx) => {
     // Clear any existing notification
     setOrganizerNotification(null);
-    
+
     const newOrganizers = [...form.organizers];
     newOrganizers[idx] = {
       id: null,
@@ -715,7 +828,7 @@ function CreateEvent() {
       if (e.target.tagName === 'TEXTAREA') {
         return;
       }
-      
+
       // For other inputs, prevent default and don't trigger form submission
       e.preventDefault();
       console.log('Enter key pressed, prevented form submission');
@@ -731,16 +844,23 @@ function CreateEvent() {
       if (!form.event_name) stepErrors.event_name = 'Event Title is required';
       if (!form.event_type) stepErrors.event_type = 'Event Type is required';
       if (!form.target_audience) stepErrors.target_audience = 'Target Audience is required';
+
+      // Student-specific validation
+      if (form.target_audience === 'students') {
+        if (!form.student_department || form.student_department.length === 0) stepErrors.student_department = 'At least one department is required for student events';
+        if (!form.student_semester || form.student_semester.length === 0) stepErrors.student_semester = 'At least one semester is required for student events';
+      }
+
       if (!form.short_description) stepErrors.short_description = 'Short Description is required';
       if (!form.detailed_description) stepErrors.detailed_description = 'Detailed Description is required';
     } else if (step === 2) {
       if (!form.organizing_department) {
         stepErrors.organizing_department = 'Organizing Department/Club is required';
       }
-      
+
       // New organizer validation
       const selectedOrganizers = form.organizers.filter(org => org.selected);
-      
+
       if (selectedOrganizers.length === 0) {
         stepErrors.organizers = 'At least one organizer must be selected from the dropdown';
       } else {
@@ -754,7 +874,7 @@ function CreateEvent() {
           }
         });
       }
-      
+
       if (!form.contacts.length || form.contacts.some((c) => !c.name || !c.contact)) {
         stepErrors.contacts = 'At least one contact with name and contact is required';
       }
@@ -768,26 +888,28 @@ function CreateEvent() {
       if (!form.start_time) stepErrors.start_time = 'Event start time is required';
       if (!form.end_date) stepErrors.end_date = 'Event end date is required';
       if (!form.end_time) stepErrors.end_time = 'Event end time is required';
-      if (!form.certificate_end_date) stepErrors.certificate_end_date = 'Certificate distribution end date is required';
-      if (!form.certificate_end_time) stepErrors.certificate_end_time = 'Certificate distribution end time is required';
       
+      // Certificate fields are optional - only validate if provided
+      // if (!form.certificate_end_date) stepErrors.certificate_end_date = 'Certificate distribution end date is required';
+      // if (!form.certificate_end_time) stepErrors.certificate_end_time = 'Certificate distribution end time is required';
+
       // Only validate time logic if all dates and times are provided
       if (form.start_date && form.start_time && form.end_date && form.end_time &&
-          form.registration_start_date && form.registration_start_time &&
-          form.registration_end_date && form.registration_end_time) {
-        
+        form.registration_start_date && form.registration_start_time &&
+        form.registration_end_date && form.registration_end_time) {
+
         const start = new Date(`${form.start_date}T${form.start_time}`);
         const end = new Date(`${form.end_date}T${form.end_time}`);
         const regStart = new Date(`${form.registration_start_date}T${form.registration_start_time}`);
         const regEnd = new Date(`${form.registration_end_date}T${form.registration_end_time}`);
-        
+
         // Basic time ordering checks
         if (end <= start) stepErrors.end_time = 'Event end must be after event start';
         if (regEnd <= regStart) stepErrors.registration_end_time = 'Registration end must be after registration start';
-        
+
         // Registration period constraint - event cannot start before registration ends
         if (start < regEnd) stepErrors.start_date = 'Event cannot start before registration period ends';
-        
+
         // Ensure reasonable gap between registration end and event start (optional warning)
         const timeDiff = start - regEnd;
         const hoursDiff = timeDiff / (1000 * 60 * 60);
@@ -795,16 +917,26 @@ function CreateEvent() {
           stepErrors.start_time = 'Recommend at least 1 hour gap between registration end and event start';
         }
       }
-      
+
       // Event Mode and Venue validation
       if (!form.mode) stepErrors.mode = 'Event Mode is required';
+
+      // Venue validation for offline and hybrid events
       if ((form.mode === 'offline' || form.mode === 'hybrid') && !form.venue) {
         stepErrors.venue = 'Venue selection is required for offline/hybrid events';
       }
-      if (form.mode === 'online' && !form.venue) {
-        stepErrors.venue = 'Platform/Meeting link is required for online events';
+
+      // Meeting link validation for online and hybrid events
+      if ((form.mode === 'online' || form.mode === 'hybrid') && !form.online_meeting_link) {
+        stepErrors.online_meeting_link = 'Meeting link is required for online/hybrid events';
       }
-      
+
+      // For purely online events, ensure the old venue field is not used
+      if (form.mode === 'online' && form.venue) {
+        // Clear venue for online events since we're using online_meeting_link now
+        setForm(prev => ({ ...prev, venue: '', venue_id: '' }));
+      }
+
       // Registration validation
       if (!form.registration_type) stepErrors.registration_type = 'Registration Type is required';
       if (showFeeFields && !form.registration_fee) stepErrors.registration_fee = 'Fee is required';
@@ -817,16 +949,16 @@ function CreateEvent() {
       // Only validate certificates if this is a certificate-based event
       if (form.is_certificate_based) {
         const certificateTypes = getCertificateTypes(form.event_type, form.mode);
-        const hasRequiredTemplates = certificateTypes.every(type => 
+        const hasRequiredTemplates = certificateTypes.every(type =>
           form.certificate_templates[type] && form.certificate_templates[type] !== null
         );
-        
+
         if (!hasRequiredTemplates) {
           stepErrors.certificate_templates = 'All required certificate templates must be uploaded';
         }
       }
     }
-    
+
     setErrors(stepErrors);
     const isValid = Object.keys(stepErrors).length === 0;
     return isValid;
@@ -874,7 +1006,7 @@ function CreateEvent() {
                 </svg>
                 Basic Information
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(1)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -911,6 +1043,75 @@ function CreateEvent() {
             </div>
           </div>
 
+          {/* Student Information - Only show if target audience is students */}
+          {form.target_audience === 'students' && (
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <svg className="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Student Target Information
+                </h3>
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Edit
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Target Departments:</span>
+                  <div className="mt-1">
+                    {form.student_department && form.student_department.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {form.student_department.map((dept, index) => {
+                          const deptOption = dropdownOptionsService.getOptions('student', 'departments').find(opt => opt.value === dept);
+                          return (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {deptOption ? deptOption.label : dept}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">No departments selected</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-600">Target Semesters:</span>
+                  <div className="mt-1">
+                    {form.student_semester && form.student_semester.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {form.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map((sem, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800"
+                          >
+                            {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} Semester
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">No semesters selected</span>
+                    )}
+                  </div>
+                </div>
+                {form.custom_text && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Additional Info:</span>
+                    <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">{form.custom_text}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Schedule Information */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -920,7 +1121,7 @@ function CreateEvent() {
                 </svg>
                 Schedule & Timeline
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(3)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -934,7 +1135,7 @@ function CreateEvent() {
                   <span className="text-sm font-medium text-green-800">Registration Period</span>
                 </div>
                 <p className="text-sm text-green-700 ml-5">
-                  {new Date(`${form.registration_start_date}T${form.registration_start_time}`).toLocaleString()} 
+                  {new Date(`${form.registration_start_date}T${form.registration_start_time}`).toLocaleString()}
                   <br />to {new Date(`${form.registration_end_date}T${form.registration_end_time}`).toLocaleString()}
                 </p>
               </div>
@@ -944,7 +1145,7 @@ function CreateEvent() {
                   <span className="text-sm font-medium text-blue-800">Event Duration</span>
                 </div>
                 <p className="text-sm text-blue-700 ml-5">
-                  {new Date(`${form.start_date}T${form.start_time}`).toLocaleString()} 
+                  {new Date(`${form.start_date}T${form.start_time}`).toLocaleString()}
                   <br />to {new Date(`${form.end_date}T${form.end_time}`).toLocaleString()}
                 </p>
               </div>
@@ -969,22 +1170,21 @@ function CreateEvent() {
                 </svg>
                 Attendance Strategy
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(3)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
                 Edit
               </button>
             </div>
-            
+
             {/* Attendance Mandatory Status */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-gray-600">Attendance Tracking:</span>
-              <span className={`text-sm px-2 py-1 rounded-full ${
-                form.attendance_mandatory 
-                  ? 'bg-green-100 text-green-800' 
+              <span className={`text-sm px-2 py-1 rounded-full ${form.attendance_mandatory
+                  ? 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-800'
-              }`}>
+                }`}>
                 {form.attendance_mandatory ? 'Mandatory' : 'Not Required'}
               </span>
             </div>
@@ -999,24 +1199,24 @@ function CreateEvent() {
                       <div className="flex-1 flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Strategy Type:</span>
                         <span className="text-sm font-semibold text-gray-900 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                          {formatStrategyType(customAttendanceStrategy.detected_strategy?.name || 
-                           customAttendanceStrategy.strategy)}
+                          {formatStrategyType(customAttendanceStrategy.detected_strategy?.name ||
+                            customAttendanceStrategy.strategy)}
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-3">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       <div className="flex-1 flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Pass Criteria:</span>
                         <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                          {customAttendanceStrategy.criteria?.minimum_percentage || 
-                           customAttendanceStrategy.minimum_percentage || 
-                           (customAttendanceStrategy.strategy === 'single_mark' ? '100' : '75')}%
+                          {customAttendanceStrategy.criteria?.minimum_percentage ||
+                            customAttendanceStrategy.minimum_percentage ||
+                            (customAttendanceStrategy.strategy === 'single_mark' ? '100' : '75')}%
                         </span>
                       </div>
                     </div>
-                  </div>                                
+                  </div>
                   {/* Strategy Description */}
                   {customAttendanceStrategy.detected_strategy?.description && (
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1034,94 +1234,94 @@ function CreateEvent() {
                     </div>
                   )}
 
-                {/* Session Overview */}
-                {customAttendanceStrategy.sessions?.length > 0 && (
-                      <div className="bg-white rounded-lg p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                              </svg>
-                            </div>
-                            <h4 className="text-sm font-medium text-gray-900">Session Overview</h4>
-                          </div>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                            {customAttendanceStrategy.sessions.length} session{customAttendanceStrategy.sessions.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {customAttendanceStrategy.sessions.slice(0, 4).map((session, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                              <div className="flex items-center space-x-3">
-                                <div className="flex-shrink-0">
-                                  <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
-                                    {idx + 1}
-                                  </span>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {session.session_name || `Session ${idx + 1}`}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Session {idx + 1} of {customAttendanceStrategy.sessions.length}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {session.duration_minutes ? 
-                                    `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : 
-                                    'Duration TBD'
-                                  }
-                                </p>
-                                <p className="text-xs text-gray-500">Duration</p>
-                              </div>
-                            </div>
-                          ))}
-                          {customAttendanceStrategy.sessions.length > 4 && (
-                            <div className="text-center py-2">
-                              <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                +{customAttendanceStrategy.sessions.length - 4} more sessions
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Recommendations */}
-                    {customAttendanceStrategy.recommendations?.length > 0 && (
-                      <div className="bg-white rounded-lg p-4 border border-blue-200">
-                        <div className="flex items-center space-x-2 mb-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  {/* Session Overview */}
+                  {customAttendanceStrategy.sessions?.length > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                           </div>
-                          <h4 className="text-sm font-medium text-gray-900">Strategy Recommendations</h4>
+                          <h4 className="text-sm font-medium text-gray-900">Session Overview</h4>
                         </div>
-                        <div className="space-y-2">
-                          {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
-                            <div key={idx} className="flex items-start space-x-3 p-2 bg-blue-50 rounded-md">
-                              <div className="flex-shrink-0 mt-0.5">
-                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                              </div>
-                              <p className="text-sm text-blue-900">{rec}</p>
-                            </div>
-                          ))}
-                          {customAttendanceStrategy.recommendations.length > 3 && (
-                            <div className="text-center pt-2">
-                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                                +{customAttendanceStrategy.recommendations.length - 3} more recommendations
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {customAttendanceStrategy.sessions.length} session{customAttendanceStrategy.sessions.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ) : (
+                      <div className="space-y-3">
+                        {customAttendanceStrategy.sessions.slice(0, 4).map((session, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
+                                  {idx + 1}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {session.session_name || `Session ${idx + 1}`}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Session {idx + 1} of {customAttendanceStrategy.sessions.length}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-gray-900">
+                                {session.duration_minutes ?
+                                  `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` :
+                                  'Duration TBD'
+                                }
+                              </p>
+                              <p className="text-xs text-gray-500">Duration</p>
+                            </div>
+                          </div>
+                        ))}
+                        {customAttendanceStrategy.sessions.length > 4 && (
+                          <div className="text-center py-2">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                              +{customAttendanceStrategy.sessions.length - 4} more sessions
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommendations */}
+                  {customAttendanceStrategy.recommendations?.length > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-sm font-medium text-gray-900">Strategy Recommendations</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {customAttendanceStrategy.recommendations.slice(0, 3).map((rec, idx) => (
+                          <div key={idx} className="flex items-start space-x-3 p-2 bg-blue-50 rounded-md">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                            </div>
+                            <p className="text-sm text-blue-900">{rec}</p>
+                          </div>
+                        ))}
+                        {customAttendanceStrategy.recommendations.length > 3 && (
+                          <div className="text-center pt-2">
+                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                              +{customAttendanceStrategy.recommendations.length - 3} more recommendations
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
                   <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1187,7 +1387,7 @@ function CreateEvent() {
                 </svg>
                 Organizer Details
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(2)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -1239,7 +1439,7 @@ function CreateEvent() {
                 </svg>
                 Venue & Location
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(2)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -1251,27 +1451,43 @@ function CreateEvent() {
                 <span className="text-sm font-medium text-gray-600">Mode:</span>
                 <span className="text-sm text-gray-900 capitalize bg-gray-50 px-2 py-1 rounded">{form.mode}</span>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-600">
-                  {form.mode === 'online' ? 'Platform/Link:' : 'Venue/Location:'}
-                </span>
-                <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">{form.venue}</p>
-                {form.venue_id ? (
-                  <div className="flex items-center mt-2">
-                    <svg className="w-4 h-4 text-green-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-xs text-green-600 font-medium">Existing venue selected</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center mt-2">
-                    <svg className="w-4 h-4 text-amber-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-xs text-amber-600 font-medium">Custom venue will be created</span>
-                  </div>
-                )}
-              </div>
+
+              {/* Venue/Location Display - Show for offline and hybrid events */}
+              {(form.mode === 'offline' || form.mode === 'hybrid') && (
+                <div>
+                  <span className="text-sm font-medium text-gray-600">
+                    {form.mode === 'hybrid' ? 'Physical Venue:' : 'Venue/Location:'}
+                  </span>
+                  <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">{form.venue}</p>
+                  {form.venue_id ? (
+                    <div className="flex items-center mt-2">
+                      <svg className="w-4 h-4 text-green-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs text-green-600 font-medium">Existing venue selected</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center mt-2">
+                      <svg className="w-4 h-4 text-amber-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs text-amber-600 font-medium">Custom venue will be created</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Online Meeting Link Display - Show for online and hybrid events */}
+              {(form.mode === 'online' || form.mode === 'hybrid') && (
+                <div className={form.mode === 'hybrid' ? 'mt-4' : ''}>
+                  <span className="text-sm font-medium text-gray-600">
+                    {form.mode === 'hybrid' ? 'Online Meeting Link:' : 'Platform/Meeting Link:'}
+                  </span>
+                  <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">
+                    {form.online_meeting_link || 'Not specified'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1284,7 +1500,7 @@ function CreateEvent() {
                 </svg>
                 Registration Settings
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(3)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -1337,7 +1553,7 @@ function CreateEvent() {
                 </svg>
                 Certificate Configuration
               </h3>
-              <button 
+              <button
                 onClick={() => setCurrentStep(4)}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -1348,11 +1564,10 @@ function CreateEvent() {
               {/* Certificate Based Status */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-600">Certificate Based Event:</span>
-                <span className={`text-sm px-2 py-1 rounded-full ${
-                  form.is_certificate_based 
-                    ? 'bg-green-100 text-green-800' 
+                <span className={`text-sm px-2 py-1 rounded-full ${form.is_certificate_based
+                    ? 'bg-green-100 text-green-800'
                     : 'bg-gray-100 text-gray-800'
-                }`}>
+                  }`}>
                   {form.is_certificate_based ? 'Yes' : 'No'}
                 </span>
               </div>
@@ -1364,18 +1579,18 @@ function CreateEvent() {
                     <span className="text-sm font-medium text-gray-600">Certificate Required:</span>
                     <p className="text-sm text-gray-900 mt-1">Yes</p>
                   </div>
-                  
+
                   <div>
                     <span className="text-sm font-medium text-gray-600">Certificate Template:</span>
                     <p className="text-sm text-gray-900 mt-1">
                       {form.event_type && getCertificateTypes(form.event_type, form.mode).length > 0 ? (
-                        getCertificateTypes(form.event_type, form.mode).some(type => form.certificate_templates[type]) ? 
+                        getCertificateTypes(form.event_type, form.mode).some(type => form.certificate_templates[type]) ?
                           getCertificateTypes(form.event_type, form.mode).find(type => form.certificate_templates[type])
                           : 'No template selected'
                       ) : 'No template selected'}
                     </p>
                   </div>
-                  
+
                   <div>
                     <span className="text-sm font-medium text-gray-600">Status:</span>
                     <p className="text-sm mt-1">
@@ -1386,7 +1601,7 @@ function CreateEvent() {
                       )}
                     </p>
                   </div>
-                  
+
                   <div>
                     <span className="text-sm font-medium text-gray-600">Available Until:</span>
                     <p className="text-sm text-gray-900 mt-1">
@@ -1411,10 +1626,10 @@ function CreateEvent() {
                         return (
                           <div key={index} className="flex items-center space-x-2 text-xs">
                             <svg className={`w-3 h-3 ${hasTemplate ? 'text-green-600' : 'text-red-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d={hasTemplate 
+                              <path fillRule="evenodd" d={hasTemplate
                                 ? "M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                                 : "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                } clipRule="evenodd" />
+                              } clipRule="evenodd" />
                             </svg>
                             <span className={hasTemplate ? 'text-green-600' : 'text-red-600'}>
                               {type} {hasTemplate ? '(Uploaded)' : '(Missing)'}
@@ -1455,7 +1670,7 @@ function CreateEvent() {
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-end">
 
-          
+
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <p className="text-sm text-gray-600">Ready to create your event?</p>
@@ -1465,11 +1680,10 @@ function CreateEvent() {
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`flex items-center px-8 py-3 font-semibold rounded-lg shadow-lg transition-all duration-200 transform ${
-                isSubmitting 
-                  ? 'bg-gray-400 cursor-not-allowed' 
+              className={`flex items-center px-8 py-3 font-semibold rounded-lg shadow-lg transition-all duration-200 transform ${isSubmitting
+                  ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow-xl hover:scale-105'
-              } text-white`}
+                } text-white`}
             >
               {isSubmitting ? (
                 <>
@@ -1500,25 +1714,25 @@ function CreateEvent() {
     if (e && e.preventDefault) {
       e.preventDefault();
     }
-    
+
     // Only submit if we're on the final step (step 5)
     if (currentStep !== totalSteps) {
       return;
     }
-    
+
     // Validate the current step
     if (!validateStep(currentStep)) {
       return;
     }
-    
+
     // Check authentication
     if (!isAuthenticated || userType !== 'admin') {
       alert('Authentication required. Please log in as admin first.');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Upload files to Appwrite before submitting the form
       let certificateTemplateUrls = {};
@@ -1526,13 +1740,13 @@ function CreateEvent() {
 
       if (form.is_certificate_based && form.certificate_templates) {
         setUploadStatus('Uploading certificate templates...');
-        
+
         try {
           const uploadResults = await unifiedStorage.uploadCertificateTemplates(
-            form.certificate_templates, 
+            form.certificate_templates,
             form.event_id
           );
-          
+
           // Process upload results
           for (const [certificateType, result] of Object.entries(uploadResults)) {
             if (result.success) {
@@ -1562,13 +1776,13 @@ function CreateEvent() {
 
       if (form.event_poster) {
         setUploadStatus('Uploading event poster...');
-        
+
         try {
           const posterResult = await unifiedStorage.uploadEventPoster(
-            form.event_poster, 
+            form.event_poster,
             form.event_id
           );
-          
+
           if (posterResult.success) {
             eventPosterUrl = posterResult.url;
           } else {
@@ -1601,21 +1815,28 @@ function CreateEvent() {
         event_name: form.event_name,
         event_type: form.event_type,
         target_audience: form.target_audience,
-        is_xenesis_event: form.is_xenesis_event,
+        student_department: Array.isArray(form.student_department) && form.student_department.length > 0 
+          ? form.student_department 
+          : null,
+        student_semester: Array.isArray(form.student_semester) && form.student_semester.length > 0 
+          ? form.student_semester 
+          : null,
+        custom_text: form.custom_text || null,
+        is_xenesis_event: form.event_type === 'xenesis' || form.is_xenesis_event,
         short_description: form.short_description,
         detailed_description: form.detailed_description,
         organizing_department: form.organizing_department,
         // Use faculty_organizers instead of organizers for the new system
         faculty_organizers: (() => {
           let facultyIds = form.organizers.filter(org => org.selected && org.employee_id).map(org => org.employee_id);
-          
+
           // For organizer_admin role, ensure current user is included if they're faculty
           if (user?.role === 'organizer_admin' && user?.employee_id) {
             if (!facultyIds.includes(user.employee_id)) {
               facultyIds.push(user.employee_id);
             }
           }
-          
+
           return facultyIds;
         })(),
         contacts: form.contacts.filter(contact => contact.name.trim() !== '' && contact.contact.trim() !== ''),
@@ -1633,6 +1854,7 @@ function CreateEvent() {
         venue: form.venue,
         venue_id: form.venue_id || null, // Include venue_id for existing venues
         venue_type: form.venue_id ? 'existing' : 'custom', // Add venue type for backend
+        online_meeting_link: form.online_meeting_link || null, // Include meeting link for online/hybrid events
         registration_type: form.registration_type,
         registration_fee: form.registration_fee ? parseFloat(form.registration_fee) : null,
         fee_description: form.fee_description || null,
@@ -1642,15 +1864,15 @@ function CreateEvent() {
         allow_multiple_team_registrations: form.allow_multiple_team_registrations || false,
         max_participants: form.max_participants ? parseInt(form.max_participants) : null,
         min_participants: parseInt(form.min_participants) || 1,
-        
+
         // Certificate configuration
         is_certificate_based: form.is_certificate_based,
         certificate_templates: form.is_certificate_based ? certificateTemplateUrls : {},
         certificate_types: form.is_certificate_based && form.event_type ? getCertificateTypes(form.event_type, form.mode) : [],
-        
+
         // Event poster URL from Appwrite upload
         event_poster_url: eventPosterUrl,
-        
+
         // Attendance configuration - only include if attendance is mandatory
         attendance_mandatory: form.attendance_mandatory,
         ...(form.attendance_mandatory && {
@@ -1658,7 +1880,7 @@ function CreateEvent() {
           attendance_criteria: customAttendanceStrategy?.criteria || null,
           custom_attendance_config: customAttendanceStrategy || null,
         }),
-        
+
         // Set status and approval based on user role
         // Role-based event status and approval logic
         // Super Admin & Organizer Admin: Direct approval - no approval needed
@@ -1684,16 +1906,16 @@ function CreateEvent() {
       }
 
       const response = await adminAPI.createEvent(eventData);
-      
+
       if (response.data && response.data.success) {
         // Clear the session after successful event creation
         if (user.role === 'executive_admin' && eventCreatorSession) {
           clearEventCreatorSession();
         }
-        
+
         let successMessage;
         let pendingApproval;
-        
+
         // Different messages based on user role - all go to success page
         if (user?.role === 'super_admin') {
           successMessage = 'Event created and activated successfully! Faculty organizers have been assigned.';
@@ -1702,12 +1924,12 @@ function CreateEvent() {
           successMessage = 'Event created successfully! You have been assigned as the primary organizer.';
           pendingApproval = false;
         } else {
-          successMessage = user.role === 'executive_admin' 
+          successMessage = user.role === 'executive_admin'
             ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
             : 'Event created successfully! It is pending Super Admin approval.';
           pendingApproval = true;
         }
-        
+
         // All users go to the success page with different states
         // Add display data for the success page
         const displayEventData = {
@@ -1735,8 +1957,11 @@ function CreateEvent() {
           // Don't fail the entire flow if refresh fails
         }
 
+        // Clear form data from localStorage on successful submission
+        clearFormFromStorage();
+
         navigate('/admin/events/created-success', {
-          state: { 
+          state: {
             eventData: displayEventData,
             pendingApproval: pendingApproval,
             message: successMessage,
@@ -1749,11 +1974,11 @@ function CreateEvent() {
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      
+
       if (error.response) {
         const status = error.response.status;
         const data = error.response.data;
-        
+
         if (status === 401) {
           alert('Authentication required. Please log in as admin first.');
         } else if (status === 403) {
@@ -1790,7 +2015,7 @@ function CreateEvent() {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Basic Event Information</h2>
               <p className="text-sm text-gray-600">Provide essential details about your event</p>
             </div>
-            
+
             <div className="space-y-6">
               {/* Event ID and Event Title in same row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1801,9 +2026,8 @@ function CreateEvent() {
                     </label>
                   </div>
                   <div className="relative">
-                    <div className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm bg-gray-50 ${
-                      form.event_id ? 'border-green-300 text-gray-900' : 'border-gray-200 text-gray-500'
-                    }`}>
+                    <div className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm bg-gray-50 ${form.event_id ? 'border-green-300 text-gray-900' : 'border-gray-200 text-gray-500'
+                      }`}>
                       {form.event_id || 'Event ID will be generated automatically'}
                     </div>
                     {form.event_id && (
@@ -1811,14 +2035,14 @@ function CreateEvent() {
                         <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                        
+
                       </div>
                     )}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     <span>
-                      {form.event_name && form.event_type && form.target_audience 
-                        ? `Preview: ${form.is_xenesis_event ? 'XEN' : ''}${form.event_name.slice(0,4).toUpperCase()}${form.event_type.slice(0,2).toUpperCase()}${form.target_audience === 'students' ? 'STU' : form.target_audience === 'faculty' ? 'FAC' : form.target_audience === 'both' ? 'ALL' : 'AUD'}${new Date().getFullYear()}`
+                      {form.event_name && form.event_type && form.target_audience
+                        ? `Preview: ${form.event_type === 'xenesis' ? 'XEN' : ''}${form.event_name.slice(0, 4).toUpperCase()}${form.event_type === 'xenesis' ? 'XEN' : form.event_type.slice(0, 2).toUpperCase()}${form.target_audience === 'students' ? 'STU' : form.target_audience === 'faculty' ? 'FAC' : 'AUD'}${new Date().getFullYear()}`
                         : 'Fill in Event Title, Type, and Target Audience to auto-generate ID'
                       }
                     </span>
@@ -1830,24 +2054,23 @@ function CreateEvent() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Event Title <span className="text-red-500">*</span>
                   </label>
-                  <input 
-                    type="text" 
-                    name="event_name" 
-                    value={form.event_name} 
-                    onChange={handleChange} 
-                    required 
-                    placeholder="e.g., Python Workshop 2025" 
-                    className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.event_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                    }`} 
+                  <input
+                    type="text"
+                    name="event_name"
+                    value={form.event_name}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g., Python Workshop 2025"
+                    className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.event_name ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                      }`}
                   />
                   <p className="text-xs text-gray-500 mt-1">Choose a clear, descriptive title that reflects the event's purpose</p>
                   {errors.event_name && <p className="text-xs text-red-600 mt-1">{errors.event_name}</p>}
                 </div>
               </div>
-              
-              {/* Event Type, Target Audience, and Xenesis Event */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* Event Type and Target Audience in same row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Event Type <span className="text-red-500">*</span>
@@ -1863,6 +2086,7 @@ function CreateEvent() {
                       { value: "conference", label: "Conference" },
                       { value: "competition", label: "Competition" },
                       { value: "hackathon", label: "Hackathon" },
+                      { value: "xenesis", label: "Xenesis Event" },
                       { value: "other", label: "Other" }
                     ]}
                     value={form.event_type}
@@ -1873,14 +2097,14 @@ function CreateEvent() {
                   />
                   {errors.event_type && <p className="text-xs text-red-600 mt-1">{errors.event_type}</p>}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Target Audience <span className="text-red-500">*</span>
                   </label>
                   <Dropdown
                     options={[
-                      { value: "student", label: "Students Only" },
+                      { value: "students", label: "Students Only" },
                       { value: "faculty", label: "Faculty Only" }
                     ]}
                     value={form.target_audience}
@@ -1891,47 +2115,88 @@ function CreateEvent() {
                   />
                   {errors.target_audience && <p className="text-xs text-red-600 mt-1">{errors.target_audience}</p>}
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Category
-                  </label>
-                  <div className="h-10 flex items-center">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="is_xenesis_event"
-                        name="is_xenesis_event"
-                        checked={form.is_xenesis_event}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                      />
-                      <label 
-                        htmlFor="is_xenesis_event" 
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                      >
-                        Xenesis Event
-                      </label>
-                    </div>
+              </div>
+
+              {/* Department, Semester, and Custom Text for Students */}
+              {form.target_audience === 'students' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <MultiSelect
+                      label="Department"
+                      placeholder="Select Departments"
+                      options={[
+                        { value: "all", label: "All Departments" },
+                        ...dropdownOptionsService.getOptions('student', 'departments')
+                      ]}
+                      value={form.student_department}
+                      onChange={(values) => handleStudentFieldChange('student_department', values)}
+                      error={errors.student_department}
+                      helperText="Select one or more departments (e.g., CSE, IT, ECE)"
+                      searchable={true}
+                      showSelectAll={true}
+                      required={true}
+                    />
+                    {errors.student_department && <p className="text-xs text-red-600 mt-1">{errors.student_department}</p>}
+                  </div>
+
+                  <div>
+                    <MultiSelect
+                      label="Semester"
+                      placeholder="Select Semesters"
+                      options={[
+                        { value: "all", label: "All Semesters" },
+                        { value: "1", label: "1st Semester" },
+                        { value: "2", label: "2nd Semester" },
+                        { value: "3", label: "3rd Semester" },
+                        { value: "4", label: "4th Semester" },
+                        { value: "5", label: "5th Semester" },
+                        { value: "6", label: "6th Semester" },
+                        { value: "7", label: "7th Semester" },
+                        { value: "8", label: "8th Semester" }
+                      ]}
+                      value={form.student_semester}
+                      onChange={(values) => handleStudentFieldChange('student_semester', values)}
+                      error={errors.student_semester}
+                      helperText="Select one or more semesters (e.g., 3, 4, 5)"
+                      searchable={false}
+                      showSelectAll={true}
+                      required={true}
+                    />
+                    {errors.student_semester && <p className="text-xs text-red-600 mt-1">{errors.student_semester}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Additional Info <span className="text-gray-400">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="custom_text"
+                      value={form.custom_text}
+                      onChange={handleChange}
+                      placeholder="Any specific requirements..."
+                      className={`block w-full h-10  px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.custom_text ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                    />
+                    {errors.custom_text && <p className="text-xs text-red-600 mt-1">{errors.custom_text}</p>}
                   </div>
                 </div>
-              </div>
-              
+              )}
+
               {/* Short Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Short Description <span className="text-red-500">*</span>
                 </label>
-                <textarea 
-                  name="short_description" 
-                  value={form.short_description} 
-                  onChange={handleChange} 
-                  required 
-                  rows={2} 
-                  placeholder="Write a brief overview of the event (max 200 characters)" 
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
-                    errors.short_description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                  }`} 
+                <textarea
+                  name="short_description"
+                  value={form.short_description}
+                  onChange={handleChange}
+                  required
+                  rows={2}
+                  placeholder="Write a brief overview of the event (max 200 characters)"
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${errors.short_description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                    }`}
                 />
                 <p className="text-xs text-gray-500 mt-1">A concise summary that will appear in event listings</p>
                 {errors.short_description && <p className="text-xs text-red-600 mt-1">{errors.short_description}</p>}
@@ -1942,16 +2207,15 @@ function CreateEvent() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Detailed Description <span className="text-red-500">*</span>
                 </label>
-                <textarea 
-                  name="detailed_description" 
-                  value={form.detailed_description} 
-                  onChange={handleChange} 
-                  required 
-                  rows={4} 
-                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect" 
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
-                    errors.detailed_description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                  }`} 
+                <textarea
+                  name="detailed_description"
+                  value={form.detailed_description}
+                  onChange={handleChange}
+                  required
+                  rows={4}
+                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect"
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${errors.detailed_description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                    }`}
                 />
                 <p className="text-xs text-gray-500 mt-1">Full description of the event, including agenda, requirements, and other important information</p>
                 {errors.detailed_description && <p className="text-xs text-red-600 mt-1">{errors.detailed_description}</p>}
@@ -1966,7 +2230,7 @@ function CreateEvent() {
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Organizer, Contact & Registration Settings</h2>
               <p className="text-sm text-gray-600">Specify who is organizing the event, contact information, and registration settings</p>
             </div>
-            
+
             <div className="space-y-10">
               {/* Organizer & Contact Information Section */}
               <div>
@@ -1977,16 +2241,15 @@ function CreateEvent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Organizing Department/Club <span className="text-red-500">*</span>
                     </label>
-                    <input 
-                      type="text" 
-                      name="organizing_department" 
-                      value={form.organizing_department} 
-                      onChange={handleChange} 
-                      required 
+                    <input
+                      type="text"
+                      name="organizing_department"
+                      value={form.organizing_department}
+                      onChange={handleChange}
+                      required
                       placeholder="e.g., Computer Science Department"
-                      className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.organizing_department ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                      }`} 
+                      className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.organizing_department ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
                     />
                     {errors.organizing_department && <p className="text-xs text-red-600 mt-1">{errors.organizing_department}</p>}
                   </div>
@@ -1996,14 +2259,13 @@ function CreateEvent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Event Organizers <span className="text-red-500">*</span>
                     </label>
-                    
+
                     {/* Duplicate Selection Notification */}
                     {organizerNotification && (
-                      <div className={`mb-4 p-3 rounded-lg border-l-4 ${
-                        organizerNotification.type === 'warning' 
-                          ? 'bg-amber-50 border-amber-400 text-amber-800' 
+                      <div className={`mb-4 p-3 rounded-lg border-l-4 ${organizerNotification.type === 'warning'
+                          ? 'bg-amber-50 border-amber-400 text-amber-800'
                           : 'bg-red-50 border-red-400 text-red-800'
-                      }`}>
+                        }`}>
                         <div className="flex items-start">
                           <div className="flex-shrink-0">
                             <svg className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -2029,23 +2291,23 @@ function CreateEvent() {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="space-y-4">
                       {form.organizers.map((organizer, idx) => (
                         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" key={idx}>
                           <div className="flex justify-between items-start mb-3">
                             <h4 className="text-sm font-medium text-gray-800">Organizer #{idx + 1}</h4>
                             {form.organizers.length > 1 && (
-                              <button 
-                                type="button" 
-                                onClick={() => removeOrganizer(idx)} 
+                              <button
+                                type="button"
+                                onClick={() => removeOrganizer(idx)}
                                 className="px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs font-medium"
                               >
                                 Remove
                               </button>
                             )}
                           </div>
-                          
+
                           {/* Organizer Selection */}
                           <div className="space-y-3">
                             <div>
@@ -2059,63 +2321,58 @@ function CreateEvent() {
                                   size="md"
                                   onFocus={() => setActiveOrganizerDropdown(idx)}
                                 />
-                                
+
                                 {/* Dropdown Results */}
                                 {activeOrganizerDropdown === idx && (
                                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     {filteredOrganizers.length > 0 ? (
-                                        filteredOrganizers.map((faculty) => {
-                                          // Check if this faculty is already selected
-                                          const isAlreadySelected = form.organizers.some((organizer, index) => 
-                                            index !== idx && organizer.employee_id === faculty.employee_id && organizer.selected
-                                          );
-                                          
-                                          return (
-                                            <div
-                                              key={faculty.employee_id}
-                                              onClick={() => selectExistingOrganizer(idx, faculty)}
-                                              className={`px-3 py-2 border-b border-gray-100 last:border-b-0 transition-colors ${
-                                                isAlreadySelected 
-                                                  ? 'bg-amber-50 cursor-not-allowed' 
-                                                  : 'hover:bg-blue-50 cursor-pointer'
+                                      filteredOrganizers.map((faculty) => {
+                                        // Check if this faculty is already selected
+                                        const isAlreadySelected = form.organizers.some((organizer, index) =>
+                                          index !== idx && organizer.employee_id === faculty.employee_id && organizer.selected
+                                        );
+
+                                        return (
+                                          <div
+                                            key={faculty.employee_id}
+                                            onClick={() => selectExistingOrganizer(idx, faculty)}
+                                            className={`px-3 py-2 border-b border-gray-100 last:border-b-0 transition-colors ${isAlreadySelected
+                                                ? 'bg-amber-50 cursor-not-allowed'
+                                                : 'hover:bg-blue-50 cursor-pointer'
                                               }`}
-                                            >
-                                              <div className="flex justify-between items-center">
-                                                <div className="flex-1">
-                                                  <div className="flex items-center space-x-2">
-                                                    <p className={`text-sm font-medium ${
-                                                      isAlreadySelected ? 'text-amber-700' : 'text-gray-900'
+                                          >
+                                            <div className="flex justify-between items-center">
+                                              <div className="flex-1">
+                                                <div className="flex items-center space-x-2">
+                                                  <p className={`text-sm font-medium ${isAlreadySelected ? 'text-amber-700' : 'text-gray-900'
                                                     }`}>
-                                                      {faculty.full_name}
-                                                    </p>
-                                                    {isAlreadySelected && (
-                                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                                        Already Selected
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  <p className={`text-xs ${
-                                                    isAlreadySelected ? 'text-amber-600' : 'text-gray-500'
-                                                  }`}>
-                                                    {faculty.email}
+                                                    {faculty.full_name}
                                                   </p>
-                                                  <p className={`text-xs ${
-                                                    isAlreadySelected ? 'text-amber-500' : 'text-gray-400'
-                                                  }`}>
-                                                    {faculty.department} • {faculty.designation}
-                                                  </p>
+                                                  {isAlreadySelected && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                                      Already Selected
+                                                    </span>
+                                                  )}
                                                 </div>
-                                                <span className={`text-xs px-2 py-1 rounded ${
-                                                  isAlreadySelected 
-                                                    ? 'bg-amber-100 text-amber-800' 
-                                                    : 'bg-blue-100 text-blue-800'
-                                                }`}>
-                                                  {faculty.employee_id}
-                                                </span>
+                                                <p className={`text-xs ${isAlreadySelected ? 'text-amber-600' : 'text-gray-500'
+                                                  }`}>
+                                                  {faculty.email}
+                                                </p>
+                                                <p className={`text-xs ${isAlreadySelected ? 'text-amber-500' : 'text-gray-400'
+                                                  }`}>
+                                                  {faculty.department} • {faculty.designation}
+                                                </p>
                                               </div>
+                                              <span className={`text-xs px-2 py-1 rounded ${isAlreadySelected
+                                                  ? 'bg-amber-100 text-amber-800'
+                                                  : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                {faculty.employee_id}
+                                              </span>
                                             </div>
-                                          );
-                                        })
+                                          </div>
+                                        );
+                                      })
                                     ) : (
                                       <div className="px-3 py-3 text-gray-500 text-sm text-center">
                                         No faculty found. Try a different search term.
@@ -2125,7 +2382,7 @@ function CreateEvent() {
                                 )}
                               </div>
                             </div>
-                            
+
                             {/* Selected Organizer Display */}
                             {organizer.selected && (
                               <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
@@ -2149,12 +2406,12 @@ function CreateEvent() {
                               </div>
                             )}
                           </div>
-                          
+
                           {idx === form.organizers.length - 1 && (
                             <div className="mt-3 pt-3 border-t border-gray-200">
-                              <button 
-                                type="button" 
-                                onClick={addOrganizer} 
+                              <button
+                                type="button"
+                                onClick={addOrganizer}
                                 className="w-full px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium flex items-center justify-center"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2178,36 +2435,36 @@ function CreateEvent() {
                     <div className="space-y-2">
                       {form.contacts.map((c, idx) => (
                         <div className="grid grid-cols-[0.65fr_1fr] gap-2" key={idx}>
-                          <input 
-                            type="text" 
-                            value={c.name} 
-                            onChange={e => handleContactChange(idx, 'name', e.target.value)} 
-                            required 
+                          <input
+                            type="text"
+                            value={c.name}
+                            onChange={e => handleContactChange(idx, 'name', e.target.value)}
+                            required
                             placeholder="Contact Name (E.g. Smriti Sharma)"
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                           <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={c.contact} 
-                              onChange={e => handleContactChange(idx, 'contact', e.target.value)} 
-                              required 
+                            <input
+                              type="text"
+                              value={c.contact}
+                              onChange={e => handleContactChange(idx, 'contact', e.target.value)}
+                              required
                               placeholder="Email/Phone (E.g. smriti.sharma@college.edu / 9876543210)"
-                              className="flex w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                              className="flex w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                             {form.contacts.length > 1 && (
-                              <button 
-                                type="button" 
-                                onClick={() => removeContact(idx)} 
+                              <button
+                                type="button"
+                                onClick={() => removeContact(idx)}
                                 className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm font-medium"
                               >
                                 −
                               </button>
                             )}
                             {idx === form.contacts.length - 1 && (
-                              <button 
-                                type="button" 
-                                onClick={addContact} 
+                              <button
+                                type="button"
+                                onClick={addContact}
                                 className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium"
                               >
                                 +
@@ -2335,7 +2592,7 @@ function CreateEvent() {
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="orange" className="w-5 h-5 mr-2 cursor-help">
                     <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 0 1 .67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 1 1-.671-1.34l.041-.022ZM12 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
                   </svg>
-                  
+
                   {/* Tooltip */}
                   <div className="absolute left-0 top-8 w-80 bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <div className="flex items-start space-x-2">
@@ -2355,7 +2612,7 @@ function CreateEvent() {
                         </ul>
                       </div>
                     </div>
-                    
+
                     {/* Arrow pointing up */}
                     <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
                   </div>
@@ -2364,7 +2621,7 @@ function CreateEvent() {
               </h2>
               <p className="text-sm text-gray-600">Set the schedule for your event, event mode, and location details</p>
             </div>
-            
+
             <div className="space-y-10">
               {/* Date & Time Section */}
               <div>
@@ -2434,117 +2691,136 @@ function CreateEvent() {
                     />
                   </div>
 
-                  {/* Certificate Distribution End & Timeline Preview - Side by Side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Certificate Distribution End - Left Side */}
-                    <div className="bg-purple-50 rounded-lg p-8 border border-purple-200 cursor-pointer hover:bg-purple-100 transition-colors min-h-[350px] flex flex-col">
-                      <div className="flex-1">
-                        <DateRangePicker
-                          label="Certificate Distribution End"
-                          startDate={form.certificate_end_date ? new Date(form.certificate_end_date) : null}
-                          endDate={null} // Single date picker
-                          startTime={form.certificate_end_time}
-                          endTime={null} // Single time picker
-                          onDateChange={(startDate, endDate) => {
-                            setForm(prev => ({
-                              ...prev,
-                              certificate_end_date: formatDateToLocal(startDate)
-                            }));
-                          }}
-                          onTimeChange={(startTime, endTime) => {
-                            setForm(prev => ({
-                              ...prev,
-                              certificate_end_time: startTime || ''
-                            }));
-                          }}
-                          includeTime={true}
-                          required={true}
-                          placeholder="Select certificate distribution end date"
-                          minDate={form.end_date || formatDateToLocal(new Date())}
-                          error={errors.certificate_end_date || errors.certificate_end_time}
-                          className="w-full"
-                          singleDate={true} // Enable single date mode
-                          description="Set when certificates will no longer be available for download"
-                          theme="purple"
-                        />
-                        
-                        <div className="mt-4 p-3 bg-purple-100 border border-purple-300 rounded-lg">
-                          <p className="text-sm text-purple-800">
-                            <strong>📅 Note:</strong> After this date and time, certificates will no longer be available for download by participants.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Timeline Validation Display - Right Side */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 min-h-[350px] flex flex-col">
-                      <h3 className="text-lg font-medium text-blue-900 mb-4 flex items-center">
-                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                        </svg>
-                        Event Timeline Preview
-                      </h3>
-                      
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${form.registration_start_date && form.registration_start_time ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                          <span className={`text-sm font-medium ${form.registration_start_date && form.registration_start_time ? 'text-green-800' : 'text-gray-600'}`}>Registration Opens:</span>
-                          <span className={`text-sm ${form.registration_start_date && form.registration_start_time ? 'text-green-700' : 'text-gray-500 italic'}`}>
-                            {form.registration_start_date && form.registration_start_time 
-                              ? new Date(`${form.registration_start_date}T${form.registration_start_time}`).toLocaleString()
-                              : 'Not set yet'
-                            }
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${form.registration_end_date && form.registration_end_time ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
-                          <span className={`text-sm font-medium ${form.registration_end_date && form.registration_end_time ? 'text-yellow-800' : 'text-gray-600'}`}>Registration Closes:</span>
-                          <span className={`text-sm ${form.registration_end_date && form.registration_end_time ? 'text-yellow-700' : 'text-gray-500 italic'}`}>
-                            {form.registration_end_date && form.registration_end_time 
-                              ? new Date(`${form.registration_end_date}T${form.registration_end_time}`).toLocaleString()
-                              : 'Not set yet'
-                            }
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${form.start_date && form.start_time ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                          <span className={`text-sm font-medium ${form.start_date && form.start_time ? 'text-blue-800' : 'text-gray-600'}`}>Event Starts:</span>
-                          <span className={`text-sm ${form.start_date && form.start_time ? 'text-blue-700' : 'text-gray-500 italic'}`}>
-                            {form.start_date && form.start_time 
-                              ? new Date(`${form.start_date}T${form.start_time}`).toLocaleString()
-                              : 'Not set yet'
-                            }
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${form.end_date && form.end_time ? 'bg-indigo-500' : 'bg-gray-300'}`}></div>
-                          <span className={`text-sm font-medium ${form.end_date && form.end_time ? 'text-indigo-800' : 'text-gray-600'}`}>Event Ends:</span>
-                          <span className={`text-sm ${form.end_date && form.end_time ? 'text-indigo-700' : 'text-gray-500 italic'}`}>
-                            {form.end_date && form.end_time 
-                              ? new Date(`${form.end_date}T${form.end_time}`).toLocaleString()
-                              : 'Not set yet'
-                            }
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${form.certificate_end_date && form.certificate_end_time ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
-                          <span className={`text-sm font-medium ${form.certificate_end_date && form.certificate_end_time ? 'text-purple-800' : 'text-gray-600'}`}>Certificates Expire:</span>
-                          <span className={`text-sm ${form.certificate_end_date && form.certificate_end_time ? 'text-purple-700' : 'text-gray-500 italic'}`}>
-                            {form.certificate_end_date && form.certificate_end_time 
-                              ? new Date(`${form.certificate_end_date}T${form.certificate_end_time}`).toLocaleString()
-                              : 'Not set yet'
-                            }
-                          </span>
-                        </div>
-                      </div>
+                </div>
+              </div>
+
+              {/* Certificate Distribution & Timeline Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Side - Certificate Distribution */}
+                <div>
+                  <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Certificate Distribution (Optional)
+                  </h3>
+
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3">
+                    <div>
+                      <DateRangePicker
+                        label="Certificate Distribution End Date"
+                        startDate={form.certificate_end_date ? new Date(form.certificate_end_date) : null}
+                        endDate={null}
+                        startTime={form.certificate_end_time}
+                        endTime={null}
+                        onDateChange={(startDate, endDate) => {
+                          setForm(prev => ({
+                            ...prev,
+                            certificate_end_date: startDate ? formatDateToLocal(startDate) : '',
+                            is_certificate_based: startDate ? true : false
+                          }));
+                        }}
+                        onTimeChange={(startTime, endTime) => {
+                          setForm(prev => ({
+                            ...prev,
+                            certificate_end_time: startTime || ''
+                          }));
+                        }}
+                        includeTime={true}
+                        required={false}
+                        placeholder="Optional: Select certificate expiry date"
+                        minDate={form.end_date || formatDateToLocal(new Date())}
+                        error={errors.certificate_end_date || errors.certificate_end_time}
+                        className="w-full"
+                        singleDate={true}
+                        description="After this date, certificates will no longer be downloadable"
+                        theme="purple"
+                      />
+
+                      <p className="text-sm text-purple-800 mt-5">
+                        <strong>Optional:</strong> If you want to provide certificates to participants, set when certificates will no longer be available for download. Leave blank if no certificates are needed.
+                      </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Right Side - Timeline Preview */}
+                <div>
+                  <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                    </svg>
+                    Event Timeline Preview
+                  </h3>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <p className="text-sm text-blue-800 mb-4">
+                      <strong>Timeline Overview:</strong> Review the chronological order of your event milestones.
+                    </p>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${form.registration_start_date && form.registration_start_time ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm font-medium ${form.registration_start_date && form.registration_start_time ? 'text-green-800' : 'text-gray-600'}`}>Registration Opens:</span>
+                        <span className={`text-sm ${form.registration_start_date && form.registration_start_time ? 'text-green-700' : 'text-gray-500 italic'}`}>
+                          {form.registration_start_date && form.registration_start_time
+                            ? new Date(`${form.registration_start_date}T${form.registration_start_time}`).toLocaleString()
+                            : 'Not set yet'
+                          }
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${form.registration_end_date && form.registration_end_time ? 'bg-yellow-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm font-medium ${form.registration_end_date && form.registration_end_time ? 'text-yellow-800' : 'text-gray-600'}`}>Registration Closes:</span>
+                        <span className={`text-sm ${form.registration_end_date && form.registration_end_time ? 'text-yellow-700' : 'text-gray-500 italic'}`}>
+                          {form.registration_end_date && form.registration_end_time
+                            ? new Date(`${form.registration_end_date}T${form.registration_end_time}`).toLocaleString()
+                            : 'Not set yet'
+                          }
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${form.start_date && form.start_time ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm font-medium ${form.start_date && form.start_time ? 'text-blue-800' : 'text-gray-600'}`}>Event Starts:</span>
+                        <span className={`text-sm ${form.start_date && form.start_time ? 'text-blue-700' : 'text-gray-500 italic'}`}>
+                          {form.start_date && form.start_time
+                            ? new Date(`${form.start_date}T${form.start_time}`).toLocaleString()
+                            : 'Not set yet'
+                          }
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${form.end_date && form.end_time ? 'bg-indigo-500' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm font-medium ${form.end_date && form.end_time ? 'text-indigo-800' : 'text-gray-600'}`}>Event Ends:</span>
+                        <span className={`text-sm ${form.end_date && form.end_time ? 'text-indigo-700' : 'text-gray-500 italic'}`}>
+                          {form.end_date && form.end_time
+                            ? new Date(`${form.end_date}T${form.end_time}`).toLocaleString()
+                            : 'Not set yet'
+                          }
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${form.certificate_end_date && form.certificate_end_time ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
+                        <span className={`text-sm font-medium ${form.certificate_end_date && form.certificate_end_time ? 'text-purple-800' : 'text-gray-600'}`}>Certificates Expire:</span>
+                        <span className={`text-sm ${form.certificate_end_date && form.certificate_end_time ? 'text-purple-700' : 'text-gray-500 italic'}`}>
+                          {form.certificate_end_date && form.certificate_end_time
+                            ? new Date(`${form.certificate_end_date}T${form.certificate_end_time}`).toLocaleString()
+                            : 'Not set yet'
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+
+                  </div>
+                </div>
               </div>
+
 
               {/* Event Mode & Location Section */}
               <div>
@@ -2567,32 +2843,33 @@ function CreateEvent() {
                     {errors.mode && <p className="text-xs text-red-500">{errors.mode}</p>}
                   </div>
 
-                  {form.mode === 'offline' || form.mode === 'hybrid' ? (
+                  {/* Venue Location Input - Show for offline and hybrid modes */}
+                  {(form.mode === 'offline' || form.mode === 'hybrid') && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Venue/Location<span className="text-red-500">*</span>
                       </label>
-                      
+
                       <div className="relative venue-search-container">
-                        <input 
+                        <input
                           type="text"
                           name="venue"
                           value={form.venue}
                           onChange={(e) => {
                             const value = e.target.value;
-                            setForm(prev => ({ 
-                              ...prev, 
+                            setForm(prev => ({
+                              ...prev,
                               venue: value,
                               venue_id: '' // Clear venue_id when manually typing
                             }));
-                            
+
                             // Show autocomplete suggestions - all venues if empty, filtered if has text
                             if (value.trim()) {
-                              const filtered = venues.filter(v => 
-                                v.is_active && 
-                                (v.name.toLowerCase().includes(value.toLowerCase()) || 
-                                 v.location.toLowerCase().includes(value.toLowerCase()) ||
-                                 `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
+                              const filtered = venues.filter(v =>
+                                v.is_active &&
+                                (v.name.toLowerCase().includes(value.toLowerCase()) ||
+                                  v.location.toLowerCase().includes(value.toLowerCase()) ||
+                                  `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
                               );
                               setFilteredVenues(filtered);
                               setShowVenueDropdown(true);
@@ -2606,11 +2883,11 @@ function CreateEvent() {
                           onFocus={() => {
                             // Show dropdown on focus - all venues if empty, filtered if has text
                             if (form.venue.trim()) {
-                              const filtered = venues.filter(v => 
-                                v.is_active && 
-                                (v.name.toLowerCase().includes(form.venue.toLowerCase()) || 
-                                 v.location.toLowerCase().includes(form.venue.toLowerCase()) ||
-                                 `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
+                              const filtered = venues.filter(v =>
+                                v.is_active &&
+                                (v.name.toLowerCase().includes(form.venue.toLowerCase()) ||
+                                  v.location.toLowerCase().includes(form.venue.toLowerCase()) ||
+                                  `${v.name} - ${v.location}`.toLowerCase().includes(form.venue.toLowerCase()))
                               );
                               setFilteredVenues(filtered);
                               setShowVenueDropdown(true);
@@ -2625,14 +2902,14 @@ function CreateEvent() {
                           className={`w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10`}
                           required
                         />
-                        
+
                         {/* Search Icon */}
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                         </div>
-                        
+
                         {/* Autocomplete Dropdown */}
                         {showVenueDropdown && filteredVenues.length > 0 && (
                           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -2668,13 +2945,13 @@ function CreateEvent() {
                           </div>
                         )}
                       </div>
-                      
+
                       {errors.venue && <p className="text-xs text-red-500 mt-1">{errors.venue}</p>}
-                      
+
                       <p className="text-xs text-gray-500 mt-1">
                         Start typing to see suggestions from existing venues, or enter a custom venue name.
                       </p>
-                      
+
                       {/* Display selected venue confirmation */}
                       {form.venue_id && (
                         <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
@@ -2686,7 +2963,7 @@ function CreateEvent() {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Display custom venue confirmation */}
                       {form.venue && !form.venue_id && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
@@ -2699,24 +2976,33 @@ function CreateEvent() {
                         </div>
                       )}
                     </div>
-                  ) : form.mode === 'online' ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Platform/Meeting Link<span className="text-red-500">*</span></label>
-                      <input 
-                        type="url" 
-                        name="venue" 
-                        value={form.venue} 
-                        onChange={handleChange} 
+                  )}
+
+                  {/* Online Meeting Link Input - Show for online and hybrid modes */}
+                  {(form.mode === 'online' || form.mode === 'hybrid') && (
+                    <div className={form.mode === 'hybrid' ? 'mt-6' : ''}>
+                      <label className="block text-sm font-medium text-gray-700">
+                        {form.mode === 'hybrid' ? 'Online Meeting Link' : 'Platform/Meeting Link'}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="url"
+                        name="online_meeting_link"
+                        value={form.online_meeting_link}
+                        onChange={handleChange}
                         placeholder="e.g., https://meet.google.com/xyz-abc-def or Zoom Meeting ID"
-                        required 
-                        className={`mt-1 block w-full rounded-md border ${errors.venue ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`} 
+                        required
+                        className={`mt-1 block w-full rounded-md border ${errors.online_meeting_link ? 'border-red-500' : 'border-gray-300'} shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3`}
                       />
-                      {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                      {errors.online_meeting_link && <p className="text-xs text-red-500 mt-1">{errors.online_meeting_link}</p>}
                       <p className="text-xs text-gray-500 mt-1">
-                        For online events, provide the meeting platform link or details
+                        {form.mode === 'hybrid'
+                          ? 'Provide the meeting link for the online component of this hybrid event'
+                          : 'For online events, provide the meeting platform link or details'
+                        }
                       </p>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -2754,7 +3040,7 @@ function CreateEvent() {
                       </svg>
                       Attendance Strategy Preview
                     </h3>
-                    
+
                     <AttendancePreview
                       eventData={form}
                       onStrategyChange={setCustomAttendanceStrategy}
@@ -2788,114 +3074,153 @@ function CreateEvent() {
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-2 text-amber-600 cursor-help">
                     <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813A3.75 3.75 0 007.466 7.89l.813-2.846A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.394-1.183A.75.75 0 0116.5 15z" clipRule="evenodd" />
                   </svg>
-                  
+
                   {/* Tooltip */}
                   <div className="absolute left-0 top-8 w-80 bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-lg z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <div className="flex items-start space-x-2">
                       <div className="w-5 h-5 text-amber-600 mt-0.5">🏆</div>
                       <div className="text-sm text-amber-800">
-                        <p className="font-medium mb-2">Certificate Configuration:</p>
+                        <p className="font-medium mb-2">Poster & Certificates:</p>
                         <ul className="space-y-1 text-xs">
-                          <li>• Choose if your event provides certificates to participants</li>
-                          <li>• Different event types have different certificate templates</li>
-                          <li>• Upload HTML templates for each certificate type</li>
+                          <li>• Event poster is always optional but recommended for marketing</li>
+                          <li>• Certificate distribution date is optional - set it if you want to provide certificates</li>
+                          <li>• Certificate templates are only required if you set a distribution date</li>
+                          <li>• Different event types require different certificate templates</li>
                           <li>• Templates should include placeholders like [Event Name], [Participant Name]</li>
-                          <li>• Asset files (images, fonts, CSS) can be uploaded separately</li>
                         </ul>
                       </div>
                     </div>
-                    
+
                     {/* Arrow pointing up */}
                     <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
                   </div>
                 </div>
-                Certificate Configuration
+                Assets & Templates
               </h2>
-              <p className="text-sm text-gray-600">Configure certificate templates and settings for your event participants</p>
+              <p className="text-sm text-gray-600">Upload event poster and configure certificates (if needed)</p>
             </div>
 
             <div className="space-y-8">
-              {/* Certificate Based Event Toggle */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="flex items-center h-5">
-                    <input
-                      id="is_certificate_based"
-                      name="is_certificate_based"
-                      type="checkbox"
-                      checked={form.is_certificate_based}
-                      onChange={(e) => handleCheckboxChange('is_certificate_based', e.target.checked)}
-                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                    />
+              {/* Event Poster Section - Always visible */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-md font-medium text-gray-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Event Poster (Optional)
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Upload an event poster image (PNG preferred, but any image format works). This helps with marketing and promotion.
+                </p>
+
+                <input
+                  type="file"
+                  name="event_poster"
+                  accept="image/*"
+                  onChange={handleChange}
+                  className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+
+                {form.event_poster && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Poster:</h4>
+                    <div className="flex items-center justify-between bg-blue-50 rounded-md p-3">
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-sm text-blue-700 font-medium">{form.event_poster.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-blue-600">{Math.round(form.event_poster.size / 1024)} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm(prev => ({
+                              ...prev,
+                              event_poster: null
+                            }));
+                          }}
+                          className="text-red-600 hover:text-red-800 text-xs underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label htmlFor="is_certificate_based" className="text-base font-semibold text-gray-900 cursor-pointer">
-                      This event provides certificates to participants
-                    </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Enable this if participants will receive digital certificates upon event completion.
-                      Different certificate types will be available based on your event type.
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Certificate Templates Section - Only show if certificate-based */}
-              {form.is_certificate_based && (
+              {/* Certificate Templates Section - Only show if certificate date is set */}
+              {form.certificate_end_date && form.certificate_end_time ? (
                 <div className="space-y-6">
-                  {/* Event Type Information */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <h3 className="text-md font-medium text-gray-900">
-                        Certificate Types for {form.event_type ? form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1) : 'Selected'} Event
-                      </h3>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Based on your event type and mode, the following certificate templates are required:
-                    </p>
-                    {form.event_type && (
-                      <div className="mt-3">
-                        <div className="flex flex-wrap gap-2">
-                          {getCertificateTypes(form.event_type, form.mode).map((type, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                            >
-                              {type} – [Event Name]
-                            </span>
-                          ))}
-                        </div>
-                        {form.mode === 'offline' && (form.event_type === 'cultural' || form.event_type === 'competition' || form.event_type === 'hackathon') && (
-                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <div className="flex items-start space-x-2">
-                              <svg className="w-4 h-4 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <p className="text-xs text-amber-800">
-                                <strong>Note:</strong> Winner certificates are only available for hybrid or online events. 
-                                Change the event mode in Step 2 to include winner certificates.
-                              </p>
-                            </div>
-                          </div>
-                        )}
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
                       </div>
-                    )}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Certificate Templates Required</h3>
+                        <p className="text-sm text-gray-600">Since you set a certificate distribution date, please upload the required templates</p>
+                      </div>
+                    </div>
+
+                    {/* Event Type Information */}
+                    <div className="bg-white border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h4 className="text-md font-medium text-gray-900">
+                          Certificate Types for {form.event_type ? form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1) : 'Selected'} Event
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Based on your event type and mode, the following certificate templates are required:
+                      </p>
+                      {form.event_type && (
+                        <div className="mt-3">
+                          <div className="flex flex-wrap gap-2">
+                            {getCertificateTypes(form.event_type, form.mode).map((type, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                              >
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                          {form.mode === 'offline' && (form.event_type === 'cultural' || form.event_type === 'competition' || form.event_type === 'hackathon') && (
+                            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <div className="flex items-start space-x-2">
+                                <svg className="w-4 h-4 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-xs text-amber-800">
+                                  <strong>Note:</strong> Winner certificates are only available for hybrid or online events.
+                                  Change the event mode in Step 3 to include winner certificates.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Certificate Template Uploads */}
                   {form.event_type && (
                     <div className="space-y-4">
                       <h3 className="text-md font-medium text-gray-900 border-b pb-2">Upload Certificate Templates</h3>
-                      
+
                       <div className="grid grid-cols-1 gap-6">
                         {getCertificateTypes(form.event_type, form.mode).map((certificateType, index) => (
-                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors">
+                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors">
                             <div className="flex items-center justify-between mb-4">
                               <div>
-                                <h4 className="text-sm font-semibold text-gray-900">{certificateType} – [Event Name]</h4>
+                                <h4 className="text-sm font-semibold text-gray-900">{certificateType}</h4>
                                 <p className="text-xs text-gray-500 mt-1">Upload the HTML template for this certificate type</p>
                               </div>
                               {form.certificate_templates[certificateType] && (
@@ -2907,7 +3232,7 @@ function CreateEvent() {
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="space-y-3">
                               <input
                                 type="file"
@@ -2924,9 +3249,9 @@ function CreateEvent() {
                                     }));
                                   }
                                 }}
-                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                               />
-                              
+
                               {form.certificate_templates[certificateType] && (
                                 <div className="bg-green-50 border border-green-200 rounded-md p-3">
                                   <div className="flex items-center justify-between">
@@ -2961,7 +3286,7 @@ function CreateEvent() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {errors.certificate_templates && (
                         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
                           {errors.certificate_templates}
@@ -2969,56 +3294,6 @@ function CreateEvent() {
                       )}
                     </div>
                   )}
-
-                  {/* Event Poster Section */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-md font-medium text-gray-900 mb-4 flex items-center">
-                      <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Event Poster (Optional)
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Upload an event poster image (PNG preferred, but any image format works).
-                    </p>
-                    
-                    <input
-                      type="file"
-                      name="event_poster"
-                      accept="image/*"
-                      onChange={handleChange}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
-                    />
-                    
-                    {form.event_poster && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Poster:</h4>
-                        <div className="flex items-center justify-between bg-gray-50 rounded-md p-2">
-                          <div className="flex items-center space-x-2">
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-sm text-gray-700">{form.event_poster.name}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-500">{Math.round(form.event_poster.size / 1024)} KB</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setForm(prev => ({
-                                  ...prev,
-                                  event_poster: null
-                                }));
-                              }}
-                              className="text-red-600 hover:text-red-800 text-xs underline"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Certificate Template Guidelines */}
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
@@ -3045,18 +3320,25 @@ function CreateEvent() {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* No Certificate Section */}
-              {!form.is_certificate_based && (
+              ) : (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
                   <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Certificates Required</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Certificate Templates Needed</h3>
                   <p className="text-sm text-gray-600 max-w-md mx-auto">
-                    This event will not provide certificates to participants. Participants will be able to register and attend, but no certificates will be generated.
+                    No certificate distribution date was set in Step 3. If you want to provide certificates, go back to Step 3 and set a certificate distribution end date.
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="mt-4 inline-flex items-center px-4 py-2 border border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md text-sm font-medium transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Go Back to Step 3 to Enable Certificates
+                  </button>
                 </div>
               )}
             </div>
@@ -3089,7 +3371,7 @@ function CreateEvent() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Create New Event</h1>
               <p className="text-sm text-gray-600 mt-1">Configure event details and settings</p>
-              
+
               {/* Executive Admin Session Indicator */}
               {user?.role === 'executive_admin' && (
                 <div className="mt-4">
@@ -3122,7 +3404,7 @@ function CreateEvent() {
                 </div>
               )}
             </div>
-            
+
             {/* Quick Actions */}
             <div className="flex space-x-3">
               <button
@@ -3131,7 +3413,7 @@ function CreateEvent() {
                 className="inline-flex items-center px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-md text-sm font-medium transition-colors"
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Certificates
               </button>
@@ -3141,7 +3423,7 @@ function CreateEvent() {
                 className="inline-flex items-center px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-sm font-medium transition-colors"
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Editor
               </button>
@@ -3154,26 +3436,26 @@ function CreateEvent() {
           <div className="relative">
             {/* Progress Line */}
             <div className="absolute top-6 left-0 w-full h-0.5 bg-gray-200">
-              <div 
+              <div
                 className="h-full bg-blue-600 transition-all duration-500 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            
+
             {/* Steps */}
             <div className="relative flex justify-between">
               {steps.map((label, idx) => {
                 const stepNum = idx + 1;
                 const isActive = stepNum === currentStep;
                 const isCompleted = stepNum < currentStep;
-                
+
                 return (
                   <div key={idx} className="flex flex-col items-center">
                     <div className={`
                       w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200
-                      ${isActive ? 'border-blue-600 bg-blue-600 text-white' : 
-                        isCompleted ? 'border-green-500 bg-green-500 text-white' : 
-                        'border-gray-300 bg-white text-gray-500'}
+                      ${isActive ? 'border-blue-600 bg-blue-600 text-white' :
+                        isCompleted ? 'border-green-500 bg-green-500 text-white' :
+                          'border-gray-300 bg-white text-gray-500'}
                     `}>
                       {isCompleted ? (
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -3183,9 +3465,9 @@ function CreateEvent() {
                     </div>
                     <span className={`
                       mt-2 text-xs text-center font-medium max-w-20
-                      ${isActive ? 'text-blue-600' : 
-                        isCompleted ? 'text-green-600' : 
-                        'text-gray-500'}
+                      ${isActive ? 'text-blue-600' :
+                        isCompleted ? 'text-green-600' :
+                          'text-gray-500'}
                     `}>
                       {label}
                     </span>
@@ -3198,7 +3480,7 @@ function CreateEvent() {
 
         {/* Form Container */}
         <div className="bg-white border border-gray-200 rounded-lg">
-          <form 
+          <form
             onKeyDown={handleFormEvent}
             noValidate
             autoComplete="off"
@@ -3222,7 +3504,7 @@ function CreateEvent() {
                   disabled={currentStep === 1}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                   </svg>
                   Previous
                 </button>
@@ -3231,7 +3513,7 @@ function CreateEvent() {
                   <span className="text-sm text-gray-500">
                     Step {currentStep} of {totalSteps}
                   </span>
-                  
+
                   {currentStep < totalSteps ? (
                     <button
                       type="button"
@@ -3240,7 +3522,7 @@ function CreateEvent() {
                     >
                       Next
                       <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
                   ) : (
