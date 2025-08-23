@@ -376,6 +376,7 @@ async def student_login_api(request: Request, login_data: StudentLoginRequest):
                 "full_name": student.full_name,
                 "email": student.email,
                 "department": student.department,
+                "semester": student.semester,
                 "user_type": "student"
             },
             "auth_type": "token" if tokens else "session",

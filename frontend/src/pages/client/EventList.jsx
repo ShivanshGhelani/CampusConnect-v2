@@ -5,6 +5,7 @@ import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Dropdown from '../../components/ui/Dropdown';
+import { useAuth } from '../../context/AuthContext';
 
 // Enhanced cache for events data with localStorage support
 const eventsCache = {
@@ -96,6 +97,8 @@ const eventsCache = {
 function EventList() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { user, userType, isAuthenticated } = useAuth(); // Get authentication state
+  
   const [allEvents, setAllEvents] = useState([]); // Store all events
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [paginatedEvents, setPaginatedEvents] = useState([]); // Events for current page
@@ -117,6 +120,13 @@ function EventList() {
   // Event type counts for filter buttons
   const [eventTypeCounts, setEventTypeCounts] = useState({});
   const [categoryOptions, setCategoryOptions] = useState([]);
+  
+  // Calculate if we should show loading state - include user data loading for students
+  const shouldShowLoading = isLoading || (isAuthenticated && userType === 'student' && (!user?.department || !user?.semester));
+  
+  // Calculate if we're waiting for user data (computed value, not state) 
+  const isWaitingForUserData = isAuthenticated && userType === 'student' && (!user?.department || !user?.semester);
+  
     // Ref to prevent multiple simultaneous API calls
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -168,8 +178,20 @@ function EventList() {
       mountedRef.current = false;
     };
   }, []); // Only run once on mount
-  // Filter events when filter criteria change
+  // Filter events when filter criteria change OR user authentication changes
   useEffect(() => {
+    console.log('🔄 Filter effect triggered:', {
+      allEventsCount: allEvents.length,
+      debouncedSearchTerm,
+      selectedCategory,
+      statusFilter,
+      isAuthenticated,
+      userType,
+      userDepartment: user?.department,
+      userSemester: user?.semester,
+      userObject: user
+    });
+    
     if (allEvents.length > 0) {
       applyFilters();
       calculateEventTypeCounts();
@@ -180,7 +202,7 @@ function EventList() {
     }
     // Reset to first page when filters change
     setCurrentPage(1);
-  }, [allEvents, debouncedSearchTerm, selectedCategory, statusFilter]);
+  }, [allEvents, debouncedSearchTerm, selectedCategory, statusFilter, isAuthenticated, userType, user?.department, user?.semester, user]);
 
   // Pagination effect - update paginated events when filteredEvents or currentPage changes
   useEffect(() => {
@@ -189,7 +211,73 @@ function EventList() {
     const paginatedData = filteredEvents.slice(startIndex, endIndex);
     setPaginatedEvents(paginatedData);
     setTotalPages(Math.ceil(filteredEvents.length / eventsPerPage));
-  }, [filteredEvents, currentPage, eventsPerPage]);const fetchEventsOnce = async () => {
+  }, [filteredEvents, currentPage, eventsPerPage]);
+
+  // Helper function to filter events based on user role and profile
+  const getUserFilteredEvents = (events) => {
+    if (!isAuthenticated) {
+      // Show all student events for non-authenticated users
+      return events.filter(event => 
+        event.target_audience === 'student' || event.target_audience === 'students'
+      );
+    } else if (userType === 'student') {
+      // For students, we require BOTH department and semester for proper filtering
+      // If either is missing, the loading state will handle the UI
+      if (!user?.department || !user?.semester) {
+        console.log('⏳ Student profile incomplete, loading state should be shown');
+        return []; // This won't be displayed due to loading state
+      }
+      
+      console.log('✅ Student has complete profile data, applying full filtering');
+      // Show only events that match student's department AND semester
+      return events.filter(event => {
+        if (event.target_audience !== 'student' && event.target_audience !== 'students') {
+          return false;
+        }
+        
+        const eventDepartments = Array.isArray(event.student_department) 
+          ? event.student_department 
+          : (event.student_department ? [event.student_department] : []);
+        
+        const eventSemesters = Array.isArray(event.student_semester) 
+          ? event.student_semester 
+          : (event.student_semester ? [event.student_semester] : []);
+        
+        // Normalize user semester to match event semester format
+        const userSemesterNormalized = user.semester.toString().toUpperCase().startsWith('SEM') 
+          ? user.semester.toUpperCase()
+          : `SEM${user.semester}`;
+        
+        const departmentMatch = eventDepartments.includes(user.department);
+        const semesterMatch = eventSemesters.includes(userSemesterNormalized) || 
+                             eventSemesters.includes(user.semester.toString());
+        
+        // Debug logging for each event
+        console.log(`Filtering event ${event.event_id}:`, {
+          eventDepartments,
+          eventSemesters,
+          userDepartment: user.department,
+          userSemester: user.semester,
+          userSemesterNormalized,
+          departmentMatch,
+          semesterMatch,
+          finalMatch: departmentMatch && semesterMatch
+        });
+        
+        return departmentMatch && semesterMatch;
+      });
+    } else if (userType === 'faculty') {
+      // Show only faculty events for faculty users
+      return events.filter(event => 
+        event.target_audience === 'faculty'
+      );
+    } else {
+      // Fallback for admin or other user types - show all events
+      return events;
+    }
+  };
+
+const fetchEventsOnce = async () => {
     // Prevent multiple simultaneous calls
     if (fetchingRef.current) {
       console.log('Fetch already in progress, skipping...');
@@ -304,7 +392,28 @@ function EventList() {
       return dateB - dateA; // Descending order (newest first)
     });
 
-    // Apply status filter first (most selective)
+    // ===== INTELLIGENT USER-BASED FILTERING =====
+    console.log('🔍 Applying intelligent user-based filtering...', {
+      isAuthenticated,
+      userType,
+      userDepartment: user?.department,
+      userSemester: user?.semester,
+      userObject: user,
+      totalEvents: filtered.length,
+      filteringMode: !isAuthenticated ? 'public' : 
+                    userType === 'faculty' ? 'faculty' :
+                    userType === 'student' && !user?.department ? 'student-no-dept' :
+                    userType === 'student' && !user?.semester ? 'student-dept-only' :
+                    userType === 'student' ? 'student-full' : 'other'
+    });
+
+    // Apply user-based filtering using helper function
+    filtered = getUserFilteredEvents(filtered);
+
+    console.log('After user-based filtering:', filtered.length, 'events');
+    // ===== END INTELLIGENT USER-BASED FILTERING =====
+
+    // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(event => event.status === statusFilter);
     }
@@ -327,16 +436,21 @@ function EventList() {
       );
     }
 
+    console.log('Final filtered events:', filtered.length);
     setFilteredEvents(filtered);
   };
 
   // Regular event type counts calculation (not wrapped in useMemo)
   const calculateEventTypeCounts = () => {
     const counts = {};
-    // Only count events that match the current status filter
+    
+    // Step 1: Apply user-based filtering using helper function
+    const userFilteredEvents = getUserFilteredEvents(allEvents);
+    
+    // Step 2: Apply status filter on user-filtered events
     const eventsToCount = statusFilter === 'all' 
-      ? allEvents 
-      : allEvents.filter(event => event.status === statusFilter);
+      ? userFilteredEvents 
+      : userFilteredEvents.filter(event => event.status === statusFilter);
       
     eventsToCount.forEach(event => {
       const type = event.event_type || 'Other';
@@ -344,7 +458,7 @@ function EventList() {
     });
     setEventTypeCounts(counts);
 
-    // Create category options for dropdown
+    // Create category options for dropdown based on user-filtered events
     const options = [
       { value: 'all', label: `All Categories (${eventsToCount.length})` }
     ];
@@ -417,19 +531,80 @@ function EventList() {
   };
 
   const getPageTitle = () => {
+    if (!isAuthenticated) {
+      if (statusFilter === 'upcoming') return 'Upcoming Student Events';
+      if (statusFilter === 'ongoing') return 'Live Student Events';
+      return 'Student Events';
+    }
+    
+    if (userType === 'faculty') {
+      if (statusFilter === 'upcoming') return 'Upcoming Faculty Events';
+      if (statusFilter === 'ongoing') return 'Live Faculty Events';
+      return 'Faculty Events';
+    }
+    
+    if (userType === 'student') {
+      if (statusFilter === 'upcoming') return 'Your Upcoming Events';
+      if (statusFilter === 'ongoing') return 'Your Live Events';
+      return 'Events for You';
+    }
+    
+    if (userType === 'admin') {
+      if (statusFilter === 'upcoming') return 'All Upcoming Events';
+      if (statusFilter === 'ongoing') return 'All Live Events';
+      return 'All Campus Events';
+    }
+    
+    // Default
     if (statusFilter === 'upcoming') return 'Upcoming Events';
     if (statusFilter === 'ongoing') return 'Live Events';
     return 'Campus Events';
   };
 
   const getPageSubtitle = () => {
+    if (!isAuthenticated) {
+      if (statusFilter === 'upcoming') return 'Student events you can register for';
+      if (statusFilter === 'ongoing') return 'Student events happening right now';
+      return 'Discover student events on campus';
+    }
+    
+    if (userType === 'faculty') {
+      if (statusFilter === 'upcoming') return 'Faculty events you can attend';
+      if (statusFilter === 'ongoing') return 'Faculty events happening now';
+      return 'Events designed for faculty';
+    }
+    
+    if (userType === 'student' && user?.department && user?.semester) {
+      const dept = user.department;
+      const sem = user.semester;
+      if (statusFilter === 'upcoming') return `Upcoming events for ${dept} - Semester ${sem}`;
+      if (statusFilter === 'ongoing') return `Live events for ${dept} - Semester ${sem}`;
+      return `Events tailored for ${dept} students in Semester ${sem}`;
+    }
+    
+    if (userType === 'student') {
+      if (statusFilter === 'upcoming') return 'Student events you can register for';
+      if (statusFilter === 'ongoing') return 'Student events happening now';
+      return 'Events designed for students';
+    }
+    
+    if (userType === 'admin') {
+      if (statusFilter === 'upcoming') return 'All upcoming events across campus';
+      if (statusFilter === 'ongoing') return 'All live events across campus';
+      return 'Complete overview of campus events';
+    }
+    
+    // Default
     if (statusFilter === 'upcoming') return 'Events you can register for';
     if (statusFilter === 'ongoing') return 'Events happening right now';
     return 'Find events that interest you';
   };  const getEventStatusCounts = () => {
-    const filtered = statusFilter === 'all' ? allEvents : allEvents.filter(e => e.status === statusFilter);
-    const ongoing = filtered.filter(e => e.status === 'ongoing').length;
-    const upcoming = filtered.filter(e => e.status === 'upcoming').length;
+    // Step 1: Apply user-based filtering using helper function
+    const userFilteredEvents = getUserFilteredEvents(allEvents);
+    
+    // Step 2: Count statuses from user-filtered events
+    const ongoing = userFilteredEvents.filter(e => e.status === 'ongoing').length;
+    const upcoming = userFilteredEvents.filter(e => e.status === 'upcoming').length;
     return { ongoing, upcoming };
   };  // Refresh function for manual refresh
   const handleRefresh = () => {
@@ -456,13 +631,13 @@ function EventList() {
       return () => clearTimeout(timeout);
     }
   }, [isLoading]);
-  if (isLoading) {
+  if (isLoading || shouldShowLoading) {
     return (
       <ClientLayout>
         <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 flex items-center justify-center">
           <div className="text-center">
             <LoadingSpinner size="lg" />            <div className="mt-4 text-gray-600">
-              <p>Loading events...</p>
+              <p>{shouldShowLoading && isWaitingForUserData ? 'Loading your personalized events...' : 'Loading events...'}</p>
               {error && (
                 <p className="text-red-500 text-sm mt-2">Error: {error}</p>
               )}
@@ -493,6 +668,7 @@ function EventList() {
           {/* Simple Header */}
           <div className="bg-gradient-to-r from-teal-50/80 to-sky-50/80 border-b border-teal-200/50 backdrop-blur-sm">
             <div className="max-w-6xl mx-auto px-4 py-8">
+              
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {getPageTitle()}
               </h1>
@@ -659,36 +835,98 @@ function EventList() {
             <div className="max-w-6xl mx-auto px-4">
               <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
                 <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
+                  <i className={`text-2xl text-gray-400 ${
+                    isWaitingForUserData 
+                      ? 'fas fa-spinner fa-spin' 
+                      : 'fas fa-calendar-times'
+                  }`}></i>
                 </div>
                 <h3 className="text-xl font-bold text-gray-700 mb-3">
-                  {allEvents.length === 0 ? 'No Events Found' : 'No Events Match Your Search'}
+                  {isWaitingForUserData 
+                    ? 'Loading Your Events...' 
+                    : (allEvents.length === 0 ? 'No Events Found' : 'No Events Match Your Criteria')
+                  }
                 </h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  {allEvents.length === 0 
-                    ? statusFilter === 'upcoming'
-                      ? 'No upcoming events are scheduled at the moment. Check back soon for new events!'
-                      : statusFilter === 'ongoing'
-                      ? 'No events are currently live. Browse upcoming events to see what\'s coming next.'
-                      : 'No events are available right now. Check back later for new events!'
-                    : 'No events match your current search. Try adjusting your filters or search terms.'
+                  {isWaitingForUserData 
+                    ? 'Please wait while we load events tailored for your profile...' 
+                    : (allEvents.length === 0 
+                    ? (() => {
+                        if (!isAuthenticated) {
+                          return statusFilter === 'upcoming'
+                            ? 'No upcoming student events are scheduled at the moment. Check back soon for new events!'
+                            : statusFilter === 'ongoing'
+                            ? 'No student events are currently live. Browse upcoming events to see what\'s coming next.'
+                            : 'No student events are available right now. Check back later for new events!';
+                        } else if (userType === 'faculty') {
+                          return statusFilter === 'upcoming'
+                            ? 'No upcoming faculty events are scheduled. Check back soon!'
+                            : statusFilter === 'ongoing'
+                            ? 'No faculty events are currently live.'
+                            : 'No faculty events are available right now.';
+                        } else if (userType === 'student' && user?.department && user?.semester) {
+                          return statusFilter === 'upcoming'
+                            ? `No upcoming events found for ${user.department} students in Semester ${user.semester}. Events may not be available for your specific department and semester yet.`
+                            : statusFilter === 'ongoing'
+                            ? `No live events found for ${user.department} students in Semester ${user.semester}.`
+                            : `No events found matching your profile (${user.department} - Semester ${user.semester}). Events may not be targeted for your specific department and semester yet.`;
+                        } else if (userType === 'student') {
+                          return 'Complete your profile with department and semester information to see targeted events.';
+                        } else {
+                          return 'No events are available right now. Check back later for new events!';
+                        }
+                      })()
+                    : (() => {
+                        if (!isAuthenticated) {
+                          return 'No student events match your current search. Try adjusting your filters or search terms.';
+                        } else if (userType === 'faculty') {
+                          return 'No faculty events match your current search. Try adjusting your filters or search terms.';
+                        } else if (userType === 'student' && user?.department && user?.semester) {
+                          return `No events for ${user.department} students in Semester ${user.semester} match your search. Try adjusting your filters.`;
+                        } else if (userType === 'student') {
+                          return 'Complete your profile or adjust your filters for better event targeting.';
+                        } else {
+                          return 'No events match your current search. Try adjusting your filters or search terms.';
+                        }
+                      })()
+                    )
                   }
                 </p>
                 <div className="space-x-3">
                   {allEvents.length === 0 ? (
-                    <Link
-                      to="/client/events?filter=all"
-                      className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                    >
-                      <i className="fas fa-calendar mr-2"></i>Browse All Events
-                    </Link>
+                    <>
+                      <Link
+                        to="/client/events?filter=all"
+                        className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        <i className="fas fa-calendar mr-2"></i>Browse All Events
+                      </Link>
+                      {userType === 'student' && user && (!user.department || !user.semester) && (
+                        <Link
+                          to="/client/student/profile"
+                          className="inline-block px-6 py-3 border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors font-semibold"
+                        >
+                          <i className="fas fa-user-edit mr-2"></i>Complete Profile
+                        </Link>
+                      )}
+                    </>
                   ) : (
-                    <button
-                      onClick={clearFilters}
-                      className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                    >
-                      <i className="fas fa-refresh mr-2"></i>Clear Filters
-                    </button>
+                    <>
+                      <button
+                        onClick={clearFilters}
+                        className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        <i className="fas fa-refresh mr-2"></i>Clear Filters
+                      </button>
+                      {userType === 'student' && user && (!user.department || !user.semester) && (
+                        <Link
+                          to="/client/student/profile"
+                          className="inline-block px-6 py-3 border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors font-semibold"
+                        >
+                          <i className="fas fa-user-edit mr-2"></i>Complete Profile for Better Results
+                        </Link>
+                      )}
+                    </>
                   )}
                   {statusFilter !== 'upcoming' && (
                     <Link
