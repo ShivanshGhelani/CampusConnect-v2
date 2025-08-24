@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import { organizerAPI } from '../../api/organizer';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import Pagination from '../../components/ui/Pagination';
 import { useAuth } from '../../context/AuthContext';
 
 function Events() {
@@ -16,6 +17,10 @@ function Events() {
   const [currentFilter, setCurrentFilter] = useState('all');
   const [audienceFilter, setAudienceFilter] = useState('all');
   const [lastFetchTime, setLastFetchTime] = useState(0);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const eventsPerPage = 9;
 
   // Cache configuration
   const CACHE_DURATION = 30000; // 30 seconds
@@ -63,10 +68,24 @@ function Events() {
     return filtered;
   }, [allEvents, currentFilter, audienceFilter]);
 
-  // Update events state when filtered events change
+  // Pagination logic
+  const paginatedEvents = useMemo(() => {
+    const startIndex = (currentPage - 1) * eventsPerPage;
+    const endIndex = startIndex + eventsPerPage;
+    return filteredEvents.slice(startIndex, endIndex);
+  }, [filteredEvents, currentPage, eventsPerPage]);
+
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+
+  // Update events state when paginated events change
   useEffect(() => {
-    setEvents(filteredEvents);
-  }, [filteredEvents]);
+    setEvents(paginatedEvents);
+  }, [paginatedEvents]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentFilter, audienceFilter]);
 
   // Debounced fetch function to prevent excessive API calls
   const debouncedFetch = useCallback(
@@ -349,7 +368,10 @@ const formatDate = (dateString) => {
               <div className="flex items-center justify-between text-sm mb-3">
                 <div className="flex items-center space-x-4">
                   <span className="text-gray-600">
-                    Showing <span className="font-semibold text-gray-900">{events.length}</span> of <span className="font-semibold text-gray-900">{allEvents.length}</span> events
+                    Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * eventsPerPage + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(currentPage * eventsPerPage, filteredEvents.length)}</span> of <span className="font-semibold text-gray-900">{filteredEvents.length}</span> events
+                    {filteredEvents.length < allEvents.length && (
+                      <span className="text-gray-500 ml-1">({allEvents.length} total)</span>
+                    )}
                   </span>
                   {/* Cache status indicator */}
                   <div className="flex items-center space-x-1">
@@ -560,8 +582,9 @@ const formatDate = (dateString) => {
 
         {/* Enhanced Event Cards Grid */}
         {events.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => {
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((event) => {
               const statusConfig = {
                 ongoing: { bgClass: 'bg-green-50', textClass: 'text-green-700', dotClass: 'bg-green-500 animate-pulse', label: 'LIVE NOW' },
                 upcoming: { bgClass: 'bg-blue-50', textClass: 'text-blue-700', dotClass: 'bg-blue-500', label: 'UPCOMING' },
@@ -697,7 +720,21 @@ const formatDate = (dateString) => {
                 </div>
               );
             })}
-          </div>
+            </div>
+            
+            {/* Pagination Component */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={eventsPerPage}
+                  totalItems={filteredEvents.length}
+                />
+              </div>
+            )}
+          </>
         ) : error ? (
           /* Enhanced Error State */
           <div className="text-center py-16 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">

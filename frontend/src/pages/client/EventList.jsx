@@ -5,6 +5,7 @@ import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Dropdown from '../../components/ui/Dropdown';
+import Pagination from '../../components/ui/Pagination';
 import { useAuth } from '../../context/AuthContext';
 
 // Enhanced cache for events data with localStorage support
@@ -497,39 +498,6 @@ const fetchEventsOnce = async () => {
     }
   };
 
-  const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      goToPage(currentPage - 1);
-    }
-  };
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      goToPage(currentPage + 1);
-    }
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
-    const halfVisible = Math.floor(maxVisiblePages / 2);
-
-    let startPage = Math.max(1, currentPage - halfVisible);
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    // Adjust start if we're near the end
-    if (endPage - startPage < maxVisiblePages - 1) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    return pageNumbers;
-  };
-
   const getPageTitle = () => {
     if (!isAuthenticated) {
       if (statusFilter === 'upcoming') return 'Upcoming Student Events';
@@ -776,58 +744,14 @@ const fetchEventsOnce = async () => {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center mt-12 mb-8">
-                <div className="bg-white rounded-xl shadow-lg border border-teal-200/50 p-4">
-                  <div className="flex items-center space-x-2">
-                    {/* Previous Button */}
-                    <button
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 1}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        currentPage === 1
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
-                      }`}
-                    >
-                      <i className="fas fa-chevron-left mr-1"></i> Previous
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center space-x-1">
-                      {getPageNumbers().map((pageNumber) => (
-                        <button
-                          key={pageNumber}
-                          onClick={() => goToPage(pageNumber)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                            currentPage === pageNumber
-                              ? 'bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-md'
-                              : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
-                          }`}
-                        >
-                          {pageNumber}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={goToNextPage}
-                      disabled={currentPage === totalPages}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        currentPage === totalPages
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-white text-teal-600 hover:bg-teal-50 border border-teal-300'
-                      }`}
-                    >
-                      Next <i className="fas fa-chevron-right ml-1"></i>
-                    </button>
-                  </div>
-
-                  {/* Page Info */}
-                  <div className="text-center mt-3 text-xs text-gray-500">
-                    Page {currentPage} of {totalPages} • {filteredEvents.length} total events
-                  </div>
-                </div>
+              <div className="mt-12 mb-8 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                  itemsPerPage={eventsPerPage}
+                  totalItems={filteredEvents.length}
+                />
               </div>
             )}
           </div>          {/* No Events State */}
