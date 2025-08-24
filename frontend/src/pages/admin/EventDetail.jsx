@@ -4,7 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
 import { eventPDFService } from '../../services/EventPDFService';
 
@@ -19,14 +19,14 @@ const getStrategyDisplayName = (strategyType) => {
     'custom': 'Custom',
     'hybrid': 'Hybrid'
   };
-  
+
   if (!strategyType) return 'Not Configured';
-  
+
   // Handle string format (direct strategy type)
   if (typeof strategyType === 'string') {
     return strategyMap[strategyType] || strategyType.charAt(0).toUpperCase() + strategyType.slice(1).replace(/_/g, ' ');
   }
-  
+
   return strategyType;
 };
 
@@ -52,6 +52,35 @@ function EventDetail() {
   const [expandedTeams, setExpandedTeams] = useState(new Set());
   const [presentDropdownOpen, setPresentDropdownOpen] = useState(false);
   const [showMoreActions, setShowMoreActions] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [exportDropdownSticky, setExportDropdownSticky] = useState(false);
+  const [posterModalOpen, setPosterModalOpen] = useState(false);
+
+  // Helper function to calculate targeting statistics from registrations
+  const calculateTargetingStats = (registrations) => {
+    if (!registrations || registrations.length === 0) return null;
+
+    const departmentStats = {};
+    const semesterStats = {};
+
+    registrations.forEach(reg => {
+      // Count departments
+      if (reg.department) {
+        departmentStats[reg.department] = (departmentStats[reg.department] || 0) + 1;
+      }
+
+      // Count semesters 
+      if (reg.semester) {
+        semesterStats[reg.semester] = (semesterStats[reg.semester] || 0) + 1;
+      }
+    });
+
+    return {
+      departmentStats,
+      semesterStats,
+      totalRegistrations: registrations.length
+    };
+  };
 
   useEffect(() => {
     if (eventId) {
@@ -59,7 +88,30 @@ function EventDetail() {
     }
   }, [eventId]);
 
-    const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
+  // Handle click outside for sticky mode
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportDropdownSticky && exportDropdownOpen) {
+        // Find the dropdown container by ID
+        const dropdownContainer = document.getElementById('export-dropdown-container');
+        
+        // If click is outside the dropdown container, close it
+        if (dropdownContainer && !dropdownContainer.contains(event.target)) {
+          setExportDropdownOpen(false);
+          setExportDropdownSticky(false);
+        }
+      }
+    };
+
+    if (exportDropdownSticky) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [exportDropdownSticky, exportDropdownOpen]);
+
+  const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
     const variants = {
       primary: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600',
       secondary: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300',
@@ -123,7 +175,7 @@ function EventDetail() {
       setAttendanceStats(null);
       setEventStats(null);
       setRecentRegistrations([]);
-      
+
       await fetchEventDetails();
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -137,10 +189,10 @@ function EventDetail() {
     try {
       setIsLoading(true);
       setError('');
-      
+
       // Add cache-busting timestamp to force fresh data
       const timestamp = Date.now();
-      
+
       // Fetch event details, statistics, recent registrations, and attendance stats
       const [eventResponse, statsResponse, recentRegsResponse, attendanceStatsResponse] = await Promise.all([
         adminAPI.getEvent(eventId),
@@ -183,7 +235,7 @@ function EventDetail() {
       if (attendanceStatsResponse.data && attendanceStatsResponse.data.event_id) {
         // Validate attendance statistics data
         const stats = attendanceStatsResponse.data;
-        
+
         // Ensure all required fields are present and valid
         const validatedStats = {
           ...stats,
@@ -196,13 +248,13 @@ function EventDetail() {
           absent_count: Math.max(0, stats.absent_count || 0),
           attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0))
         };
-        
+
         // Validate data integrity
-        const totalAccounted = validatedStats.present_count + 
-                              validatedStats.virtual_only_count + 
-                              validatedStats.physical_only_count + 
-                              validatedStats.absent_count;
-        
+        const totalAccounted = validatedStats.present_count +
+          validatedStats.virtual_only_count +
+          validatedStats.physical_only_count +
+          validatedStats.absent_count;
+
         if (totalAccounted !== validatedStats.total_registrations) {
           console.warn('Attendance statistics data integrity warning:', {
             totalRegistrations: validatedStats.total_registrations,
@@ -210,7 +262,7 @@ function EventDetail() {
             difference: validatedStats.total_registrations - totalAccounted
           });
         }
-        
+
         setAttendanceStats(validatedStats);
       } else {
         console.warn('Invalid attendance statistics response:', attendanceStatsResponse);
@@ -220,13 +272,13 @@ function EventDetail() {
         // Handle different possible data structures
         let registrations = [];
         if (recentRegsResponse.data.registrations) {
-          registrations = Array.isArray(recentRegsResponse.data.registrations) 
-            ? recentRegsResponse.data.registrations 
+          registrations = Array.isArray(recentRegsResponse.data.registrations)
+            ? recentRegsResponse.data.registrations
             : [recentRegsResponse.data.registrations];
         } else if (recentRegsResponse.data.data && Array.isArray(recentRegsResponse.data.data)) {
           registrations = recentRegsResponse.data.data;
         }
-        
+
         setRecentRegistrations(registrations);
       } else {
         setRecentRegistrations([]);
@@ -243,7 +295,7 @@ function EventDetail() {
     try {
       const response = await adminAPI.deleteEvent(eventId);
       if (response.data.success) {
-        navigate('/admin/events', { 
+        navigate('/admin/events', {
           state: { message: 'Event deleted successfully' }
         });
       } else {
@@ -251,7 +303,7 @@ function EventDetail() {
       }
     } catch (error) {
       console.error('Error deleting event:', error);
-      
+
       // Provide more user-friendly error messages
       let errorMessage = 'Failed to delete event: ';
       if (error.message.includes('existing registrations')) {
@@ -259,7 +311,7 @@ function EventDetail() {
       } else {
         errorMessage += error.message;
       }
-      
+
       alert(errorMessage);
     }
     setDeleteModalOpen(false);
@@ -269,7 +321,7 @@ function EventDetail() {
     try {
       setModalLoading(true);
       const response = await adminAPI.getEventRegistrations(eventId);
-      
+
       if (response.data.success) {
         const registrations = response.data.registrations || [];
         setAllRegistrations(registrations);
@@ -290,33 +342,33 @@ function EventDetail() {
       // Get registrations with attendance details instead of just attendance
       const response = await adminAPI.getEventRegistrationsWithAttendance(eventId);
       console.log('Attendees API response:', response.data); // Debug log
-      
+
       if (response.data.success) {
         // The API returns data in response.data.data.registrations structure
         const allRegistrations = response.data.data?.registrations || [];
         console.log('All registrations:', allRegistrations); // Debug log
         console.log('Number of registrations:', allRegistrations.length); // Debug log
-        
+
         // For now, let's show all attendees to debug the issue
         // Filter for students who have BOTH virtual and physical attendance (present status)
         const presentStudents = allRegistrations.filter(reg => {
           const hasVirtual = reg.virtual_attendance_id;
           const hasPhysical = reg.physical_attendance_id;
           const isPresent = reg.final_attendance_status === 'present';
-          
+
           console.log('Registration:', reg.student_data?.full_name, {
             hasVirtual,
             hasPhysical,
             isPresent,
             finalStatus: reg.final_attendance_status
           });
-          
+
           return isPresent || (hasVirtual && hasPhysical);
         });
-        
+
         console.log('Present students after filtering:', presentStudents); // Debug log
         console.log('Number of present students:', presentStudents.length); // Debug log
-        
+
         setAttendeesList(presentStudents);
       } else {
         console.error('API response not successful:', response.data);
@@ -412,7 +464,7 @@ function EventDetail() {
       const newWindow = window.open('', '_blank');
       newWindow.document.write(htmlContent);
       newWindow.document.close();
-      
+
       // Wait for content to load, then print
       newWindow.onload = () => {
         newWindow.print();
@@ -424,17 +476,17 @@ function EventDetail() {
   };
 
   const filteredRegistrations = allRegistrations.filter(reg => {
-    const searchMatch = !searchTerm || 
+    const searchMatch = !searchTerm ||
       (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.name && reg.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.email && reg.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.enrollment_no && reg.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.team_name && reg.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const statusMatch = statusFilter === 'all' || 
+
+    const statusMatch = statusFilter === 'all' ||
       (statusFilter === 'attended' && (reg.attended || reg.attendance_status === 'attended')) ||
       (statusFilter === 'not-attended' && (!reg.attended && reg.attendance_status !== 'attended'));
-    
+
     return searchMatch && statusMatch;
   });
 
@@ -479,7 +531,7 @@ function EventDetail() {
       primary: "bg-blue-100 text-blue-800",
       success: "bg-green-100 text-green-800"
     };
-    
+
     return (
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${variants[variant]}`}>
         {children}
@@ -529,7 +581,7 @@ function EventDetail() {
   if (!event) {
     return (
       <AdminLayout>
-      
+
       </AdminLayout>
     );
   }
@@ -542,147 +594,247 @@ function EventDetail() {
 
   return (
     <AdminLayout pageTitle={`${event.event_name} - Event Management`}>
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen py-8">
         <div className="max-w-7xl mx-auto px-4">
-          
+
           <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      {/* Breadcrumb and Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <button 
-          onClick={() => navigate('/admin/events')}
-          className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors text-sm"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Events
-        </button>
-        
-        <div className="flex items-center gap-3">
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.text}`}>
-            <div className={`${statusConfig.icon} mr-2`}></div>
-            {event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
-          </div>
-          <span className="text-sm text-gray-500 font-mono">ID: {event.event_id}</span>
-        </div>
-      </div>
-
-      {/* Main Title */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-blue-50 mb-4">
-          <Calendar className="w-8 h-8 text-blue-600" />
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.event_name}</h1>
-        <p className="text-gray-600">{event.event_type} • Event Management Dashboard</p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap justify-center gap-3">
-        {/* Primary Actions - Always Visible */}
-        <ActionButton
-          onClick={refreshData}
-          disabled={isLoading}
-          variant="primary"
-          icon={isLoading ? RefreshCw : RefreshCw}
-          className={isLoading ? 'cursor-wait' : ''}
-        >
-          {isLoading ? 'Refreshing...' : 'Refresh'}
-        </ActionButton>
-
-        <ActionButton
-          onClick={() => navigate(`/admin/events/${eventId}/export`)}
-          variant="success"
-          icon={Download}
-        >
-          Export Data
-        </ActionButton>
-
-
-        <ActionButton
-          onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
-          variant="warning"
-          icon={UserCheck}
-        >
-          Attendance
-        </ActionButton>
-
-        {/* Desktop: Show all buttons */}
-        <div className="hidden lg:flex gap-3">
-          {canEdit && (
-            <ActionButton
-              onClick={() => navigate(`/admin/events/${eventId}/edit`)}
-              variant="secondary"
-              icon={Edit3}
-            >
-              Edit Event
-            </ActionButton>
-          )}
-
-          <ActionButton
-            onClick={handleHTMLPrint}
-            variant="secondary"
-            icon={FileDown}
-          >
-            Download PDF
-          </ActionButton>
-
-          {canDelete && (
-            <ActionButton
-              onClick={() => setDeleteModalOpen(true)}
-              variant="danger"
-              icon={Trash2}
-            >
-              Cancel Event
-            </ActionButton>
-          )}
-        </div>
-
-        {/* Mobile/Tablet: More Actions Dropdown */}
-        <div className="relative lg:hidden">
-          <ActionButton
-            onClick={() => setShowMoreActions(!showMoreActions)}
-            variant="secondary"
-            icon={MoreHorizontal}
-          >
-            More
-          </ActionButton>
-
-          <DropdownMenu isOpen={showMoreActions} onClose={() => setShowMoreActions(false)}>
-            {canEdit && (
-              <DropdownItem
-                onClick={() => {
-                  navigate(`/admin/events/${eventId}/edit`);
-                  setShowMoreActions(false);
-                }}
-                icon={Edit3}
+            {/* Breadcrumb and Status */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <button
+                onClick={() => navigate('/admin/events')}
+                className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors text-sm"
               >
-                Edit Event
-              </DropdownItem>
-            )}
-            
-            <DropdownItem
-              onClick={() => {
-                window.print();
-                setShowMoreActions(false);
-              }}
-              icon={FileDown}
-            >
-              Download PDF
-            </DropdownItem>
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Events
+              </button>
 
-            {canDelete && (
-              <DropdownItem
-                onClick={() => {
-                  setDeleteModalOpen(true);
-                  setShowMoreActions(false);
-                }}
-                icon={Trash2}
-                variant="danger"
+              <div className="flex items-center gap-3">
+                {/* Refresh Button - Styled as online indicator */}
+                <button
+                  onClick={refreshData}
+                  disabled={isLoading}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-100 hover:bg-blue-200 transition-colors ${isLoading ? 'cursor-wait' : 'cursor-pointer'}`}
+                  title={isLoading ? 'Refreshing data...' : 'Refresh event data'}
+                >
+                  <RefreshCw className={`w-4 h-4 text-blue-600 ${isLoading ? 'animate-spin' : ''}`} />
+                </button>
+
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.text}`}>
+                  <div className={`${statusConfig.icon} mr-2`}></div>
+                  {event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
+                </div>
+                <span className="text-sm text-gray-500 font-mono">ID: {event.event_id}</span>
+              </div>
+            </div>
+
+            {/* Main Title */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-blue-50 mb-4">
+                <Calendar className="w-8 h-8 text-blue-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.event_name}</h1>
+              <p className="text-gray-600">{event.event_type} • Event Management Dashboard</p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap justify-center gap-3">
+              {/* Export Dropdown Button */}
+
+
+              <ActionButton
+                onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
+                variant="warning"
+                icon={UserCheck}
               >
-                Cancel Event
-              </DropdownItem>
-            )}
-          </DropdownMenu>
-        </div>
-      </div>
+                Attendance
+              </ActionButton>
+
+              {/* Desktop: Show all buttons */}
+              <div className="hidden lg:flex gap-3">
+                {canEdit && (
+                  <ActionButton
+                    onClick={() => navigate(`/admin/events/${eventId}/edit`, { 
+                      state: { eventData: event } 
+                    })}
+                    variant="secondary"
+                    icon={Edit3}
+                  >
+                    Edit Event
+                  </ActionButton>
+                )}
+                <div 
+                  className="relative"
+                  id="export-dropdown-container"
+                  onMouseEnter={() => {
+                    if (!exportDropdownSticky) {
+                      setExportDropdownOpen(true);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (!exportDropdownSticky) {
+                      setExportDropdownOpen(false);
+                    }
+                  }}
+                >
+                  <ActionButton
+                    onClick={() => {
+                      // Toggle sticky mode and keep dropdown open
+                      setExportDropdownSticky(!exportDropdownSticky);
+                      setExportDropdownOpen(true);
+                    }}
+                    variant="success"
+                    icon={Download}
+                    className="flex items-center"
+                  >
+                    Export Data
+                    <i className={`fas fa-chevron-down ml-2 text-xs transition-transform ${exportDropdownOpen ? 'rotate-180' : ''}`}></i>
+                  </ActionButton>
+
+                  {/* Dropdown Menu with seamless hover area */}
+                  {exportDropdownOpen && (
+                    <div className="absolute right-0 top-full w-48 z-10">
+                      {/* Invisible bridge to prevent hover gap issues */}
+                      <div className="h-2 w-full"></div>
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-lg">
+                      <div className="py-1">
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            navigate(`/admin/events/${eventId}/export`);
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <Download className="w-4 h-4 mr-3" />
+                          Custom Export
+                        </div>
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            handleHTMLPrint();
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <FileDown className="w-4 h-4 mr-3" />
+                          Event Details
+                        </div>
+                        
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 my-1"></div>
+                        
+                        {/* Additional Report Options */}
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            console.log('Budget Report clicked');
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <CreditCard className="w-4 h-4 mr-3" />
+                          Budget Report
+                        </div>
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            console.log('Sign Sheet clicked');
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-3" />
+                          Sign Sheet
+                        </div>
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            console.log('Attendance Report clicked');
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <UserCheck className="w-4 h-4 mr-3" />
+                          Attendance Report
+                        </div>
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            console.log('Feedback Report clicked');
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <Users className="w-4 h-4 mr-3" />
+                          Feedback Report
+                        </div>
+                        <div
+                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            console.log('Event Report clicked');
+                            setExportDropdownOpen(false);
+                            setExportDropdownSticky(false);
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-3" />
+                          Event Report
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+                  )}
+                </div>
+                {canDelete && (
+                  <ActionButton
+                    onClick={() => setDeleteModalOpen(true)}
+                    variant="danger"
+                    icon={Trash2}
+                  >
+                    Cancel Event
+                  </ActionButton>
+                )}
+              </div>
+
+              {/* Mobile/Tablet: More Actions Dropdown */}
+              <div className="relative lg:hidden">
+                <ActionButton
+                  onClick={() => setShowMoreActions(!showMoreActions)}
+                  variant="secondary"
+                  icon={MoreHorizontal}
+                >
+                  More
+                </ActionButton>
+
+                <DropdownMenu isOpen={showMoreActions} onClose={() => setShowMoreActions(false)}>
+                  {canEdit && (
+                    <DropdownItem
+                      onClick={() => {
+                        navigate(`/admin/events/${eventId}/edit`, { 
+                          state: { eventData: event } 
+                        });
+                        setShowMoreActions(false);
+                      }}
+                      icon={Edit3}
+                    >
+                      Edit Event
+                    </DropdownItem>
+                  )}
+
+                  {canDelete && (
+                    <DropdownItem
+                      onClick={() => {
+                        setDeleteModalOpen(true);
+                        setShowMoreActions(false);
+                      }}
+                      icon={Trash2}
+                      variant="danger"
+                    >
+                      Cancel Event
+                    </DropdownItem>
+                  )}
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
 
           {/* Statistics Cards */}
@@ -700,7 +852,7 @@ function EventDetail() {
                       <p className="text-gray-500 text-sm font-medium">Total Registrations</p>
                       <p className="text-2xl font-bold text-gray-800">{eventStats.registrations_count || 0}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {eventStats.is_team_based ? 
+                        {eventStats.is_team_based ?
                           `Teams: ${eventStats.total_team_registrations || 0} • Participants: ${eventStats.total_participants || 0}` :
                           `Individual Registrations: ${eventStats.total_individual_registrations || 0}`
                         }
@@ -709,8 +861,8 @@ function EventDetail() {
                   </div>
                 </div>
               </div>
-              
-              <div 
+
+              <div
                 className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:bg-purple-50"
                 onClick={handleViewAttendanceBreakdown}
                 title="Click to view detailed attendance breakdown"
@@ -741,11 +893,11 @@ function EventDetail() {
                           </>
                         ) : (
                           <>
-                            {eventStats?.registrations_count > 0 ? 
+                            {eventStats?.registrations_count > 0 ?
                               `${Math.round((eventStats.attendance_count / eventStats.registrations_count) * 100)}% attendance rate` :
                               '0% attendance rate'
                             }
-                            <br />                          
+                            <br />
                           </>
                         )}
                       </p>
@@ -769,7 +921,7 @@ function EventDetail() {
                       <p className="text-gray-500 text-sm font-medium">Total Feedbacks</p>
                       <p className="text-2xl font-bold text-gray-800">{eventStats.feedback_count || 0}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {eventStats.attendance_count > 0 ? 
+                        {eventStats.attendance_count > 0 ?
                           `${Math.round((eventStats.feedback_count / eventStats.attendance_count) * 100)}% feedback rate` :
                           '0% feedback rate'
                         }
@@ -791,7 +943,7 @@ function EventDetail() {
                       <p className="text-gray-500 text-sm font-medium">Certificates Issued</p>
                       <p className="text-2xl font-bold text-gray-800">{eventStats.certificates_count || 0}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {eventStats.feedback_count > 0 ? 
+                        {eventStats.feedback_count > 0 ?
                           `${Math.round((eventStats.certificates_count / eventStats.feedback_count) * 100)}% completion rate` :
                           '0% completion rate'
                         }
@@ -847,7 +999,7 @@ function EventDetail() {
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-gray-600">
-                    {((eventStats.payments_completed || 0) + (eventStats.payments_pending || 0)) > 0 ? 
+                    {((eventStats.payments_completed || 0) + (eventStats.payments_pending || 0)) > 0 ?
                       Math.round(((eventStats.payments_completed || 0) / ((eventStats.payments_completed || 0) + (eventStats.payments_pending || 0))) * 100) :
                       0
                     }%
@@ -989,404 +1141,514 @@ function EventDetail() {
           </div>
 
           {/* Event Details Section */}
-          
 
-          <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Event Details</h1>
-            <p className="text-sm text-gray-600 mt-1">Manage and view comprehensive event information</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-500">Event ID</div>
-            <div className="text-sm font-mono text-gray-900">{event.event_id}</div>
-          </div>
-        </div>
 
-        {/* Event Summary */}
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Calendar className="w-8 h-8 text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">{event.event_name}</h2>
-            <p className="text-gray-600 mb-3">{event.short_description}</p>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="primary">{event.event_type}</Badge>
-              <Badge>{event.target_audience}</Badge>
-              <Badge>{event.mode}</Badge>
-              {event.is_xenesis_event && <Badge variant="success">Xenesis Event</Badge>}
-              <Badge>{event.status}</Badge>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <InfoCard icon={FileText} title="Basic Information">
-            <div className="space-y-0 divide-y divide-gray-100">
-              <InfoRow label="Event Type" value={event.event_type?.charAt(0).toUpperCase() + event.event_type?.slice(1)} />
-              <InfoRow label="Target Audience" value={event.target_audience?.charAt(0).toUpperCase() + event.target_audience?.slice(1)} />
-              <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
-              <InfoRow label="Status" value={event.status?.charAt(0).toUpperCase() + event.status?.slice(1)} />
-            </div>
-            {event.detailed_description && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <div className="text-sm font-medium text-gray-600 mb-2">Description</div>
-                <p className="text-sm text-gray-900 leading-relaxed">{event.detailed_description}</p>
-              </div>
-            )}
-          </InfoCard>
-
-          {/* Registration & Pricing */}
-          <InfoCard icon={CreditCard} title="Registration & Pricing">
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">
-                  {event.is_paid ? `₹${event.registration_fee}` : 'FREE'}
+          <div className="max-w-7xl mx-auto min-h-screen">
+            {/* Header */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Event Details</h1>
+                  <p className="text-sm text-gray-600 mt-1">Manage and view comprehensive event information</p>
                 </div>
-                <div className="text-xs text-gray-600">Registration Fee</div>
-              </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">
-                  {event.is_team_based ? 'Team' : 'Individual'}
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Event ID</div>
+                  <div className="text-sm font-mono text-gray-900">{event.event_id}</div>
                 </div>
-                <div className="text-xs text-gray-600">Participation Mode</div>
               </div>
-            </div>
-            <div className="space-y-0 divide-y divide-gray-100">
-              <InfoRow label="Min Participants" value={event.min_participants || 1} />
-              <InfoRow label="Max Participants" value={event.max_participants || 'Unlimited'} />
-            </div>
-          </InfoCard>
-        </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Schedule */}
-          <InfoCard icon={Clock} title="Schedule">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">Registration Period</div>
-                    <div className="text-xs text-gray-600">Opens → Closes</div>
-                  </div>
-                  <div className="text-right text-sm text-gray-900">
-                    <div>{formatDateTime(event.registration_start_date)}</div>
-                    <div className="text-gray-600">to</div>
-                    <div>{formatDateTime(event.registration_end_date)}</div>
+              {/* Event Summary */}
+              <div className="flex items-start gap-4">
+                <div className="w-24 h-24 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-14 h-14 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">{event.event_name}</h2>
+                  <p className="text-gray-600 mb-3">{event.short_description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="primary">{event.event_type}</Badge>
+                    <Badge>{event.target_audience}</Badge>
+                    <Badge>{event.mode}</Badge>
+                    {event.is_xenesis_event && <Badge variant="success">Xenesis Event</Badge>}
+                    <Badge>{event.status}</Badge>
                   </div>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">Event Period</div>
-                    <div className="text-xs text-gray-600">Start → End</div>
-                  </div>
-                  <div className="text-right text-sm text-gray-900">
-                    <div>{formatDateTime(event.start_datetime)}</div>
-                    <div className="text-gray-600">to</div>
-                    <div>{formatDateTime(event.end_datetime)}</div>
-                  </div>
-                </div>
-                
               </div>
             </div>
-          </InfoCard>
 
-          {/* Venue & Location */}
-          <InfoCard icon={MapPin} title="Venue & Location">
-            <div className="space-y-0 divide-y divide-gray-100">
-              <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
-              <InfoRow label="Venue" value={event.venue} />
-            </div>
-          </InfoCard>
-
-          {/* Certificates */}
-          <InfoCard icon={Award} title="Certificates">
-            <div className="space-y-0 divide-y divide-gray-100">
-              <InfoRow label="Available Until" value={formatDateTime(event.certificate_end_date)} />
-              {event.assets && event.assets.length > 0 && (
-                <InfoRow label="Assets" value={`${event.assets.length} file(s) attached`} />
-              )}
-              {/* Show certificate template details if available */}
-              {(event.certificate_template || event.certificate_templates) && (
-                <div className="pt-3">
-                  <div className="text-sm text-gray-600">
-                    Template Status: <span className="text-green-600 font-medium">Configured</span>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <InfoCard icon={FileText} title="Basic Information">
+                  <div className="space-y-0 divide-y divide-gray-100">
+                    <InfoRow label="Event Type" value={event.event_type?.charAt(0).toUpperCase() + event.event_type?.slice(1)} />
+                    <InfoRow label="Target Audience" value={event.target_audience?.charAt(0).toUpperCase() + event.target_audience?.slice(1)} />
+                    <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
+                    <InfoRow label="Status" value={event.status?.charAt(0).toUpperCase() + event.status?.slice(1)} />
                   </div>
-                  {event.certificate_templates && typeof event.certificate_templates === 'object' && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      Available templates: {Object.keys(event.certificate_templates).join(', ')}
+                  {event.detailed_description && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="text-sm font-medium text-gray-600 mb-2">Description</div>
+                      <p className="text-sm text-gray-900 leading-relaxed">{event.detailed_description}</p>
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-          </InfoCard>
-        </div>
-      </div>
+                </InfoCard>
 
-      {/* Organizers & Contacts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Organizers */}
-        <InfoCard icon={Users} title="Organizers">
-          <div className="space-y-3">
-            {event.organizer_details && event.organizer_details.length > 0 ? (
-              event.organizer_details.map((organizer, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <Users className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{organizer.full_name || 'Unnamed'}</div>
-                    <div className="text-sm text-gray-600">{organizer.email}</div>
-                    {organizer.employee_id && (
-                      <div className="text-xs text-gray-500">ID: {organizer.employee_id}</div>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-600 text-center py-4">No organizer information available</div>
-            )}
-          </div>
-        </InfoCard>
-
-        {/* Contacts */}
-        <InfoCard icon={Phone} title="Contact Information">
-          <div className="space-y-3">
-            {event.contacts && event.contacts.length > 0 ? (
-              event.contacts.map((contact, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    {contact.contact.includes('@') ? (
-                      <Mail className="w-5 h-5 text-gray-600" />
-                    ) : (
-                      <Phone className="w-5 h-5 text-gray-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{contact.name}</div>
-                    <div className="text-sm text-gray-600">{contact.contact}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-600 text-center py-4">No contact information available</div>
-            )}
-          </div>
-        </InfoCard>
-      </div>
-
-
-    {/* Attendance Strategy Preview */}
-    {(event.attendance_strategy || event.dynamic_attendance) && (
-      <div className="mb-8 mt-4">
-        <InfoCard icon={CheckCircle} title="Attendance Strategy">
-          <div className="space-y-4">
-            {/* Strategy Overview - Bullet Points Format */}
-            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Strategy Type:</span>
-                    <span className="text-sm font-semibold text-gray-900 bg-green-50 px-3 py-1 rounded-full">
-                      {getStrategyDisplayName(
-                        typeof event.attendance_strategy === 'string' 
-                          ? event.attendance_strategy
-                          : event.attendance_strategy?.strategy_type || 
-                            event.attendance_strategy?.strategy || 
-                            event.dynamic_attendance?.strategy_type ||
-                            event.dynamic_attendance?.strategy ||
-                            'session_based'
-                      )}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Pass Criteria:</span>
-                    <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full">
-                      {event.minimum_attendance_percentage ||
-                       (typeof event.pass_criteria === 'number' ? event.pass_criteria : event.pass_criteria?.minimum_percentage) ||
-                       event.attendance_strategy?.minimum_percentage || 
-                       event.attendance_strategy?.pass_criteria?.minimum_percentage || 
-                       event.dynamic_attendance?.minimum_percentage ||
-                       event.dynamic_attendance?.pass_criteria?.minimum_percentage ||
-                       75}% required
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Total Sessions:</span>
-                    <span className="text-sm font-semibold text-gray-900 bg-purple-50 px-3 py-1 rounded-full">
-                      {(() => {
-                        const sessionCount = event.attendance_strategy?.sessions?.length || 
-                                           event.dynamic_attendance?.sessions?.length || 
-                                           event.sessions?.length || 0;
-                        return `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`;
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Session Overview */}
-            {(() => {
-              const sessions = event.attendance_strategy?.sessions || 
-                             event.dynamic_attendance?.sessions || 
-                             event.sessions || [];
-              
-              return sessions.length > 0 && (
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
+                {/* Registration & Pricing */}
+                <InfoCard icon={CreditCard} title="Registration & Pricing">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {event.is_paid ? `₹${event.registration_fee}` : 'FREE'}
                       </div>
-                      <h5 className="text-sm font-medium text-gray-900">Session Overview</h5>
+                      <div className="text-xs text-gray-600">Registration Fee</div>
                     </div>
-                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-                    </span>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {event.is_team_based ? 'Team' : 'Individual'}
+                      </div>
+                      <div className="text-xs text-gray-600">Participation Mode</div>
+                    </div>
                   </div>
+                  <div className="space-y-0 divide-y divide-gray-100">
+                    <InfoRow label="Min Participants" value={event.min_participants || 1} />
+                    <InfoRow label="Max Participants" value={event.max_participants || 'Unlimited'} />
+
+                    {/* Team Size Range - Only show for team-based events */}
+                    {event.is_team_based && (
+                      <InfoRow
+                        label="Team Size"
+                        value={(() => {
+                          const minSize = event.min_team_size || event.team_size_min || 2;
+                          const maxSize = event.max_team_size || event.team_size_max || 'Unlimited';
+                          return `${minSize} - ${maxSize}`;
+                        })()}
+                      />
+                    )}
+                  </div>
+                </InfoCard>
+                {/* Organizers */}
+                <InfoCard icon={Users} title="Organizers">
                   <div className="space-y-3">
-                    {sessions.slice(0, 5).map((session, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
-                              {idx + 1}
-                            </span>
+                    {event.organizer_details && event.organizer_details.length > 0 ? (
+                      event.organizer_details.map((organizer, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Users className="w-5 h-5 text-gray-600" />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {session?.session_name || session?.name || session?.title || `Session ${idx + 1}`}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Session {idx + 1} of {sessions.length}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="space-y-1">
-                            {/* Duration */}
-                            <p className="text-sm font-medium text-gray-900">
-                              {(() => {
-                                // Check if we have explicit duration
-                                if (session?.duration_minutes || session?.duration) {
-                                  const duration = session.duration_minutes || session.duration;
-                                  return `${Math.floor(duration / 60)}h ${duration % 60}m`;
-                                }
-                                // Calculate duration from start_time and end_time
-                                else if (session.start_time && session.end_time) {
-                                  const start = new Date(session.start_time);
-                                  const end = new Date(session.end_time);
-                                  const durationMs = end - start;
-                                  const durationMinutes = Math.floor(durationMs / (1000 * 60));
-                                  const hours = Math.floor(durationMinutes / 60);
-                                  const minutes = durationMinutes % 60;
-                                  return `${hours}h ${minutes}m`;
-                                }
-                                // Fallback
-                                else {
-                                  return 'Duration TBD';
-                                }
-                              })()}
-                            </p>
-                            
-                            {/* Start/End Times */}
-                            {session.start_time || session.end_time || session.scheduled_time ? (
-                              <div className="text-xs text-gray-500 space-y-0.5">
-                                {session.start_time && (
-                                  <div>
-                                    <span className="font-medium">Start:</span> {new Date(session.start_time).toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit'
-                                    })}
-                                  </div>
-                                )}
-                                {session.end_time && (
-                                  <div>
-                                    <span className="font-medium">End:</span> {new Date(session.end_time).toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit'
-                                    })}
-                                  </div>
-                                )}
-                                {!session.start_time && !session.end_time && session.scheduled_time && (
-                                  <div>
-                                    {new Date(session.scheduled_time).toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: 'numeric',
-                                      minute: '2-digit'
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-500">Time TBD</p>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{organizer.full_name || 'Unnamed'}</div>
+                            <div className="text-sm text-gray-600">{organizer.email}</div>
+                            {organizer.employee_id && (
+                              <div className="text-xs text-gray-500">ID: {organizer.employee_id}</div>
                             )}
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-600 text-center py-4">No organizer information available</div>
+                    )}
+                  </div>
+                </InfoCard>
+                
+                {/* Contacts */}
+                <InfoCard icon={Phone} title="Contact Information">
+                  <div className="space-y-3">
+                    {event.contacts && event.contacts.length > 0 ? (
+                      event.contacts.map((contact, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                            {contact.contact.includes('@') ? (
+                              <Mail className="w-5 h-5 text-gray-600" />
+                            ) : (
+                              <Phone className="w-5 h-5 text-gray-600" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{contact.name}</div>
+                            <div className="text-sm text-gray-600">{contact.contact}</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-600 text-center py-4">No contact information available</div>
+                    )}
+                  </div>
+                </InfoCard>
+
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Schedule */}
+                <InfoCard icon={Clock} title="Schedule">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Registration Period</div>
+                          <div className="text-xs text-gray-600">Opens → Closes</div>
+                        </div>
+                        <div className="text-right text-sm text-gray-900">
+                          <div>{formatDateTime(event.registration_start_date)}</div>
+                          <div className="text-gray-600">to</div>
+                          <div>{formatDateTime(event.registration_end_date)}</div>
+                        </div>
                       </div>
-                    ))}
-                    
-                    {sessions.length > 5 && (
-                      <div className="text-center">
-                        <span className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
-                          ... and {sessions.length - 5} more session{sessions.length - 5 !== 1 ? 's' : ''}
-                        </span>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">Event Period</div>
+                          <div className="text-xs text-gray-600">Start → End</div>
+                        </div>
+                        <div className="text-right text-sm text-gray-900">
+                          <div>{formatDateTime(event.start_datetime)}</div>
+                          <div className="text-gray-600">to</div>
+                          <div>{formatDateTime(event.end_datetime)}</div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </InfoCard>
+
+                {/* Venue & Location */}
+                <InfoCard icon={MapPin} title="Venue & Location">
+                  <div className="space-y-0 divide-y divide-gray-100">
+                    <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
+                    <InfoRow label="Venue" value={event.venue} />
+                  </div>
+                </InfoCard>
+
+                {/* Student Eligibility Criteria - For student events only */}
+                {event.target_audience === 'student' && (event.student_department?.length > 0 || event.student_semester?.length > 0) && (
+                  <InfoCard icon={Users} title="Student Eligibility Criteria">
+                    <div className="space-y-4">
+                      {/* Department Eligibility */}
+                      {event.student_department && event.student_department.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-700 flex items-center">
+                              <i className="fas fa-building text-blue-600 mr-2"></i>Eligible Departments
+                            </h4>
+                            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-1 rounded-full">
+                              {event.student_department.length} dept{event.student_department.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {event.student_department.map((dept, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                              >
+                                {dept}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Semester Eligibility */}
+                      {event.student_semester && event.student_semester.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-gray-700 flex items-center">
+                              <i className="fas fa-calendar-alt text-green-600 mr-2"></i>Eligible Semesters
+                            </h4>
+                            <span className="bg-green-100 text-green-700 text-xs font-medium px-2 py-1 rounded-full">
+                              {event.student_semester.length} sem{event.student_semester.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {event.student_semester
+                              .sort((a, b) => parseInt(a) - parseInt(b))
+                              .map((sem, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800"
+                                >
+                                  {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} Semester
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Additional eligibility info if available */}
+                      {event.custom_text && event.custom_text.trim() && (
+                        <div className="pt-3 border-t border-gray-100">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <i className="fas fa-info-circle text-indigo-600 mr-2"></i>Additional Eligibility
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">{event.custom_text}</p>
+                        </div>
+                      )}
+                    </div>
+                  </InfoCard>
+                )}
+                {/* Certificates */}
+                <InfoCard icon={Award} title="Certificates">
+                  <div className="space-y-0 divide-y divide-gray-100">
+                    <InfoRow label="Available Until" value={formatDateTime(event.certificate_end_date)} />
+                    {event.assets && event.assets.length > 0 && (
+                      <InfoRow label="Assets" value={`${event.assets.length} file(s) attached`} />
+                    )}
+                    {/* Show certificate template details if available */}
+                    {(event.certificate_template || event.certificate_templates) && (
+                      <div className="pt-3">
+                        <div className="text-sm text-gray-600">
+                          Template Status: <span className="text-green-600 font-medium">Configured</span>
+                        </div>
+                        {event.certificate_templates && typeof event.certificate_templates === 'object' && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Available templates: {Object.keys(event.certificate_templates).join(', ')}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
-              );
-            })()}
+                </InfoCard>
 
-            {/* Show empty state only if no sessions found but strategy exists */}
-            {(() => {
-              const sessions = event.attendance_strategy?.sessions || 
-                             event.dynamic_attendance?.sessions || 
-                             event.sessions || [];
-              
-              return sessions.length === 0 && typeof event.attendance_strategy === 'object' && (
-                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="text-sm text-yellow-800">
-                    No session details configured yet. Sessions will be added during event setup.
+                {/* Event Poster */}
+                <InfoCard icon={Eye} title="Event Poster">
+                  <div className="space-y-3">
+                    {event.event_poster_url ? (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Poster Available</p>
+                          <p className="text-xs text-gray-500">Click to view event poster</p>
+                        </div>
+                        <button
+                          onClick={() => setPosterModalOpen(true)}
+                          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500 text-sm">No poster available</p>
+                        <p className="text-xs text-gray-400 mt-1">Set one in event settings</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              );
-            })()}
+                </InfoCard>
+
+
+              </div>
+            </div>
+
+            {/* Organizers & Contacts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+
+
+
+
+            </div>
+
+            {/* Attendance Strategy Preview */}
+            {(event.attendance_strategy || event.dynamic_attendance) && (
+              <div className="mb-8 mt-4">
+                <InfoCard icon={CheckCircle} title="Attendance Strategy">
+                  <div className="space-y-4">
+                    {/* Strategy Overview - Bullet Points Format */}
+                    <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <div className="flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700">Strategy Type:</span>
+                            <span className="text-sm font-semibold text-gray-900 bg-green-50 px-3 py-1 rounded-full">
+                              {getStrategyDisplayName(
+                                typeof event.attendance_strategy === 'string'
+                                  ? event.attendance_strategy
+                                  : event.attendance_strategy?.strategy_type ||
+                                  event.attendance_strategy?.strategy ||
+                                  event.dynamic_attendance?.strategy_type ||
+                                  event.dynamic_attendance?.strategy ||
+                                  'session_based'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <div className="flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700">Pass Criteria:</span>
+                            <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full">
+                              {event.minimum_attendance_percentage ||
+                                (typeof event.pass_criteria === 'number' ? event.pass_criteria : event.pass_criteria?.minimum_percentage) ||
+                                event.attendance_strategy?.minimum_percentage ||
+                                event.attendance_strategy?.pass_criteria?.minimum_percentage ||
+                                event.dynamic_attendance?.minimum_percentage ||
+                                event.dynamic_attendance?.pass_criteria?.minimum_percentage ||
+                                75}% required
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                          <div className="flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700">Total Sessions:</span>
+                            <span className="text-sm font-semibold text-gray-900 bg-purple-50 px-3 py-1 rounded-full">
+                              {(() => {
+                                const sessionCount = event.attendance_strategy?.sessions?.length ||
+                                  event.dynamic_attendance?.sessions?.length ||
+                                  event.sessions?.length || 0;
+                                return `${sessionCount} session${sessionCount !== 1 ? 's' : ''}`;
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Session Overview */}
+                    {(() => {
+                      const sessions = event.attendance_strategy?.sessions ||
+                        event.dynamic_attendance?.sessions ||
+                        event.sessions || [];
+
+                      return sessions.length > 0 && (
+                        <div className="bg-white rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 10v-5a2 2 0 012-2h2a2 2 0 012 2v5a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                              </div>
+                              <h5 className="text-sm font-medium text-gray-900">Session Overview</h5>
+                            </div>
+                            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                              {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            {sessions.slice(0, 5).map((session, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex-shrink-0">
+                                    <span className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-sm font-semibold">
+                                      {idx + 1}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {session?.session_name || session?.name || session?.title || `Session ${idx + 1}`}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                      Session {idx + 1} of {sessions.length}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="space-y-1">
+                                    {/* Duration */}
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {(() => {
+                                        // Check if we have explicit duration
+                                        if (session?.duration_minutes || session?.duration) {
+                                          const duration = session.duration_minutes || session.duration;
+                                          return `${Math.floor(duration / 60)}h ${duration % 60}m`;
+                                        }
+                                        // Calculate duration from start_time and end_time
+                                        else if (session.start_time && session.end_time) {
+                                          const start = new Date(session.start_time);
+                                          const end = new Date(session.end_time);
+                                          const durationMs = end - start;
+                                          const durationMinutes = Math.floor(durationMs / (1000 * 60));
+                                          const hours = Math.floor(durationMinutes / 60);
+                                          const minutes = durationMinutes % 60;
+                                          return `${hours}h ${minutes}m`;
+                                        }
+                                        // Fallback
+                                        else {
+                                          return 'Duration TBD';
+                                        }
+                                      })()}
+                                    </p>
+
+                                    {/* Start/End Times */}
+                                    {session.start_time || session.end_time || session.scheduled_time ? (
+                                      <div className="text-xs text-gray-500 space-y-0.5">
+                                        {session.start_time && (
+                                          <div>
+                                            <span className="font-medium">Start:</span> {new Date(session.start_time).toLocaleString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                              year: 'numeric',
+                                              hour: 'numeric',
+                                              minute: '2-digit'
+                                            })}
+                                          </div>
+                                        )}
+                                        {session.end_time && (
+                                          <div>
+                                            <span className="font-medium">End:</span> {new Date(session.end_time).toLocaleString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                              year: 'numeric',
+                                              hour: 'numeric',
+                                              minute: '2-digit'
+                                            })}
+                                          </div>
+                                        )}
+                                        {!session.start_time && !session.end_time && session.scheduled_time && (
+                                          <div>
+                                            {new Date(session.scheduled_time).toLocaleString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                              year: 'numeric',
+                                              hour: 'numeric',
+                                              minute: '2-digit'
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-500">Time TBD</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            {sessions.length > 5 && (
+                              <div className="text-center">
+                                <span className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
+                                  ... and {sessions.length - 5} more session{sessions.length - 5 !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Show empty state only if no sessions found but strategy exists */}
+                    {(() => {
+                      const sessions = event.attendance_strategy?.sessions ||
+                        event.dynamic_attendance?.sessions ||
+                        event.sessions || [];
+
+                      return sessions.length === 0 && typeof event.attendance_strategy === 'object' && (
+                        <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <div className="text-sm text-yellow-800">
+                            No session details configured yet. Sessions will be added during event setup.
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </InfoCard>
+              </div>
+            )}
           </div>
-        </InfoCard>
-      </div>
-    )}
-    </div>
           {/* Delete Confirmation Modal */}
           {deleteModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200">
@@ -1399,7 +1661,7 @@ function EventDetail() {
                   <p className="text-gray-600 mb-4">
                     Are you sure you want to delete "{event.event_name}"? This action cannot be undone.
                   </p>
-                  
+
                   {/* Warning about registrations */}
                   {recentRegistrations && recentRegistrations.length > 0 && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
@@ -1408,12 +1670,12 @@ function EventDetail() {
                         <span className="text-sm font-medium">Warning</span>
                       </div>
                       <p className="text-amber-700 text-sm mt-1">
-                        This event has {recentRegistrations.length} registration(s). 
+                        This event has {recentRegistrations.length} registration(s).
                         Deletion will fail if registrations exist.
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="flex space-x-3">
                     <button
                       onClick={() => setDeleteModalOpen(false)}
@@ -1447,7 +1709,62 @@ function EventDetail() {
                     <i className="fas fa-times text-xl"></i>
                   </button>
                 </div>
-                
+
+                {/* Registration Analysis - Only for student events */}
+                {event?.target_audience === 'student' && allRegistrations.length > 0 && (
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                    <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                      <i className="fas fa-chart-pie mr-2"></i>Registration Analysis
+                    </h4>
+                    {(() => {
+                      const stats = calculateTargetingStats(allRegistrations);
+                      return stats && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {/* Department Distribution */}
+                          {Object.keys(stats.departmentStats).length > 0 && (
+                            <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
+                              <h5 className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                <i className="fas fa-building text-blue-600 mr-1"></i>By Department
+                              </h5>
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(stats.departmentStats)
+                                  .sort(([, a], [, b]) => b - a)
+                                  .slice(0, 6)
+                                  .map(([dept, count]) => (
+                                    <span key={dept} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {dept} ({count})
+                                    </span>
+                                  ))}
+                                {Object.keys(stats.departmentStats).length > 6 && (
+                                  <span className="text-xs text-gray-500">+{Object.keys(stats.departmentStats).length - 6} more</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Semester Distribution */}
+                          {Object.keys(stats.semesterStats).length > 0 && (
+                            <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
+                              <h5 className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+                                <i className="fas fa-calendar-alt text-green-600 mr-1"></i>By Semester
+                              </h5>
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(stats.semesterStats)
+                                  .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                                  .map(([sem, count]) => (
+                                    <span key={sem} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} ({count})
+                                    </span>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 {/* Modal Content */}
                 <div className="p-6 overflow-y-auto flex-grow">
                   <div className="mb-4 flex justify-between items-center">
@@ -1474,7 +1791,7 @@ function EventDetail() {
                       Total: <span>{filteredRegistrations.length}</span>
                     </div>
                   </div>
-                  
+
                   {/* Modal Table Container */}
                   <div className="overflow-x-auto">
                     {modalLoading ? (
@@ -1514,7 +1831,7 @@ function EventDetail() {
                                   </button>
                                 </div>
                               </div>
-                              
+
                               {expandedTeams.has(`modal-${index}`) && team.members && (
                                 <div className="p-4 bg-gray-50">
                                   <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
@@ -1624,7 +1941,7 @@ function EventDetail() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Modal Footer */}
                 <div className="p-6 border-t border-gray-200 flex justify-end">
                   <button
@@ -1660,7 +1977,7 @@ function EventDetail() {
                     <i className="fas fa-times"></i>
                   </button>
                 </div>
-                
+
                 {/* Modal Content */}
                 <div className="flex-1 p-6 overflow-auto">
                   {modalLoading ? (
@@ -1703,7 +2020,7 @@ function EventDetail() {
                                     </div>
                                   </div>
                                 </td>
-                                
+
                                 {/* Contact Information Column */}
                                 <td className="px-6 py-4">
                                   <div className="space-y-1">
@@ -1717,14 +2034,14 @@ function EventDetail() {
                                     </div>
                                   </div>
                                 </td>
-                                
+
                                 {/* Semester Column */}
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                     {formatOrdinalNumber(attendee.student_data?.semester || attendee.semester) || 'N/A'}
                                   </span>
                                 </td>
-                                
+
                                 {/* Attendance Timeline Column */}
                                 <td className="px-6 py-4">
                                   <div className="space-y-2">
@@ -1738,7 +2055,7 @@ function EventDetail() {
                                         {attendee.virtual_attendance_timestamp ? formatCompactDateTime(attendee.virtual_attendance_timestamp) : 'Not marked'}
                                       </span>
                                     </div>
-                                    
+
                                     {/* Physical Attendance */}
                                     <div className="flex items-center text-sm">
                                       <div className="flex items-center min-w-[90px]">
@@ -1767,7 +2084,7 @@ function EventDetail() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Modal Footer */}
                 <div className="p-6 border-t border-gray-200 flex justify-end">
                   <button
@@ -1803,7 +2120,7 @@ function EventDetail() {
                     <i className="fas fa-times"></i>
                   </button>
                 </div>
-                
+
                 {/* Modal Content */}
                 <div className="flex-1 p-6 overflow-auto">
                   {attendanceStats ? (
@@ -1815,19 +2132,19 @@ function EventDetail() {
                           <div className="text-sm font-medium text-green-700">Present</div>
                           <div className="text-xs text-green-600 mt-1">Both Virtual & Physical</div>
                         </div>
-                        
+
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-blue-600">{attendanceStats.virtual_only_count}</div>
                           <div className="text-sm font-medium text-blue-700">Virtual Only</div>
                           <div className="text-xs text-blue-600 mt-1">Self-marked attendance</div>
                         </div>
-                        
+
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-orange-600">{attendanceStats.physical_only_count}</div>
                           <div className="text-sm font-medium text-orange-700">Physical Only</div>
                           <div className="text-xs text-orange-600 mt-1">Admin verified only</div>
                         </div>
-                        
+
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                           <div className="text-2xl font-bold text-red-600">{attendanceStats.absent_count}</div>
                           <div className="text-sm font-medium text-red-700">Absent</div>
@@ -1853,7 +2170,7 @@ function EventDetail() {
                       {/* Detailed Breakdown */}
                       <div className="bg-gray-50 rounded-lg p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Analytics</h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {/* Total Statistics */}
                           <div className="space-y-4">
@@ -1889,7 +2206,7 @@ function EventDetail() {
                                 </div>
                                 <span className="font-bold text-green-600">{attendanceStats.present_count}</span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between p-3 bg-blue-100 rounded-lg">
                                 <div className="flex items-center gap-2">
                                   <i className="fas fa-laptop text-blue-600"></i>
@@ -1897,7 +2214,7 @@ function EventDetail() {
                                 </div>
                                 <span className="font-bold text-blue-600">{attendanceStats.virtual_only_count}</span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between p-3 bg-orange-100 rounded-lg">
                                 <div className="flex items-center gap-2">
                                   <i className="fas fa-user-check text-orange-600"></i>
@@ -1905,7 +2222,7 @@ function EventDetail() {
                                 </div>
                                 <span className="font-bold text-orange-600">{attendanceStats.physical_only_count}</span>
                               </div>
-                              
+
                               <div className="flex items-center justify-between p-3 bg-red-100 rounded-lg">
                                 <div className="flex items-center gap-2">
                                   <i className="fas fa-user-times text-red-600"></i>
@@ -1942,7 +2259,7 @@ function EventDetail() {
                         >
                           <i className="fas fa-users"></i>
                           View All Attendees
-                        </button>                        
+                        </button>
                         <button
                           onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
                           className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
@@ -1962,7 +2279,7 @@ function EventDetail() {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Modal Footer */}
                 <div className="p-6 border-t border-gray-200 flex justify-end">
                   <button
@@ -1972,6 +2289,36 @@ function EventDetail() {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Event Poster Modal */}
+          {posterModalOpen && (
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
+              <div className="relative max-w-4xl max-h-[90vh] w-auto h-auto">
+                {/* Close Button */}
+                <button
+                  onClick={() => setPosterModalOpen(false)}
+                  className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+                  title="Close"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                
+                {/* Poster Image */}
+                <img
+                  src={event?.event_poster_url}
+                  alt={`${event?.event_name} poster`}
+                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                  onError={(e) => {
+                    e.target.src = '/placeholder-poster.png';
+                    e.target.alt = 'Poster not available';
+                  }}
+                />
               </div>
             </div>
           )}

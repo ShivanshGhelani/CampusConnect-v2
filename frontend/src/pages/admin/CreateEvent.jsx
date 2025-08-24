@@ -350,7 +350,6 @@ function CreateEvent() {
 
       if (!existingSession) {
         // Show modal to ask for creator name
-        console.log('🔔 Showing creator modal for Executive Admin');
         setShowCreatorModal(true);
       }
     }
@@ -398,12 +397,10 @@ function CreateEvent() {
 
   const loadExistingEventIds = async () => {
     try {
-      console.log('🔄 Loading existing event IDs from database...');
       const response = await adminAPI.getEvents();
       if (response.data && response.data.events) {
         const eventIds = response.data.events.map(event => event.event_id);
         setExistingEventIds(eventIds);
-        console.log('📋 Loaded existing event IDs:', eventIds);
       }
     } catch (err) {
       console.error('Error loading existing event IDs:', err);
@@ -412,9 +409,6 @@ function CreateEvent() {
 
   const loadVenues = async () => {
     try {
-      console.log('Loading venues from API...');
-      console.log('Auth status:', { isAuthenticated, userType, user: user?.username });
-
       if (!isAuthenticated || userType !== 'admin') {
         console.error('Not authenticated as admin');
         alert('Please log in as an admin to access this feature.');
@@ -422,7 +416,6 @@ function CreateEvent() {
       }
 
       const response = await adminAPI.getVenues();
-      console.log('Venues API response:', response);
 
       if (response.data) {
         // The API returns { success: true, data: [venues], message: "..." }
@@ -433,7 +426,6 @@ function CreateEvent() {
         // Initialize filteredVenues with all active venues
         const activeVenues = venueArray.filter(v => v.is_active);
         setFilteredVenues(activeVenues);
-        console.log(`Loaded ${venueArray.length} venues (${activeVenues.length} active)`);
       } else {
         console.error('No data received from venues API');
       }
@@ -526,18 +518,11 @@ function CreateEvent() {
   useEffect(() => {
     const fetchFacultyOrganizers = async () => {
       try {
-        console.log('Loading faculty organizers...');
-
         const response = await adminAPI.getFacultyOrganizers({ limit: 100 });
-        console.log('✅ Loaded faculty organizers from API:', response.data);
-        console.log('🔍 Faculty data structure:', response.data.data);
-        console.log('🔍 Faculty count:', response.data.data?.length || 0);
 
         const facultyData = response.data.data || [];
         setExistingOrganizers(facultyData);
         setFilteredOrganizers(facultyData);
-
-        console.log('✅ Set faculty organizers in state:', facultyData.length);
 
         // If current user is faculty/organizer, pre-select them
         if (userType === 'admin' && user?.role === 'organizer_admin' && user?.employee_id) {
