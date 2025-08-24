@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
@@ -294,30 +293,25 @@ function FacultyProfileEdit() {
 
   if (!user || user.user_type !== 'faculty') {
     return (
-      <ClientLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-red-500">Access denied. Faculty login required.</p>
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">Access denied. Faculty login required.</p>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-slate-600 font-medium">Loading profile...</span>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-slate-600 font-medium">Loading profile...</span>
         </div>
-      </ClientLayout>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 shadow-lg border-b border-purple-200">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -852,7 +846,6 @@ function FacultyProfileEdit() {
           </div>
         </div>
       </div>
-    </ClientLayout>
   );
 }
 

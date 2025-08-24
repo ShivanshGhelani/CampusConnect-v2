@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../../../api/client';
-import ClientLayout from '../../../components/client/Layout';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 
 function NotRegistered() {
@@ -51,38 +50,34 @@ function NotRegistered() {
 
   if (isLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-exclamation-triangle text-2xl text-red-500"></i>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Unable to Load</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button 
-              onClick={() => navigate('/client/events')}
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <i className="fas fa-arrow-left mr-2"></i>Back to Events
-            </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-exclamation-triangle text-2xl text-red-500"></i>
           </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Unable to Load</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => navigate('/client/events')}
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <i className="fas fa-arrow-left mr-2"></i>Back to Events
+          </button>
         </div>
-      </ClientLayout>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
+    <>
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="container mx-auto max-w-4xl">
           {/* Error Message with Animation */}
@@ -208,7 +203,7 @@ function NotRegistered() {
           animation: alert-bounce 0.5s ease-out forwards;
         }
       `}</style>
-    </ClientLayout>
+    </>
   );
 }
 

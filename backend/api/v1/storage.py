@@ -94,7 +94,16 @@ async def upload_avatar(
         import time
         timestamp = int(time.time())
         safe_name = full_name.replace(' ', '_').replace('-', '_')
-        filename = f"{safe_name}_{timestamp}.png"
+        
+        # Determine file extension based on content type
+        extension_map = {
+            'image/png': 'png',
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/webp': 'webp'
+        }
+        extension = extension_map.get(file.content_type, 'png')
+        filename = f"{safe_name}_{timestamp}.{extension}"
         
         if user_type == 'faculty':
             file_path = f"faculties/{user_id}/{filename}"
@@ -341,9 +350,13 @@ async def delete_user_avatars(user_type: str, user_id: str):
     try:
         from database.operations import DatabaseOperations
         
+        logger.info(f"🗑️ Starting avatar deletion for {user_type} user: {user_id}")
+        
         # Get current avatar info from database
         collection_name = "faculties" if user_type == 'faculty' else "students"
         id_field = "employee_id" if user_type == 'faculty' else "enrollment_no"
+        
+        logger.info(f"📋 Querying {collection_name} collection with {id_field}={user_id}")
         
         user_doc = await DatabaseOperations.find_one(
             collection_name=collection_name,
@@ -352,6 +365,7 @@ async def delete_user_avatars(user_type: str, user_id: str):
         
         if user_doc and user_doc.get('avatar_url'):
             avatar_url = user_doc['avatar_url']
+            logger.info(f"🔍 Found avatar URL in database: {avatar_url}")
             
             # Extract file path from Supabase URL
             # URL format: https://[project].supabase.co/storage/v1/object/public/campusconnect/[file_path]
@@ -359,7 +373,7 @@ async def delete_user_avatars(user_type: str, user_id: str):
                 # Get the file path after the bucket name
                 file_path = avatar_url.split('/storage/v1/object/public/campusconnect/')[-1]
                 
-                logger.info(f"Deleting existing avatar: {file_path}")
+                logger.info(f"🗄️ Extracted file path for deletion: {file_path}")
                 
                 # Delete the specific file
                 delete_result = await SupabaseStorageService.delete_file(
@@ -368,13 +382,18 @@ async def delete_user_avatars(user_type: str, user_id: str):
                 )
                 
                 if delete_result:
-                    logger.info(f"Successfully deleted existing avatar: {file_path}")
+                    logger.info(f"✅ Successfully deleted existing avatar: {file_path}")
                 else:
-                    logger.warning(f"Could not delete existing avatar: {file_path} (file may not exist)")
+                    logger.warning(f"⚠️ Could not delete existing avatar: {file_path} (file may not exist)")
+            else:
+                logger.warning(f"⚠️ Avatar URL format not recognized: {avatar_url}")
+        else:
+            logger.info(f"ℹ️ No avatar URL found in database for {user_type} {user_id}")
                     
         return True
         
     except Exception as e:
-        logger.error(f"Error deleting user avatars: {e}")
+        logger.error(f"❌ Error deleting user avatars: {e}")
+        logger.error(f"📚 Error traceback:", exc_info=True)
         # Don't fail the upload if delete fails - just log the error
         return True

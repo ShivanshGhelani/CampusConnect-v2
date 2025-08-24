@@ -2,9 +2,11 @@ import React, { useState, useRef, useCallback } from 'react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../services/unifiedStorage';
+import imageOptimizationService from '../../services/imageOptimizationService';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/base';
 import Loader from '../ui/Loader';
+import '../../utils/webpTest'; // Import WebP test utility
 
 function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
   const { user } = useAuth();
@@ -13,6 +15,8 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
   const [completedCrop, setCompletedCrop] = useState();
   const [imageSrc, setImageSrc] = useState();
   const [uploading, setUploading] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizationStats, setOptimizationStats] = useState(null);
   const [error, setError] = useState('');
   const imgRef = useRef(null);
   const previewCanvasRef = useRef(null);
@@ -78,6 +82,7 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
     try {
       setUploading(true);
       setError('');
+      setOptimizationStats(null);
 
       console.log('Starting upload process...');
       console.log('Crop data:', completedCrop);
@@ -93,11 +98,42 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
         type: 'image/jpeg',
       });
 
-      console.log('File created:', file.name, file.size, 'bytes');
+      console.log('Original file created:', file.name, file.size, 'bytes');
 
-      // Upload to storage service
-      console.log('Uploading to storage...');
-      const uploadResult = await uploadAvatar(file, user);
+      // Optimize image to WebP format for better compression
+      setOptimizing(true);
+      console.log('🔍 Starting image optimization to WebP...');
+      console.log('📋 Original file details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      
+      const optimizationResult = await imageOptimizationService.optimizeAvatar(file);
+      const optimizedFile = optimizationResult.file;
+      const stats = optimizationResult.stats;
+      
+      console.log('✅ Image optimization completed:', {
+        originalSize: imageOptimizationService.formatFileSize(stats.originalSize),
+        optimizedSize: imageOptimizationService.formatFileSize(stats.optimizedSize),
+        compressionRatio: stats.compressionRatio,
+        format: stats.format,
+        webpSupported: stats.webpSupported,
+        dimensions: stats.dimensions
+      });
+      
+      console.log('📁 Optimized file details:', {
+        name: optimizedFile.name,
+        size: optimizedFile.size,
+        type: optimizedFile.type
+      });
+      
+      setOptimizationStats(stats);
+      setOptimizing(false);
+
+      // Upload optimized file to storage service
+      console.log('Uploading optimized image to storage...');
+      const uploadResult = await uploadAvatar(optimizedFile, user);
       console.log('Storage upload successful:', uploadResult);
       
       // Extract the avatar URL from the upload result
@@ -119,6 +155,12 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
       console.log('Backend response:', response.data);      if (response.data.success) {
         console.log('Backend update successful');
         onAvatarUpdate(avatarPublicUrl);  // Use the same URL we stored
+        
+        // Show optimization stats briefly if available
+        if (optimizationStats && optimizationStats.format === 'webp') {
+          console.log(`✅ Avatar optimized successfully! Reduced size by ${optimizationStats.compressionRatio} (${imageOptimizationService.formatFileSize(optimizationStats.originalSize)} → ${imageOptimizationService.formatFileSize(optimizationStats.optimizedSize)})`);
+        }
+        
         setShowModal(false);
         setImageSrc(null);
       } else {
@@ -130,23 +172,34 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
       setError(`Failed to upload avatar: ${error.message}`);
     } finally {
       setUploading(false);
+      setOptimizing(false);
+      // Keep optimization stats for display until next upload
     }
   };  const handleRemoveAvatar = async () => {
     try {
       setUploading(true);
       setError('');
 
+      console.log('🗑️ Starting avatar removal process...');
+      console.log('👤 User details:', {
+        userType: user?.user_type,
+        userId: user?.enrollment_no || user?.employee_id,
+        currentAvatar: currentAvatar
+      });
+
       // First, delete the file from Supabase storage
-      if (user?.enrollment_no && user?.full_name) {
+      if ((user?.enrollment_no || user?.employee_id) && user?.full_name) {
         try {
-          await deleteAvatar(user);
-          console.log('Avatar file deleted from Supabase storage');
+          console.log('🗄️ Attempting to delete avatar from storage...');
+          const deleteResult = await deleteAvatar(user);
+          console.log('✅ Storage deletion result:', deleteResult);
         } catch (storageError) {
-          console.warn('Could not delete file from storage (may not exist):', storageError);
+          console.warn('⚠️ Storage deletion failed (may not exist):', storageError);
           // Continue with database update even if file deletion fails
         }
       }
 
+      console.log('💾 Updating database to clear avatar_url...');
       // Update the database to set avatar_url to null
       const endpoint = user?.user_type === 'faculty' 
         ? '/api/v1/client/profile/faculty/update' 
@@ -154,7 +207,12 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
         
       const response = await api.put(endpoint, {
         avatar_url: null
-      });      if (response.data.success) {
+      });
+
+      console.log('📋 Database update response:', response.data);
+
+      if (response.data.success) {
+        console.log('✅ Avatar removal completed successfully');
         // Clear any cached avatar state
         onAvatarUpdate(null);
         setShowModal(false);
@@ -162,7 +220,7 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
         throw new Error(response.data.message || 'Failed to remove avatar');
       }
     } catch (error) {
-      console.error('Error removing avatar:', error);
+      console.error('❌ Error removing avatar:', error);
       setError('Failed to remove avatar. Please try again.');
     } finally {
       setUploading(false);
@@ -345,9 +403,11 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
                     <button
                       onClick={handleUpload}
                       className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all duration-200 font-semibold flex items-center justify-center gap-2"
-                      disabled={uploading || !completedCrop}
+                      disabled={uploading || optimizing || !completedCrop}
                     >
-                      {uploading ? (
+                      {optimizing ? (
+                        <Loader size="sm" color="white" text="Optimizing..." />
+                      ) : uploading ? (
                         <Loader size="sm" color="white" text="Uploading..." />
                       ) : (
                         <>

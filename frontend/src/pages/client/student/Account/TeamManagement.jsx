@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { clientAPI } from '../../../../api/client';
-import ClientLayout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 
 const TeamManagement = () => {
@@ -523,35 +522,31 @@ const TeamManagement = () => {
 
   if (isLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
     );
   }
 
   if (error && !teamInfo) {
     return (
-      <ClientLayout>
         <div className="min-h-screen bg-gray-50 py-8">
           <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
-              </div>
-              <h1 className="text-xl font-bold text-red-900 mb-2">Error Loading Team</h1>
-              <p className="text-red-700 mb-4">{error}</p>
-              <button 
-                onClick={() => navigate('/client/dashboard')}
-                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Return to Dashboard
-              </button>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
             </div>
+            <h1 className="text-xl font-bold text-red-900 mb-2">Error Loading Team</h1>
+            <p className="text-red-700 mb-4">{error}</p>
+            <button 
+              onClick={() => navigate('/client/dashboard')}
+              className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Return to Dashboard
+            </button>
           </div>
         </div>
-      </ClientLayout>
+      </div>
     );
   }
 

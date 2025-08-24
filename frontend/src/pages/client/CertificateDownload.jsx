@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
-import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const CertificateDownload = () => {
@@ -423,43 +422,39 @@ const CertificateDownload = () => {
 
   if (isLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-white border border-red-200 rounded-lg p-6 mb-6 shadow-sm">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <i className="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
-                </div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">Certificate Not Available</h2>
-                <p className="text-gray-600 mb-4">{error}</p>
-                <Link 
-                  to="/client/events" 
-                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <i className="fas fa-arrow-left mr-2"></i>
-                  Back to Events
-                </Link>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-white border border-red-200 rounded-lg p-6 mb-6 shadow-sm">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
               </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Certificate Not Available</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Link 
+                to="/client/events" 
+                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <i className="fas fa-arrow-left mr-2"></i>
+                Back to Events
+              </Link>
             </div>
           </div>
         </div>
-      </ClientLayout>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
+    <div>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           {/* Header */}
@@ -592,7 +587,7 @@ const CertificateDownload = () => {
           </div>
         </div>
       )}
-    </ClientLayout>
+    </div>
   );
 };
 

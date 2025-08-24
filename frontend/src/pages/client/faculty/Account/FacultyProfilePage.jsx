@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
-import ClientLayout from '../../../../components/client/Layout';
+import { useAvatarFast } from '../../../../hooks/useAvatarFast';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import api from '../../../../api/base';
 
 function FacultyProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { avatarUrl, updateAvatar, forceRefreshAvatar } = useAvatar(user);
+  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatarFast(user);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({
@@ -125,27 +125,22 @@ function FacultyProfilePage() {
 
   if (!user || user.user_type !== 'faculty') {
     return (
-      <ClientLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-red-500">Access denied. Faculty login required.</p>
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500">Access denied. Faculty login required.</p>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
         {/* Loading State */}
         {loading && (
           <div className="min-h-screen flex items-center justify-center">
@@ -467,7 +462,6 @@ function FacultyProfilePage() {
           </div>
         )}
       </div>
-    </ClientLayout>
   );
 }
 

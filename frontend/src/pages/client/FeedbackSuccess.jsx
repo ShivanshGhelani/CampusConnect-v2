@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
-import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const FeedbackSuccess = () => {
@@ -87,43 +86,39 @@ const FeedbackSuccess = () => {
 
   if (isLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
     );
   }
 
   if (error || !event) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Event Not Found</h2>
-            <p className="text-gray-600 mb-4">{error || 'The event you are looking for does not exist.'}</p>
-            <Link 
-              to="/client/events" 
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Events
-            </Link>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
           </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Event Not Found</h2>
+          <p className="text-gray-600 mb-4">{error || 'The event you are looking for does not exist.'}</p>
+          <Link 
+            to="/client/events" 
+            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Events
+          </Link>
         </div>
-      </ClientLayout>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
+    <div>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Success Message with Animation */}
         <div className="text-center mb-8 animate-fade-in">
@@ -223,38 +218,7 @@ const FeedbackSuccess = () => {
           </Link>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes success-pop {
-          0% { transform: scale(0.8); opacity: 0; }
-          45% { transform: scale(1.2); opacity: 0.8; }
-          80% { transform: scale(0.95); opacity: 0.9; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes success-check {
-          0% { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
-          100% { stroke-dasharray: 1000; stroke-dashoffset: 0; }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-        }
-
-        .animate-success-pop {
-          animation: success-pop 0.5s ease-out forwards;
-        }
-
-        .animate-success-check {
-          animation: success-check 1s ease-out forwards;
-        }
-      `}</style>
-    </ClientLayout>
+    </div>
   );
 };
 
