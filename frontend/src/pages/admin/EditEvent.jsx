@@ -120,6 +120,28 @@ function EditEvent() {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Add custom CSS for DateRangePicker z-index fix - Not needed anymore since we fixed it at component level
+  // useEffect(() => {
+  //   const style = document.createElement('style');
+  //   style.textContent = `
+  //     .date-range-picker-dropdown {
+  //       z-index: 9999 !important;
+  //       position: fixed !important;
+  //     }
+  //     .react-datepicker-popper {
+  //       z-index: 9999 !important;
+  //     }
+  //     .react-datepicker {
+  //       z-index: 9999 !important;
+  //     }
+  //   `;
+  //   document.head.appendChild(style);
+  //   
+  //   return () => {
+  //     document.head.removeChild(style);
+  //   };
+  // }, []);
+
   // Venue management states
   const [venues, setVenues] = useState([]);
   const [filteredVenues, setFilteredVenues] = useState([]);
@@ -134,6 +156,33 @@ function EditEvent() {
 
   // Tab management
   const [activeTab, setActiveTab] = useState(1);
+
+  // Helper function for timezone-safe date formatting
+  const formatDateSafe = (date) => {
+    if (!date) return '';
+    
+    // Get the local date components to avoid timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function for timezone-safe date parsing
+  const parseDateSafe = (dateString) => {
+    if (!dateString) return null;
+    
+    // Parse YYYY-MM-DD format safely without timezone conversion
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return null;
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in Date constructor
+    const day = parseInt(parts[2], 10);
+    
+    return new Date(year, month, day);
+  };
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -227,9 +276,18 @@ function EditEvent() {
   const loadVenues = async () => {
     try {
       const response = await adminAPI.getVenues();
-      if (response.success) {
-        setVenues(response.venues || []);
-        setFilteredVenues(response.venues || []);
+
+      if (response.data) {
+        // The API returns { success: true, data: [venues], message: "..." }
+        // So we need to access response.data.data, not just response.data
+        const apiData = response.data.data || response.data;
+        const venueArray = Array.isArray(apiData) ? apiData : [];
+        setVenues(venueArray);
+        // Initialize filteredVenues with all active venues
+        const activeVenues = venueArray.filter(v => v.is_active);
+        setFilteredVenues(activeVenues);
+      } else {
+        console.error('No data received from venues API');
       }
     } catch (error) {
       console.error('Error loading venues:', error);
@@ -251,8 +309,10 @@ function EditEvent() {
   // Venue search and selection
   const handleVenueSearch = (searchTerm) => {
     const filtered = venues.filter(venue =>
-      venue.venue_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      venue.building.toLowerCase().includes(searchTerm.toLowerCase())
+      venue.is_active &&
+      (venue.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        venue.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${venue.name} - ${venue.location}`.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredVenues(filtered);
   };
@@ -260,7 +320,7 @@ function EditEvent() {
   const selectVenue = (venue) => {
     setFormData(prev => ({
       ...prev,
-      venue: venue.venue_name,
+      venue: `${venue.name} - ${venue.location}`,
       venue_id: venue.venue_id
     }));
     setShowVenueDropdown(false);
@@ -385,16 +445,28 @@ function EditEvent() {
     }));
   };
 
-  // Date and time handlers
+  // Date and time handlers - TIMEZONE SAFE
   const handleEventDateChange = (startDate, endDate) => {
+    const formattedStart = startDate ? formatDateSafe(startDate) : '';
+    const formattedEnd = endDate ? formatDateSafe(endDate) : '';
+    
+    console.log('🗓️ EditEvent: Event date change:', {
+      startDate_raw: startDate,
+      endDate_raw: endDate,
+      startDate_formatted: formattedStart,
+      endDate_formatted: formattedEnd
+    });
+    
     setFormData(prev => ({
       ...prev,
-      start_date: startDate ? startDate.toISOString().split('T')[0] : '',
-      end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+      start_date: formattedStart,
+      end_date: formattedEnd
     }));
   };
 
   const handleEventTimeChange = (startTime, endTime) => {
+    console.log('🕐 EditEvent: Event time change:', { startTime, endTime });
+    
     setFormData(prev => ({
       ...prev,
       start_time: startTime || '',
@@ -403,10 +475,20 @@ function EditEvent() {
   };
 
   const handleRegistrationDateChange = (startDate, endDate) => {
+    const formattedStart = startDate ? formatDateSafe(startDate) : '';
+    const formattedEnd = endDate ? formatDateSafe(endDate) : '';
+    
+    console.log('📝 EditEvent: Registration date change:', {
+      startDate_raw: startDate,
+      endDate_raw: endDate,
+      startDate_formatted: formattedStart,
+      endDate_formatted: formattedEnd
+    });
+    
     setFormData(prev => ({
       ...prev,
-      registration_start_date: startDate ? startDate.toISOString().split('T')[0] : '',
-      registration_end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+      registration_start_date: formattedStart,
+      registration_end_date: formattedEnd
     }));
   };
 
@@ -421,7 +503,7 @@ function EditEvent() {
   const handleCertificateDateChange = (endDate) => {
     setFormData(prev => ({
       ...prev,
-      certificate_end_date: endDate ? endDate.toISOString().split('T')[0] : ''
+      certificate_end_date: endDate ? formatDateSafe(endDate) : ''
     }));
   };
 
@@ -435,12 +517,30 @@ function EditEvent() {
   // Extract form data population into a separate function
   const populateFormData = (eventData) => {
 
-    // Parse datetime strings to separate date and time
+    // Parse datetime strings to separate date and time - TIMEZONE SAFE
     const parseDateTimeToComponents = (dateTimeString) => {
       if (!dateTimeString) return { date: '', time: '' };
-      const date = new Date(dateTimeString);
-      const dateStr = date.toISOString().split('T')[0];
-      const timeStr = date.toTimeString().split(' ')[0].substring(0, 5); // Hours and minutes format
+      
+      // Handle different date formats safely without timezone conversion
+      let dateStr = '';
+      let timeStr = '';
+      
+      if (dateTimeString.includes('T')) {
+        // ISO format: "2025-09-01T10:00:00" or "2025-09-01T10:00:00.000Z"
+        const [datePart, timePart] = dateTimeString.split('T');
+        dateStr = datePart;
+        timeStr = timePart.split('.')[0].substring(0, 5); // Get HH:MM only
+      } else if (dateTimeString.includes(' ')) {
+        // Format: "2025-09-01 10:00:00"
+        const [datePart, timePart] = dateTimeString.split(' ');
+        dateStr = datePart;
+        timeStr = timePart.substring(0, 5); // Get HH:MM only
+      } else {
+        // Date only: "2025-09-01"
+        dateStr = dateTimeString;
+        timeStr = '';
+      }
+      
       return { date: dateStr, time: timeStr };
     };
 
@@ -535,12 +635,28 @@ function EditEvent() {
       return [{ name: '', contact: '' }];
     };
 
+    console.log('📥 EditEvent: Populating form with event data:', eventData);
+    console.log('🗓️ EditEvent: Raw date fields from backend:', {
+      start_datetime: eventData.start_datetime,
+      end_datetime: eventData.end_datetime,
+      registration_start_date: eventData.registration_start_date,
+      registration_end_date: eventData.registration_end_date
+    });
+
     // Parse date/time components
     const startDateTime = parseDateTimeToComponents(eventData.start_datetime);
     const endDateTime = parseDateTimeToComponents(eventData.end_datetime);
     const regStartDateTime = parseDateTimeToComponents(eventData.registration_start_date);
     const regEndDateTime = parseDateTimeToComponents(eventData.registration_end_date);
     const certEndDateTime = parseDateTimeToComponents(eventData.certificate_end_date);
+
+    console.log('🔄 EditEvent: Parsed date/time components:', {
+      start: startDateTime,
+      end: endDateTime,
+      regStart: regStartDateTime,
+      regEnd: regEndDateTime,
+      certEnd: certEndDateTime
+    });
 
     const newFormData = {
       event_name: eventData.event_name || '',
@@ -696,11 +812,17 @@ function EditEvent() {
     try {
       setIsSaving(true);
 
-      // Combine date and time for datetime fields
+      // Combine date and time for datetime fields - TIMEZONE SAFE
       const combineDateAndTime = (date, time) => {
         if (!date) return null;
-        if (!time) return `${date}T00:00:00Z`;
-        return `${date}T${time}:00Z`;
+        
+        // If no time specified, use start of day (00:00:00)
+        if (!time) {
+          return `${date}T00:00:00`;
+        }
+        
+        // Combine date and time without timezone conversion
+        return `${date}T${time}:00`;
       };
 
       // Process organizers - extract selected ones
@@ -717,7 +839,8 @@ function EditEvent() {
 
       // Process contacts - filter out empty ones
       const processContacts = (contacts) => {
-        return contacts.filter(contact => contact.name && contact.contact);
+        const processed = contacts.filter(contact => contact.name && contact.contact);
+        return processed;
       };
 
       // Prepare the data for submission
@@ -754,14 +877,36 @@ function EditEvent() {
         is_certificate_based: formData.is_certificate_based,
         certificate_templates: formData.certificate_templates,
         organizers: processOrganizers(formData.organizers),
-        event_contacts: processContacts(formData.contacts)
+        event_contacts: processContacts(formData.contacts),
+        contacts: processContacts(formData.contacts) // Try both field names
       };
+
+      console.log('📝 EditEvent: Submitting data to backend:', submitData);
+      console.log('🗓️ EditEvent: Date fields being sent:', {
+        start_datetime: submitData.start_datetime,
+        end_datetime: submitData.end_datetime,
+        registration_start_date: submitData.registration_start_date,
+        registration_end_date: submitData.registration_end_date,
+        certificate_end_date: submitData.certificate_end_date
+      });
+      console.log('📞 EditEvent: Contact data being sent:', submitData.event_contacts);
 
       const response = await adminAPI.updateEvent(eventId, submitData);
 
       if (response.data.success) {
-        // Redirect to event details or events list
-        navigate(`/admin/events`);
+        console.log('✅ EditEvent: Update successful!', response.data);
+        
+        // Update local state with the response data to reflect changes immediately
+        if (response.data.event) {
+          setEvent(response.data.event);
+          populateFormData(response.data.event);
+        }
+        
+        // Show success message
+        setError('');
+        
+        // Optionally stay on the page to see changes or redirect
+        // navigate(`/admin/events`);
       } else {
         throw new Error(response.data.message || 'Failed to update event');
       }
@@ -1018,7 +1163,7 @@ function EditEvent() {
               <p className="text-sm text-gray-600">Event organizer details, contact information, and scheduling settings</p>
             </div>
 
-            <div className="space-y-10">
+            <div className="space-y-10 overflow-visible">
               {/* Organizer & Contact Information Section */}
               <div>
                 <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Organizer & Contact Information</h3>
@@ -1422,15 +1567,15 @@ function EditEvent() {
                 </h3>
 
                 {/* Main Layout: Left Column (Forms) and Right Column (Preview) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-visible">
                   {/* Left Column: Forms */}
-                  <div className="space-y-6">
+                  <div className="space-y-6 overflow-visible">
                     {/* Registration Period - EDITABLE */}
-                    <div>
+                    <div className="relative z-30 overflow-visible">
                       <DateRangePicker
                         label="Registration Period"
-                        startDate={formData.registration_start_date ? new Date(formData.registration_start_date) : null}
-                        endDate={formData.registration_end_date ? new Date(formData.registration_end_date) : null}
+                        startDate={parseDateSafe(formData.registration_start_date)}
+                        endDate={parseDateSafe(formData.registration_end_date)}
                         startTime={formData.registration_start_time}
                         endTime={formData.registration_end_time}
                         onDateChange={handleRegistrationDateChange}
@@ -1444,11 +1589,11 @@ function EditEvent() {
                     </div>
 
                     {/* Event Schedule - EDITABLE */}
-                    <div>
+                    <div className="relative z-20 overflow-visible">
                       <DateRangePicker
                         label="Event Schedule"
-                        startDate={formData.start_date ? new Date(formData.start_date) : null}
-                        endDate={formData.end_date ? new Date(formData.end_date) : null}
+                        startDate={parseDateSafe(formData.start_date)}
+                        endDate={parseDateSafe(formData.end_date)}
                         startTime={formData.start_time}
                         endTime={formData.end_time}
                         onDateChange={handleEventDateChange}
@@ -1490,12 +1635,29 @@ function EditEvent() {
                                     venue: value,
                                     venue_id: '' // Clear venue_id when manually typing
                                   }));
-                                  handleVenueSearch(value);
-                                  setShowVenueDropdown(true);
+
+                                  // Show autocomplete suggestions - all venues if empty, filtered if has text
+                                  if (value.trim()) {
+                                    const filtered = venues.filter(v =>
+                                      v.is_active &&
+                                      (v.name.toLowerCase().includes(value.toLowerCase()) ||
+                                        v.location.toLowerCase().includes(value.toLowerCase()) ||
+                                        `${v.name} - ${v.location}`.toLowerCase().includes(value.toLowerCase()))
+                                    );
+                                    setFilteredVenues(filtered);
+                                    setShowVenueDropdown(true);
+                                  } else {
+                                    // Show all active venues when field is empty
+                                    const allActiveVenues = venues.filter(v => v.is_active);
+                                    setFilteredVenues(allActiveVenues);
+                                    setShowVenueDropdown(allActiveVenues.length > 0);
+                                  }
                                 }}
                                 onFocus={() => {
-                                  setShowVenueDropdown(true);
-                                  setFilteredVenues(venues); // Show all venues when focused
+                                  // Show all active venues when focused
+                                  const allActiveVenues = venues.filter(v => v.is_active);
+                                  setFilteredVenues(allActiveVenues);
+                                  setShowVenueDropdown(allActiveVenues.length > 0);
                                 }}
                                 placeholder="Click to view all venues or type to search (e.g., Main Auditorium, Room 101)"
                                 className="w-full rounded-md border border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 pr-10"
@@ -1510,9 +1672,9 @@ function EditEvent() {
                               </div>
 
                               {/* Autocomplete Dropdown - Show all venues when focused or filtered when searching */}
-                              {showVenueDropdown && (filteredVenues.length > 0 || (!formData.venue || formData.venue === '')) && (
+                              {showVenueDropdown && filteredVenues.length > 0 && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                  {(filteredVenues.length > 0 ? filteredVenues : venues).map((venue) => (
+                                  {filteredVenues.map((venue) => (
                                     <div
                                       key={venue.venue_id}
                                       onClick={() => selectVenue(venue)}
@@ -1520,8 +1682,11 @@ function EditEvent() {
                                     >
                                       <div className="flex justify-between items-center">
                                         <div className="flex-1">
-                                          <p className="text-sm font-medium text-gray-900">{venue.venue_name}</p>
-                                          <p className="text-xs text-gray-500">{venue.building}</p>
+                                          <p className="text-sm font-medium text-gray-900">{venue.name}</p>
+                                          <p className="text-xs text-gray-500">{venue.location}</p>
+                                          {venue.venue_type && (
+                                            <p className="text-xs text-blue-600 capitalize">{venue.venue_type.replace('_', ' ')}</p>
+                                          )}
                                         </div>
                                         <div className="text-right">
                                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -1616,10 +1781,10 @@ function EditEvent() {
                           <h5 className="font-medium text-green-800 mb-2">📝 Registration Period</h5>
                           {formData.registration_start_date && formData.registration_end_date ? (
                             <div className="text-sm text-green-700 space-y-1">
-                              <p><span className="font-medium">From:</span> {new Date(formData.registration_start_date).toLocaleDateString('en-US', {
+                              <p><span className="font-medium">From:</span> {parseDateSafe(formData.registration_start_date)?.toLocaleDateString('en-US', {
                                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
                               })} {formData.registration_start_time && `at ${formData.registration_start_time}`}</p>
-                              <p><span className="font-medium">To:</span> {new Date(formData.registration_end_date).toLocaleDateString('en-US', {
+                              <p><span className="font-medium">To:</span> {parseDateSafe(formData.registration_end_date)?.toLocaleDateString('en-US', {
                                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
                               })} {formData.registration_end_time && `at ${formData.registration_end_time}`}</p>
                             </div>
@@ -1633,10 +1798,10 @@ function EditEvent() {
                           <h5 className="font-medium text-purple-800 mb-2">🎉 Event Schedule</h5>
                           {formData.start_date && formData.end_date ? (
                             <div className="text-sm text-purple-700 space-y-1">
-                              <p><span className="font-medium">From:</span> {new Date(formData.start_date).toLocaleDateString('en-US', {
+                              <p><span className="font-medium">From:</span> {parseDateSafe(formData.start_date)?.toLocaleDateString('en-US', {
                                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
                               })} {formData.start_time && `at ${formData.start_time}`}</p>
-                              <p><span className="font-medium">To:</span> {new Date(formData.end_date).toLocaleDateString('en-US', {
+                              <p><span className="font-medium">To:</span> {parseDateSafe(formData.end_date)?.toLocaleDateString('en-US', {
                                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
                               })} {formData.end_time && `at ${formData.end_time}`}</p>
                             </div>
@@ -1769,10 +1934,10 @@ function EditEvent() {
                   </span>
                 </h3>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3 relative z-10 overflow-visible">
                   <DateRangePicker
                     label="Certificate Distribution End Date"
-                    startDate={formData.certificate_end_date ? new Date(formData.certificate_end_date) : null}
+                    startDate={parseDateSafe(formData.certificate_end_date)}
                     endDate={null}
                     startTime={formData.certificate_end_time}
                     endTime={null}
@@ -1780,10 +1945,8 @@ function EditEvent() {
                     onTimeChange={handleCertificateTimeChange}
                     includeTime={true}
                     required={false}
-                    placeholder="Optional: Select certificate expiry date"
+                    placeholder="Select certificate distribution end date"
                     className="w-full"
-                    singleDate={true}
-                    description="After this date, certificates will no longer be downloadable"
                     theme="purple"
                   />
 
@@ -1967,8 +2130,8 @@ function EditEvent() {
 
   return (
     <AdminLayout pageTitle="Edit Event">
-      <div className="min-h-screen flex max-w-5xl justify-center items-center mx-auto">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen flex max-w-5xl justify-center items-center mx-auto overflow-visible">
+        <div className="container mx-auto px-4 py-8 overflow-visible">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center space-x-4 mb-4">

@@ -29,6 +29,29 @@ const DateRangePicker = ({
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
   const dropdownRef = useRef(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+
+  // Update dropdown position when it opens or window resizes/scrolls
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const updatePosition = () => {
+        const rect = dropdownRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX
+        });
+      };
+
+      updatePosition();
+      window.addEventListener('scroll', updatePosition);
+      window.addEventListener('resize', updatePosition);
+
+      return () => {
+        window.removeEventListener('scroll', updatePosition);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [isOpen]);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -326,7 +349,11 @@ const DateRangePicker = ({
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-6 min-w-[320px]">
+        <div className="fixed bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] p-6 min-w-[320px]"
+             style={{
+               top: dropdownPosition.top,
+               left: dropdownPosition.left,
+             }}>
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
             <button
