@@ -20,6 +20,7 @@ function Events() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
+  const [isChangingPage, setIsChangingPage] = useState(false);
   const eventsPerPage = 9;
 
   // Cache configuration
@@ -79,13 +80,64 @@ function Events() {
 
   // Update events state when paginated events change
   useEffect(() => {
-    setEvents(paginatedEvents);
+    setIsChangingPage(true);
+    const timer = setTimeout(() => {
+      setEvents(paginatedEvents);
+      setIsChangingPage(false);
+    }, 100);
+    return () => clearTimeout(timer);
   }, [paginatedEvents]);
+
+  // Enhanced page change handler with smooth scroll
+  const handlePageChange = (newPage) => {
+    if (newPage === currentPage) return;
+    
+    setIsChangingPage(true);
+    setCurrentPage(newPage);
+    
+    // Smooth scroll to events grid
+    setTimeout(() => {
+      const eventsGrid = document.querySelector('.grid');
+      if (eventsGrid) {
+        eventsGrid.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 50);
+  };
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [currentFilter, audienceFilter]);
+
+  // Keyboard navigation for pagination
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      if (e.key === 'ArrowLeft' && currentPage > 1) {
+        e.preventDefault();
+        handlePageChange(currentPage - 1);
+      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
+        e.preventDefault();
+        handlePageChange(currentPage + 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        handlePageChange(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        handlePageChange(totalPages);
+      }
+    };
+
+    if (totalPages > 1) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [currentPage, totalPages]);
 
   // Debounced fetch function to prevent excessive API calls
   const debouncedFetch = useCallback(
@@ -137,7 +189,13 @@ function Events() {
   // Fetch events from API and cache the result
   const fetchEventsFromAPI = async () => {
     try {
-      const response = await adminAPI.getEvents({ status: 'all', target_audience: 'all' });
+      // Fetch ALL events by setting a high limit for client-side pagination
+      const response = await adminAPI.getEvents({ 
+        status: 'all', 
+        target_audience: 'all',
+        limit: 1000, // Request up to 1000 events
+        page: 1
+      });
       
       if (response.data.success) {
         const eventsData = response.data.events || [];
@@ -583,8 +641,16 @@ const formatDate = (dateString) => {
         {/* Enhanced Event Cards Grid */}
         {events.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => {
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isChangingPage ? 'opacity-50' : 'opacity-100'}`}>
+              {isChangingPage && (
+                <div className="col-span-full flex justify-center py-8">
+                  <div className="flex items-center space-x-2 text-blue-600">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    <span className="text-sm">Loading events...</span>
+                  </div>
+                </div>
+              )}
+              {!isChangingPage && events.map((event) => {
               const statusConfig = {
                 ongoing: { bgClass: 'bg-green-50', textClass: 'text-green-700', dotClass: 'bg-green-500 animate-pulse', label: 'LIVE NOW' },
                 upcoming: { bgClass: 'bg-blue-50', textClass: 'text-blue-700', dotClass: 'bg-blue-500', label: 'UPCOMING' },
@@ -722,16 +788,88 @@ const formatDate = (dateString) => {
             })}
             </div>
             
-            {/* Pagination Component */}
+            {/* Enhanced Pagination Component */}
             {totalPages > 1 && (
               <div className="mt-8 flex justify-center">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  itemsPerPage={eventsPerPage}
-                  totalItems={filteredEvents.length}
-                />
+                <div className="bg-white rounded-xl shadow-lg border border-blue-200/50 p-6 w-full max-w-4xl">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    pageSize={eventsPerPage}
+                    totalItems={filteredEvents.length}
+                    showInfo={true}
+                    showFirstLast={totalPages > 7}
+                    showPageSizeSelector={false}
+                    size="md"
+                    variant="default"
+                    siblingCount={2}
+                    boundaryCount={1}
+                    className="w-full"
+                    disabled={isChangingPage}
+                    aria-label="Events pagination navigation"
+                  />
+                  
+                  {/* Advanced pagination controls for large datasets */}
+                  {totalPages > 10 && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+                        <div className="flex items-center space-x-2">
+                          <label htmlFor="adminPageJump" className="text-sm text-gray-600">
+                            Go to page:
+                          </label>
+                          <input
+                            id="adminPageJump"
+                            type="number"
+                            min="1"
+                            max={totalPages}
+                            placeholder={currentPage}
+                            className="w-20 px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const page = parseInt(e.target.value);
+                                if (page >= 1 && page <= totalPages) {
+                                  handlePageChange(page);
+                                  e.target.value = '';
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center space-x-4">
+                          <div className="text-xs text-gray-500">
+                            Showing {eventsPerPage} events per page
+                          </div>
+                          <button
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                            className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-md disabled:text-gray-400 disabled:hover:bg-transparent transition-colors"
+                          >
+                            <i className="fas fa-fast-backward mr-1"></i>
+                            First
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-md disabled:text-gray-400 disabled:hover:bg-transparent transition-colors"
+                          >
+                            Last
+                            <i className="fas fa-fast-forward ml-1"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Keyboard shortcuts hint */}
+                  <div className="mt-3 pt-3 border-t border-blue-100">
+                    <div className="text-xs text-gray-400 text-center">
+                      <i className="fas fa-keyboard mr-1"></i>
+                      Use arrow keys to navigate pages • Enter to jump to specific page
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </>
