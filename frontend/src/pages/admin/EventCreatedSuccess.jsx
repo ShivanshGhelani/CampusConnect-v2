@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
 import { eventPDFService } from '../../services/EventPDFService';
+import dropdownOptionsService from '../../services/dropdownOptionsService';
 
 function EventCreatedSuccess() {
   const location = useLocation();
@@ -223,7 +224,7 @@ function EventCreatedSuccess() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={styles.title}>CampusConnect Event Management System</Text>
+            <Text style={styles.title}>CampusConnect</Text>
             <Text style={[styles.fieldLabel, { fontSize: 10 }]}>Event ID: {eventData.event_id}</Text>
           </View>
           {(user?.role === 'executive_admin' || user?.role === 'super_admin' || user?.role === 'organizer_admin') ? (
@@ -500,6 +501,77 @@ function EventCreatedSuccess() {
             </View>
           </View>
         </View>
+
+        {/* Student Target Details Section - Only for student audience */}
+        {eventData.target_audience === 'student' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Student Target Details</Text>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Target Audience:</Text>
+              <Text style={styles.fieldValue}>Students Only</Text>
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Department(s) Selected:</Text>
+              <Text style={styles.fieldValue}>{eventData.student_department?.length || 0} department(s)</Text>
+            </View>
+            {eventData.student_department && eventData.student_department.length > 0 && (
+              <View style={{ marginTop: 4, marginBottom: 8 }}>
+                <View style={styles.descriptionBox}>
+                  <Text style={{ fontSize: 8 }}>
+                    {eventData.student_department.map((dept, index) => {
+                      const deptMappings = {
+                        'cse': 'Computer Science & Engineering',
+                        'it': 'Information Technology', 
+                        'ece': 'Electronics & Communication Engineering',
+                        'eee': 'Electrical & Electronics Engineering',
+                        'mech': 'Mechanical Engineering',
+                        'civil': 'Civil Engineering',
+                        'chem': 'Chemical Engineering',
+                        'bio': 'Biotechnology',
+                        'mba': 'Master of Business Administration',
+                        'mca': 'Master of Computer Applications'
+                      };
+                      const deptName = deptMappings[dept.toLowerCase()] || dept;
+                      return `• ${deptName}`;
+                    }).join('\n')}
+                  </Text>
+                </View>
+              </View>
+            )}
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Semester(s) Selected:</Text>
+              <Text style={styles.fieldValue}>{eventData.student_semester?.length || 0} semester(s)</Text>
+            </View>
+            {eventData.student_semester && eventData.student_semester.length > 0 && (
+              <View style={{ marginTop: 4, marginBottom: 8 }}>
+                <View style={styles.descriptionBox}>
+                  <Text style={{ fontSize: 8 }}>
+                    {eventData.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map(sem => {
+                      const semLabel = sem === '1' ? '1st Semester' : 
+                                     sem === '2' ? '2nd Semester' : 
+                                     sem === '3' ? '3rd Semester' : 
+                                     `${sem}th Semester`;
+                      return `• ${semLabel}`;
+                    }).join('\n')}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {eventData.custom_text && (
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Additional Information:</Text>
+                  <Text style={styles.fieldValue}>Provided</Text>
+                </View>
+                <View style={{ marginTop: 4 }}>
+                  <View style={styles.descriptionBox}>
+                    <Text style={{ fontSize: 8 }}>{eventData.custom_text}</Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+        )}
       </Page>
 
       {/* Second Page for Additional Information */}
@@ -1148,8 +1220,11 @@ function EventCreatedSuccess() {
                     </div>
                     <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
                       <dt className="text-xs font-medium text-orange-700 uppercase tracking-wide">Target Audience</dt>
-                      <dd className="mt-1 text-sm font-medium text-orange-900 capitalize">
-                        {eventData.target_audience || 'N/A'}
+                      <dd className="mt-1 text-sm font-medium text-orange-900">
+                        {eventData.target_audience === 'student' ? 'Students Only' :
+                         eventData.target_audience === 'faculty' ? 'Faculty Only' :
+                         eventData.target_audience === 'all' ? 'All Audiences' :
+                         eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A'}
                       </dd>
                     </div>
                   </div>
@@ -1165,6 +1240,111 @@ function EventCreatedSuccess() {
                     </div>
                   )}
                 </div>
+
+                {/* Student Target Audience Details */}
+                {eventData.target_audience === 'student' && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Student Target Details
+                    </h4>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+                      {/* Department Selection */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-blue-800">Department*</span>
+                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium">
+                            {eventData.student_department?.length || 0} selected
+                          </span>
+                        </div>
+                        <div className="text-xs text-blue-600 mb-2 italic">
+                          Select one or more departments (e.g., CSE, IT, ECE)
+                        </div>
+                        <div className="space-y-2">
+                          {eventData.student_department && eventData.student_department.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {eventData.student_department.map((dept, index) => {
+                                try {
+                                  const deptOption = dropdownOptionsService.getOptions('student', 'departments').find(opt => opt.value === dept);
+                                  return (
+                                    <span
+                                      key={index}
+                                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-200 text-blue-900 border border-blue-300"
+                                    >
+                                      {deptOption ? deptOption.label : dept}
+                                    </span>
+                                  );
+                                } catch (error) {
+                                  return (
+                                    <span
+                                      key={index}
+                                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-200 text-blue-900 border border-blue-300"
+                                    >
+                                      {dept}
+                                    </span>
+                                  );
+                                }
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-blue-600 bg-blue-100 rounded-md px-3 py-2 border border-blue-200">
+                              No departments selected
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Semester Selection */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-blue-800">Semester*</span>
+                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium">
+                            {eventData.student_semester?.length || 0} selected
+                          </span>
+                        </div>
+                        <div className="text-xs text-blue-600 mb-2 italic">
+                          Select one or more semesters (e.g., 3, 4, 5)
+                        </div>
+                        <div className="space-y-2">
+                          {eventData.student_semester && eventData.student_semester.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {eventData.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map((sem, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-200 text-green-900 border border-green-300"
+                                >
+                                  {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} Semester
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-blue-600 bg-blue-100 rounded-md px-3 py-2 border border-blue-200">
+                              No semesters selected
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Additional Info */}
+                      <div>
+                        <span className="text-sm font-medium text-blue-800">Additional Info (Optional)</span>
+                        <div className="mt-2">
+                          {eventData.custom_text?.trim() ? (
+                            <div className="text-sm text-blue-900 bg-blue-100 rounded-md px-3 py-2 border border-blue-200">
+                              {eventData.custom_text}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-blue-600 bg-blue-100 rounded-md px-3 py-2 border border-blue-200 italic">
+                              Any specific requirements...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Attendance Strategy Section */}
                 {eventData.attendance_mandatory && eventData.attendance_strategy && (

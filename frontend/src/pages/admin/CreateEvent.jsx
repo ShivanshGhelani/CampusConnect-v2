@@ -482,7 +482,7 @@ function CreateEvent() {
       : title.slice(0, 4).toUpperCase();
 
     const typeAbbr = type === 'xenesis' ? 'XEN' : type.slice(0, 2).toUpperCase();
-    const audienceAbbr = audience === 'students' ? 'STU'
+    const audienceAbbr = audience === 'student' ? 'STU'
       : audience === 'faculty' ? 'FAC'
         : audience === 'both' ? 'ALL'
           : audience.slice(0, 3).toUpperCase();
@@ -846,7 +846,7 @@ function CreateEvent() {
       if (!form.target_audience) stepErrors.target_audience = 'Target Audience is required';
 
       // Student-specific validation
-      if (form.target_audience === 'students') {
+      if (form.target_audience === 'student') {
         if (!form.student_department || form.student_department.length === 0) stepErrors.student_department = 'At least one department is required for student events';
         if (!form.student_semester || form.student_semester.length === 0) stepErrors.student_semester = 'At least one semester is required for student events';
       }
@@ -1043,74 +1043,116 @@ function CreateEvent() {
             </div>
           </div>
 
-          {/* Student Information - Only show if target audience is students */}
-          {form.target_audience === 'students' && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <svg className="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Student Target Information
-                </h3>
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                >
-                  Edit
-                </button>
+          {/* Target Audience Information - Enhanced display */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Target Audience
+              </h3>
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-600">Audience Type:</span>
+                <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                  form.target_audience === 'student' ? 'bg-blue-100 text-blue-800' :
+                  form.target_audience === 'faculty' ? 'bg-purple-100 text-purple-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {form.target_audience === 'student' ? 'Students Only' :
+                   form.target_audience === 'faculty' ? 'Faculty Only' :
+                   'All Audiences'}
+                </span>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-gray-600">Target Departments:</span>
-                  <div className="mt-1">
-                    {form.student_department && form.student_department.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {form.student_department.map((dept, index) => {
-                          const deptOption = dropdownOptionsService.getOptions('student', 'departments').find(opt => opt.value === dept);
-                          return (
+
+              {/* Student-specific information */}
+              {form.target_audience === 'student' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-blue-800">Department*</span>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        {form.student_department?.length || 0} selected
+                      </span>
+                    </div>
+                    <div className="mt-1">
+                      {form.student_department && form.student_department.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {form.student_department.map((dept, index) => {
+                            const deptOption = dropdownOptionsService.getOptions('student', 'departments').find(opt => opt.value === dept);
+                            return (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-blue-200 text-blue-900 border border-blue-300"
+                              >
+                                {deptOption ? deptOption.label : dept}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-blue-600 italic">
+                          Select one or more departments (e.g., CSE, IT, ECE)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-blue-800">Semester*</span>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                        {form.student_semester?.length || 0} selected
+                      </span>
+                    </div>
+                    <div className="mt-1">
+                      {form.student_semester && form.student_semester.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {form.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map((sem, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800"
+                              className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-green-200 text-green-900 border border-green-300"
                             >
-                              {deptOption ? deptOption.label : dept}
+                              {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} Semester
                             </span>
-                          );
-                        })}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-blue-600 italic">
+                          Select one or more semesters (e.g., 3, 4, 5)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {(form.custom_text?.trim() || form.target_audience === 'student') && (
+                    <div>
+                      <span className="text-sm font-medium text-blue-800">Additional Info (Optional)</span>
+                      <div className="mt-1">
+                        {form.custom_text?.trim() ? (
+                          <p className="text-sm text-blue-900 bg-blue-100 rounded px-3 py-2 border border-blue-200">
+                            {form.custom_text}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-blue-600 italic">
+                            Any specific requirements...
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">No departments selected</span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-600">Target Semesters:</span>
-                  <div className="mt-1">
-                    {form.student_semester && form.student_semester.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {form.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map((sem, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800"
-                          >
-                            {sem === '1' ? '1st' : sem === '2' ? '2nd' : sem === '3' ? '3rd' : `${sem}th`} Semester
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500">No semesters selected</span>
-                    )}
-                  </div>
-                </div>
-                {form.custom_text && (
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">Additional Info:</span>
-                    <p className="text-sm text-gray-900 mt-1 bg-gray-50 rounded px-3 py-2">{form.custom_text}</p>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Schedule Information */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
@@ -1925,7 +1967,7 @@ function CreateEvent() {
           pendingApproval = false;
         } else {
           successMessage = user.role === 'executive_admin'
-            ? 'Event Request Sent Successfully! It is pending Super Admin approval.'
+            ? 'Event Request Sent Successfully!'
             : 'Event created successfully! It is pending Super Admin approval.';
           pendingApproval = true;
         }
@@ -2042,7 +2084,7 @@ function CreateEvent() {
                   <div className="text-xs text-gray-500 mt-1">
                     <span>
                       {form.event_name && form.event_type && form.target_audience
-                        ? `Preview: ${form.event_type === 'xenesis' ? 'XEN' : ''}${form.event_name.slice(0, 4).toUpperCase()}${form.event_type === 'xenesis' ? 'XEN' : form.event_type.slice(0, 2).toUpperCase()}${form.target_audience === 'students' ? 'STU' : form.target_audience === 'faculty' ? 'FAC' : 'AUD'}${new Date().getFullYear()}`
+                        ? `Preview: ${form.event_type === 'xenesis' ? 'XEN' : ''}${form.event_name.slice(0, 4).toUpperCase()}${form.event_type === 'xenesis' ? 'XEN' : form.event_type.slice(0, 2).toUpperCase()}${form.target_audience === 'student' ? 'STU' : form.target_audience === 'faculty' ? 'FAC' : 'AUD'}${new Date().getFullYear()}`
                         : 'Fill in Event Title, Type, and Target Audience to auto-generate ID'
                       }
                     </span>
@@ -2104,7 +2146,7 @@ function CreateEvent() {
                   </label>
                   <Dropdown
                     options={[
-                      { value: "students", label: "Students Only" },
+                      { value: "student", label: "Students Only" },
                       { value: "faculty", label: "Faculty Only" }
                     ]}
                     value={form.target_audience}
@@ -2118,7 +2160,7 @@ function CreateEvent() {
               </div>
 
               {/* Department, Semester, and Custom Text for Students */}
-              {form.target_audience === 'students' && (
+              {form.target_audience === 'student' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <MultiSelect

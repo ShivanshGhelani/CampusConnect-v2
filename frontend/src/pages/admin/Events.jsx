@@ -270,9 +270,9 @@ function Events() {
   const getAudienceCounts = () => {
     // Calculate counts from ALL events, not filtered events
     const counts = {
-      student: allEvents.filter(event => event.target_audience === 'student').length,
-      faculty: allEvents.filter(event => event.target_audience === 'faculty').length,
-      both: allEvents.filter(event => event.target_audience === 'both').length
+      student: allEvents.filter(event => event.target_audience === 'student').length + allEvents.filter(event => event.target_audience === 'students').length || 0,
+      faculty: allEvents.filter(event => event.target_audience === 'faculty').length || 0,
+      both: allEvents.filter(event => event.target_audience === 'both').length || 0
     };
     return counts;
   };

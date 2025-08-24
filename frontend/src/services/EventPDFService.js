@@ -13,7 +13,10 @@ export class EventPDFService {
     try {
       const response = await fetch('/templates/event_form.html');
       if (!response.ok) {
-        throw new Error(`Failed to load template: ${response.statusText}`);
+        throw new Error(`Failed to loa        TARGET_AUDIENCE: eventData.target_audience === 'student' ? 'Students Only' : 
+                        eventData.target_audience === 'faculty' ? 'Faculty Only' : 
+                        eventData.target_audience === 'all' ? 'All Audiences' :
+                        eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',mplate: ${response.statusText}`);
       }
       const template = await response.text();
       this.templateCache.set('event_form', template);
@@ -144,6 +147,96 @@ export class EventPDFService {
     }
 
     return teamHTML;
+  }
+
+  // Generate student target details section
+  generateStudentTargetSection(eventData) {
+    if (eventData.target_audience !== 'student') {
+      return '';
+    }
+
+    let studentHTML = '<div class="section"><div class="section-title">Student Target Details</div>';
+
+    // Department Selection
+    studentHTML += `
+      <div class="field">
+        <span class="field-label">Department*:</span>
+        <span class="field-value">${eventData.student_department?.length || 0} selected</span>
+      </div>
+    `;
+    
+    if (eventData.student_department && eventData.student_department.length > 0) {
+      const departmentLabels = eventData.student_department.map(dept => {
+        // Try to map common department codes to full names
+        const deptMappings = {
+          'cse': 'Computer Science & Engineering',
+          'it': 'Information Technology',
+          'ece': 'Electronics & Communication Engineering',
+          'eee': 'Electrical & Electronics Engineering',
+          'mech': 'Mechanical Engineering',
+          'civil': 'Civil Engineering',
+          'chem': 'Chemical Engineering',
+          'bio': 'Biotechnology',
+          'mba': 'Master of Business Administration',
+          'mca': 'Master of Computer Applications'
+        };
+        return deptMappings[dept.toLowerCase()] || dept;
+      });
+      
+      studentHTML += `
+        <div style="margin-left: 20px; margin-bottom: 10px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">Selected Departments:</div>
+          <div class="description-box" style="padding: 8px;">
+            ${departmentLabels.map(dept => `• ${dept}`).join('<br>')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Semester Selection
+    studentHTML += `
+      <div class="field">
+        <span class="field-label">Semester*:</span>
+        <span class="field-value">${eventData.student_semester?.length || 0} selected</span>
+      </div>
+    `;
+    
+    if (eventData.student_semester && eventData.student_semester.length > 0) {
+      const semesterLabels = eventData.student_semester.sort((a, b) => parseInt(a) - parseInt(b)).map(sem => {
+        return sem === '1' ? '1st Semester' : 
+               sem === '2' ? '2nd Semester' : 
+               sem === '3' ? '3rd Semester' : 
+               `${sem}th Semester`;
+      });
+      
+      studentHTML += `
+        <div style="margin-left: 20px; margin-bottom: 10px;">
+          <div style="font-weight: bold; margin-bottom: 5px;">Selected Semesters:</div>
+          <div class="description-box" style="padding: 8px;">
+            ${semesterLabels.map(sem => `• ${sem}`).join('<br>')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Additional Information
+    studentHTML += `
+      <div class="field">
+        <span class="field-label">Additional Info:</span>
+        <span class="field-value">${eventData.custom_text ? 'Provided' : 'None'}</span>
+      </div>
+    `;
+    
+    if (eventData.custom_text?.trim()) {
+      studentHTML += `
+        <div style="margin-left: 20px;">
+          <div class="description-box">${eventData.custom_text.replace(/\n/g, '<br>')}</div>
+        </div>
+      `;
+    }
+
+    studentHTML += '</div>';
+    return studentHTML;
   }
 
   // Generate requirements section
@@ -359,14 +452,20 @@ export class EventPDFService {
         // Event badges
         EVENT_BADGES: [
           `<span class="badge">${eventData.event_type?.charAt(0).toUpperCase() + eventData.event_type?.slice(1) || 'N/A'}</span>`,
-          `<span class="badge">${eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A'}</span>`,
+          `<span class="badge">${eventData.target_audience === 'student' ? 'Students Only' : 
+                                   eventData.target_audience === 'faculty' ? 'Faculty Only' : 
+                                   eventData.target_audience === 'all' ? 'All Audiences' :
+                                   eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A'}</span>`,
           `<span class="badge">${eventData.mode?.charAt(0).toUpperCase() + eventData.mode?.slice(1) || 'N/A'}</span>`,
           eventData.is_xenesis_event ? '<span class="badge">Xenesis Event</span>' : ''
         ].filter(Boolean).join(''),
 
         // Basic information
         EVENT_TYPE: eventData.event_type?.charAt(0).toUpperCase() + eventData.event_type?.slice(1) || 'N/A',
-        TARGET_AUDIENCE: eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',
+        TARGET_AUDIENCE: eventData.target_audience === 'student' ? 'Students Only' : 
+                        eventData.target_audience === 'faculty' ? 'Faculty Only' : 
+                        eventData.target_audience === 'all' ? 'All Audiences' :
+                        eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',
         SHORT_DESCRIPTION: eventData.short_description || 'N/A',
         DETAILED_DESCRIPTION: eventData.detailed_description ? `
           <div class="description-box">${eventData.detailed_description.replace(/\n/g, '<br>')}</div>
@@ -453,6 +552,7 @@ export class EventPDFService {
         CERTIFICATE_DISTRIBUTION_METHOD: eventData.is_certificate_based ? '☑ Digital ☐ Physical ☐ Both' : '☐ Not Applicable',
 
         // Additional sections
+        STUDENT_TARGET_SECTION: this.generateStudentTargetSection(eventData),
         REQUIREMENTS_SECTION: this.generateRequirementsSection(eventData),
         ATTENDANCE_STRATEGY_SECTION: this.generateAttendanceStrategySection(eventData),
         REQUEST_SUBMITTED_SECTION: user?.role === 'executive_admin' ? `
