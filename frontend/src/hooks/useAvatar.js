@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getAvatarUrl } from '../services/unifiedStorage';
 import api from '../api/base';
 import { useAuth } from '../context/AuthContext';
@@ -25,47 +25,68 @@ export const useAvatar = (user) => {
   const { userType } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState(globalAvatarUrl);
   
+  // Create stable user ID for comparison (prevent unnecessary re-renders)
+  const userId = useMemo(() => {
+    return user?.enrollment_no || user?.employee_id || user?.username;
+  }, [user?.enrollment_no, user?.employee_id, user?.username]);
+  
+  // Memoize user type to prevent re-renders
+  const stableUserType = useMemo(() => userType, [userType]);
+  
   useEffect(() => {
     // Add this component to listeners
     avatarListeners.push(setAvatarUrl);
 
-    // Check if user has changed (critical for fixing the logout bug)
-    const newUserId = user?.enrollment_no || user?.employee_id || user?.username;
-    
-    if (newUserId !== currentUserId) {
+    // Check if user has ACTUALLY changed (more stable detection)
+    if (userId && userId !== currentUserId) {
       console.log('🔄 User changed detected:', {
         previousUser: currentUserId,
-        newUser: newUserId
+        newUser: userId
       });
       
       // Reset avatar state for new user
       globalAvatarUrl = null;
       isAvatarFetched = false;
       isFetching = false;
-      currentUserId = newUserId;
+      currentUserId = userId;
       
       // Immediately update current component with null avatar
       setAvatarUrl(null);
     }
 
+    // Set current user if not set but user exists
+    if (userId && !currentUserId) {
+      currentUserId = userId;
+    }
+
     // Fetch avatar on mount if we haven't fetched it yet and user exists
-    if (!isAvatarFetched && user && userType && !isFetching) {
-      console.log('useAvatar: Initial fetch triggered for user:', newUserId);
+    if (!isAvatarFetched && user && stableUserType && !isFetching && userId) {
+      console.log('useAvatar: Initial fetch triggered for user:', userId);
       fetchAvatar();
     } else if (isAvatarFetched && globalAvatarUrl !== null) {
       console.log('useAvatar: Avatar already fetched, using cached value for same user');
       setAvatarUrl(globalAvatarUrl);
+    } else if (isAvatarFetched && globalAvatarUrl === null) {
+      // Even if avatar is null, set it to prevent flicker
+      setAvatarUrl(null);
     }
 
     // Cleanup listener on unmount
     return () => {
       avatarListeners = avatarListeners.filter(listener => listener !== setAvatarUrl);
     };
-  }, [user, userType]); // Re-run when user or userType changes
+  }, [userId, stableUserType, user]); // More stable dependencies
   const fetchAvatar = async () => {
     if (!user || !userType || isFetching) return;
     
     const userId = user.enrollment_no || user.employee_id || user.username;
+    
+    // Skip fetch if already fetched for the same user
+    if (isAvatarFetched && currentUserId === userId) {
+      console.log('useAvatar: Avatar already fetched for current user, skipping');
+      return;
+    }
+    
     console.log('useAvatar: Fetching avatar for user:', userId);
     isFetching = true;
     

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import EventCard from '../../components/client/EventCard';
 
@@ -92,10 +91,9 @@ function Homepage() {
   };
 
   return (
-    <ClientLayout noPadding={true}>
-      <div className="overflow-x-hidden">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden min-h-screen flex items-center">
+    <div className="overflow-x-hidden">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden min-h-screen flex items-center">
           {/* Background Image with Fallback */}
           <div 
             className="absolute inset-0 bg-gradient-to-br from-teal-600 via-sky-700 to-purple-800 transition-all duration-1000 ease-in-out"
@@ -397,25 +395,24 @@ function Homepage() {
             </div>
           </div>
         </footer>      
-      </div>
-      
-      {/* Full Width Floor Typography */}
-      <div className="w-screen bg-gradient-to-r from-teal-50 to-sky-50 m-0 p-0 overflow-hidden pb-20 md:pb-0">
-        <div className="w-full text-center m-0 p-0 py-4 sm:py-6 md:py-8 lg:py-12">
-          <h2 className="font-pacifico-brand text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] leading-tight sm:leading-tight md:leading-none m-0 p-0 w-full font-black px-2">
-            <span className="text-slate-800 font-black block sm:inline" style={{
-              textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
-            }}>CAMPUS</span>
-            <span className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent font-black block sm:inline" style={{
-              textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
-            }}>CONNECT</span>
-          </h2>
-          <p className="text-slate-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mt-2 sm:mt-3 md:mt-4 lg:mt-6 px-4 mb-4 sm:mb-6 md:mb-8">
-            Made with ❤️ by <span className="font-semibold text-slate-800">Shivansh Ghelani</span> & Team
-          </p>
+        
+        {/* Full Width Floor Typography */}
+        <div className="w-screen bg-gradient-to-r from-teal-50 to-sky-50 m-0 p-0 overflow-hidden pb-20 md:pb-0">
+          <div className="w-full text-center m-0 p-0 py-4 sm:py-6 md:py-8 lg:py-12">
+            <h2 className="font-pacifico-brand text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] leading-tight sm:leading-tight md:leading-none m-0 p-0 w-full font-black px-2">
+              <span className="text-slate-800 font-black block sm:inline" style={{
+                textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
+              }}>CAMPUS</span>
+              <span className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem] bg-gradient-to-r from-teal-500 to-purple-500 bg-clip-text text-transparent font-black block sm:inline" style={{
+                textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
+              }}>CONNECT</span>
+            </h2>
+            <p className="text-slate-600 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl mt-2 sm:mt-3 md:mt-4 lg:mt-6 px-4 mb-4 sm:mb-6 md:mb-8">
+              Made with ❤️ by <span className="font-semibold text-slate-800">Shivansh Ghelani</span> & Team
+            </p>
+          </div>
         </div>
       </div>
-    </ClientLayout>
   );
 }
 

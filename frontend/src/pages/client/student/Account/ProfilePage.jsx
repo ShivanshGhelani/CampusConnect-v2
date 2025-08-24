@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
-import ClientLayout from '../../../../components/client/Layout';
 import ProfileEventCard from '../../../../components/client/ProfileEventCard';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import api from '../../../../api/base';
@@ -257,19 +256,19 @@ function ProfilePage() {
   };
 
   return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 border-2 border-seafoam-600 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-slate-600 font-medium">Loading profile...</span>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 border-2 border-seafoam-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-slate-600 font-medium">Loading profile...</span>
           </div>
-        )}              
-        {/* Main Content */}
-        {!loading && (
+        </div>
+      )}
+
+      {/* Main Content */}
+      {!loading && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">            {/* Main 2-Column Layout */}
             <div className="flex gap-8">
               {/* Left Column */}
@@ -523,8 +522,8 @@ function ProfilePage() {
             </div>   
           </div>
         )}
-      </div>
-      {/* All Events Modal */}
+        
+        {/* All Events Modal */}
         {showEventsModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
@@ -1272,7 +1271,8 @@ function ProfilePage() {
             </div>
           </div>
         )}
-    </ClientLayout>
+      </div>
+
   );
 }
 

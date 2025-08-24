@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
-import ClientLayout from '../../components/client/Layout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function EventDetail() {
@@ -448,24 +447,21 @@ function EventDetail() {
 
   if (isLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
     );
   }
 
   if (error || !event) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="fas fa-exclamation-triangle text-2xl text-red-500"></i>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Event Not Found</h2>
-            <p className="text-gray-600 mb-4">{error || 'The event you are looking for does not exist.'}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Event Not Found</h2>
+          <p className="text-gray-600 mb-4">{error || 'The event you are looking for does not exist.'}</p>
             <Link 
               to="/client/events" 
               className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -474,7 +470,7 @@ function EventDetail() {
             </Link>
           </div>
         </div>
-      </ClientLayout>
+
     );
   }
 
@@ -483,10 +479,10 @@ function EventDetail() {
   const endDate = formatDate(event.end_date || event.end_datetime);
   const registrationStart = formatDate(event.registration_start_date);
   const registrationEnd = formatDate(event.registration_end_date);
+
   return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <style>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <style>
           {`
           @keyframes float {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -497,7 +493,8 @@ function EventDetail() {
             50% { transform: translateY(-15px) rotate(-3deg); }
           }
           @keyframes title-glow {
-            0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.5), 0 0 60px rgba(59, 130, 246, 0.3); }
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.5), 0 0 60px rgba(59, 130, 246, 0.3); }
           }
           @keyframes sparkle {
             0%, 100% { 
@@ -1743,9 +1740,10 @@ function EventDetail() {
                 </div>
               )}
             </div>
-          </div>        </div>
+          </div>
+        </div>
       </div>
-    </ClientLayout>
+
   );
 }
 

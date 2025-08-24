@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { clientAPI } from '../../api/client';
-import ClientLayout from '../../components/client/Layout';
 import EventCard from '../../components/client/EventCard';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Dropdown from '../../components/ui/Dropdown';
@@ -638,9 +637,8 @@ const fetchEventsOnce = async () => {
   }, [isLoading]);
   if (isLoading || shouldShowLoading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 flex items-center justify-center">
-          <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 flex items-center justify-center">
+        <div className="text-center">
             <LoadingSpinner size="lg" />            <div className="mt-4 text-gray-600">
               <p>{shouldShowLoading && isWaitingForUserData ? 'Loading your personalized events...' : 'Loading events...'}</p>
               {error && (
@@ -649,12 +647,10 @@ const fetchEventsOnce = async () => {
             </div>
           </div>
         </div>
-      </ClientLayout>
     );
   }
 
   const statusCounts = getEventStatusCounts();  return (
-    <ClientLayout>
       <div className="min-h-screen relative overflow-x-hidden">
         {/* Subtle Background Image */}
         <div 
@@ -980,7 +976,6 @@ const fetchEventsOnce = async () => {
         </div>
         </div>
       </div>
-    </ClientLayout>
   );
 }
 

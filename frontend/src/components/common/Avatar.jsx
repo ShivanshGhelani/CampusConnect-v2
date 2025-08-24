@@ -10,10 +10,8 @@ function Avatar({ src, size = 'md', name, className = '' }) {
     '3xl': 'w-24 h-24 text-2xl'
   };
 
-  // Generate stable timestamp for cache busting that doesn't change on every render
-  const cacheTimestamp = useMemo(() => Date.now(), [src]);
-  
-  const getInitials = () => {
+  // Memoize initials to prevent recalculation
+  const initials = useMemo(() => {
     if (name) {
       const names = name.split(' ');
       if (names.length > 1) {
@@ -22,16 +20,20 @@ function Avatar({ src, size = 'md', name, className = '' }) {
       return names[0][0].toUpperCase();
     }
     return 'GU';
-  };
+  }, [name]);
+
+  // Generate stable timestamp only when src changes
+  const imageUrl = useMemo(() => {
+    return src ? `${src}?t=${Date.now()}` : null;
+  }, [src]);
   
   return (
     <div className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden ${className}`}>
-      {src ? (
+      {imageUrl ? (
         <img
-          src={`${src}?t=${cacheTimestamp}`} // Use stable timestamp
+          src={imageUrl}
           alt="Avatar"
           className="w-full h-full object-cover"
-          key={`avatar-${src}-${cacheTimestamp}`} // Use stable key
           onError={(e) => {
             // If image fails to load, hide it and show initials instead
             e.target.style.display = 'none';
@@ -40,12 +42,12 @@ function Avatar({ src, size = 'md', name, className = '' }) {
         />
       ) : null}
       <span 
-        className={`text-white font-bold ${src ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
+        className={`text-white font-bold ${imageUrl ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
       >
-        {getInitials()}
+        {initials}
       </span>
     </div>
   );
 }
 
-export default Avatar;
+export default React.memo(Avatar);

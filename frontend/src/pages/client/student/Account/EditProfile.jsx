@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
-import ClientLayout from '../../../../components/client/Layout';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
@@ -295,23 +294,20 @@ function EditProfile() {
 
   if (loading) {
     return (
-      <ClientLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
-        </div>
-      </ClientLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
     );
   }
 
   return (
-    <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Edit Profile</h1>
-            <p className="text-lg text-gray-600">Update your personal information and account settings</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Edit Profile</h1>
+          <p className="text-lg text-gray-600">Update your personal information and account settings</p>
+        </div>
 
           {/* Navigation */}
           <div className="mb-6">
@@ -628,7 +624,7 @@ function EditProfile() {
           </div>
         </div>
       </div>
-    </ClientLayout>
+
   );
 }
 

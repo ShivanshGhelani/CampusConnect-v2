@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/base';  // Import the axios instance
@@ -8,13 +8,23 @@ import Avatar from '../common/Avatar';
 
 function ClientNavigation() {
   const { user, userType, logout, isAuthenticated, transitionToOrganizerAdmin } = useAuth();
+  
+  // Memoize avatar hook to prevent unnecessary calls
   const { avatarUrl } = useAvatar(user);
+  
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
+
+  // Memoize user display info to prevent re-renders
+  const userDisplayInfo = useMemo(() => ({
+    name: user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User',
+    id: user?.enrollment_no || user?.employee_id || 'No ID',
+    type: userType === 'faculty' ? 'Faculty' : 'Student'
+  }), [user?.full_name, user?.enrollment_no, user?.faculty_id, user?.employee_id, userType]);
 
   // Fixed hover handlers to prevent avatar flickering
   const handleMouseEnter = () => {
@@ -184,16 +194,16 @@ function ClientNavigation() {
                         <Avatar
                           src={avatarUrl}
                           size="md"
-                          name={user?.full_name || user?.enrollment_no}
+                          name={userDisplayInfo.name}
                           className="stable-avatar"
                         />
                       </div>
                       <div className="text-gray-700 text-sm text-left flex-grow whitespace-nowrap hidden xl:block">
                         <div className="font-medium">
-                          {user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User'}
+                          {userDisplayInfo.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {userType === 'faculty' ? 'Faculty' : 'Student'}
+                          {userDisplayInfo.type}
                         </div>
                       </div>
                     </Link>
@@ -210,8 +220,8 @@ function ClientNavigation() {
                     >
                       {/* Header */}
                       <div className="pl-4 pr-8 py-3 border-b border-gray-100">
-                        <div className="text-sm font-medium text-gray-900">{user?.full_name || 'Guest User'}</div>
-                        <div className="text-xs text-gray-500">{user?.enrollment_no || user?.employee_id || 'No ID'}</div>
+                        <div className="text-sm font-medium text-gray-900">{userDisplayInfo.name}</div>
+                        <div className="text-xs text-gray-500">{userDisplayInfo.id}</div>
                       </div>
                       
                       {/* Menu Items */}
@@ -330,7 +340,7 @@ function ClientNavigation() {
                   <Avatar
                     src={avatarUrl}
                     size="sm"
-                    name={user?.full_name || user?.enrollment_no}
+                    name={userDisplayInfo.name}
                     className="flex-shrink-0"
                   />
                 </Link>
@@ -498,4 +508,4 @@ function ClientNavigation() {
   );
 }
 
-export default ClientNavigation;
+export default React.memo(ClientNavigation);

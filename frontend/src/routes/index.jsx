@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+// Import layout component
+import PersistentClientLayout from '../components/layouts/PersistentClientLayout';
+
 // Import components
 import Homepage from '../pages/client/Homepage';
 import LoginPage from '../pages/auth/LoginPage';
@@ -90,9 +93,7 @@ function AppRoutes() {
     <Router>
       <ScrollToTop />
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Homepage />} />        
-        {/* Auth Routes */}
+        {/* Auth Routes - No Layout */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -107,201 +108,206 @@ function AppRoutes() {
         
         {/* Faculty legacy redirects */}
         <Route path="/faculty/dashboard" element={<Navigate to="/faculty/profile" replace />} />
-        
-        {/* Client/Student Routes - Public */}
-        <Route path="/client/events" element={<EventListPage />} />
-        <Route path="/client/events/:eventId" element={<EventDetailPage />} />
-        <Route path="/client/events/:eventId/feedback" element={<FeedbackForm />} />
-        <Route path="/client/events/:eventId/feedback-success" element={<FeedbackSuccess />} />
-        <Route path="/client/events/:eventId/feedback-confirmation" element={<FeedbackConfirm />} />
-        <Route path="/client/events/:eventId/certificate" element={<CertificateDownload />} />
-        <Route path="/client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
-        
-        {/* Attendance Routes - Protected (student only) */}
-        <Route
-          path="/client/events/:eventId/mark-attendance"
-          element={
-            <ProtectedRoute userType="student">
-              <MarkAttendance />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId/attendance-success"
-          element={
-            <ProtectedRoute userType="student">
-              <AttendanceSuccess />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId/attendance-confirmation"
-          element={
-            <ProtectedRoute userType="student">
-              <AttendanceConfirm />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/events/:eventId/not-registered"
-          element={
-            <ProtectedRoute userType="student">
-              <NotRegistered />
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Team Management Route - Public (accessible by team leaders) */}
-        <Route path="/client/events/:eventId/manage-team" element={<TeamManagement />} />
-        
-        {/* Development/Component Showcase Route - Public (remove in production) */}
-                {/* Public routes */}
-        <Route path="/" element={<Homepage />} />
-        <Route path="/events" element={<EventListPage />} />
-        <Route path="/dev/event-registration/:eventId" element={<RegistrationRouter />} />
-        <Route path="/dev/event-registration" element={<RegistrationRouter />} />
-        <Route path="/dev/team-management" element={<TeamManagement />} />
-        <Route path="/dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
-        
-        {/* Protected Client/Student Routes */}
-        <Route
-          path="/client/dashboard"
-          element={
-            <ProtectedRoute userType="student">
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/profile"
-          element={
-            <ProtectedRoute userType="student">
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/profile/edit"
-          element={
-            <ProtectedRoute userType="student">
-              <EditProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/profile"
-          element={
-            <ProtectedRoute userType="student">
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/profile/edit"
-          element={
-            <ProtectedRoute userType="student">
-              <EditProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/team-management"
-          element={
-            <ProtectedRoute userType="student">
-              <TeamManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/events/:eventId/register"
-          element={
-            <ProtectedRoute userType="student">
-              <RegistrationRouter />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/events/:eventId/register-team"
-          element={
-            <ProtectedRoute userType="student">
-              <RegistrationRouter forceTeamMode={true} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/events/:eventId/already-registered"
-          element={
-            <ProtectedRoute userType="student">
-              <AlreadyRegistered />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/events/:eventId/registration-success"
-          element={
-            <ProtectedRoute userType="student">
-              <RegistrationSuccess />
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Faculty Routes */}
-        <Route
-          path="/faculty/profile"
-          element={
-            <ProtectedRoute userType="faculty">
-              <FacultyProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/profile/edit"
-          element={
-            <ProtectedRoute userType="faculty">
-              <FacultyProfileEdit />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/events"
-          element={
-            <ProtectedRoute userType="faculty">
-              <EventListPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/events/:eventId"
-          element={
-            <ProtectedRoute userType="faculty">
-              <EventDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/events/:eventId/register"
-          element={
-            <ProtectedRoute userType="faculty">
-              <RegistrationRouter />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/events/:eventId/register-team"
-          element={
-            <ProtectedRoute userType="faculty">
-              <RegistrationRouter forceTeamMode={true} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/events/:eventId/registration-success"
-          element={
-            <ProtectedRoute userType="faculty">
-              <RegistrationSuccess />
-            </ProtectedRoute>
-          }
-        />
+
+        {/* Client Routes with Persistent Navigation */}
+        <Route path="/" element={<PersistentClientLayout />}>
+          <Route index element={<Homepage />} />
+          <Route path="client/events" element={<EventListPage />} />
+          <Route path="client/events/:eventId" element={<EventDetailPage />} />
+          <Route path="events" element={<EventListPage />} />
+          
+          {/* Continue with other client routes... */}
+          <Route path="client/events/:eventId/feedback" element={<FeedbackForm />} />
+          <Route path="client/events/:eventId/feedback-success" element={<FeedbackSuccess />} />
+          <Route path="client/events/:eventId/feedback-confirmation" element={<FeedbackConfirm />} />
+          <Route path="client/events/:eventId/certificate" element={<CertificateDownload />} />
+          <Route path="client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
+          
+          {/* Protected Routes */}
+          <Route
+            path="client/events/:eventId/mark-attendance"
+            element={
+              <ProtectedRoute userType="student">
+                <MarkAttendance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="client/events/:eventId/attendance-success"
+            element={
+              <ProtectedRoute userType="student">
+                <AttendanceSuccess />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="client/events/:eventId/attendance-confirmation"
+            element={
+              <ProtectedRoute userType="student">
+                <AttendanceConfirm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="client/events/:eventId/not-registered"
+            element={
+              <ProtectedRoute userType="student">
+                <NotRegistered />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route path="client/events/:eventId/manage-team" element={<TeamManagement />} />
+          
+          <Route
+            path="client/profile"
+            element={
+              <ProtectedRoute userType="student">
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="client/profile/edit"
+            element={
+              <ProtectedRoute userType="student">
+                <EditProfile />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Faculty Routes */}
+          <Route
+            path="faculty/profile"
+            element={
+              <ProtectedRoute userType="faculty">
+                <FacultyProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="faculty/profile/edit"
+            element={
+              <ProtectedRoute userType="faculty">
+                <FacultyProfileEdit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="faculty/events"
+            element={
+              <ProtectedRoute userType="faculty">
+                <EventListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="faculty/events/:eventId"
+            element={
+              <ProtectedRoute userType="faculty">
+                <EventDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Dev/Legacy Routes */}
+          <Route path="dev/event-registration/:eventId" element={<RegistrationRouter />} />
+          <Route path="dev/event-registration" element={<RegistrationRouter />} />
+          <Route path="dev/team-management" element={<TeamManagement />} />
+          <Route path="dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
+          
+          {/* Student Routes */}
+          <Route
+            path="client/dashboard"
+            element={
+              <ProtectedRoute userType="student">
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/profile"
+            element={
+              <ProtectedRoute userType="student">
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/profile/edit"
+            element={
+              <ProtectedRoute userType="student">
+                <EditProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/team-management"
+            element={
+              <ProtectedRoute userType="student">
+                <TeamManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/events/:eventId/register"
+            element={
+              <ProtectedRoute userType="student">
+                <RegistrationRouter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/events/:eventId/register-team"
+            element={
+              <ProtectedRoute userType="student">
+                <RegistrationRouter forceTeamMode={true} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/events/:eventId/already-registered"
+            element={
+              <ProtectedRoute userType="student">
+                <AlreadyRegistered />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/events/:eventId/registration-success"
+            element={
+              <ProtectedRoute userType="student">
+                <RegistrationSuccess />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Faculty Registration Routes */}
+          <Route
+            path="faculty/events/:eventId/register"
+            element={
+              <ProtectedRoute userType="faculty">
+                <RegistrationRouter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="faculty/events/:eventId/register-team"
+            element={
+              <ProtectedRoute userType="faculty">
+                <RegistrationRouter forceTeamMode={true} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="faculty/events/:eventId/registration-success"
+            element={
+              <ProtectedRoute userType="faculty">
+                <RegistrationSuccess />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<Navigate to="/auth/login?mode=admin" replace />} />
