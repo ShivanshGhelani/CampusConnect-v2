@@ -4,6 +4,9 @@ import { authAPI } from '../api/auth';
 // Import avatar reset function
 import { resetAvatarGlobalState } from '../hooks/useAvatar';
 
+// Import session avatar cache
+import { sessionAvatarCache } from '../services/sessionAvatarCache';
+
 // Import data cache manager to clear caches on logout
 import { DataCacheManager } from '../utils/dataFilteringUtils';
 
@@ -122,6 +125,11 @@ export function AuthProvider({ children }) {
               userType: storedUserType,
             },
           });
+          
+          // Initialize session avatar cache on successful auth check
+          console.log('🚀 Initializing session avatar cache on auth check');
+          sessionAvatarCache.initializeSession(response.data.user);
+          
         } else {
           // Clear invalid session data
           localStorage.removeItem('user_data');
@@ -131,7 +139,8 @@ export function AuthProvider({ children }) {
           // Clear avatar cache when session is invalid
           try {
             resetAvatarGlobalState();
-            console.log('✅ Avatar cache cleared due to invalid session');
+            sessionAvatarCache.clearSession();
+            console.log('✅ Avatar caches cleared due to invalid session');
           } catch (error) {
             console.error('Failed to clear avatar cache:', error);
           }
@@ -191,6 +200,10 @@ export function AuthProvider({ children }) {
           },
         });
         
+        // Initialize session avatar cache on successful login
+        console.log('🚀 Initializing session avatar cache on login');
+        sessionAvatarCache.initializeSession(response.data.user);
+        
         return { success: true, redirectUrl: response.data.redirect_url };
       } else {
         dispatch({
@@ -248,7 +261,8 @@ export function AuthProvider({ children }) {
     // CRITICAL FIX: Clear avatar cache to prevent showing previous user's avatar
     try {
       resetAvatarGlobalState();
-      console.log('✅ Avatar cache cleared on logout');
+      sessionAvatarCache.clearSession();
+      console.log('✅ All avatar caches cleared on logout');
     } catch (error) {
       console.error('Failed to clear avatar cache:', error);
     }
