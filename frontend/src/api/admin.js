@@ -4,6 +4,8 @@ import api from './base';
 export const adminAPI = {
   // Analytics - CORRECTED to use actual backend endpoints
   getDashboardStats: () => api.get('/api/v1/admin/analytics/overview'),
+  getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
+  getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
   getEventsAnalytics: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'events' } }),
   getStudentsAnalytics: () => api.get('/api/v1/admin/analytics/overview', { params: { focus: 'students' } }),
   getRegistrationsAnalytics: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'registrations' } }),

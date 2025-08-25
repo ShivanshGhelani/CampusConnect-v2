@@ -2,23 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
+
 
 function Dashboard() {
   const [stats, setStats] = useState({
@@ -35,6 +19,8 @@ function Dashboard() {
   });
   const [activeJobs, setActiveJobs] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [eventsByStatus, setEventsByStatus] = useState({});
+  const [totalEvents, setTotalEvents] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
@@ -48,9 +34,6 @@ function Dashboard() {
   const [isDataFetching, setIsDataFetching] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(0);
   const MIN_FETCH_INTERVAL = 5000; // Increased from 3 seconds to 5 seconds
-
-  const [monthlyEvents, setMonthlyEvents] = useState([]);
-  const [eventTypeDistribution, setEventTypeDistribution] = useState([]);
 
   useEffect(() => {
     initializeTime();
@@ -90,10 +73,14 @@ function Dashboard() {
       setIsDataFetching(true);
       setLastFetchTime(now);
 
-      const response = await adminAPI.getDashboardStats();
+      // Fetch dashboard stats and recent activity in parallel
+      const [dashboardResponse, activityResponse] = await Promise.all([
+        adminAPI.getDashboardStats(),
+        adminAPI.getRecentActivity(20)
+      ]);
 
-      if (response.data.success) {
-        const data = response.data.data;
+      if (dashboardResponse.data.success) {
+        const data = dashboardResponse.data.data;
         
         if (data.server_time) {
           const serverTime = new Date(data.server_time);
@@ -115,6 +102,17 @@ function Dashboard() {
           scheduler_running: data.scheduler_running !== false
         });
 
+        // Calculate event status distribution for analytics table
+        const statusDistribution = {
+          'upcoming': data.upcoming_events || 0,
+          'ongoing': data.ongoing_events || 0,
+          'completed': data.completed_events || 0,
+          'draft': data.draft_events || 0,
+          'active': data.active_events_count || 0,
+        };
+        setEventsByStatus(statusDistribution);
+        setTotalEvents(data.total_events_count || 0);
+
         const triggersData = data.upcoming_triggers || [];
         const formattedJobs = triggersData.slice(0, 10).map((trigger, index) => ({
           id: trigger.id || index,
@@ -125,131 +123,32 @@ function Dashboard() {
           time_until_formatted: trigger.time_until_formatted || 'Unknown'
         }));
         setActiveJobs(formattedJobs);
-
-        const recentActivityData = data.recent_activity || [];
-        console.log('Recent Activity Data:', recentActivityData); // Debug log
-        const formattedActivity = recentActivityData.map((activity, index) => ({
-          id: activity.id || `activity_${index}`,
-          event_id: activity.event_id || `Event ${index + 1}`,
-          old_status: activity.old_status || 'Unknown',
-          new_status: activity.new_status || 'Unknown',
-          trigger_type: activity.trigger_type || 'unknown',
-          time_ago: activity.time_ago || 'Unknown',
-          timestamp: activity.timestamp || new Date().toISOString()
-        }));
-        setRecentActivity(formattedActivity);
-
-        generateChartData(data);
-        setError('');
-      } else {
-        throw new Error(response.data.error || 'Failed to fetch dashboard data');
       }
+
+      // Handle enhanced recent activity with dynamic messaging
+      if (activityResponse.data.success) {
+        const activityData = activityResponse.data.data || [];
+        console.log('Enhanced Recent Activity Data:', activityData); // Debug log
+        
+        // The data already comes formatted from the enhanced service
+        setRecentActivity(activityData);
+      } else {
+        console.warn('Failed to fetch recent activity:', activityResponse.data.message);
+        setRecentActivity([]);
+      }
+
+      setError('');
     } catch (err) {
       console.error('Dashboard data fetch error:', err);
       setError(err.message || 'Failed to load dashboard data');
       
       setActiveJobs([]);
       setRecentActivity([]);
-      setMonthlyEvents([]);
-      setEventTypeDistribution([]);
     } finally {
       setIsLoading(false);
       setIsDataFetching(false);
       setLastRefreshed(new Date());
     }
-  };
-
-  const generateChartData = (data) => {
-    // Generate realistic monthly data based on actual event counts
-    if (data.monthly_events && data.monthly_events.length > 0) {
-      const processedMonthlyData = data.monthly_events.map(month => ({
-        month: month.month,
-        created: month.created || month.events || 0,
-        completed: month.completed || 0,
-        cancelled: month.cancelled || 0
-      }));
-      setMonthlyEvents(processedMonthlyData);
-    } else {
-      // Generate sample data based on existing event stats
-      const currentDate = new Date();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthlyData = [];
-      
-      const totalEvents = data.total_events_count || 0;
-      const completedEvents = data.completed_events || 0;
-      const activeEvents = data.active_events_count || 0;
-      
-      for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentDate.getMonth() - i + 12) % 12;
-        const monthFactor = i === 0 ? 1 : Math.max(0.3, Math.random() * 0.8); // Current month gets higher activity
-        
-        const created = Math.floor((totalEvents / 6) * monthFactor) + Math.floor(Math.random() * 3);
-        const completed = Math.floor(created * 0.7) + Math.floor(Math.random() * 2);
-        const cancelled = Math.floor(created * 0.1) + (Math.random() > 0.8 ? 1 : 0);
-        
-        monthlyData.push({
-          month: months[monthIndex],
-          created: Math.max(0, created),
-          completed: Math.max(0, completed),
-          cancelled: Math.max(0, cancelled)
-        });
-      }
-      setMonthlyEvents(monthlyData);
-    }
-
-    if (data.event_categories && data.event_categories.length > 0) {
-      const eventTypes = data.event_categories.map((category, index) => ({
-        name: category.name || `Category ${index + 1}`,
-        value: category.count || 0,
-        color: getColorForEventType(category.name || `category_${index}`)
-      }));
-      setEventTypeDistribution(eventTypes);
-    } else if (data.event_type_distribution && data.event_type_distribution.length > 0) {
-      const eventTypes = data.event_type_distribution.map((type, index) => ({
-        name: type.name || `Type ${index + 1}`,
-        value: type.count || 0,
-        color: getColorForEventType(type.name || `type_${index}`)
-      }));
-      setEventTypeDistribution(eventTypes);
-    } else {
-      const eventCategories = [
-        { name: 'Technical', value: Math.floor((data.total_events_count || 0) * 0.3), color: '#3B82F6' },
-        { name: 'Cultural', value: Math.floor((data.total_events_count || 0) * 0.25), color: '#10B981' },
-        { name: 'Sports', value: Math.floor((data.total_events_count || 0) * 0.2), color: '#F59E0B' },
-        { name: 'Academic', value: Math.floor((data.total_events_count || 0) * 0.15), color: '#EF4444' },
-        { name: 'Workshops', value: Math.floor((data.total_events_count || 0) * 0.1), color: '#8B5CF6' }
-      ].filter(type => type.value > 0);
-      setEventTypeDistribution(eventCategories);
-    }
-  };
-
-  const getColorForEventType = (typeName) => {
-    const colorMap = {
-      'technical': '#3B82F6',
-      'cultural': '#10B981',
-      'sports': '#F59E0B',
-      'academic': '#EF4444',
-      'workshop': '#8B5CF6',
-      'workshops': '#8B5CF6',
-      'active events': '#3B82F6',
-      'completed events': '#10B981',
-      'upcoming events': '#F59E0B',
-      'ongoing events': '#EF4444',
-      'draft events': '#8B5CF6'
-    };
-    return colorMap[typeName.toLowerCase()] || '#6B7280';
-  };
-
-  const fetchLiveData = async () => {
-    try {
-      const response = await adminAPI.getDashboardStats();
-      if (response.data.success) {
-        return response.data.data;
-      }
-    } catch (error) {
-      console.error('Live data fetch failed:', error);
-    }
-    return null;
   };
 
   const toggleAutoRefresh = (enabled) => {
@@ -289,132 +188,6 @@ function Dashboard() {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-800">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {`${entry.name}: ${entry.value}`}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const PieTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0];
-      const total = eventTypeDistribution.reduce((sum, item) => sum + item.value, 0);
-      const percentage = total > 0 ? ((data.value / total) * 100).toFixed(2) : '0.00';
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-gray-800">{data.name}</p>
-          <p className="text-sm text-gray-600">Count: {data.value}</p>
-          <p className="text-sm text-gray-600">
-            Percentage: {percentage}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const renderCustomizedLabel = ({
-    cx, cy, midAngle, innerRadius, outerRadius, percent, name, value
-  }) => {
-    const RADIAN = Math.PI / 180;
-    
-    // Calculate label position outside the pie with more space
-    const labelRadius = outerRadius + 45;
-    const labelX = cx + labelRadius * Math.cos(-midAngle * RADIAN);
-    const labelY = cy + labelRadius * Math.sin(-midAngle * RADIAN);
-    
-    // Calculate line end point closer to pie
-    const lineRadius = outerRadius + 15;
-    const lineX = cx + lineRadius * Math.cos(-midAngle * RADIAN);
-    const lineY = cy + lineRadius * Math.sin(-midAngle * RADIAN);
-
-    // Show labels for all slices larger than 2%
-    if (percent > 0.02) {
-      const percentage = (percent * 100).toFixed(0);
-      const isRightSide = labelX > cx;
-      
-      return (
-        <g>
-          {/* Connecting line from pie to label */}
-          <line
-            x1={cx + outerRadius * Math.cos(-midAngle * RADIAN)}
-            y1={cy + outerRadius * Math.sin(-midAngle * RADIAN)}
-            x2={lineX}
-            y2={lineY}
-            stroke="#8884d8"
-            strokeWidth="2"
-          />
-          <line
-            x1={lineX}
-            y1={lineY}
-            x2={labelX - (isRightSide ? 0 : 0)}
-            y2={labelY}
-            stroke="#8884d8"
-            strokeWidth="2"
-          />
-          
-          {/* Stylish label background */}
-          <rect
-            x={labelX - (isRightSide ? 0 : name.length * 4 + 25)}
-            y={labelY - 18}
-            width={name.length * 4 + 30}
-            height={36}
-            fill="rgba(255,255,255,0.98)"
-            stroke="#e5e7eb"
-            strokeWidth="1.5"
-            rx="18"
-            filter="drop-shadow(0 3px 6px rgba(0,0,0,0.15))"
-          />
-          
-          {/* Category name */}
-          <text
-            x={labelX + (isRightSide ? 15 : -(name.length * 2 + 10))}
-            y={labelY - 4}
-            fill="#374151"
-            textAnchor={isRightSide ? 'start' : 'end'}
-            dominantBaseline="middle"
-            fontSize="11"
-            fontWeight="600"
-          >
-            {name}
-          </text>
-          
-          {/* Percentage with colored background */}
-          <rect
-            x={labelX + (isRightSide ? 12 : -(name.length * 2 + 13))}
-            y={labelY + 4}
-            width={18}
-            height={12}
-            fill={eventTypeDistribution.find(item => item.name === name)?.color || '#8884d8'}
-            rx="6"
-          />
-          <text
-            x={labelX + (isRightSide ? 21 : -(name.length * 2 + 4))}
-            y={labelY + 10}
-            fill="white"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="9"
-            fontWeight="700"
-          >
-            {percentage}%
-          </text>
-        </g>
-      );
-    }
-    return null;
   };
 
   if (isLoading && !stats.total_events_count) {
@@ -597,294 +370,233 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Top Row - Charts with 2.5:1.5 ratio */}
-          <div className="grid grid-cols-1 lg:grid-cols-8 gap-6 mb-8">
-            
-            {/* Monthly Events Chart - 2.5/4 width (5/8) */}
-            <div className="lg:col-span-5">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
+          {/* Optimized Tables Section */}
+          <div className="grid grid-cols-1 xl:grid-cols-1 gap-8">
+
+            {/* Upcoming Triggers - Enhanced Table */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                      <i className="fas fa-clock text-orange-600 mr-3"></i>
+                      Upcoming Triggers
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">Next scheduled events and system triggers</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-lg px-3 py-2">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-700">{activeJobs.length}</div>
+                      <div className="text-xs text-gray-600">Queued</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-hidden">
+                {activeJobs.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                        <tr>
+                          <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                            <i className="fas fa-tag mr-2 text-blue-600"></i>Event Details
+                          </th>
+                          <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                            <i className="fas fa-cogs mr-2 text-green-600"></i>Trigger Type
+                          </th>
+                          <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                            <i className="fas fa-calendar mr-2 text-purple-600"></i>Schedule
+                          </th>
+                          <th className="text-left p-4 font-semibold text-gray-700">
+                            <i className="fas fa-traffic-light mr-2 text-orange-600"></i>Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {activeJobs.slice(0, 8).map((trigger, index) => (
+                          <tr key={trigger.id} className="hover:bg-blue-50 transition-colors duration-200">
+                            <td className="p-4 border-r border-gray-100">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-700 font-bold text-xs">#{index + 1}</span>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-800 truncate max-w-[140px]" title={trigger.event_id}>
+                                    {trigger.event_id}
+                                  </div>
+                                  <div className="text-xs text-gray-500">Event ID</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 border-r border-gray-100">
+                              <div className="flex items-center space-x-2">
+                                {trigger.trigger_type === 'registration_close' && <i className="fas fa-door-closed text-red-600"></i>}
+                                {trigger.trigger_type === 'registration_open' && <i className="fas fa-door-open text-green-600"></i>}
+                                {trigger.trigger_type === 'event_start' && <i className="fas fa-play text-blue-600"></i>}
+                                {trigger.trigger_type === 'event_end' && <i className="fas fa-stop text-gray-600"></i>}
+                                {!['registration_close', 'registration_open', 'event_start', 'event_end'].includes(trigger.trigger_type) && 
+                                  <i className="fas fa-sync text-purple-600"></i>}
+                                <div>
+                                  <div className="text-gray-700 font-medium">
+                                    {trigger.trigger_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </div>
+                                  <div className="text-xs text-gray-500">Action Type</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 border-r border-gray-100">
+                              <div className="text-center">
+                                <div className="text-gray-700 font-medium text-xs">
+                                  {trigger.trigger_time ? new Date(trigger.trigger_time).toLocaleDateString('en-US', {
+                                    month: 'short', day: 'numeric'
+                                  }) : 'Not Set'}
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                  {trigger.trigger_time ? new Date(trigger.trigger_time).toLocaleTimeString('en-US', {
+                                    hour: '2-digit', minute: '2-digit'
+                                  }) : ''}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex justify-center">
+                                {trigger.is_past_due ? (
+                                  <span className="inline-flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium border border-red-200">
+                                    <i className="fas fa-exclamation-triangle mr-1"></i>
+                                    Past Due
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                                    <i className="fas fa-check-circle mr-1"></i>
+                                    Scheduled
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium">No Upcoming Triggers</p>
+                    <p className="text-gray-400 text-sm mt-1">All scheduled events are up to date</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Enhanced Tables Section - Full Width Layout */}
+            <div className="space-y-6">
+              {/* Recent Activity - Full Width Dynamic Table */}
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100">
                 <div className="p-6 border-b border-gray-100">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                      <i className="fas fa-chart-area text-blue-600 mr-3"></i>
-                      Monthly Events Overview
-                    </h3>
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-                        <span className="text-gray-600">Created</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                        <span className="text-gray-600">Completed</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
-                        <span className="text-gray-600">Cancelled</span>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                        <i className="fas fa-history text-green-600 mr-3"></i>
+                        Recent Activity
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">Dynamic system events with intelligent status tracking</p>
+                    </div>
+                    <div className="bg-gradient-to-r from-green-100 to-blue-100 rounded-lg px-3 py-2">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-700">{recentActivity.length}</div>
+                        <div className="text-xs text-gray-600">Activities</div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="p-6">
-                  <ResponsiveContainer width="100%" height={350}>
-                    <AreaChart data={monthlyEvents}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="month" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="created" 
-                        stackId="1" 
-                        stroke="#3b82f6" 
-                        fill="#3b82f6" 
-                        fillOpacity={0.6}
-                        name="Created"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="completed" 
-                        stackId="2" 
-                        stroke="#10b981" 
-                        fill="#10b981" 
-                        fillOpacity={0.6}
-                        name="Completed"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="cancelled" 
-                        stackId="3" 
-                        stroke="#ef4444" 
-                        fill="#ef4444" 
-                        fillOpacity={0.6}
-                        name="Cancelled"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Types Distribution - 1.5/4 width (3/8) */}
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 h-full">
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                    <i className="fas fa-chart-pie text-purple-600 mr-2"></i>
-                    Event Types
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-1">Distribution by type</p>
-                </div>
-                <div className="p-4">
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={eventTypeDistribution}
-                        cx="50%"
-                        cy="45%"
-                        labelLine={{
-                          stroke: '#8884d8',
-                          strokeWidth: 2,
-                          strokeDasharray: '3 3'
-                        }}
-                        label={renderCustomizedLabel}
-                        outerRadius={60}
-                        fill="#8884d8"
-                        dataKey="value"
-                        stroke="#fff"
-                        strokeWidth={2}
-                      >
-                        {eventTypeDistribution.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.color}
-                            style={{
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                            }}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<PieTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  
-                  {/* Compact Legend with Icons */}
-                  <div className="mt-2 grid grid-cols-1 gap-1 text-xs max-h-24 overflow-y-auto">
-                    {eventTypeDistribution.map((entry, index) => (
-                      <div key={entry.name} className="flex items-center justify-between py-1 px-2 rounded bg-gray-50/60 hover:bg-gray-100/60 transition-colors">
-                        <div className="flex items-center">
-                          <div 
-                            className="w-3 h-3 rounded-full mr-2 border border-white shadow-sm" 
-                            style={{ backgroundColor: entry.color }}
-                          ></div>
-                          <div className="flex items-center">
-                            {entry.name.toLowerCase() === 'technical' && <i className="fas fa-laptop-code text-blue-600 mr-1 text-xs"></i>}
-                            {entry.name.toLowerCase() === 'cultural' && <i className="fas fa-masks-theater text-green-600 mr-1 text-xs"></i>}
-                            {entry.name.toLowerCase() === 'sports' && <i className="fas fa-running text-orange-600 mr-1 text-xs"></i>}
-                            {entry.name.toLowerCase() === 'academic' && <i className="fas fa-graduation-cap text-red-600 mr-1 text-xs"></i>}
-                            {entry.name.toLowerCase().includes('workshop') && <i className="fas fa-tools text-purple-600 mr-1 text-xs"></i>}
-                            <span className="font-medium text-gray-700 text-xs">{entry.name}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className="font-bold text-gray-800 text-xs">{entry.value}</span>
-                          <span 
-                            className="px-1.5 py-0.5 rounded-full text-xs font-semibold text-white"
-                            style={{ backgroundColor: entry.color }}
-                          >
-                            {((entry.value / eventTypeDistribution.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(0)}%
-                          </span>
-                        </div>
+                <div className="overflow-hidden">
+                  {recentActivity.length > 0 ? (
+                    <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b sticky top-0">
+                          <tr>
+                            <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                              <i className="fas fa-bolt mr-2 text-purple-600"></i>Activity
+                            </th>
+                            <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                              <i className="fas fa-comment-alt mr-2 text-blue-600"></i>Message
+                            </th>
+                            <th className="text-left p-4 font-semibold text-gray-700 border-r border-gray-200">
+                              <i className="fas fa-info-circle mr-2 text-orange-600"></i>Details
+                            </th>
+                            <th className="text-left p-4 font-semibold text-gray-700">
+                              <i className="fas fa-clock mr-2 text-green-600"></i>Time
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {recentActivity.slice(0, 8).map((log, index) => (
+                            <tr key={log.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-green-50 transition-all duration-200">
+                              <td className="p-4 border-r border-gray-100">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`w-10 h-10 ${log.activity?.bg_color || 'bg-gray-100'} rounded-full flex items-center justify-center shadow-sm`}>
+                                    <i className={`${log.activity?.icon || 'fas fa-clock'} ${log.activity?.color || 'text-gray-600'} text-sm`}></i>
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-800">
+                                      {log.activity?.action || 'System Activity'}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {log.trigger_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 border-r border-gray-100">
+                                <div className="font-medium text-gray-800 mb-1">
+                                  {log.activity?.message || `Event ${log.event_id} status changed`}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Event ID: <span className="font-mono bg-gray-100 px-1 rounded">{log.event_id}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 border-r border-gray-100">
+                                <div className="text-sm text-gray-700">
+                                  {log.activity?.description || `${log.old_status} → ${log.new_status}`}
+                                </div>
+                                {log.old_status !== log.new_status && (
+                                  <div className="flex items-center space-x-2 mt-2">
+                                    <span className="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
+                                      {log.old_status}
+                                    </span>
+                                    <i className="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                    <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                      {log.new_status}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-4">
+                                <div className="text-center">
+                                  <div className="text-sm font-medium text-gray-800">{log.time_ago}</div>
+                                  <div className="text-xs text-gray-500">ago</div>
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    {log.performed_by || 'System'}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fas fa-history text-2xl text-gray-400"></i>
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-gray-500 text-lg font-medium">No Recent Activity</p>
+                      <p className="text-gray-400 text-sm mt-1">Dynamic activity tracking will appear here</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Row - Tables with 50:50 ratio */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* Upcoming Triggers - 50% width */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                  <i className="fas fa-clock text-orange-600 mr-3"></i>
-                  Upcoming Triggers
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Next 5 scheduled events</p>
-              </div>
-              <div className="overflow-hidden">
-                {activeJobs.slice(0, 5).length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[600px]">
-                      <thead className="bg-gray-50 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-gray-700">Event ID</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Type</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Schedule</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {activeJobs.slice(0, 5).map((trigger) => (
-                          <tr key={trigger.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="p-3">
-                              <div className="font-medium text-gray-800 truncate max-w-[120px]" title={trigger.event_id}>
-                                {trigger.event_id}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="text-gray-600 truncate max-w-[100px]" title={trigger.trigger_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}>
-                                {trigger.trigger_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="text-gray-600 text-xs">
-                                {trigger.trigger_time ? new Date(trigger.trigger_time).toLocaleDateString('en-US', {
-                                  month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                }) : 'No schedule'}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              {trigger.is_past_due ? (
-                                <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                                  <i className="fas fa-exclamation-triangle mr-1"></i>
-                                  <span className="hidden sm:inline">Past Due</span>
-                                  <span className="sm:hidden">Due</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                  <i className="fas fa-check-circle mr-1"></i>
-                                  <span className="hidden sm:inline">Scheduled</span>
-                                  <span className="sm:hidden">OK</span>
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <i className="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
-                    <p className="text-gray-500">No upcoming triggers</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Recent Activity - 50% width */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                  <i className="fas fa-history text-green-600 mr-3"></i>
-                  Recent Activity
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Latest system events</p>
-              </div>
-              <div className="overflow-hidden">
-                {recentActivity.slice(0, 6).length > 0 ? (
-                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                    <table className="w-full text-sm min-w-[600px]">
-                      <thead className="bg-gray-50 border-b sticky top-0">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-gray-700">Event ID</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Status Change</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Type</th>
-                          <th className="text-left p-3 font-semibold text-gray-700">Time</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {recentActivity.slice(0, 6).map((log) => (
-                          <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="p-3">
-                              <div className="flex items-center">
-                                <div className="w-6 h-6 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mr-3">
-                                  {log.trigger_type === 'registration_close' && <i className="fas fa-calendar-check text-blue-600 text-xs"></i>}
-                                  {log.trigger_type === 'registration_open' && <i className="fas fa-calendar-plus text-blue-600 text-xs"></i>}
-                                  {log.trigger_type === 'event_start' && <i className="fas fa-play text-blue-600 text-xs"></i>}
-                                  {log.trigger_type === 'event_end' && <i className="fas fa-stop text-blue-600 text-xs"></i>}
-                                  {!['registration_close', 'registration_open', 'event_start', 'event_end'].includes(log.trigger_type) && 
-                                    <i className="fas fa-sync text-blue-600 text-xs"></i>}
-                                </div>
-                                <div className="font-medium text-gray-800 truncate max-w-[120px]" title={log.event_id}>
-                                  {log.event_id}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center space-x-2">
-                                <span className="inline-flex items-center px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
-                                  {log.old_status}
-                                </span>
-                                <i className="fas fa-arrow-right text-gray-400 text-xs"></i>
-                                <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                                  {log.new_status}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                                {log.trigger_type?.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-xs text-gray-400">{log.time_ago}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <i className="fas fa-history text-4xl text-gray-300 mb-3"></i>
-                    <p className="text-gray-500">No recent activity</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
