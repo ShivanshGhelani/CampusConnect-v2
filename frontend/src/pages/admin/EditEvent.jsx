@@ -12,6 +12,7 @@ import dropdownOptionsService from '../../services/dropdownOptionsService';
 import AttendancePreview from '../../components/AttendancePreview';
 import { formatDateToLocal } from '../../utils/dateHelpers';
 import { Clock } from 'lucide-react';
+import unifiedStorage from '../../services/unifiedStorage';
 
 // Helper function to convert backend strategy types to user-friendly labels
 const getStrategyDisplayName = (strategyType) => {
@@ -191,6 +192,7 @@ function EditEvent() {
   const [isLoading, setIsLoading] = useState(!location.state?.eventData);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   // Venue management states
   const [venues, setVenues] = useState([]);
@@ -286,8 +288,23 @@ function EditEvent() {
       }
       const htmlContent = await response.text();
 
-      // Open new window
-      const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+      // Determine certificate type styling
+      const getCertificateTypeColor = (type) => {
+        const lowerType = type.toLowerCase();
+        if (lowerType.includes('completion')) return { bg: '#10B981', light: '#D1FAE5', accent: '#047857' };
+        if (lowerType.includes('excellence') || lowerType.includes('achievement')) return { bg: '#8B5CF6', light: '#EDE9FE', accent: '#6D28D9' };
+        if (lowerType.includes('participation')) return { bg: '#3B82F6', light: '#DBEAFE', accent: '#1D4ED8' };
+        if (lowerType.includes('winner')) return { bg: '#F59E0B', light: '#FEF3C7', accent: '#D97706' };
+        if (lowerType.includes('attendance')) return { bg: '#6B7280', light: '#F3F4F6', accent: '#374151' };
+        return { bg: '#4F46E5', light: '#E0E7FF', accent: '#3730A3' }; // Default
+      };
+
+      const colors = getCertificateTypeColor(templateType);
+      const eventName = formData.event_name || 'Sample Event Name';
+      const eventType = formData.event_type || 'workshop';
+
+      // Create enhanced window with better styling and information
+      const newWindow = window.open('', '_blank', 'width=1000,height=700,scrollbars=yes,resizable=yes');
 
       if (newWindow) {
         // Write the HTML content to the new window
@@ -295,61 +312,251 @@ function EditEvent() {
           <!DOCTYPE html>
           <html>
             <head>
-              <title>${templateType} - Certificate Template Preview</title>
+              <title>${templateType} - Certificate Template Preview | ${eventName}</title>
               <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <style>
+                * {
+                  box-sizing: border-box;
+                }
                 body { 
-                  font-family: Arial, sans-serif; 
-                  margin: 20px; 
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                  margin: 0;
+                  padding: 20px;
                   line-height: 1.6;
-                  background: #f5f5f5;
+                  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                  min-height: 100vh;
+                }
+                .template-container {
+                  max-width: 1200px;
+                  margin: 0 auto;
+                  background: white;
+                  border-radius: 12px;
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+                  overflow: hidden;
                 }
                 .template-header {
-                  background: #4F46E5;
+                  background: linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent} 100%);
                   color: white;
-                  padding: 15px;
-                  margin: -20px -20px 20px -20px;
+                  padding: 25px;
                   text-align: center;
+                  position: relative;
+                  overflow: hidden;
                 }
-                .template-content {
-                  background: white;
+                .template-header::before {
+                  content: '';
+                  position: absolute;
+                  top: -50%;
+                  left: -50%;
+                  width: 200%;
+                  height: 200%;
+                  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                  animation: pulse 4s ease-in-out infinite;
+                }
+                @keyframes pulse {
+                  0%, 100% { opacity: 0.3; transform: scale(1); }
+                  50% { opacity: 0.1; transform: scale(1.1); }
+                }
+                .template-header h1 {
+                  margin: 0 0 10px 0;
+                  font-size: 2rem;
+                  font-weight: 700;
+                  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                  position: relative;
+                  z-index: 1;
+                }
+                .template-header p {
+                  margin: 0;
+                  font-size: 1.1rem;
+                  opacity: 0.9;
+                  position: relative;
+                  z-index: 1;
+                }
+                .template-info {
+                  background: ${colors.light};
+                  border-left: 4px solid ${colors.bg};
                   padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                  min-height: 400px;
+                  margin: 0;
+                }
+                .template-info h3 {
+                  margin: 0 0 15px 0;
+                  color: ${colors.accent};
+                  font-size: 1.1rem;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                }
+                .info-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 15px;
+                  margin-bottom: 15px;
+                }
+                .info-item {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                }
+                .info-label {
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  color: ${colors.accent};
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+                .info-value {
+                  font-size: 0.95rem;
+                  color: #374151;
+                  font-weight: 500;
                 }
                 .placeholder-note {
-                  background: #FEF3C7;
-                  border: 1px solid #F59E0B;
-                  padding: 10px;
-                  margin-bottom: 15px;
-                  border-radius: 6px;
+                  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+                  border: 2px solid #F59E0B;
+                  padding: 20px;
+                  margin: 20px;
+                  border-radius: 10px;
                   font-size: 14px;
+                  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+                }
+                .placeholder-note strong {
+                  color: #92400E;
+                  font-size: 1.1rem;
+                }
+                .template-content {
+                  padding: 30px;
+                  min-height: 500px;
+                  position: relative;
+                }
+                .template-content::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: url('data:image/svg+xml,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><g fill="%23f3f4f6" fill-opacity="0.4"><circle cx="3" cy="3" r="1"/></g></svg>') repeat;
+                  pointer-events: none;
+                  z-index: 0;
+                }
+                .certificate-frame {
+                  position: relative;
+                  z-index: 1;
+                  background: white;
+                  border-radius: 8px;
+                  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                  padding: 20px;
+                }
+                .print-button {
+                  position: fixed;
+                  top: 20px;
+                  right: 20px;
+                  background: ${colors.bg};
+                  color: white;
+                  border: none;
+                  padding: 12px 20px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                  z-index: 1000;
+                  transition: all 0.3s ease;
+                }
+                .print-button:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+                }
+                @media print {
+                  body { background: white !important; padding: 0 !important; }
+                  .template-header, .template-info, .placeholder-note, .print-button { display: none !important; }
+                  .template-container { box-shadow: none !important; border-radius: 0 !important; }
+                  .template-content { padding: 0 !important; }
+                }
+                @media (max-width: 768px) {
+                  .template-header h1 { font-size: 1.5rem; }
+                  .info-grid { grid-template-columns: 1fr; }
+                  body { padding: 10px; }
                 }
               </style>
             </head>
             <body>
-              <div class="template-header">
-                <h1>📜 ${templateType}</h1>
-                <p>Certificate Template Preview</p>
+              <div class="template-container">
+                <div class="template-header">
+                  <h1>📜 ${templateType}</h1>
+                  <p>Certificate Template Preview</p>
+                </div>
+                
+                <div class="template-info">
+                  <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Template Information
+                  </h3>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <div class="info-label">Event Name</div>
+                      <div class="info-value">${eventName}</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Event Type</div>
+                      <div class="info-value">${eventType.charAt(0).toUpperCase() + eventType.slice(1)}</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Certificate Type</div>
+                      <div class="info-value">${templateType}</div>
+                    </div>
+                    <div class="info-item">
+                      <div class="info-label">Template Status</div>
+                      <div class="info-value">✅ Active & Ready</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 0.85rem; color: #6B7280; margin-top: 10px;">
+                    💡 This preview shows how your certificate will appear when generated for participants.
+                  </div>
+                </div>
+
+                <div class="placeholder-note">
+                  <strong>📝 Important Preview Notes:</strong><br/>
+                  • This is a preview of your certificate template with placeholder data<br/>
+                  • Dynamic fields like [Participant Name], [Event Name], [Date] will be replaced with actual data during certificate generation<br/>
+                  • The final certificate may include additional elements like QR codes, verification links, or digital signatures<br/>
+                  • Use the print button (top-right) to see how the certificate will look when printed
+                </div>
+
+                <div class="template-content">
+                  <div class="certificate-frame">
+                    ${htmlContent}
+                  </div>
+                </div>
               </div>
-              <div class="placeholder-note">
-                <strong>📝 Note:</strong> This is a preview of your certificate template. 
-                Placeholders like [Participant Name], [Event Name], etc. will be replaced with actual data when certificates are generated.
-              </div>
-              <div class="template-content">
-                ${htmlContent}
-              </div>
+
+              <button class="print-button" onclick="window.print()">
+                🖨️ Print Preview
+              </button>
+
+              <script>
+                // Focus management for accessibility
+                document.addEventListener('DOMContentLoaded', function() {
+                  document.title = '${templateType} - ${eventName} Certificate Preview';
+                });
+              </script>
             </body>
           </html>
         `);
         newWindow.document.close();
+        
+        // Set focus to the new window
+        newWindow.focus();
       } else {
-        // Fallback if popup is blocked
+        // Show user-friendly message if popup is blocked
+        toast.warning("Please allow popups for this site to preview certificates, or try opening the template directly.");
+        
+        // Fallback to direct URL opening
         window.open(templateUrl, '_blank');
       }
     } catch (error) {
-      console.error('Error opening template:', error);
+      toast.error("Failed to load certificate template. Opening direct link instead.");
+      
       // Fallback to direct URL opening
       window.open(templateUrl, '_blank');
     }
@@ -404,11 +611,9 @@ function EditEvent() {
         // Initialize filteredVenues with all active venues
         const activeVenues = venueArray.filter(v => v.is_active);
         setFilteredVenues(activeVenues);
-      } else {
-        console.error('No data received from venues API');
       }
     } catch (error) {
-      console.error('Error loading venues:', error);
+      // Handle error silently
     }
   };
 
@@ -420,7 +625,7 @@ function EditEvent() {
         setExistingOrganizers(response.faculty || []);
       }
     } catch (error) {
-      console.error('Error loading faculty:', error);
+      // Handle error silently
     }
   };
 
@@ -686,28 +891,12 @@ function EditEvent() {
       return [{ name: '', contact: '' }];
     };
 
-    console.log('📥 EditEvent: Populating form with event data:', eventData);
-    console.log('🗓️ EditEvent: Raw date fields from backend:', {
-      start_datetime: eventData.start_datetime,
-      end_datetime: eventData.end_datetime,
-      registration_start_date: eventData.registration_start_date,
-      registration_end_date: eventData.registration_end_date
-    });
-
     // Parse date/time components
     const startDateTime = parseDateTimeToComponents(eventData.start_datetime);
     const endDateTime = parseDateTimeToComponents(eventData.end_datetime);
     const regStartDateTime = parseDateTimeToComponents(eventData.registration_start_date);
     const regEndDateTime = parseDateTimeToComponents(eventData.registration_end_date);
     const certEndDateTime = parseDateTimeToComponents(eventData.certificate_end_date);
-
-    console.log('🔄 EditEvent: Parsed date/time components:', {
-      start: startDateTime,
-      end: endDateTime,
-      regStart: regStartDateTime,
-      regEnd: regEndDateTime,
-      certEnd: certEndDateTime
-    });
 
     const newFormData = {
       event_name: eventData.event_name || '',
@@ -773,7 +962,6 @@ function EditEvent() {
         throw new Error(response.data.message || 'Failed to fetch event');
       }
     } catch (error) {
-      console.error('Error fetching event:', error);
       setError('Failed to load event details');
     } finally {
       setIsLoading(false);
@@ -866,6 +1054,120 @@ function EditEvent() {
 
     try {
       setIsSaving(true);
+      setUploadStatus('');
+
+      // Check if there are any new files to upload
+      const hasNewCertificateTemplates = formData.certificate_templates && 
+        Object.values(formData.certificate_templates).some(template => template instanceof File);
+      const hasNewEventPoster = formData.event_poster && formData.event_poster instanceof File;
+
+      // Delete existing files before uploading new ones (for replacement)
+      if (hasNewCertificateTemplates || hasNewEventPoster) {
+        setUploadStatus('Removing old files...');
+        try {
+          // Build list of file types to delete
+          const fileTypesToDelete = [];
+          
+          if (hasNewEventPoster) {
+            fileTypesToDelete.push('event_poster');
+          }
+          
+          if (hasNewCertificateTemplates) {
+            // Add the specific certificate template types being replaced
+            Object.keys(formData.certificate_templates).forEach(templateType => {
+              if (formData.certificate_templates[templateType] instanceof File) {
+                fileTypesToDelete.push(templateType);
+              }
+            });
+          }
+          
+          if (fileTypesToDelete.length > 0) {
+            const deleteResult = await unifiedStorage.deleteSpecificEventFiles(event?.event_id || eventId, fileTypesToDelete);
+            
+            if (!deleteResult.success) {
+              toast.warning('Old files could not be removed, but new files will be uploaded');
+            } else {
+              if (deleteResult.deletedCount > 0) {
+                toast.info(`Removed ${deleteResult.deletedCount} old files (${deleteResult.fileTypesDeleted?.join(', ') || 'various types'})`);
+              }
+            }
+            
+            // Add a small delay to ensure deletion completes before upload
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+        } catch (error) {
+          toast.warning('Could not remove old files, but proceeding with upload');
+        }
+      }
+
+      // Upload new certificate templates if any
+      let certificateTemplateUrls = {};
+      if (hasNewCertificateTemplates) {
+        setUploadStatus('Uploading certificate templates...');
+
+        try {
+          // Filter out only the File objects for upload
+          const templatesForUpload = {};
+          Object.entries(formData.certificate_templates).forEach(([type, template]) => {
+            if (template instanceof File) {
+              templatesForUpload[type] = template;
+            }
+          });
+
+          const uploadResults = await unifiedStorage.uploadCertificateTemplates(
+            templatesForUpload,
+            event?.event_id || eventId
+          );
+
+          // Process upload results
+          for (const [certificateType, result] of Object.entries(uploadResults)) {
+            if (result.success) {
+              certificateTemplateUrls[certificateType] = result.url;
+            } else {
+              console.error(`Failed to upload ${certificateType}:`, result.error);
+              toast.error(`Failed to upload ${certificateType}: ${result.error}`);
+              setIsSaving(false);
+              setUploadStatus('');
+              return;
+            }
+          }
+        } catch (error) {
+          toast.error('Failed to upload certificate templates. Please try again.');
+          setIsSaving(false);
+          setUploadStatus('');
+          return;
+        }
+      }
+
+      // Upload new event poster if any
+      let eventPosterUrl = null;
+      if (hasNewEventPoster) {
+        setUploadStatus('Uploading event poster...');
+
+        try {
+          const posterResult = await unifiedStorage.uploadEventPoster(
+            formData.event_poster,
+            event?.event_id || eventId
+          );
+
+          if (posterResult.success) {
+            eventPosterUrl = posterResult.url;
+          } else {
+            toast.error(`Failed to upload event poster: ${posterResult.error}`);
+            setIsSaving(false);
+            setUploadStatus('');
+            return;
+          }
+        } catch (error) {
+          toast.error('Failed to upload event poster. Please try again.');
+          setIsSaving(false);
+          setUploadStatus('');
+          return;
+        }
+      }
+
+      setUploadStatus('Updating event...');
 
       // Combine date and time for datetime fields - FORCE LOCAL TIMEZONE
       const combineDateAndTime = (date, time) => {
@@ -897,6 +1199,16 @@ function EditEvent() {
         const processed = contacts.filter(contact => contact.name && contact.contact);
         return processed;
       };
+
+      // Merge existing certificate templates with new uploads
+      let finalCertificateTemplates = {};
+      if (event?.certificate_templates) {
+        finalCertificateTemplates = { ...event.certificate_templates };
+      }
+      // Override with new uploaded templates
+      if (Object.keys(certificateTemplateUrls).length > 0) {
+        finalCertificateTemplates = { ...finalCertificateTemplates, ...certificateTemplateUrls };
+      }
 
       // Prepare the data for submission
       const submitData = {
@@ -931,27 +1243,17 @@ function EditEvent() {
         attendance_mandatory: formData.attendance_mandatory,
         attendance_strategy: attendanceStrategy || formData.attendance_strategy,
         is_certificate_based: formData.is_certificate_based,
-        certificate_templates: formData.certificate_templates,
+        certificate_templates: finalCertificateTemplates,
+        // Only include event_poster_url if we uploaded a new one
+        ...(eventPosterUrl && { event_poster_url: eventPosterUrl }),
         organizers: processOrganizers(formData.organizers),
         event_contacts: processContacts(formData.contacts),
         contacts: processContacts(formData.contacts) // Try both field names
       };
 
-      console.log('📝 EditEvent: Submitting data to backend:', submitData);
-      console.log('🗓️ EditEvent: Date fields being sent:', {
-        start_datetime: submitData.start_datetime,
-        end_datetime: submitData.end_datetime,
-        registration_start_date: submitData.registration_start_date,
-        registration_end_date: submitData.registration_end_date,
-        certificate_end_date: submitData.certificate_end_date
-      });
-      console.log('📞 EditEvent: Contact data being sent:', submitData.event_contacts);
-
       const response = await adminAPI.updateEvent(eventId, submitData);
 
       if (response.data.success) {
-        console.log('✅ EditEvent: Update successful!', response.data);
-
         // Update local state with the response data to reflect changes immediately
         if (response.data.event) {
           setEvent(response.data.event);
@@ -959,10 +1261,13 @@ function EditEvent() {
         }
 
         // Show success message
-        toast.success('Event updated successfully! All changes have been saved.');
+        toast.success('The event has been updated and all files have been uploaded successfully.');
 
-        // Optionally stay on the page to see changes or redirect
-        // navigate(`/admin/events`);
+        // Clear upload status
+        setUploadStatus('');
+
+        // Navigate back to event detail page
+        navigate(`/admin/events/${event?.event_id || eventId}`);
       } else {
         throw new Error(response.data.message || 'Failed to update event');
       }
@@ -971,6 +1276,7 @@ function EditEvent() {
       toast.error('Failed to update event: ' + error.message);
     } finally {
       setIsSaving(false);
+      setUploadStatus('');
     }
   };
 
@@ -2061,8 +2367,10 @@ function EditEvent() {
                     }}
                     includeTime={true}
                     required={false}
-                    placeholder="Select certificate distribution end date"
+                    placeholder="Optional: Select certificate expiry date"
                     className="w-full"
+                    singleDate={true}
+                    description="After this date, certificates will no longer be downloadable"
                     theme="purple"
                     minDate={formData.start_date ? (() => {
                       try {
@@ -2076,7 +2384,7 @@ function EditEvent() {
                   />
 
                   <p className="text-sm text-purple-800 mt-5">
-                    <strong>Optional:</strong> Set when certificates will no longer be available for download. Leave blank if no certificates are needed.
+                    <strong>Optional:</strong> If you want to provide certificates to participants, set when certificates will no longer be available for download. Leave blank if no certificates are needed.
                   </p>
                 </div>
               </div>
@@ -2635,7 +2943,7 @@ function EditEvent() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Updating Event...
+                        {uploadStatus || 'Updating Event...'}
                       </>
                     ) : (
                       <>

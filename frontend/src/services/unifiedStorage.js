@@ -210,6 +210,18 @@ class UnifiedStorageService {
         credentials: 'include'
       });
 
+      // Check if the response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        // If it's not JSON (like HTML error page), the API endpoint might not be implemented yet
+        console.warn('Delete event files API returned non-JSON response, likely not implemented yet');
+        return { 
+          success: false, 
+          error: 'Delete API endpoint not available yet',
+          deletedCount: 0 
+        };
+      }
+
       const result = await response.json();
       
       if (!response.ok) {
@@ -222,7 +234,52 @@ class UnifiedStorageService {
       };
     } catch (error) {
       console.error('Error deleting event files:', error);
-      return { success: false, error: error.message };
+      // Return graceful error that allows the upload to continue
+      return { 
+        success: false, 
+        error: error.message,
+        deletedCount: 0 
+      };
+    }
+  }
+
+  // Delete specific event file types
+  async deleteSpecificEventFiles(eventId, fileTypes) {
+    try {
+      const fileTypesParam = Array.isArray(fileTypes) ? fileTypes.join(',') : fileTypes;
+      const response = await fetch(`${this.baseURL}/api/v1/storage/delete/event-specific-files/${eventId}?file_types=${encodeURIComponent(fileTypesParam)}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Delete specific event files API returned non-JSON response');
+        return { 
+          success: false, 
+          error: 'Delete API endpoint not available yet',
+          deletedCount: 0 
+        };
+      }
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.detail || 'Delete failed');
+      }
+
+      return { 
+        success: true, 
+        deletedCount: result.deleted_count,
+        fileTypesDeleted: result.file_types_deleted
+      };
+    } catch (error) {
+      console.error('Error deleting specific event files:', error);
+      return { 
+        success: false, 
+        error: error.message,
+        deletedCount: 0 
+      };
     }
   }
 

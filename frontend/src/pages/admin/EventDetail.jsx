@@ -178,7 +178,6 @@ function EventDetail() {
 
       await fetchEventDetails();
     } catch (error) {
-      console.error('Error refreshing data:', error);
       setError('Failed to refresh data');
     } finally {
       setIsLoading(false);
@@ -209,21 +208,6 @@ function EventDetail() {
 
       if (eventResponse.data.success) {
         setEvent(eventResponse.data.event);
-        console.log('Event data loaded:', eventResponse.data.event);
-        console.log('Organizers data:', eventResponse.data.event.organizer_details);
-        console.log('Faculty organizers:', eventResponse.data.event.faculty_organizers);
-        console.log('Attendance strategy:', eventResponse.data.event.attendance_strategy);
-        console.log('Sessions from attendance_strategy:', eventResponse.data.event.attendance_strategy?.sessions);
-        if (eventResponse.data.event.attendance_strategy?.sessions?.length > 0) {
-          console.log('First session data:', eventResponse.data.event.attendance_strategy.sessions[0]);
-        }
-        console.log('Dynamic attendance:', eventResponse.data.event.dynamic_attendance);
-        console.log('Certificate template:', eventResponse.data.event.certificate_template);
-        console.log('Certificate templates:', eventResponse.data.event.certificate_templates);
-        console.log('Certificate template name:', eventResponse.data.event.certificate_template_name);
-        console.log('Minimum attendance percentage:', eventResponse.data.event.minimum_attendance_percentage);
-        console.log('Pass criteria:', eventResponse.data.event.pass_criteria);
-        console.log('All event fields:', Object.keys(eventResponse.data.event));
       } else {
         throw new Error(eventResponse.data.message || 'Failed to fetch event details');
       }
@@ -255,17 +239,7 @@ function EventDetail() {
           validatedStats.physical_only_count +
           validatedStats.absent_count;
 
-        if (totalAccounted !== validatedStats.total_registrations) {
-          console.warn('Attendance statistics data integrity warning:', {
-            totalRegistrations: validatedStats.total_registrations,
-            totalAccounted: totalAccounted,
-            difference: validatedStats.total_registrations - totalAccounted
-          });
-        }
-
         setAttendanceStats(validatedStats);
-      } else {
-        console.warn('Invalid attendance statistics response:', attendanceStatsResponse);
       }
 
       if (recentRegsResponse.data.success) {
@@ -284,7 +258,6 @@ function EventDetail() {
         setRecentRegistrations([]);
       }
     } catch (error) {
-      console.error('Error fetching event details:', error);
       setError('Failed to load event details');
     } finally {
       setIsLoading(false);
@@ -302,8 +275,6 @@ function EventDetail() {
         throw new Error(response.data.message || 'Failed to delete event');
       }
     } catch (error) {
-      console.error('Error deleting event:', error);
-
       // Provide more user-friendly error messages
       let errorMessage = 'Failed to delete event: ';
       if (error.message.includes('existing registrations')) {
@@ -329,7 +300,6 @@ function EventDetail() {
         setAllRegistrations([]);
       }
     } catch (error) {
-      console.error('Error fetching all registrations:', error);
       setAllRegistrations([]);
     } finally {
       setModalLoading(false);
@@ -341,13 +311,10 @@ function EventDetail() {
       setModalLoading(true);
       // Get registrations with attendance details instead of just attendance
       const response = await adminAPI.getEventRegistrationsWithAttendance(eventId);
-      console.log('Attendees API response:', response.data); // Debug log
 
       if (response.data.success) {
         // The API returns data in response.data.data.registrations structure
         const allRegistrations = response.data.data?.registrations || [];
-        console.log('All registrations:', allRegistrations); // Debug log
-        console.log('Number of registrations:', allRegistrations.length); // Debug log
 
         // For now, let's show all attendees to debug the issue
         // Filter for students who have BOTH virtual and physical attendance (present status)

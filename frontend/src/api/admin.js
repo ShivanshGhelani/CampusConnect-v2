@@ -152,8 +152,8 @@ export const adminAPI = {
   
   getEventStatistics: (eventId) => api.get(`/api/v1/admin/participation/statistics/event/${eventId}`),
   
-  // UPDATED: Event Registration Management - Now using unified participation data
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/participations/event/${eventId}`, { params: filters }),
+  // UPDATED: Event Registration Management - Fixed to use correct admin events endpoint
+  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/events/registrations/${eventId}`, { params: filters }),
   
   // LEGACY SUPPORT: Keep existing registration endpoints for backward compatibility
   getStudents: async (params = {}) => {

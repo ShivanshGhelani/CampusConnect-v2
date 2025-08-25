@@ -176,29 +176,59 @@ class SupabaseStorageService:
             Dictionary with file list
         """
         try:
+            # Try POST method first (as per Supabase docs)
             list_url = f"{SupabaseStorageService.SUPABASE_URL}/storage/v1/object/list/{bucket_name}"
             
-            if folder_path:
-                list_url += f"?prefix={folder_path}"
+            logger.info(f"📡 Supabase list files URL: {list_url}")
+            logger.info(f"🪣 Bucket: {bucket_name}, Folder: {folder_path}")
             
             headers = {
-                "Authorization": f"Bearer {SupabaseStorageService.SUPABASE_SERVICE_KEY}"
+                "Authorization": f"Bearer {SupabaseStorageService.SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json"
             }
             
+            # Use POST with body for prefix
+            body = {}
+            if folder_path:
+                body["prefix"] = folder_path
+                body["limit"] = 100
+            
             async with aiohttp.ClientSession() as session:
-                async with session.get(list_url, headers=headers) as response:
+                async with session.post(list_url, json=body, headers=headers) as response:
+                    logger.info(f"📊 Supabase response status: {response.status}")
                     if response.status == 200:
                         files = await response.json()
+                        logger.info(f"📁 Found {len(files)} files in bucket {bucket_name}/{folder_path}")
                         return {
                             "success": True,
                             "files": files
                         }
                     else:
                         error_text = await response.text()
-                        return {
-                            "success": False,
-                            "error": f"List failed: {response.status} - {error_text}"
-                        }
+                        logger.error(f"❌ Supabase list error (POST): {response.status} - {error_text}")
+                        
+                        # Fallback to GET method
+                        logger.info("🔄 Trying GET method as fallback...")
+                        get_url = list_url
+                        if folder_path:
+                            get_url += f"?prefix={folder_path}"
+                        
+                        async with session.get(get_url, headers={"Authorization": f"Bearer {SupabaseStorageService.SUPABASE_SERVICE_KEY}"}) as get_response:
+                            logger.info(f"📊 Supabase GET response status: {get_response.status}")
+                            if get_response.status == 200:
+                                files = await get_response.json()
+                                logger.info(f"📁 Found {len(files)} files with GET method")
+                                return {
+                                    "success": True,
+                                    "files": files
+                                }
+                            else:
+                                get_error = await get_response.text()
+                                logger.error(f"❌ Supabase GET also failed: {get_response.status} - {get_error}")
+                                return {
+                                    "success": False,
+                                    "error": f"Both POST and GET failed. POST: {response.status} - {error_text}, GET: {get_response.status} - {get_error}"
+                                }
                         
         except Exception as e:
             logger.error(f"Error listing files: {e}")
