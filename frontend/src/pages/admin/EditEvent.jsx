@@ -13,6 +13,7 @@ import AttendancePreview from '../../components/AttendancePreview';
 import { formatDateToLocal } from '../../utils/dateHelpers';
 import { Clock } from 'lucide-react';
 import unifiedStorage from '../../services/unifiedStorage';
+import { updateEventInScheduler } from '../../utils/eventSchedulerUtils';
 
 // Helper function to convert backend strategy types to user-friendly labels
 const getStrategyDisplayName = (strategyType) => {
@@ -1254,6 +1255,15 @@ function EditEvent() {
       const response = await adminAPI.updateEvent(eventId, submitData);
 
       if (response.data.success) {
+        // Update event in client-side scheduler
+        try {
+          updateEventInScheduler(eventId, response.data.event || formData);
+          console.log('✅ Updated event in client scheduler');
+        } catch (schedulerError) {
+          console.warn('⚠️ Failed to update event in client scheduler:', schedulerError);
+          // Don't fail the update process
+        }
+
         // Update local state with the response data to reflect changes immediately
         if (response.data.event) {
           setEvent(response.data.event);

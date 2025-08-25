@@ -380,21 +380,47 @@ class DynamicEventScheduler:
             return "draft", "draft"
             
     async def _log_status_change(self, event_id: str, old_status: str, new_status: str, trigger_type: EventTriggerType):
-        """Log status changes for auditing"""
+        """Log status changes using the unified event action logger"""
         try:
-            log_entry = {
-                "event_id": event_id,
-                "old_status": old_status,
-                "new_status": new_status,
-                "trigger_type": trigger_type.value,
-                "timestamp": datetime.now(),
-                "scheduler_version": "dynamic_v1"
-            }
+            # Import here to avoid circular imports
+            from services.event_action_logger import event_action_logger
             
-            await DatabaseOperations.insert_one("event_status_logs", log_entry)
+            # Get event name for better logging
+            event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+            event_name = event.get("event_name", "Unknown Event") if event else "Unknown Event"
+            
+            # Use the unified logging system
+            await event_action_logger.log_status_change(
+                event_id=event_id,
+                event_name=event_name,
+                old_status=old_status,
+                new_status=new_status,
+                trigger_source="scheduler",
+                trigger_type=trigger_type.value,
+                metadata={
+                    "scheduler_version": "dynamic_v1",
+                    "trigger_timestamp": datetime.now().isoformat(),
+                    "automated": True
+                }
+            )
             
         except Exception as e:
             logger.error(f"Error logging status change for event {event_id}: {str(e)}")
+            # Fallback to basic logging if unified system fails
+            try:
+                log_entry = {
+                    "event_id": event_id,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "trigger_type": trigger_type.value,
+                    "timestamp": datetime.now(),
+                    "scheduler_version": "dynamic_v1"
+                }
+                
+                await DatabaseOperations.insert_one("event_status_logs", log_entry)
+                
+            except Exception as fallback_error:
+                logger.error(f"Fallback logging also failed for event {event_id}: {str(fallback_error)}")
             
     async def get_status(self) -> Dict[str, Any]:
         """Get current scheduler status"""

@@ -12,6 +12,7 @@ import { Dropdown, SearchBox, Checkbox } from '../../components/ui';
 import MultiSelect from '../../components/ui/MultiSelect';
 import dropdownOptionsService from '../../services/dropdownOptionsService';
 import unifiedStorage from '../../services/unifiedStorage';
+import { addEventToScheduler } from '../../utils/eventSchedulerUtils';
 
 // Helper for step progress
 const steps = [
@@ -1935,6 +1936,15 @@ function CreateEvent() {
       const response = await adminAPI.createEvent(eventData);
 
       if (response.data && response.data.success) {
+        // Add event to client-side scheduler
+        try {
+          addEventToScheduler(eventData);
+          console.log('✅ Added event to client scheduler');
+        } catch (schedulerError) {
+          console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
+          // Don't fail the creation process
+        }
+
         // Clear the session after successful event creation
         if (user.role === 'executive_admin' && eventCreatorSession) {
           clearEventCreatorSession();
@@ -3122,7 +3132,7 @@ function CreateEvent() {
                     <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
                   </div>
                 </div>
-                Assets & Templates
+                Poster & Certificates
               </h2>
               <p className="text-sm text-gray-600">Upload event poster and configure certificates (if needed)</p>
             </div>

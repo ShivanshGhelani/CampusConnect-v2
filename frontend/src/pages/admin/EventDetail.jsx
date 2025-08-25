@@ -55,6 +55,8 @@ function EventDetail() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportDropdownSticky, setExportDropdownSticky] = useState(false);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
+  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+  const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
 
   // Helper function to calculate targeting statistics from registrations
   const calculateTargetingStats = (registrations) => {
@@ -110,6 +112,16 @@ function EventDetail() {
       };
     }
   }, [exportDropdownSticky, exportDropdownOpen]);
+
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up blob URL if it exists when component unmounts
+      if (currentCertificateTemplate?.url?.startsWith('blob:')) {
+        URL.revokeObjectURL(currentCertificateTemplate.url);
+      }
+    };
+  }, [currentCertificateTemplate]);
 
   const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
     const variants = {
@@ -261,6 +273,38 @@ function EventDetail() {
       setError('Failed to load event details');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to open certificate template in modal
+  const openCertificateTemplate = async (templateUrl, templateType) => {
+    try {
+      // Fetch the HTML content
+      const response = await fetch(templateUrl);
+      if (!response.ok) {
+        throw new Error('Failed to load template');
+      }
+      const htmlContent = await response.text();
+      
+      // Create a blob URL from the HTML content so it renders properly
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      setCurrentCertificateTemplate({ 
+        url: blobUrl, 
+        type: templateType, 
+        originalUrl: templateUrl 
+      });
+      setCertificateModalOpen(true);
+    } catch (error) {
+      console.error('Failed to load certificate template:', error);
+      // Fallback to original URL if fetch fails
+      setCurrentCertificateTemplate({ 
+        url: templateUrl, 
+        type: templateType, 
+        originalUrl: templateUrl 
+      });
+      setCertificateModalOpen(true);
     }
   };
 
@@ -1279,7 +1323,7 @@ function EventDetail() {
                 <InfoCard icon={MapPin} title="Venue & Location">
                   <div className="space-y-0 divide-y divide-gray-100">
                     <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
-                    <InfoRow label="Venue" className='text-nowrap' value={event.venue} />
+                    <InfoRow label="Venue" className='text-wrap' value={event.venue} />
                   </div>
                 </InfoCard> 
 
@@ -1350,7 +1394,7 @@ function EventDetail() {
                   </InfoCard>
                 )}
                 {/* Certificates */}
-                <InfoCard icon={Award} title="Certificates">
+                <InfoCard icon={Award} title="Certificates & Poster">
                   <div className="space-y-0 divide-y divide-gray-100">
                     <InfoRow label="Available Until" value={formatDateTime(event.certificate_end_date)} />
                     {event.assets && event.assets.length > 0 && (
@@ -1367,37 +1411,60 @@ function EventDetail() {
                             Available templates: {Object.keys(event.certificate_templates).join(', ')}
                           </div>
                         )}
+                        {/* Certificate Template View Buttons */}
+                        {event.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {Object.entries(event.certificate_templates).map(([templateType, templateUrl], index) => (
+                              <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-700">{templateType}</p>
+                                  <p className="text-xs text-gray-500">Click to view certificate template</p>
+                                </div>
+                                <button
+                                  onClick={() => openCertificateTemplate(templateUrl, templateType)}
+                                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  View
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                </InfoCard>
-
-                {/* Event Poster */}
-                <InfoCard icon={Eye} title="Event Poster">
-                  <div className="space-y-3">
-                    {event.event_poster_url ? (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Poster Available</p>
-                          <p className="text-xs text-gray-500">Click to view event poster</p>
+                    {/* Event Poster Section */}
+                    <div className="pt-3">
+                      <div className="text-sm text-gray-600 mb-3">
+                        Event Poster: {event.event_poster_url ? (
+                          <span className="text-green-600 font-medium">Available</span>
+                        ) : (
+                          <span className="text-gray-500 font-medium">Not Available</span>
+                        )}
+                      </div>
+                      {event.event_poster_url ? (
+                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Event Poster</p>
+                            <p className="text-xs text-gray-500">Click to view event poster</p>
+                          </div>
+                          <button
+                            onClick={() => setPosterModalOpen(true)}
+                            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setPosterModalOpen(true)}
-                          className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500 text-sm">No poster available</p>
-                        <p className="text-xs text-gray-400 mt-1">Set one in event settings</p>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-center py-4 bg-gray-50 rounded-lg">
+                          <p className="text-gray-500 text-sm">No poster available</p>
+                          <p className="text-xs text-gray-400 mt-1">Set one in event settings</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </InfoCard>
-
 
               </div>
             </div>
@@ -2275,6 +2342,57 @@ function EventDetail() {
                   }}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Certificate Template Modal */}
+          {certificateModalOpen && currentCertificateTemplate && (
+            <div className="fixed inset-0 backdrop-blur-sm bg-black/50 z-[99999] animate-in fade-in duration-200">
+              {/* Floating Close Button */}
+              <button
+                onClick={() => {
+                  // Clean up blob URL if it exists
+                  if (currentCertificateTemplate.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(currentCertificateTemplate.url);
+                  }
+                  setCertificateModalOpen(false);
+                  setCurrentCertificateTemplate(null);
+                }}
+                className="fixed top-4 right-4 z-[100000] bg-black/80 hover:bg-black text-white rounded-full p-2 transition-colors shadow-lg"
+                title="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* Floating Actions */}
+              <div className="fixed top-4 left-4 z-[100000] flex gap-2">
+                <a
+                  href={currentCertificateTemplate.originalUrl || currentCertificateTemplate.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open Original
+                </a>
+                <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm shadow-lg">
+                  {currentCertificateTemplate.type}
+                </div>
+              </div>
+                
+              {/* Full Screen Template Content */}
+              <iframe
+                src={currentCertificateTemplate.url}
+                title={`${currentCertificateTemplate.type} Certificate Template`}
+                className="w-full h-full border-0 bg-white"
+                onError={() => {
+                  console.error('Failed to load certificate template');
+                }}
+              />
             </div>
           )}
         </div>
