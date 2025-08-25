@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -12,10 +12,12 @@ function SettingsProfile() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
+  const hasLoadedProfile = useRef(false); // Prevent double loading in StrictMode
 
   // Modal states
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Profile form data
   const [profileForm, setProfileForm] = useState({
@@ -47,19 +49,19 @@ function SettingsProfile() {
 
   // Load profile data on component mount
   useEffect(() => {
-    console.log('User context data:', user); // Debug log
-    loadProfileData();
+    if (!hasLoadedProfile.current) {
+      hasLoadedProfile.current = true;
+      loadProfileData();
+    }
   }, []);
 
   const loadProfileData = async () => {
     try {
       setProfileLoading(true);
       const response = await adminAPI.getProfile();
-      console.log('API Response:', response); // Debug log
 
       if (response.data.success) {
-        const profile = response.data.profile;
-        console.log('Profile data:', profile); // Debug log
+        const profile = response.data.user; // Changed from profile to user
 
         setProfileForm({
           fullname: profile.fullname || '',
@@ -90,6 +92,7 @@ function SettingsProfile() {
       const response = await adminAPI.updateProfile(profileForm);
       if (response.success) {
         setSuccessMessage('Profile updated successfully!');
+        setIsProfileModalOpen(false);
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         setError(response.message || 'Failed to update profile');
@@ -244,7 +247,7 @@ function SettingsProfile() {
           {/* Main Content - Compact Layout */}
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Profile Information */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="bg-white rounded-xl shadow-lg p-8 pb-0">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-2xl font-bold text-gray-900">Profile Information</h3>
                 <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
@@ -297,60 +300,28 @@ function SettingsProfile() {
                   </div>
                 </div>
               </div>
-
-              {/* Update Profile Form */}
-              <form onSubmit={handleProfileSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    value={profileForm.fullname}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, fullname: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={profileForm.phone}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your phone number"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your email"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Profile'
-                  )}
-                </button>
-              </form>
             </div>
 
-            {/* Security Settings */}
+            {/* Settings & Security */}
             <div className="bg-white rounded-xl shadow-lg p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-8">Security Settings</h3>
-              <div className="space-y-4">
+              <h3 className="text-2xl font-bold text-gray-900 mb-8">Settings & Security</h3>
+              {/* Security Actions */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl hover:from-orange-100 hover:to-orange-200 transition-all duration-200 border border-orange-200"
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mr-4">
+                      <i className="fas fa-edit text-white text-lg"></i>
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-gray-900 text-lg">Update Profile</div>
+                      <div className="text-sm text-gray-600">Edit your personal information</div>
+                    </div>
+                  </div>
+                  <i className="fas fa-chevron-right text-gray-400 text-lg"></i>
+                </button>
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
                   className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all duration-200 border border-blue-200"
@@ -382,22 +353,6 @@ function SettingsProfile() {
                   </div>
                   <i className="fas fa-chevron-right text-gray-400 text-lg"></i>
                 </button>
-              </div>
-
-              {/* Security Status */}
-              <div className="mt-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="size-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-                    </svg>
-
-                  </div>
-                  <div>
-                    <div className="font-semibold text-green-800 text-lg">Account Secure</div>
-                    <div className="text-sm text-green-600">All security features are active</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -596,6 +551,88 @@ function SettingsProfile() {
                       <>
                         <i className="fas fa-save mr-2"></i>
                         Update Username
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
+
+          {/* Update Profile Modal */}
+          <Modal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            title="Update Profile"
+            size="md"
+          >
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
+                  <i className="fas fa-edit text-orange-600 text-xl"></i>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Update Your Profile</h3>
+                  <p className="text-sm text-gray-600">Edit your personal information</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleProfileSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={profileForm.fullname}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, fullname: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileModalOpen(false)}
+                    className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin mr-2"></i>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-save mr-2"></i>
+                        Update Profile
                       </>
                     )}
                   </button>

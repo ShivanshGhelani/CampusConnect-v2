@@ -63,10 +63,10 @@ export const adminAPI = {
   hardDeleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/hard-delete/${adminId}?user_type=admin`),
   
   // Profile Management - FIXED to use correct auth endpoints
-  getProfile: () => api.get('/auth/api/profile'),
-  updateProfile: (profileData) => api.put('/auth/api/profile', profileData),
-  updateUsername: (usernameData) => api.put('/auth/api/username', usernameData),
-  updatePassword: (passwordData) => api.put('/auth/api/password', passwordData),
+  getProfile: () => api.get('/api/auth/api/profile'),
+  updateProfile: (profileData) => api.put('/api/auth/api/profile', profileData),
+  updateUsername: (usernameData) => api.put('/api/auth/api/username', usernameData),
+  updatePassword: (passwordData) => api.put('/api/auth/api/password', passwordData),
   
   // Venue Management - CORRECTED to use actual backend endpoints
   getVenues: (filters) => api.get('/api/v1/admin/venues/list', { params: filters }),

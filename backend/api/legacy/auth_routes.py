@@ -38,6 +38,7 @@ async def get_admin_profile(request: Request):
                 "fullname": admin.fullname,
                 "role": admin.role.value if admin.role else None,
                 "email": admin.email,
+                "phone": admin.mobile_no,  # Added phone field
                 "created_at": admin.created_at.isoformat() if admin.created_at else None,
                 "last_login": admin.last_login.isoformat() if admin.last_login else None
             }
