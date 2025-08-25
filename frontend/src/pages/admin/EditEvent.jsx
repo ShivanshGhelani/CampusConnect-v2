@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DateRangePicker from '../../components/common/DateRangePicker';
@@ -42,38 +43,38 @@ const getStrategyDisplayName = (strategyType) => {
 };
 
 
-  // Optimized date formatting function
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return 'N/A';
-    
-    try {
-      const date = new Date(dateTimeString);
-      // Check if date is valid
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      
-      // Use optimized formatting with better performance
-      return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      }).format(date);
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
+// Optimized date formatting function
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
 
-  // Helper to combine date and time for formatting
-  const formatCombinedDateTime = (date, time) => {
-    if (!date || !time) return 'Not set';
-    try {
-      return formatDateTime(`${date}T${time}:00`);
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
+  try {
+    const date = new Date(dateTimeString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Invalid Date';
+
+    // Use optimized formatting with better performance
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).format(date);
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};
+
+// Helper to combine date and time for formatting
+const formatCombinedDateTime = (date, time) => {
+  if (!date || !time) return 'Not set';
+  try {
+    return formatDateTime(`${date}T${time}:00`);
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};
 
 // Certificate template types based on event type
 const getCertificateTypes = (eventType, eventMode = null) => {
@@ -148,43 +149,44 @@ const registrationModeOptions = [
 ];
 
 const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
-    <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-          <Icon className="w-5 h-5 text-gray-600" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+  <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+        <Icon className="w-5 h-5 text-gray-600" />
       </div>
-      {children}
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
     </div>
-  );
+    {children}
+  </div>
+);
 
-  const InfoRow = ({ label, value, className = "" }) => (
-    <div className={`flex justify-between items-start py-2 ${className}`}>
-      <span className="text-sm font-medium text-gray-600">{label}</span>
-      <span className="text-sm text-gray-900 text-right max-w-[60%]">{value || 'N/A'}</span>
-    </div>
-  );
+const InfoRow = ({ label, value, className = "" }) => (
+  <div className={`flex justify-between items-start py-2 ${className}`}>
+    <span className="text-sm font-medium text-gray-600">{label}</span>
+    <span className="text-sm text-gray-900 text-right max-w-[60%]">{value || 'N/A'}</span>
+  </div>
+);
 
-  const Badge = ({ children, variant = "default" }) => {
-    const variants = {
-      default: "bg-gray-100 text-gray-800",
-      primary: "bg-blue-100 text-blue-800",
-      success: "bg-green-100 text-green-800"
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${variants[variant]}`}>
-        {children}
-      </span>
-    );
+const Badge = ({ children, variant = "default" }) => {
+  const variants = {
+    default: "bg-gray-100 text-gray-800",
+    primary: "bg-blue-100 text-blue-800",
+    success: "bg-green-100 text-green-800"
   };
 
-  function EditEvent() {
+  return (
+    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${variants[variant]}`}>
+      {children}
+    </span>
+  );
+};
+
+function EditEvent() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userType } = useAuth();
+  const { toast } = useToast();
   const [event, setEvent] = useState(location.state?.eventData || null);
   const [isLoading, setIsLoading] = useState(!location.state?.eventData);
   const [error, setError] = useState('');
@@ -260,6 +262,98 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
 
   // Attendance strategy state for dynamic regeneration
   const [attendanceStrategy, setAttendanceStrategy] = useState(null);
+
+  // Helper function to extract filename from URL
+  const getFileNameFromUrl = (url) => {
+    if (!url) return 'Unknown File';
+    try {
+      // Extract filename from URL (after last slash)
+      const filename = url.split('/').pop();
+      // Remove query parameters if any
+      return filename.split('?')[0] || 'Unknown File';
+    } catch (error) {
+      return 'Unknown File';
+    }
+  };
+
+  // Helper function to open HTML template in new window with proper rendering
+  const openHtmlTemplate = async (templateUrl, templateType) => {
+    try {
+      // Fetch the HTML content
+      const response = await fetch(templateUrl);
+      if (!response.ok) {
+        throw new Error('Failed to load template');
+      }
+      const htmlContent = await response.text();
+
+      // Open new window
+      const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+
+      if (newWindow) {
+        // Write the HTML content to the new window
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${templateType} - Certificate Template Preview</title>
+              <meta charset="utf-8">
+              <style>
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 20px; 
+                  line-height: 1.6;
+                  background: #f5f5f5;
+                }
+                .template-header {
+                  background: #4F46E5;
+                  color: white;
+                  padding: 15px;
+                  margin: -20px -20px 20px -20px;
+                  text-align: center;
+                }
+                .template-content {
+                  background: white;
+                  padding: 20px;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                  min-height: 400px;
+                }
+                .placeholder-note {
+                  background: #FEF3C7;
+                  border: 1px solid #F59E0B;
+                  padding: 10px;
+                  margin-bottom: 15px;
+                  border-radius: 6px;
+                  font-size: 14px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="template-header">
+                <h1>📜 ${templateType}</h1>
+                <p>Certificate Template Preview</p>
+              </div>
+              <div class="placeholder-note">
+                <strong>📝 Note:</strong> This is a preview of your certificate template. 
+                Placeholders like [Participant Name], [Event Name], etc. will be replaced with actual data when certificates are generated.
+              </div>
+              <div class="template-content">
+                ${htmlContent}
+              </div>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else {
+        // Fallback if popup is blocked
+        window.open(templateUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error opening template:', error);
+      // Fallback to direct URL opening
+      window.open(templateUrl, '_blank');
+    }
+  };
 
   // Load venues and organizers on component mount
   useEffect(() => {
@@ -865,7 +959,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
         }
 
         // Show success message
-        setError('');
+        toast.success('Event updated successfully! All changes have been saved.');
 
         // Optionally stay on the page to see changes or redirect
         // navigate(`/admin/events`);
@@ -874,7 +968,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
       }
     } catch (error) {
       console.error('Error updating event:', error);
-      setError('Failed to update event: ' + error.message);
+      toast.error('Failed to update event: ' + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -1650,7 +1744,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                               {formatCombinedDateTime(formData.registration_start_date, formData.registration_start_time)} → {formatCombinedDateTime(formData.registration_end_date, formData.registration_end_time)}
                             </div>
                           </div>
-                          
+
                           {/* Event Period */}
                           <div className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200">
                             <div className="text-xs font-medium text-purple-800 flex items-center gap-1">
@@ -1682,7 +1776,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                                     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                     const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                                     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                                    
+
                                     if (diffDays > 0) return `${diffDays}d ${diffHours}h ${diffMinutes}m`;
                                     if (diffHours > 0) return `${diffHours}h ${diffMinutes}m`;
                                     return `${diffMinutes}m`;
@@ -1795,7 +1889,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                     <div className="absolute -top-2 left-4 w-4 h-4 bg-amber-50 border-l border-t border-amber-200 transform rotate-45"></div>
                   </div>
                 </div>
-                Assets & Templates
+                Poster & Certificates
               </h2>
               <p className="text-sm text-gray-600">Update event poster and configure certificates (if needed)</p>
             </div>
@@ -1819,6 +1913,50 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                   Upload an updated event poster image (PNG preferred, but any image format works). This helps with marketing and promotion.
                 </p>
 
+                {/* Current Poster Display */}
+                {event?.event_poster_url && !formData.event_poster && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Current Poster:</h4>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <img
+                            src={event.event_poster_url}
+                            alt="Current event poster"
+                            className="w-16 h-20 object-cover rounded-md border border-gray-300"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <div className="w-16 h-20 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center" style={{ display: 'none' }}>
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-900">Poster Uploaded</span>
+                          </div>
+                          <p className="text-xs text-gray-600">Upload a new file below to replace the current poster</p>
+                          <a
+                            href={event.event_poster_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                          >
+                            View Full Size →
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <input
                   type="file"
                   name="event_poster"
@@ -1835,7 +1973,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
 
                 {formData.event_poster && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Selected Poster:</h4>
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">New Poster Selected:</h4>
                     <div className="flex items-center justify-between bg-blue-50 rounded-md p-3">
                       <div className="flex items-center space-x-2">
                         <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1878,15 +2016,36 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                   </span>
                 </h3>
 
+                {/* Current Certificate Distribution Date Display */}
+                {event?.certificate_end_date && (
+                  <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-purple-900 mb-2 flex items-center">
+                      <svg className="w-4 h-4 text-purple-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Current Certificate Distribution End Date:
+                    </h4>
+                    <div className="text-sm text-purple-800">
+                      <span className="font-medium">{formatDateTime(event.certificate_end_date)}</span>
+                      <p className="text-xs text-purple-600 mt-1">Set a new date below to change the certificate distribution deadline</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3">
                   <DateRangePicker
                     label="Certificate Distribution End Date"
                     startDate={formData.certificate_end_date ? (() => {
-                      const [year, month, day] = formData.certificate_end_date.split('-');
-                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      try {
+                        const [year, month, day] = formData.certificate_end_date.split('-');
+                        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      } catch (error) {
+                        console.error('Error parsing certificate end date:', error);
+                        return null;
+                      }
                     })() : null}
                     endDate={null}
-                    startTime={formData.certificate_end_time}
+                    startTime={formData.certificate_end_time || '23:59'}
                     endTime={null}
                     onDateChange={(startDate, endDate) => {
                       setFormData(prev => ({
@@ -1897,7 +2056,7 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                     onTimeChange={(startTime, endTime) => {
                       setFormData(prev => ({
                         ...prev,
-                        certificate_end_time: startTime || ''
+                        certificate_end_time: startTime || '23:59'
                       }));
                     }}
                     includeTime={true}
@@ -1906,8 +2065,13 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                     className="w-full"
                     theme="purple"
                     minDate={formData.start_date ? (() => {
-                      const [year, month, day] = formData.start_date.split('-');
-                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      try {
+                        const [year, month, day] = formData.start_date.split('-');
+                        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      } catch (error) {
+                        console.error('Error parsing start date for minDate:', error);
+                        return null;
+                      }
                     })() : null}
                   />
 
@@ -1917,8 +2081,8 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                 </div>
               </div>
 
-              {/* Certificate Templates Section - Only show if certificate date is set */}
-              {formData.certificate_end_date && formData.certificate_end_time ? (
+              {/* Certificate Templates Section - Show if certificate date is set OR if existing templates exist */}
+              {(formData.certificate_end_date && formData.certificate_end_time) || (event?.certificate_templates && Object.keys(event.certificate_templates).length > 0) ? (
                 <div className="space-y-6">
                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-6">
                     <div className="flex items-center space-x-3 mb-4">
@@ -1965,107 +2129,384 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
 
                   {/* Certificate Template Uploads */}
                   {formData.event_type && (
-                    <div className="space-y-4">
-                      <h3 className="text-md font-medium text-gray-900 border-b pb-2">Update Certificate Templates</h3>
-
-                      <div className="grid grid-cols-1 gap-6">
-                        {getCertificateTypes(formData.event_type, formData.mode).map((certificateType, index) => (
-                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h4 className="text-sm font-semibold text-gray-900">{certificateType}</h4>
-                                <p className="text-xs text-gray-500 mt-1">Upload a new HTML template for this certificate type</p>
-                              </div>
-                              {formData.certificate_templates[certificateType] && (
-                                <div className="flex items-center space-x-2">
-                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                  <span className="text-xs text-green-600 font-medium">New Template Selected</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="space-y-3">
-                              <input
-                                type="file"
-                                accept=".html"
-                                onChange={(e) => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      certificate_templates: {
-                                        ...prev.certificate_templates,
-                                        [certificateType]: file
-                                      }
-                                    }));
-                                  }
-                                }}
-                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                              />
-
-                              {formData.certificate_templates[certificateType] && (
-                                <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                      </svg>
-                                      <span className="text-sm text-green-800 font-medium">
-                                        {formData.certificate_templates[certificateType].name}
-                                      </span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setFormData(prev => {
-                                          const updated = { ...prev.certificate_templates };
-                                          delete updated[certificateType];
-                                          return {
-                                            ...prev,
-                                            certificate_templates: updated
-                                          };
-                                        });
-                                      }}
-                                      className="text-red-600 hover:text-red-800 text-xs underline"
-                                    >
-                                      Remove
-                                    </button>
+                    <div className="space-y-6">
+                      {/* Current Certificate Templates Display */}
+                      {event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                          <h4 className="text-md font-medium text-green-900 mb-4 flex items-center">
+                            <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Current Certificate Templates:
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.entries(event.certificate_templates).map(([templateType, templateUrl], index) => (
+                              <div key={index} className="bg-white border border-green-200 rounded-md p-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <h5 className="text-sm font-medium text-gray-900">{templateType}</h5>
+                                    <p className="text-xs text-gray-600 mb-1">
+                                      File: <span className="font-mono text-green-700">{getFileNameFromUrl(templateUrl)}</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500">Template uploaded and ready</p>
+                                    {templateUrl && (
+                                      <div className="flex items-center space-x-3 mt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => openHtmlTemplate(templateUrl, templateType)}
+                                          className="text-xs text-green-600 hover:text-green-800 underline inline-flex items-center"
+                                        >
+                                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                          </svg>
+                                          Preview Template
+                                        </button>
+                                        <a
+                                          href={templateUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center"
+                                        >
+                                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                          </svg>
+                                          Download
+                                        </a>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                          <p className="text-sm text-green-800 mt-4">
+                            Upload new templates below to replace existing ones.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Only show upload section if certificate date is set */}
+                      {formData.certificate_end_date && formData.certificate_end_time && (
+                        <>
+                          <h3 className="text-md font-medium text-gray-900 border-b pb-2">Update Certificate Templates</h3>
+
+                          <div className="grid grid-cols-1 gap-6">
+                            {getCertificateTypes(formData.event_type, formData.mode).map((certificateType, index) => (
+                              <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-purple-300 transition-colors">
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-900">{certificateType}</h4>
+                                    <p className="text-xs text-gray-500 mt-1">Upload a new HTML template for this certificate type</p>
+                                  </div>
+                                  {formData.certificate_templates[certificateType] && (
+                                    <div className="flex items-center space-x-2">
+                                      <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                      <span className="text-xs text-green-600 font-medium">New Template Selected</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-3">
+                                  <input
+                                    type="file"
+                                    accept=".html"
+                                    onChange={(e) => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          certificate_templates: {
+                                            ...prev.certificate_templates,
+                                            [certificateType]: file
+                                          }
+                                        }));
+                                      }
+                                    }}
+                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                                  />
+
+                                  {formData.certificate_templates[certificateType] && (
+                                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                          </svg>
+                                          <div className="flex-1">
+                                            <span className="text-sm text-green-800 font-medium block">
+                                              {formData.certificate_templates[certificateType].name}
+                                            </span>
+                                            <span className="text-xs text-green-600">
+                                              {formData.certificate_templates[certificateType].size ?
+                                                `${Math.round(formData.certificate_templates[certificateType].size / 1024)} KB • Ready to upload` :
+                                                'File size unknown • Ready to upload'
+                                              }
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              // Enhanced preview with better error handling
+                                              const file = formData.certificate_templates[certificateType];
+
+                                              // Validate file exists and is valid
+                                              if (!file || !(file instanceof File)) {
+                                                alert('Invalid file selected. Please try uploading the file again.');
+                                                return;
+                                              }
+
+                                              // Check if it's an HTML file
+                                              if (!file.name.toLowerCase().endsWith('.html')) {
+                                                alert('Please select an HTML file for the certificate template.');
+                                                return;
+                                              }
+
+                                              const reader = new FileReader();
+
+                                              reader.onload = (e) => {
+                                                try {
+                                                  const htmlContent = e.target.result;
+                                                  const newWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+
+                                                  if (newWindow) {
+                                                    newWindow.document.write(`
+                                                  <!DOCTYPE html>
+                                                  <html lang="en">
+                                                  <head>
+                                                    <meta charset="utf-8">
+                                                    <title>${certificateType} - New Template Preview</title>
+                                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                                    <style>
+                                                      :root {
+                                                        --primary: #059669;
+                                                        --primary-dark: #047857;
+                                                        --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                                        --radius: 12px;
+                                                      }
+                                                      body { 
+                                                        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                                        margin: 0; 
+                                                        line-height: 1.6;
+                                                        background: var(--bg-gradient);
+                                                        min-height: 100vh;
+                                                        padding: 20px;
+                                                        display: flex;
+                                                        justify-content: center;
+                                                        align-items: flex-start;
+                                                      }
+                                                      .preview-container {
+                                                        width: 100%;
+                                                        max-width: 1000px;
+                                                      }
+                                                      /* Header */
+                                                      .template-header {
+                                                        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+                                                        color: white;
+                                                        padding: 20px;
+                                                        border-radius: var(--radius) var(--radius) 0 0;
+                                                        text-align: center;
+                                                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                                      }
+                                                      .template-header h1 {
+                                                        margin: 0 0 6px 0;
+                                                        font-size: 1.6rem;
+                                                        font-weight: 600;
+                                                      }
+                                                      .template-header p {
+                                                        margin: 0;
+                                                        opacity: 0.85;
+                                                        font-size: 0.9rem;
+                                                      }
+                                                      /* Note */
+                                                      .placeholder-note {
+                                                        background: #ecfdf5;
+                                                        border-left: 4px solid var(--primary);
+                                                        padding: 14px 16px;
+                                                        margin: 0;
+                                                        font-size: 0.9rem;
+                                                        color: #065f46;
+                                                      }
+                                                      /* Main content */
+                                                      .template-content {
+                                                        background: white;
+                                                        padding: 32px;
+                                                        border-radius: 0 0 var(--radius) var(--radius);
+                                                        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+                                                        min-height: 480px;
+                                                        position: relative;
+                                                      }
+                                                      .preview-watermark {
+                                                        position: absolute;
+                                                        top: 16px;
+                                                        right: 16px;
+                                                        background: rgba(5, 150, 105, 0.08);
+                                                        color: var(--primary);
+                                                        padding: 6px 10px;
+                                                        border-radius: 6px;
+                                                        font-size: 0.75rem;
+                                                        font-weight: 600;
+                                                        border: 1px solid var(--primary);
+                                                      }
+                                                      /* Close button */
+                                                      .close-btn {
+                                                        position: fixed;
+                                                        top: 20px;
+                                                        right: 20px;
+                                                        background: rgba(0,0,0,0.75);
+                                                        color: white;
+                                                        border: none;
+                                                        padding: 10px 14px;
+                                                        border-radius: 8px;
+                                                        cursor: pointer;
+                                                        font-size: 14px;
+                                                        transition: background 0.2s ease;
+                                                        z-index: 1000;
+                                                      }
+                                                      .close-btn:hover {
+                                                        background: rgba(0,0,0,0.9);
+                                                      }
+                                                      /* Print optimization */
+                                                      @media print {
+                                                        .template-header, .placeholder-note, .preview-watermark, .close-btn {
+                                                          display: none !important;
+                                                        }
+                                                        body {
+                                                          background: white;
+                                                          padding: 0;
+                                                        }
+                                                        .template-content {
+                                                          box-shadow: none !important;
+                                                          border-radius: 0 !important;
+                                                        }
+                                                      }
+                                                    </style>
+                                                  </head>
+                                                  <body>
+                                                    <button class="close-btn" onclick="window.close()">✕ Close Preview</button>
+                                                    <div class="preview-container">
+                                                      <div class="template-header">
+                                                        <h1>📜 ${certificateType}</h1>
+                                                        <p>New Template Preview • File: ${file.name}</p>
+                                                      </div>
+                                                      <div class="placeholder-note">
+                                                        <strong>🆕 Preview:</strong> This is your selected template. Placeholders like <code>[Participant Name]</code> and <code>[Event Name]</code> will be replaced with actual data.<br>
+                                                        <strong>💡 Tip:</strong> Use <kbd>Ctrl + P</kbd> to print or save as PDF.
+                                                      </div>
+                                                      <div class="template-content">
+                                                        <div class="preview-watermark">PREVIEW</div>
+                                                        ${htmlContent}
+                                                      </div>
+                                                    </div>
+                                                  </body>
+                                                  </html>
+
+                                                `);
+                                                    newWindow.document.close();
+
+                                                    // Focus the new window
+                                                    newWindow.focus();
+                                                  } else {
+                                                    // Fallback if popup is blocked
+                                                    alert('Popup blocked! Please allow popups for this site to preview templates.');
+                                                  }
+                                                } catch (error) {
+                                                  console.error('Error creating preview:', error);
+                                                  alert('Error creating preview. Please check if the HTML file is valid.');
+                                                }
+                                              };
+
+                                              reader.onerror = (error) => {
+                                                console.error('Error reading file:', error);
+                                                alert('Error reading the file. Please try selecting the file again.');
+                                              };
+
+                                              // Read the file as text
+                                              reader.readAsText(file);
+                                            }}
+                                            className="text-xs text-green-600 hover:text-green-800 underline"
+                                          >
+                                            Preview
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setFormData(prev => {
+                                                const updated = { ...prev.certificate_templates };
+                                                delete updated[certificateType];
+                                                return {
+                                                  ...prev,
+                                                  certificate_templates: updated
+                                                };
+                                              });
+                                            }}
+                                            className="text-red-600 hover:text-red-800 text-xs underline"
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Show guidelines only if certificate date is set */}
+                      {formData.certificate_end_date && formData.certificate_end_time && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                          <h3 className="text-md font-medium text-amber-900 mb-4 flex items-center">
+                            <svg className="w-5 h-5 text-amber-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Template Guidelines
+                          </h3>
+                          <div className="text-sm text-amber-800 space-y-2">
+                            <p><strong>Required Placeholders:</strong></p>
+                            <ul className="list-disc pl-5 space-y-1">
+                              <li><code>[Event Name]</code> - Will be replaced with the actual event name</li>
+                              <li><code>[Participant Name]</code> - Will be replaced with participant's name</li>
+                              <li><code>[Event Date]</code> - Will be replaced with event date</li>
+                              <li><code>[Organization]</code> - Will be replaced with organizing department</li>
+                            </ul>
+                            <p className="mt-3"><strong>Optional Placeholders:</strong></p>
+                            <ul className="list-disc pl-5 space-y-1">
+                              <li><code>[Certificate ID]</code> - Unique certificate identifier</li>
+                              <li><code>[Issue Date]</code> - Certificate generation date</li>
+                              <li><code>[Event Duration]</code> - Event duration or hours</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Certificate Template Guidelines */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-                    <h3 className="text-md font-medium text-amber-900 mb-4 flex items-center">
-                      <svg className="w-5 h-5 text-amber-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Template Guidelines
-                    </h3>
-                    <div className="text-sm text-amber-800 space-y-2">
-                      <p><strong>Required Placeholders:</strong></p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><code>[Event Name]</code> - Will be replaced with the actual event name</li>
-                        <li><code>[Participant Name]</code> - Will be replaced with participant's name</li>
-                        <li><code>[Event Date]</code> - Will be replaced with event date</li>
-                        <li><code>[Organization]</code> - Will be replaced with organizing department</li>
-                      </ul>
-                      <p className="mt-3"><strong>Optional Placeholders:</strong></p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li><code>[Certificate ID]</code> - Unique certificate identifier</li>
-                        <li><code>[Issue Date]</code> - Certificate generation date</li>
-                        <li><code>[Event Duration]</code> - Event duration or hours</li>
-                      </ul>
+                  {/* Show message when no certificate templates are available */}
+                  {!formData.certificate_end_date && !formData.certificate_end_time && !(event?.certificate_templates && Object.keys(event.certificate_templates).length > 0) && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                      <div className="text-center">
+                        <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h3 className="text-md font-medium text-gray-900 mb-2">No Certificate Templates Required</h3>
+                        <p className="text-sm text-gray-600">
+                          Set a certificate distribution date above to enable certificate template uploads.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
@@ -2073,9 +2514,9 @@ const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
                     <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <h3 className="text-md font-medium text-gray-900 mb-2">No Certificate Templates Required</h3>
+                    <h3 className="text-md font-medium text-gray-900 mb-2">No Certificate Templates Available</h3>
                     <p className="text-sm text-gray-600">
-                      Set a certificate distribution date above to enable certificate template uploads.
+                      Set a certificate distribution date above to enable certificate template uploads and view current templates.
                     </p>
                   </div>
                 </div>
