@@ -104,6 +104,10 @@ export const adminAPI = {
   getSystemLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'system', include: 'logs' } }),
   getAuditLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'audit' } }),
   
+  // Enhanced Recent Activity - NEW ENDPOINT
+  getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
+  getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
+  
   // Debug endpoints (development only)
   getDebugSession: () => api.get('/api/debug/session'), // Direct debug endpoint
   setTestSession: (sessionData) => api.post('/api/debug/set-session', sessionData), // Direct debug endpoint

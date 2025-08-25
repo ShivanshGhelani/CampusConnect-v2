@@ -14,13 +14,13 @@ const eventsCache = {
   data: null,
   timestamp: null,
   duration: 5 * 60 * 1000, // 5 minutes
-  
-  isValid: function() {
+
+  isValid: function () {
     // Check memory cache first
     if (this.data && this.timestamp && (Date.now() - this.timestamp) < this.duration) {
       return true;
     }
-    
+
     // Check localStorage cache
     try {
       const storedTimestamp = localStorage.getItem(this.timestampKey);
@@ -31,14 +31,14 @@ const eventsCache = {
     } catch (error) {
       console.warn('localStorage access failed:', error);
     }
-    
+
     return false;
   },
-  
-  set: function(data) {
+
+  set: function (data) {
     this.data = data;
     this.timestamp = Date.now();
-    
+
     // Also store in localStorage for persistence
     try {
       localStorage.setItem(this.key, JSON.stringify(data));
@@ -47,13 +47,13 @@ const eventsCache = {
       console.warn('Failed to cache in localStorage:', error);
     }
   },
-  
-  get: function() {
+
+  get: function () {
     // Return memory cache if valid
     if (this.data && this.timestamp && (Date.now() - this.timestamp) < this.duration) {
       return this.data;
     }
-    
+
     // Try localStorage cache
     if (this.isValid()) {
       try {
@@ -70,11 +70,11 @@ const eventsCache = {
         console.warn('Failed to retrieve from localStorage:', error);
       }
     }
-    
+
     return null;
   },
-  
-  clear: function() {
+
+  clear: function () {
     this.data = null;
     this.timestamp = null;
     try {
@@ -84,8 +84,8 @@ const eventsCache = {
       console.warn('Failed to clear localStorage:', error);
     }
   },
-  
-  getAge: function() {
+
+  getAge: function () {
     const timestamp = this.timestamp || (localStorage.getItem(this.timestampKey) ? parseInt(localStorage.getItem(this.timestampKey)) : null);
     if (timestamp) {
       return Math.floor((Date.now() - timestamp) / 1000);
@@ -98,37 +98,37 @@ function EventList() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { user, userType, isAuthenticated } = useAuth(); // Get authentication state
-  
+
   const [allEvents, setAllEvents] = useState([]); // Store all events
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [paginatedEvents, setPaginatedEvents] = useState([]); // Events for current page
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [backgroundImage, setBackgroundImage] = useState('');
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [isChangingPage, setIsChangingPage] = useState(false);
   const [eventsPerPage] = useState(9); // Fixed at 9 events per page
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Event type counts for filter buttons
   const [eventTypeCounts, setEventTypeCounts] = useState({});
   const [categoryOptions, setCategoryOptions] = useState([]);
-  
+
   // Calculate if we should show loading state - include user data loading for students
   const shouldShowLoading = isLoading || (isAuthenticated && userType === 'student' && (!user?.department || !user?.semester));
-  
+
   // Calculate if we're waiting for user data (computed value, not state) 
   const isWaitingForUserData = isAuthenticated && userType === 'student' && (!user?.department || !user?.semester);
-  
-    // Ref to prevent multiple simultaneous API calls
+
+  // Ref to prevent multiple simultaneous API calls
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -165,14 +165,14 @@ function EventList() {
   useEffect(() => {
     console.log('EventList mounted, initializing...');
     mountedRef.current = true;
-    
+
     // Set a random background image only once
     const randomImage = eventBackgrounds[Math.floor(Math.random() * eventBackgrounds.length)];
     setBackgroundImage(randomImage);
-    
+
     // Always fetch events on mount (cache will handle duplicates)
     fetchEventsOnce();
-    
+
     // Cleanup function
     return () => {
       console.log('EventList unmounting...');
@@ -192,7 +192,7 @@ function EventList() {
       userSemester: user?.semester,
       userObject: user
     });
-    
+
     if (allEvents.length > 0) {
       applyFilters();
       calculateEventTypeCounts();
@@ -223,7 +223,7 @@ function EventList() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
+
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
         goToPage(currentPage - 1);
@@ -249,7 +249,7 @@ function EventList() {
   const getUserFilteredEvents = (events) => {
     if (!isAuthenticated) {
       // Show all student events for non-authenticated users
-      return events.filter(event => 
+      return events.filter(event =>
         event.target_audience === 'student' || event.target_audience === 'students'
       );
     } else if (userType === 'student') {
@@ -259,31 +259,31 @@ function EventList() {
         console.log('⏳ Student profile incomplete, loading state should be shown');
         return []; // This won't be displayed due to loading state
       }
-      
+
       console.log('✅ Student has complete profile data, applying full filtering');
       // Show only events that match student's department AND semester
       return events.filter(event => {
         if (event.target_audience !== 'student' && event.target_audience !== 'students') {
           return false;
         }
-        
-        const eventDepartments = Array.isArray(event.student_department) 
-          ? event.student_department 
+
+        const eventDepartments = Array.isArray(event.student_department)
+          ? event.student_department
           : (event.student_department ? [event.student_department] : []);
-        
-        const eventSemesters = Array.isArray(event.student_semester) 
-          ? event.student_semester 
+
+        const eventSemesters = Array.isArray(event.student_semester)
+          ? event.student_semester
           : (event.student_semester ? [event.student_semester] : []);
-        
+
         // Normalize user semester to match event semester format
-        const userSemesterNormalized = user.semester.toString().toUpperCase().startsWith('SEM') 
+        const userSemesterNormalized = user.semester.toString().toUpperCase().startsWith('SEM')
           ? user.semester.toUpperCase()
           : `SEM${user.semester}`;
-        
+
         const departmentMatch = eventDepartments.includes(user.department);
-        const semesterMatch = eventSemesters.includes(userSemesterNormalized) || 
-                             eventSemesters.includes(user.semester.toString());
-        
+        const semesterMatch = eventSemesters.includes(userSemesterNormalized) ||
+          eventSemesters.includes(user.semester.toString());
+
         // Debug logging for each event
         console.log(`Filtering event ${event.event_id}:`, {
           eventDepartments,
@@ -295,12 +295,12 @@ function EventList() {
           semesterMatch,
           finalMatch: departmentMatch && semesterMatch
         });
-        
+
         return departmentMatch && semesterMatch;
       });
     } else if (userType === 'faculty') {
       // Show only faculty events for faculty users
-      return events.filter(event => 
+      return events.filter(event =>
         event.target_audience === 'faculty'
       );
     } else {
@@ -309,19 +309,19 @@ function EventList() {
     }
   };
 
-const fetchEventsOnce = async () => {
+  const fetchEventsOnce = async () => {
     // Prevent multiple simultaneous calls
     if (fetchingRef.current) {
       console.log('Fetch already in progress, skipping...');
       return;
     }
-    
+
     // Check if component is still mounted
     if (!mountedRef.current) {
       console.log('Component unmounted, skipping fetch...');
       return;
     }
-    
+
     // Check cache first
     const cachedEvents = eventsCache.get();
     if (cachedEvents) {
@@ -342,13 +342,13 @@ const fetchEventsOnce = async () => {
         setIsLoading(true);
         setError('');
       }
-      
+
       // First, try to get all events with a high limit
-      let response = await clientAPI.getEvents({ 
-        status: 'all', 
+      let response = await clientAPI.getEvents({
+        status: 'all',
         limit: 1000 // Set high limit to get all events
       });
-      
+
       // Check if component is still mounted before processing response
       if (!mountedRef.current) {
         console.log('Component unmounted during API call, aborting...');
@@ -359,21 +359,21 @@ const fetchEventsOnce = async () => {
         let allFetchedEvents = response.data.events || [];
         console.log('Successfully fetched events from API (first request):', allFetchedEvents.length, 'events');
         console.log('Pagination info:', response.data.pagination);
-        
+
         // If there are more pages, fetch them all
         if (response.data.pagination && response.data.pagination.total_pages > 1) {
           console.log(`Detected ${response.data.pagination.total_pages} pages, fetching remaining pages...`);
-          
+
           for (let page = 2; page <= response.data.pagination.total_pages; page++) {
             if (!mountedRef.current) break; // Stop if component unmounted
-            
+
             try {
-              const pageResponse = await clientAPI.getEvents({ 
-                status: 'all', 
+              const pageResponse = await clientAPI.getEvents({
+                status: 'all',
                 page: page,
-                limit: 1000 
+                limit: 1000
               });
-              
+
               if (pageResponse.data && pageResponse.data.success) {
                 const pageEvents = pageResponse.data.events || [];
                 allFetchedEvents = [...allFetchedEvents, ...pageEvents];
@@ -384,18 +384,18 @@ const fetchEventsOnce = async () => {
             }
           }
         }
-        
+
         console.log('Final total events fetched:', allFetchedEvents.length);
-        
+
         // Cache the complete events list
         eventsCache.set(allFetchedEvents);
-        
+
         // Update state only if component is still mounted
         if (mountedRef.current) {
           setAllEvents(allFetchedEvents);
           setError('');
         }
-        
+
       } else {
         console.error('API response indicates failure:', response.data);
         if (mountedRef.current) {
@@ -432,11 +432,11 @@ const fetchEventsOnce = async () => {
       userSemester: user?.semester,
       userObject: user,
       totalEvents: filtered.length,
-      filteringMode: !isAuthenticated ? 'public' : 
-                    userType === 'faculty' ? 'faculty' :
-                    userType === 'student' && !user?.department ? 'student-no-dept' :
-                    userType === 'student' && !user?.semester ? 'student-dept-only' :
-                    userType === 'student' ? 'student-full' : 'other'
+      filteringMode: !isAuthenticated ? 'public' :
+        userType === 'faculty' ? 'faculty' :
+          userType === 'student' && !user?.department ? 'student-no-dept' :
+            userType === 'student' && !user?.semester ? 'student-dept-only' :
+              userType === 'student' ? 'student-full' : 'other'
     });
 
     // Apply user-based filtering using helper function
@@ -453,7 +453,7 @@ const fetchEventsOnce = async () => {
     // Apply search filter
     if (debouncedSearchTerm.trim()) {
       const search = debouncedSearchTerm.toLowerCase();
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.event_name?.toLowerCase().includes(search) ||
         event.description?.toLowerCase().includes(search) ||
         event.organizing_department?.toLowerCase().includes(search) ||
@@ -463,7 +463,7 @@ const fetchEventsOnce = async () => {
 
     // Apply category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.event_type?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
@@ -475,15 +475,15 @@ const fetchEventsOnce = async () => {
   // Regular event type counts calculation (not wrapped in useMemo)
   const calculateEventTypeCounts = () => {
     const counts = {};
-    
+
     // Step 1: Apply user-based filtering using helper function
     const userFilteredEvents = getUserFilteredEvents(allEvents);
-    
+
     // Step 2: Apply status filter on user-filtered events
-    const eventsToCount = statusFilter === 'all' 
-      ? userFilteredEvents 
+    const eventsToCount = statusFilter === 'all'
+      ? userFilteredEvents
       : userFilteredEvents.filter(event => event.status === statusFilter);
-      
+
     eventsToCount.forEach(event => {
       const type = event.event_type || 'Other';
       counts[type] = (counts[type] || 0) + 1;
@@ -494,14 +494,14 @@ const fetchEventsOnce = async () => {
     const options = [
       { value: 'all', label: `All Categories (${eventsToCount.length})` }
     ];
-    
+
     Object.entries(counts).forEach(([type, count]) => {
       options.push({
         value: type.toLowerCase(),
         label: `${type} (${count})`
       });
     });
-    
+
     setCategoryOptions(options);
   };
 
@@ -522,11 +522,11 @@ const fetchEventsOnce = async () => {
     if (page >= 1 && page <= totalPages && page !== currentPage) {
       setIsChangingPage(true);
       setCurrentPage(page);
-      
+
       // Smooth scroll to top of events grid
       setTimeout(() => {
-        document.getElementById('eventsGrid')?.scrollIntoView({ 
-          behavior: 'smooth', 
+        document.getElementById('eventsGrid')?.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -540,25 +540,25 @@ const fetchEventsOnce = async () => {
       if (statusFilter === 'ongoing') return 'Live Student Events';
       return 'Student Events';
     }
-    
+
     if (userType === 'faculty') {
       if (statusFilter === 'upcoming') return 'Upcoming Faculty Events';
       if (statusFilter === 'ongoing') return 'Live Faculty Events';
       return 'Faculty Events';
     }
-    
+
     if (userType === 'student') {
       if (statusFilter === 'upcoming') return 'Your Upcoming Events';
       if (statusFilter === 'ongoing') return 'Your Live Events';
       return 'Events for You';
     }
-    
+
     if (userType === 'admin') {
       if (statusFilter === 'upcoming') return 'All Upcoming Events';
       if (statusFilter === 'ongoing') return 'All Live Events';
       return 'All Campus Events';
     }
-    
+
     // Default
     if (statusFilter === 'upcoming') return 'Upcoming Events';
     if (statusFilter === 'ongoing') return 'Live Events';
@@ -571,13 +571,13 @@ const fetchEventsOnce = async () => {
       if (statusFilter === 'ongoing') return 'Student events happening right now';
       return 'Discover student events on campus';
     }
-    
+
     if (userType === 'faculty') {
       if (statusFilter === 'upcoming') return 'Faculty events you can attend';
       if (statusFilter === 'ongoing') return 'Faculty events happening now';
       return 'Events designed for faculty';
     }
-    
+
     if (userType === 'student' && user?.department && user?.semester) {
       const dept = user.department;
       const sem = user.semester;
@@ -585,27 +585,27 @@ const fetchEventsOnce = async () => {
       if (statusFilter === 'ongoing') return `Live events for ${dept} - Semester ${sem}`;
       return `Events tailored for ${dept} students in Semester ${sem}`;
     }
-    
+
     if (userType === 'student') {
       if (statusFilter === 'upcoming') return 'Student events you can register for';
       if (statusFilter === 'ongoing') return 'Student events happening now';
       return 'Events designed for students';
     }
-    
+
     if (userType === 'admin') {
       if (statusFilter === 'upcoming') return 'All upcoming events across campus';
       if (statusFilter === 'ongoing') return 'All live events across campus';
       return 'Complete overview of campus events';
     }
-    
+
     // Default
     if (statusFilter === 'upcoming') return 'Events you can register for';
     if (statusFilter === 'ongoing') return 'Events happening right now';
     return 'Find events that interest you';
-  };  const getEventStatusCounts = () => {
+  }; const getEventStatusCounts = () => {
     // Step 1: Apply user-based filtering using helper function
     const userFilteredEvents = getUserFilteredEvents(allEvents);
-    
+
     // Step 2: Count statuses from user-filtered events
     const ongoing = userFilteredEvents.filter(e => e.status === 'ongoing').length;
     const upcoming = userFilteredEvents.filter(e => e.status === 'upcoming').length;
@@ -639,50 +639,50 @@ const fetchEventsOnce = async () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 flex items-center justify-center">
         <div className="text-center">
-            <LoadingSpinner size="lg" />            <div className="mt-4 text-gray-600">
-              <p>{shouldShowLoading && isWaitingForUserData ? 'Loading your personalized events...' : 'Loading events...'}</p>
-              {error && (
-                <p className="text-red-500 text-sm mt-2">Error: {error}</p>
-              )}
-            </div>
+          <LoadingSpinner size="lg" />            <div className="mt-4 text-gray-600">
+            <p>{shouldShowLoading && isWaitingForUserData ? 'Loading your personalized events...' : 'Loading events...'}</p>
+            {error && (
+              <p className="text-red-500 text-sm mt-2">Error: {error}</p>
+            )}
           </div>
         </div>
+      </div>
     );
   }
 
-  const statusCounts = getEventStatusCounts();  return (
-      <div className="min-h-screen relative overflow-x-hidden">
-        {/* Subtle Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-            filter: 'brightness(0.95) contrast(0.8) opacity(0.15)'
-          }}
-        ></div>
-        
-        {/* Background Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-50/90 to-sky-100/90"></div>
-        
-        {/* Content Layer */}
-        <div className="relative z-10">
-          {/* Simple Header */}
-          <div className="bg-gradient-to-r from-teal-50/80 to-sky-50/80 border-b border-teal-200/50 backdrop-blur-sm">
-            <div className="max-w-6xl mx-auto px-4 py-8">
-              
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {getPageTitle()}
-              </h1>
-              <p className="text-gray-600">
-                {getPageSubtitle()}
-              </p>
-            </div>
-          </div>
+  const statusCounts = getEventStatusCounts(); return (
+    <div className="min-h-screen relative overflow-x-hidden">
+      {/* Subtle Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+          filter: 'brightness(0.95) contrast(0.8) opacity(0.15)'
+        }}
+      ></div>
 
-          {/* Enhanced Search Section */}
-          <div className="max-w-6xl mx-auto px-4 py-6">
-            <div className="bg-gradient-to-br from-white/80 to-sky-50/80 rounded-xl shadow-lg border border-teal-200/50 p-6 mb-8 backdrop-blur-sm">
-              <div className="flex flex-col lg:flex-row gap-6">
+      {/* Background Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-50/90 to-sky-100/90"></div>
+
+      {/* Content Layer */}
+      <div className="relative z-10">
+        {/* Simple Header */}
+        <div className="bg-gradient-to-r from-teal-50/80 to-sky-50/80 border-b border-teal-200/50 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {getPageTitle()}
+            </h1>
+            <p className="text-gray-600">
+              {getPageSubtitle()}
+            </p>
+          </div>
+        </div>
+
+        {/* Enhanced Search Section */}
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="bg-gradient-to-br from-white/80 to-sky-50/80 rounded-xl shadow-lg border border-teal-200/50 p-6 mb-8 backdrop-blur-sm">
+            <div className="flex flex-col lg:flex-row gap-6">
               {/* Search Bar */}
               <div className="flex-1 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Search Events</label>
@@ -690,11 +690,11 @@ const fetchEventsOnce = async () => {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i className="fas fa-search text-teal-400"></i>
                   </div>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by event name, department, or keywords..." 
+                    placeholder="Search by event name, department, or keywords..."
                     className="w-full pl-10 pr-4 py-3 border border-teal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all bg-white"
                   />
                 </div>
@@ -734,7 +734,7 @@ const fetchEventsOnce = async () => {
                       <div className="flex items-center space-x-1">
                         <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
                         <span className="text-sky-600 font-medium">{statusCounts.upcoming} Upcoming</span>
-                      </div>                    )}
+                      </div>)}
                     {/* Refresh button */}
                     <div className="flex items-center space-x-2">
                       <button
@@ -756,7 +756,7 @@ const fetchEventsOnce = async () => {
                 <div className="flex items-center">
                   <i className="fas fa-exclamation-triangle text-red-500 mr-3"></i>
                   <span className="text-red-700">{error}</span>
-                  <button 
+                  <button
                     onClick={handleRefresh}
                     className="ml-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                   >
@@ -803,7 +803,7 @@ const fetchEventsOnce = async () => {
                     className="w-full"
                     aria-label="Events pagination navigation"
                   />
-                  
+
                   {/* Additional UX Enhancement: Quick navigation */}
                   {totalPages > 10 && (
                     <div className="mt-4 pt-4 border-t border-teal-200/50">
@@ -830,7 +830,7 @@ const fetchEventsOnce = async () => {
                             }}
                           />
                         </div>
-                        
+
                         <div className="flex items-center space-x-4">
                           <button
                             onClick={() => goToPage(1)}
@@ -852,7 +852,7 @@ const fetchEventsOnce = async () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Keyboard shortcuts hint */}
                   <div className="mt-3 pt-3 border-t border-teal-100">
                     <div className="text-xs text-gray-400 text-center">
@@ -868,48 +868,47 @@ const fetchEventsOnce = async () => {
             <div className="max-w-6xl mx-auto px-4">
               <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
                 <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <i className={`text-2xl text-gray-400 ${
-                    isWaitingForUserData 
-                      ? 'fas fa-spinner fa-spin' 
+                  <i className={`text-2xl text-gray-400 ${isWaitingForUserData
+                      ? 'fas fa-spinner fa-spin'
                       : 'fas fa-calendar-times'
-                  }`}></i>
+                    }`}></i>
                 </div>
                 <h3 className="text-xl font-bold text-gray-700 mb-3">
-                  {isWaitingForUserData 
-                    ? 'Loading Your Events...' 
+                  {isWaitingForUserData
+                    ? 'Loading Your Events...'
                     : (allEvents.length === 0 ? 'No Events Found' : 'No Events Match Your Criteria')
                   }
                 </h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  {isWaitingForUserData 
-                    ? 'Please wait while we load events tailored for your profile...' 
-                    : (allEvents.length === 0 
-                    ? (() => {
+                  {isWaitingForUserData
+                    ? 'Please wait while we load events tailored for your profile...'
+                    : (allEvents.length === 0
+                      ? (() => {
                         if (!isAuthenticated) {
                           return statusFilter === 'upcoming'
                             ? 'No upcoming student events are scheduled at the moment. Check back soon for new events!'
                             : statusFilter === 'ongoing'
-                            ? 'No student events are currently live. Browse upcoming events to see what\'s coming next.'
-                            : 'No student events are available right now. Check back later for new events!';
+                              ? 'No student events are currently live. Browse upcoming events to see what\'s coming next.'
+                              : 'No student events are available right now. Check back later for new events!';
                         } else if (userType === 'faculty') {
                           return statusFilter === 'upcoming'
                             ? 'No upcoming faculty events are scheduled. Check back soon!'
                             : statusFilter === 'ongoing'
-                            ? 'No faculty events are currently live.'
-                            : 'No faculty events are available right now.';
+                              ? 'No faculty events are currently live.'
+                              : 'No faculty events are available right now.';
                         } else if (userType === 'student' && user?.department && user?.semester) {
                           return statusFilter === 'upcoming'
                             ? `No upcoming events found for ${user.department} students in Semester ${user.semester}. Events may not be available for your specific department and semester yet.`
                             : statusFilter === 'ongoing'
-                            ? `No live events found for ${user.department} students in Semester ${user.semester}.`
-                            : `No events found matching your profile (${user.department} - Semester ${user.semester}). Events may not be targeted for your specific department and semester yet.`;
+                              ? `No live events found for ${user.department} students in Semester ${user.semester}.`
+                              : `No events found matching your profile (${user.department} - Semester ${user.semester}). Events may not be targeted for your specific department and semester yet.`;
                         } else if (userType === 'student') {
                           return 'Complete your profile with department and semester information to see targeted events.';
                         } else {
                           return 'No events are available right now. Check back later for new events!';
                         }
                       })()
-                    : (() => {
+                      : (() => {
                         if (!isAuthenticated) {
                           return 'No student events match your current search. Try adjusting your filters or search terms.';
                         } else if (userType === 'faculty') {
@@ -974,8 +973,8 @@ const fetchEventsOnce = async () => {
             </div>
           )}
         </div>
-        </div>
       </div>
+    </div>
   );
 }
 
