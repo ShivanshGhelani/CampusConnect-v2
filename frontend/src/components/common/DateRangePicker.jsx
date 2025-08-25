@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 
 const DateRangePicker = ({ 
@@ -36,19 +37,51 @@ const DateRangePicker = ({
     if (isOpen && dropdownRef.current) {
       const updatePosition = () => {
         const rect = dropdownRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const dropdownHeight = 500; // Approximate height of dropdown
+        
+        // Check if there's enough space below, otherwise position above
+        const spaceBelow = viewportHeight - rect.bottom - 8;
+        const shouldPositionAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+        
         setDropdownPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX
+          top: shouldPositionAbove ? rect.top + window.scrollY - dropdownHeight - 8 : rect.bottom + window.scrollY + 8,
+          left: Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - 320 - 8)) // Prevent dropdown from going off-screen
         });
       };
 
       updatePosition();
-      window.addEventListener('scroll', updatePosition);
-      window.addEventListener('resize', updatePosition);
+      
+      // Update position on scroll with high frequency for smooth movement
+      const handleScroll = () => {
+        updatePosition();
+      };
+      
+      // Update position on resize
+      const handleResize = () => {
+        updatePosition();
+      };
+      
+      // Listen to all possible scroll containers
+      const scrollElements = [];
+      let element = dropdownRef.current.parentElement;
+      while (element && element !== document.body) {
+        const computedStyle = window.getComputedStyle(element);
+        if (computedStyle.overflowY === 'auto' || computedStyle.overflowY === 'scroll' || computedStyle.overflow === 'auto' || computedStyle.overflow === 'scroll') {
+          scrollElements.push(element);
+        }
+        element = element.parentElement;
+      }
+      
+      // Add listeners
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      window.addEventListener('resize', handleResize);
+      scrollElements.forEach(el => el.addEventListener('scroll', handleScroll, { passive: true }));
 
       return () => {
-        window.removeEventListener('scroll', updatePosition);
-        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleResize);
+        scrollElements.forEach(el => el.removeEventListener('scroll', handleScroll));
       };
     }
   }, [isOpen]);
@@ -82,14 +115,25 @@ const DateRangePicker = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Check if click is outside the input field and the portal dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        // For portal-based dropdown, we need to check if click is inside the dropdown
+        const dropdownElement = document.querySelector('.fixed.bg-white.border.border-gray-200.rounded-xl.shadow-2xl.z-\\[10000\\]');
+        if (!dropdownElement || !dropdownElement.contains(event.target)) {
+          setIsOpen(false);
+        }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      // Small delay to prevent immediate closing when opening
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
+    }
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -121,11 +165,11 @@ const DateRangePicker = ({
 
   const formatDisplayDate = (date) => {
     if (!date) return '';
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
+    // Use explicit date formatting to avoid any timezone conversion
+    const year = date.getFullYear();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const day = date.getDate();
+    return `${month} ${day}, ${year}`;
   };
 
   const isDateBooked = (date) => {
@@ -295,11 +339,21 @@ const DateRangePicker = ({
     setIsOpen(false);
   };
 
+  // Helper function to ensure 24-hour time format
+  const formatTime24Hour = (timeStr) => {
+    if (!timeStr) return '';
+    // Ensure we always display in 24-hour format, never AM/PM
+    const [hours, minutes] = timeStr.split(':');
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  };
+
   const displayValue = () => {
     if (singleDate && startDate) {
       const dateStr = formatDisplayDate(startDate);
       if (includeTime && startTime) {
-        return `${dateStr} ${startTime}`;
+        // Force 24-hour format display, never convert timezone
+        const time24 = formatTime24Hour(startTime);
+        return `${dateStr} ${time24}`;
       }
       return dateStr;
     } else if (!singleDate && startDate && endDate) {
@@ -307,7 +361,11 @@ const DateRangePicker = ({
       const end = formatDisplayDate(endDate);
       
       if (includeTime && startTime && endTime) {
-        return `${start} ${startTime} - ${end} ${endTime}`;
+        // Force 24-hour format display, never convert timezone
+        const startTime24 = formatTime24Hour(startTime);
+        const endTime24 = formatTime24Hour(endTime);
+        // Explicitly format to prevent any timezone conversion
+        return `${start} ${startTime24} - ${end} ${endTime24}`;
       }
       
       return `${start} - ${end}`;
@@ -348,12 +406,15 @@ const DateRangePicker = ({
 
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
 
-      {isOpen && (
-        <div className="fixed bg-white border border-gray-200 rounded-xl shadow-xl z-[9999] p-6 min-w-[320px]"
-             style={{
-               top: dropdownPosition.top,
-               left: dropdownPosition.left,
-             }}>
+      {isOpen && createPortal(
+        <div 
+          className="fixed bg-white border border-gray-200 rounded-xl shadow-2xl z-[10000] p-6 min-w-[320px] max-w-sm"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-6">
             <button
@@ -502,7 +563,8 @@ const DateRangePicker = ({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

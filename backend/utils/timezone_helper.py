@@ -58,15 +58,14 @@ def format_for_frontend(dt: Union[datetime, str]) -> str:
     return format_for_display(dt, "%d %b %Y, %I:%M %p")
 
 def parse_frontend_datetime(date_str: str, time_str: str) -> datetime:
-    """Parse date and time strings from frontend and return UTC datetime"""
+    """Parse date and time strings from frontend and preserve IST datetime"""
     try:
         # Combine date and time
         dt_str = f"{date_str}T{time_str}"
         dt = datetime.fromisoformat(dt_str)
         
-        # Assume input is in IST, convert to UTC
-        dt_ist = dt.replace(tzinfo=IST_TIMEZONE)
-        return dt_ist.astimezone(timezone.utc).replace(tzinfo=None)
+        # Strip timezone info to prevent MongoDB from converting to UTC
+        return dt.replace(tzinfo=None)
         
     except ValueError as e:
         raise ValueError(f"Could not parse datetime: {date_str} {time_str} - {e}")

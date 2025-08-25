@@ -8,6 +8,9 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Dropdown from '../../components/ui/Dropdown';
 import MultiSelect from '../../components/ui/MultiSelect';
 import dropdownOptionsService from '../../services/dropdownOptionsService';
+import AttendancePreview from '../../components/AttendancePreview';
+import { formatDateToLocal } from '../../utils/dateHelpers';
+import { Clock } from 'lucide-react';
 
 // Helper function to convert backend strategy types to user-friendly labels
 const getStrategyDisplayName = (strategyType) => {
@@ -37,6 +40,40 @@ const getStrategyDisplayName = (strategyType) => {
 
   return 'Standard';
 };
+
+
+  // Optimized date formatting function
+  const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
+    
+    try {
+      const date = new Date(dateTimeString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      // Use optimized formatting with better performance
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(date);
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper to combine date and time for formatting
+  const formatCombinedDateTime = (date, time) => {
+    if (!date || !time) return 'Not set';
+    try {
+      return formatDateTime(`${date}T${time}:00`);
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
 
 // Certificate template types based on event type
 const getCertificateTypes = (eventType, eventMode = null) => {
@@ -110,7 +147,40 @@ const registrationModeOptions = [
   { value: 'team', label: 'Team' }
 ];
 
-function EditEvent() {
+const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
+    <div className={`bg-white border border-gray-200 rounded-lg p-6 ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+          <Icon className="w-5 h-5 text-gray-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+
+  const InfoRow = ({ label, value, className = "" }) => (
+    <div className={`flex justify-between items-start py-2 ${className}`}>
+      <span className="text-sm font-medium text-gray-600">{label}</span>
+      <span className="text-sm text-gray-900 text-right max-w-[60%]">{value || 'N/A'}</span>
+    </div>
+  );
+
+  const Badge = ({ children, variant = "default" }) => {
+    const variants = {
+      default: "bg-gray-100 text-gray-800",
+      primary: "bg-blue-100 text-blue-800",
+      success: "bg-green-100 text-green-800"
+    };
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${variants[variant]}`}>
+        {children}
+      </span>
+    );
+  };
+
+  function EditEvent() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,28 +189,6 @@ function EditEvent() {
   const [isLoading, setIsLoading] = useState(!location.state?.eventData);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  // Add custom CSS for DateRangePicker z-index fix - Not needed anymore since we fixed it at component level
-  // useEffect(() => {
-  //   const style = document.createElement('style');
-  //   style.textContent = `
-  //     .date-range-picker-dropdown {
-  //       z-index: 9999 !important;
-  //       position: fixed !important;
-  //     }
-  //     .react-datepicker-popper {
-  //       z-index: 9999 !important;
-  //     }
-  //     .react-datepicker {
-  //       z-index: 9999 !important;
-  //     }
-  //   `;
-  //   document.head.appendChild(style);
-  //   
-  //   return () => {
-  //     document.head.removeChild(style);
-  //   };
-  // }, []);
 
   // Venue management states
   const [venues, setVenues] = useState([]);
@@ -156,33 +204,6 @@ function EditEvent() {
 
   // Tab management
   const [activeTab, setActiveTab] = useState(1);
-
-  // Helper function for timezone-safe date formatting
-  const formatDateSafe = (date) => {
-    if (!date) return '';
-    
-    // Get the local date components to avoid timezone conversion
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
-  };
-
-  // Helper function for timezone-safe date parsing
-  const parseDateSafe = (dateString) => {
-    if (!dateString) return null;
-    
-    // Parse YYYY-MM-DD format safely without timezone conversion
-    const parts = dateString.split('-');
-    if (parts.length !== 3) return null;
-    
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in Date constructor
-    const day = parseInt(parts[2], 10);
-    
-    return new Date(year, month, day);
-  };
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -236,6 +257,9 @@ function EditEvent() {
     event_poster: null,
     assets: []
   });
+
+  // Attendance strategy state for dynamic regeneration
+  const [attendanceStrategy, setAttendanceStrategy] = useState(null);
 
   // Load venues and organizers on component mount
   useEffect(() => {
@@ -445,74 +469,7 @@ function EditEvent() {
     }));
   };
 
-  // Date and time handlers - TIMEZONE SAFE
-  const handleEventDateChange = (startDate, endDate) => {
-    const formattedStart = startDate ? formatDateSafe(startDate) : '';
-    const formattedEnd = endDate ? formatDateSafe(endDate) : '';
-    
-    console.log('🗓️ EditEvent: Event date change:', {
-      startDate_raw: startDate,
-      endDate_raw: endDate,
-      startDate_formatted: formattedStart,
-      endDate_formatted: formattedEnd
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      start_date: formattedStart,
-      end_date: formattedEnd
-    }));
-  };
-
-  const handleEventTimeChange = (startTime, endTime) => {
-    console.log('🕐 EditEvent: Event time change:', { startTime, endTime });
-    
-    setFormData(prev => ({
-      ...prev,
-      start_time: startTime || '',
-      end_time: endTime || ''
-    }));
-  };
-
-  const handleRegistrationDateChange = (startDate, endDate) => {
-    const formattedStart = startDate ? formatDateSafe(startDate) : '';
-    const formattedEnd = endDate ? formatDateSafe(endDate) : '';
-    
-    console.log('📝 EditEvent: Registration date change:', {
-      startDate_raw: startDate,
-      endDate_raw: endDate,
-      startDate_formatted: formattedStart,
-      endDate_formatted: formattedEnd
-    });
-    
-    setFormData(prev => ({
-      ...prev,
-      registration_start_date: formattedStart,
-      registration_end_date: formattedEnd
-    }));
-  };
-
-  const handleRegistrationTimeChange = (startTime, endTime) => {
-    setFormData(prev => ({
-      ...prev,
-      registration_start_time: startTime || '',
-      registration_end_time: endTime || ''
-    }));
-  };
-
-  const handleCertificateDateChange = (endDate) => {
-    setFormData(prev => ({
-      ...prev,
-      certificate_end_date: endDate ? formatDateSafe(endDate) : ''
-    }));
-  };
-
-  const handleCertificateTimeChange = (endTime) => {
-    setFormData(prev => ({
-      ...prev,
-      certificate_end_time: endTime || ''
-    }));
-  };
+  // Date and time handlers - these are now handled inline in DateRangePicker components
 
   // Extract form data population into a separate function
   const populateFormData = (eventData) => {
@@ -520,11 +477,11 @@ function EditEvent() {
     // Parse datetime strings to separate date and time - TIMEZONE SAFE
     const parseDateTimeToComponents = (dateTimeString) => {
       if (!dateTimeString) return { date: '', time: '' };
-      
+
       // Handle different date formats safely without timezone conversion
       let dateStr = '';
       let timeStr = '';
-      
+
       if (dateTimeString.includes('T')) {
         // ISO format: "2025-09-01T10:00:00" or "2025-09-01T10:00:00.000Z"
         const [datePart, timePart] = dateTimeString.split('T');
@@ -540,7 +497,7 @@ function EditEvent() {
         dateStr = dateTimeString;
         timeStr = '';
       }
-      
+
       return { date: dateStr, time: timeStr };
     };
 
@@ -702,6 +659,10 @@ function EditEvent() {
     };
 
     setFormData(newFormData);
+
+    // Initialize attendance strategy state for dynamic regeneration
+    setAttendanceStrategy(eventData.attendance_strategy || null);
+
     setError('');
   };
 
@@ -812,17 +773,17 @@ function EditEvent() {
     try {
       setIsSaving(true);
 
-      // Combine date and time for datetime fields - TIMEZONE SAFE
+      // Combine date and time for datetime fields - FORCE LOCAL TIMEZONE
       const combineDateAndTime = (date, time) => {
         if (!date) return null;
-        
+
         // If no time specified, use start of day (00:00:00)
         if (!time) {
-          return `${date}T00:00:00`;
+          return `${date}T00:00:00.000+05:30`; // Explicit IST timezone
         }
-        
-        // Combine date and time without timezone conversion
-        return `${date}T${time}:00`;
+
+        // Combine date and time WITH IST timezone to prevent UTC conversion
+        return `${date}T${time}:00.000+05:30`; // Explicit IST timezone
       };
 
       // Process organizers - extract selected ones
@@ -874,6 +835,7 @@ function EditEvent() {
         min_participants: formData.min_participants ? parseInt(formData.min_participants) : 1,
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
         attendance_mandatory: formData.attendance_mandatory,
+        attendance_strategy: attendanceStrategy || formData.attendance_strategy,
         is_certificate_based: formData.is_certificate_based,
         certificate_templates: formData.certificate_templates,
         organizers: processOrganizers(formData.organizers),
@@ -895,16 +857,16 @@ function EditEvent() {
 
       if (response.data.success) {
         console.log('✅ EditEvent: Update successful!', response.data);
-        
+
         // Update local state with the response data to reflect changes immediately
         if (response.data.event) {
           setEvent(response.data.event);
           populateFormData(response.data.event);
         }
-        
+
         // Show success message
         setError('');
-        
+
         // Optionally stay on the page to see changes or redirect
         // navigate(`/admin/events`);
       } else {
@@ -1163,7 +1125,7 @@ function EditEvent() {
               <p className="text-sm text-gray-600">Event organizer details, contact information, and scheduling settings</p>
             </div>
 
-            <div className="space-y-10 overflow-visible">
+            <div className="space-y-4">
               {/* Organizer & Contact Information Section */}
               <div>
                 <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Organizer & Contact Information</h3>
@@ -1305,259 +1267,12 @@ function EditEvent() {
                   </div>
                 </div>
               </div>
-
-              {/* Registration Settings & Attendance Settings - Side by Side Layout (All Read-Only) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Registration Settings Section - READ ONLY */}
-                <div>
-                  <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Registration Settings</h3>
-                  <div className="space-y-4">
-                    {/* Registration Type and Mode in same row - READ ONLY */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Registration Type<span className="text-red-500">*</span>
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                            Read Only
-                          </span>
-                        </label>
-                        <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
-                          {formData.registration_type === 'free' ? 'Free Registration' :
-                            formData.registration_type === 'paid' ? 'Paid Registration' :
-                              formData.registration_type === 'sponsored' ? 'Sponsored Event' :
-                                formData.registration_type || 'Not Set'}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">
-                          Registration Mode<span className="text-red-500">*</span>
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                            Read Only
-                          </span>
-                        </label>
-                        <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
-                          {formData.registration_mode === 'individual' ? 'Individual Registration' :
-                            formData.registration_mode === 'team' ? 'Team Registration' :
-                              formData.registration_mode || 'Not Set'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fee Fields - READ ONLY if exists */}
-                    {formData.registration_type === 'paid' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="fee-fields">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1">Registration Fee</label>
-                          <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm">
-                            ₹{formData.registration_fee || '0.00'}
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1">Fee Description</label>
-                          <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm min-h-[2.5rem]">
-                            {formData.fee_description || 'No description'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Team Fields - READ ONLY if exists */}
-                    {formData.registration_mode === 'team' && (
-                      <div className="space-y-3" id="team-fields">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Team Size</label>
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">Min:</span> {formData.team_size_min || 'Not Set'} • 
-                              <span className="font-medium ml-2">Max:</span> {formData.team_size_max || 'Not Set'}
-                            </p>
-                          </div>
-
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Participants Limit</label>
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">Min:</span> {formData.min_participants || '1'} • 
-                              <span className="font-medium ml-2">Max:</span> {formData.max_participants || 'Unlimited'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={formData.allow_multiple_team_registrations}
-                            disabled
-                            className="w-3 h-3 text-gray-400 bg-gray-200 border-gray-300 rounded cursor-not-allowed"
-                          />
-                          <label className="text-sm text-gray-500 cursor-not-allowed">Allow Multiple Team Registrations</label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* For individual registration mode, show participants limit separately */}
-                    {formData.registration_mode === 'individual' && (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Participants Limit</label>
-                        <p className="text-sm text-gray-700">
-                          <span className="font-medium">Min:</span> {formData.min_participants || '1'} • 
-                          <span className="font-medium ml-2">Max:</span> {formData.max_participants || 'Unlimited'}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Event Mode - READ ONLY */}
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3.5 mt-7 ">
-                        Event Mode<span className="text-red-500">*</span>
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                          Read Only
-                        </span>
-                      </label>
-                      <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
-                        {formData.mode === 'online' && '🌐 Online Event'}
-                        {formData.mode === 'offline' && '📍 Offline Event'}
-                        {formData.mode === 'hybrid' && '🔄 Hybrid Event'}
-                        {!formData.mode && 'Not Set'}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">Event mode cannot be changed after creation</p>
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-2 text-center bg-gray-50 rounded p-2">
-                      🔒 All registration settings are locked after event creation
-                    </p>
-                  </div>
-                </div>
-
-                {/* Attendance Settings - READ ONLY */}
-                <div>
-                  <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Attendance Settings</h3>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex items-center h-5">
-                          <input
-                            type="checkbox"
-                            checked={formData.attendance_mandatory}
-                            disabled
-                            className="h-4 w-4 text-gray-400 bg-gray-200 border-gray-300 rounded cursor-not-allowed"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-sm font-medium text-gray-500 cursor-not-allowed">
-                            Is Event Attendance Mandatory?
-                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                              Read Only
-                            </span>
-                          </label>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Current: {formData.attendance_mandatory ? 'Mandatory' : 'Optional'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {formData.attendance_mandatory ? (
-                      <div className="space-y-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            <h4 className="text-sm font-medium text-blue-900">Attendance Tracking Enabled</h4>
-                          </div>
-                          <p className="text-xs text-blue-800">
-                            Participants must check in to mark their attendance.
-                          </p>
-                        </div>
-
-                        {/* Attendance Strategy Display */}
-                        {formData.attendance_strategy ? (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div className="flex items-center space-x-2 mb-3">
-                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <h4 className="text-sm font-semibold text-green-900">Attendance Strategy</h4>
-                            </div>
-
-                            <div className="space-y-3">
-                              {/* Strategy Type */}
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-green-700 font-medium">Strategy Type:</span>
-                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
-                                  {getStrategyDisplayName(formData.attendance_strategy)}
-                                </span>
-                              </div>
-
-                              {/* Minimum Percentage */}
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-green-700 font-medium">Required Attendance:</span>
-                                <span className="text-xs text-green-800 font-semibold">
-                                  {formData.attendance_strategy.criteria?.minimum_percentage ||
-                                    formData.attendance_strategy.minimum_percentage ||
-                                    (formData.attendance_strategy.strategy === 'single_mark' ? '100' : '75')}%
-                                </span>
-                              </div>
-
-                              {/* Sessions count if available */}
-                              {formData.attendance_strategy.sessions?.length > 0 && (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-xs text-green-700 font-medium">Sessions:</span>
-                                  <span className="text-xs text-green-800">
-                                    {formData.attendance_strategy.sessions.length} session{formData.attendance_strategy.sessions.length !== 1 ? 's' : ''}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Strategy Description */}
-                              {formData.attendance_strategy.detected_strategy?.description && (
-                                <div className="mt-2 pt-2 border-t border-green-200">
-                                  <p className="text-xs text-green-700 italic">
-                                    "{formData.attendance_strategy.detected_strategy.description}"
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                              </svg>
-                              <h4 className="text-sm font-medium text-yellow-900">Standard Attendance Strategy</h4>
-                            </div>
-                            <p className="text-xs text-yellow-800">
-                              Using default QR code check-in system with standard attendance tracking.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                        <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <h3 className="text-sm font-medium text-gray-900 mb-1">No Attendance Tracking</h3>
-                        <p className="text-xs text-gray-600">
-                          No attendance data will be collected for this event.
-                        </p>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-gray-500 text-center bg-gray-50 rounded p-2">
-                      🔒 Attendance settings are locked after event creation
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Schedule Information Section - EDITABLE */}
               <div>
                 <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2 flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="orange" className="w-5 h-5 mr-2">
                     <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 0 1 .67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 1 1-.671-1.34l.041-.022ZM12 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
                   </svg>
-                  Event Schedule
+                  Event Data
                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -1567,53 +1282,211 @@ function EditEvent() {
                 </h3>
 
                 {/* Main Layout: Left Column (Forms) and Right Column (Preview) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 overflow-visible">
+                <div className="grid grid-cols-1 lg:grid-cols-2  gap-8">
                   {/* Left Column: Forms */}
-                  <div className="space-y-6 overflow-visible">
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Registration Settings</h3>
+                      <div className="space-y-4">
+                        {/* Registration Type and Mode in same row - READ ONLY */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">
+                              Registration Type<span className="text-red-500">*</span>
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                Read Only
+                              </span>
+                            </label>
+                            <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
+                              {formData.registration_type === 'free' ? 'Free Registration' :
+                                formData.registration_type === 'paid' ? 'Paid Registration' :
+                                  formData.registration_type === 'sponsored' ? 'Sponsored Event' :
+                                    formData.registration_type || 'Not Set'}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">
+                              Registration Mode<span className="text-red-500">*</span>
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                Read Only
+                              </span>
+                            </label>
+                            <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
+                              {formData.registration_mode === 'individual' ? 'Individual Registration' :
+                                formData.registration_mode === 'team' ? 'Team Registration' :
+                                  formData.registration_mode || 'Not Set'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fee Fields - READ ONLY if exists */}
+                        {formData.registration_type === 'paid' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="fee-fields">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">Registration Fee</label>
+                              <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm">
+                                ₹{formData.registration_fee || '0.00'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">Fee Description</label>
+                              <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm min-h-[2.5rem]">
+                                {formData.fee_description || 'No description'}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Team Fields - READ ONLY if exists */}
+                        {formData.registration_mode === 'team' && (
+                          <div className="space-y-3" id="team-fields">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Team Size</label>
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">Min:</span> {formData.team_size_min || 'Not Set'} •
+                                  <span className="font-medium ml-2">Max:</span> {formData.team_size_max || 'Not Set'}
+                                </p>
+                              </div>
+
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Participants Limit</label>
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">Min:</span> {formData.min_participants || '1'} •
+                                  <span className="font-medium ml-2">Max:</span> {formData.max_participants || 'Unlimited'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                              <input
+                                type="checkbox"
+                                checked={formData.allow_multiple_team_registrations}
+                                disabled
+                                className="w-3 h-3 text-gray-400 bg-gray-200 border-gray-300 rounded cursor-not-allowed"
+                              />
+                              <label className="text-sm text-gray-500 cursor-not-allowed">Allow Multiple Team Registrations</label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* For individual registration mode, show participants limit separately */}
+                        {formData.registration_mode === 'individual' && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Participants Limit</label>
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">Min:</span> {formData.min_participants || '1'} •
+                              <span className="font-medium ml-2">Max:</span> {formData.max_participants || 'Unlimited'}
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2 text-center bg-gray-50 rounded p-2">
+                          🔒 All registration settings are locked after event creation
+                        </p>
+                      </div>
+                    </div>
                     {/* Registration Period - EDITABLE */}
-                    <div className="relative z-30 overflow-visible">
+                    <div className="space-y-3">
                       <DateRangePicker
                         label="Registration Period"
-                        startDate={parseDateSafe(formData.registration_start_date)}
-                        endDate={parseDateSafe(formData.registration_end_date)}
+                        startDate={formData.registration_start_date ? (() => {
+                          const [year, month, day] = formData.registration_start_date.split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        })() : null}
+                        endDate={formData.registration_end_date ? (() => {
+                          const [year, month, day] = formData.registration_end_date.split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        })() : null}
                         startTime={formData.registration_start_time}
                         endTime={formData.registration_end_time}
-                        onDateChange={handleRegistrationDateChange}
-                        onTimeChange={handleRegistrationTimeChange}
+                        onDateChange={(startDate, endDate) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            registration_start_date: startDate ? formatDateToLocal(startDate) : '',
+                            registration_end_date: endDate ? formatDateToLocal(endDate) : ''
+                          }));
+                        }}
+                        onTimeChange={(startTime, endTime) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            registration_start_time: startTime || '',
+                            registration_end_time: endTime || ''
+                          }));
+                        }}
                         includeTime={true}
                         required={true}
                         placeholder="Select registration period"
-                        className="w-full -mb-3"
+                        className="w-full"
                         theme="green"
                       />
-                    </div>
 
-                    {/* Event Schedule - EDITABLE */}
-                    <div className="relative z-20 overflow-visible">
                       <DateRangePicker
                         label="Event Schedule"
-                        startDate={parseDateSafe(formData.start_date)}
-                        endDate={parseDateSafe(formData.end_date)}
+                        startDate={formData.start_date ? (() => {
+                          const [year, month, day] = formData.start_date.split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        })() : null}
+                        endDate={formData.end_date ? (() => {
+                          const [year, month, day] = formData.end_date.split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        })() : null}
                         startTime={formData.start_time}
                         endTime={formData.end_time}
-                        onDateChange={handleEventDateChange}
-                        onTimeChange={handleEventTimeChange}
+                        onDateChange={(startDate, endDate) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            start_date: startDate ? formatDateToLocal(startDate) : '',
+                            end_date: endDate ? formatDateToLocal(endDate) : ''
+                          }));
+                        }}
+                        onTimeChange={(startTime, endTime) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            start_time: startTime || '',
+                            end_time: endTime || ''
+                          }));
+                        }}
                         includeTime={true}
                         required={true}
                         placeholder="Select event duration"
-                        constrainToRegistration={true}
                         className="w-full"
                         theme="purple"
+                        minDate={formData.registration_start_date ? (() => {
+                          const [year, month, day] = formData.registration_start_date.split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        })() : null}
                       />
                     </div>
-
+                    {/* Schedule Information Section - EDITABLE */}
                     {/* Event Mode & Location Section */}
-                    <div className="pt-4 border-t border-gray-200">
+
+
+
+                  </div>
+                  {/* Right Column: Event Timeline & Location Preview */}
+                  <div className="space-y-0">
+                    <div>
+                      <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Event Venue Settings</h3>
                       <div className="space-y-4">
                         {/* Venue Location Input - EDITABLE for offline and hybrid modes */}
                         {(formData.mode === 'offline' || formData.mode === 'hybrid') && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className='mb-4'>
+                            {/* Event Mode - READ ONLY */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                Event Mode<span className="text-red-500">*</span>
+                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                  Read Only
+                                </span>
+                              </label>
+                              <div className="px-3 py-2 w-full rounded-lg border border-gray-300 bg-gray-50 text-gray-700 text-sm capitalize">
+                                {formData.mode === 'online' && '🌐 Online Event'}
+                                {formData.mode === 'offline' && '📍 Offline Event'}
+                                {formData.mode === 'hybrid' && '🔄 Hybrid Event'}
+                                {!formData.mode && 'Not Set'}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">Event mode cannot be changed after creation</p>
+                            </div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1 mt-3">
                               Venue/Location<span className="text-red-500">*</span>
                               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                 <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -1673,7 +1546,7 @@ function EditEvent() {
 
                               {/* Autocomplete Dropdown - Show all venues when focused or filtered when searching */}
                               {showVenueDropdown && filteredVenues.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                   {filteredVenues.map((venue) => (
                                     <div
                                       key={venue.venue_id}
@@ -1761,60 +1634,131 @@ function EditEvent() {
                           </div>
                         )}
                       </div>
+                      {/* Registration Settings Section - READ ONLY */}
+
+                      <InfoCard icon={Clock} title="Schedule">
+                        <div className="space-y-2">
+                          {/* Registration Period */}
+                          <div className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
+                            <div className="text-xs font-medium text-green-800 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Registration
+                            </div>
+                            <div className="text-xs text-green-700">
+                              {formatCombinedDateTime(formData.registration_start_date, formData.registration_start_time)} → {formatCombinedDateTime(formData.registration_end_date, formData.registration_end_time)}
+                            </div>
+                          </div>
+                          
+                          {/* Event Period */}
+                          <div className="flex items-center justify-between p-2 bg-purple-50 rounded border border-purple-200">
+                            <div className="text-xs font-medium text-purple-800 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                              </svg>
+                              Event
+                            </div>
+                            <div className="text-xs text-purple-700">
+                              {formatCombinedDateTime(formData.start_date, formData.start_time)} → {formatCombinedDateTime(formData.end_date, formData.end_time)}
+                            </div>
+                          </div>
+
+                          {/* Duration */}
+                          {formData.start_date && formData.start_time && formData.end_date && formData.end_time && (
+                            <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                              <div className="text-xs font-medium text-blue-800 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                                Duration
+                              </div>
+                              <div className="text-xs font-semibold text-blue-800">
+                                {(() => {
+                                  try {
+                                    const start = new Date(`${formData.start_date}T${formData.start_time}:00`);
+                                    const end = new Date(`${formData.end_date}T${formData.end_time}:00`);
+                                    const diffMs = end - start;
+                                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                    
+                                    if (diffDays > 0) return `${diffDays}d ${diffHours}h ${diffMinutes}m`;
+                                    if (diffHours > 0) return `${diffHours}h ${diffMinutes}m`;
+                                    return `${diffMinutes}m`;
+                                  } catch (error) {
+                                    return 'Invalid';
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </InfoCard>
                     </div>
-
-
                   </div>
-                  {/* Right Column: Event Timeline & Location Preview */}
-                  <div className="space-y-6">
-                    {/* Event Timeline Preview */}
-                    <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl border border-purple-100">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <svg className="w-5 h-5 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                        </svg>
-                        Event Timeline
-                      </h4>
-                      <div className="space-y-4">
-                        {/* Registration Period Display */}
-                        <div className="bg-green-100 rounded-lg p-4 border-l-4 border-green-500">
-                          <h5 className="font-medium text-green-800 mb-2">📝 Registration Period</h5>
-                          {formData.registration_start_date && formData.registration_end_date ? (
-                            <div className="text-sm text-green-700 space-y-1">
-                              <p><span className="font-medium">From:</span> {parseDateSafe(formData.registration_start_date)?.toLocaleDateString('en-US', {
-                                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
-                              })} {formData.registration_start_time && `at ${formData.registration_start_time}`}</p>
-                              <p><span className="font-medium">To:</span> {parseDateSafe(formData.registration_end_date)?.toLocaleDateString('en-US', {
-                                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
-                              })} {formData.registration_end_time && `at ${formData.registration_end_time}`}</p>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-green-600 italic">Not set yet</p>
-                          )}
-                        </div>
-
-                        {/* Event Schedule Display */}
-                        <div className="bg-purple-100 rounded-lg p-4 border-l-4 border-purple-500">
-                          <h5 className="font-medium text-purple-800 mb-2">🎉 Event Schedule</h5>
-                          {formData.start_date && formData.end_date ? (
-                            <div className="text-sm text-purple-700 space-y-1">
-                              <p><span className="font-medium">From:</span> {parseDateSafe(formData.start_date)?.toLocaleDateString('en-US', {
-                                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
-                              })} {formData.start_time && `at ${formData.start_time}`}</p>
-                              <p><span className="font-medium">To:</span> {parseDateSafe(formData.end_date)?.toLocaleDateString('en-US', {
-                                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
-                              })} {formData.end_time && `at ${formData.end_time}`}</p>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-purple-600 italic">Not set yet</p>
-                          )}
-                        </div>
+                </div>
+              </div>
+              {/* Registration Settings & Attendance Settings - Side by Side Layout (All Read-Only) */}
+              <div className="">
+                {/* Attendance Settings - READ ONLY */}
+                <h3 className="text-md font-medium text-gray-900 mb-6 border-b pb-2">Attendance Settings</h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex items-center h-5">
+                        <input
+                          type="checkbox"
+                          checked={formData.attendance_mandatory}
+                          disabled
+                          className="h-4 w-4 text-gray-400 bg-gray-200 border-gray-300 rounded cursor-not-allowed"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-gray-500 cursor-not-allowed">
+                          Is Event Attendance Mandatory?
+                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                            Read Only
+                          </span>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Current: {formData.attendance_mandatory ? 'Mandatory' : 'Optional'}
+                        </p>
                       </div>
                     </div>
-
-                    {/* Location Preview */}
-
                   </div>
+
+                  {formData.attendance_mandatory ? (
+                    <div className="space-y-4">
+                      {/* Dynamic Attendance Strategy Generation */}
+                      <AttendancePreview
+                        key={`${formData.start_date}-${formData.start_time}-${formData.end_date}-${formData.end_time}-${formData.event_type}-${formData.registration_mode}`}
+                        eventData={formData}
+                        onStrategyChange={(strategy) => {
+                          setAttendanceStrategy(strategy);
+                          // Also update formData for immediate display
+                          setFormData(prev => ({
+                            ...prev,
+                            attendance_strategy: strategy
+                          }));
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                      <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <h3 className="text-sm font-medium text-gray-900 mb-1">No Attendance Tracking</h3>
+                      <p className="text-xs text-gray-600">
+                        No attendance data will be collected for this event.
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500 text-center bg-gray-50 rounded p-2">
+                    🔒 Attendance settings are locked after event creation
+                  </p>
                 </div>
               </div>
             </div>
@@ -1934,20 +1878,37 @@ function EditEvent() {
                   </span>
                 </h3>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3 relative z-10 overflow-visible">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 pt-3 pb-3">
                   <DateRangePicker
                     label="Certificate Distribution End Date"
-                    startDate={parseDateSafe(formData.certificate_end_date)}
+                    startDate={formData.certificate_end_date ? (() => {
+                      const [year, month, day] = formData.certificate_end_date.split('-');
+                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    })() : null}
                     endDate={null}
                     startTime={formData.certificate_end_time}
                     endTime={null}
-                    onDateChange={handleCertificateDateChange}
-                    onTimeChange={handleCertificateTimeChange}
+                    onDateChange={(startDate, endDate) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        certificate_end_date: startDate ? formatDateToLocal(startDate) : ''
+                      }));
+                    }}
+                    onTimeChange={(startTime, endTime) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        certificate_end_time: startTime || ''
+                      }));
+                    }}
                     includeTime={true}
                     required={false}
                     placeholder="Select certificate distribution end date"
                     className="w-full"
                     theme="purple"
+                    minDate={formData.start_date ? (() => {
+                      const [year, month, day] = formData.start_date.split('-');
+                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    })() : null}
                   />
 
                   <p className="text-sm text-purple-800 mt-5">
@@ -2130,17 +2091,17 @@ function EditEvent() {
 
   return (
     <AdminLayout pageTitle="Edit Event">
-      <div className="min-h-screen flex max-w-5xl justify-center items-center mx-auto overflow-visible">
-        <div className="container mx-auto px-4 py-8 overflow-visible">
+      <div className="min-h-screen flex max-w-5xl justify-center items-start mx-auto">
+        <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center space-x-4 mb-4">
               <button
-                onClick={() => navigate('/admin/events')}
+                onClick={() => navigate(`/admin/events/${eventId}`)}
                 className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
               >
                 <i className="fas fa-arrow-left mr-2"></i>
-                Back to Events
+                Back to Event Details
               </button>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
@@ -2165,7 +2126,7 @@ function EditEvent() {
           )}
 
           {/* Main Content Card */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg">
             {/* Tab Navigation */}
             <div className="border-b border-gray-200">
               <nav className="flex space-x-8 px-8" aria-label="Tabs">

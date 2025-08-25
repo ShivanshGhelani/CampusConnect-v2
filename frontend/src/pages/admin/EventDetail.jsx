@@ -421,8 +421,9 @@ function EventDetail() {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
       });
     } catch (error) {
       return 'Invalid Date';
@@ -436,8 +437,9 @@ function EventDetail() {
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
       });
     } catch (error) {
       return 'Invalid Date';
@@ -1158,20 +1160,13 @@ function EventDetail() {
               </div>
 
               {/* Event Summary */}
-              <div className="flex items-start gap-4">
+              <div className="flex items-center gap-4 justify-center">
                 <div className="w-24 h-24 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-14 h-14 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-xl font-bold text-gray-900 mb-2">{event.event_name}</h2>
                   <p className="text-gray-600 mb-3">{event.short_description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="primary">{event.event_type}</Badge>
-                    <Badge>{event.target_audience}</Badge>
-                    <Badge>{event.mode}</Badge>
-                    {event.is_xenesis_event && <Badge variant="success">Xenesis Event</Badge>}
-                    <Badge>{event.status}</Badge>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1284,27 +1279,27 @@ function EventDetail() {
               <div className="space-y-6">
                 {/* Schedule */}
                 <InfoCard icon={Clock} title="Schedule">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
                           <div className="text-sm font-medium text-gray-900">Registration Period</div>
                           <div className="text-xs text-gray-600">Opens → Closes</div>
                         </div>
-                        <div className="text-right text-sm text-gray-900">
+                        <div className="text-right text-sm text-gray-900 flex gap-2">
                           <div>{formatDateTime(event.registration_start_date)}</div>
-                          <div className="text-gray-600">to</div>
+                          <div className="text-gray-600">--</div>
                           <div>{formatDateTime(event.registration_end_date)}</div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg ">
                         <div>
                           <div className="text-sm font-medium text-gray-900">Event Period</div>
                           <div className="text-xs text-gray-600">Start → End</div>
                         </div>
-                        <div className="text-right text-sm text-gray-900">
+                        <div className="text-right text-sm text-gray-900 flex gap-2">
                           <div>{formatDateTime(event.start_datetime)}</div>
-                          <div className="text-gray-600">to</div>
+                          <div className="text-gray-600">--</div>
                           <div>{formatDateTime(event.end_datetime)}</div>
                         </div>
                       </div>
@@ -1317,9 +1312,9 @@ function EventDetail() {
                 <InfoCard icon={MapPin} title="Venue & Location">
                   <div className="space-y-0 divide-y divide-gray-100">
                     <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
-                    <InfoRow label="Venue" value={event.venue} />
+                    <InfoRow label="Venue" className='text-nowrap' value={event.venue} />
                   </div>
-                </InfoCard>
+                </InfoCard> 
 
                 {/* Student Eligibility Criteria - For student events only */}
                 {event.target_audience === 'student' && (event.student_department?.length > 0 || event.student_semester?.length > 0) && (
@@ -1440,13 +1435,6 @@ function EventDetail() {
               </div>
             </div>
 
-            {/* Organizers & Contacts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-
-
-
-
-            </div>
 
             {/* Attendance Strategy Preview */}
             {(event.attendance_strategy || event.dynamic_attendance) && (
