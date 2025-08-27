@@ -1,6 +1,10 @@
 """
-Event Registration Service
-=========================
+Event Registration Servic    async def register_individual(
+        self, 
+        enrollment_no: str, 
+        event_id: str, 
+        additional_data: Dict = None
+    ) -> RegistrationResponse:======================
 Handles ALL event registration operations: individual, team, team management, cancellation.
 Creates registration documents with pre-structured attendance fields based on event strategy.
 
@@ -12,7 +16,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 from database.operations import DatabaseOperations
 from models.registration import CreateRegistrationRequest, RegistrationResponse
-from core.id_generator import generate_registration_id
+# REMOVED: core.id_generator import - now using frontend-generated IDs
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -57,8 +61,14 @@ class EventRegistrationService:
             if not event_data:
                 return RegistrationResponse(success=False, message="Event not found")
             
-            # Generate registration ID
-            registration_id = f"REG_{enrollment_no}_{event_id}"
+            # FIXED: Use registration_id from frontend if provided, otherwise generate
+            registration_id = additional_data.get("registration_id") if additional_data else None
+            if not registration_id:
+                # Fallback: generate if not provided by frontend
+                registration_id = f"REG_{enrollment_no}_{event_id}"
+                logger.warning(f"No registration_id from frontend, generated: {registration_id}")
+            else:
+                logger.info(f"Using frontend-generated registration_id: {registration_id}")
             
             # Create registration document with pre-structured attendance fields
             registration_doc = await self._create_registration_document(
@@ -144,7 +154,20 @@ class EventRegistrationService:
                 if not student_data:
                     continue
                 
-                registration_id = f"REG_{enrollment_no}_{event_id}"
+                # FIXED: Use frontend-generated team registration IDs if available
+                member_reg_id = None
+                if team_data and "team_registration_ids" in team_data:
+                    # Frontend provides individual registration IDs for team members
+                    team_reg_ids = team_data["team_registration_ids"]
+                    member_index = team_members.index(enrollment_no)
+                    if member_index < len(team_reg_ids):
+                        member_reg_id = team_reg_ids[member_index]
+                
+                registration_id = member_reg_id or f"REG_{enrollment_no}_{event_id}"
+                if member_reg_id:
+                    logger.info(f"Using frontend team registration_id: {registration_id}")
+                else:
+                    logger.warning(f"No team registration_id from frontend, generated: {registration_id}")
                 
                 # Create registration document for team member
                 registration_doc = await self._create_registration_document(

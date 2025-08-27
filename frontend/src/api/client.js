@@ -94,6 +94,11 @@ export const clientAPI = {
     conflict_resolution: resolution
   }),
 
+  // ENHANCED REGISTRATION ENDPOINTS 
+  // Get recent registrations for an event (for EventDetail.jsx)
+  getRecentRegistrations: (eventId, limit = 10) => 
+    api.get(`/api/v1/registrations/event/${eventId}/recent`, { params: { limit } }),
+
   // SIMPLE REGISTRATION ENDPOINTS (event_lifecycle.txt implementation)
   // Individual registration
   registerIndividualSimple: (eventId, registrationData) => 

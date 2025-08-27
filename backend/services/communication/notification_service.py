@@ -12,7 +12,6 @@ from models.notification import (
     NotificationResponse, NotificationListResponse
 )
 from models.admin_user import AdminRole
-from core.id_generator import generate_notification_id
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,8 @@ class NotificationService:
         action_type: Optional[str] = None,
         action_data: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        expires_in_hours: Optional[int] = None
+        expires_in_hours: Optional[int] = None,
+        notification_id: Optional[str] = None  # Accept frontend-generated ID
     ) -> NotificationResponse:
         """Create a new notification"""
         try:
@@ -54,8 +54,10 @@ class NotificationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            # Generate notification ID
-            notification_id = generate_notification_id()
+            # Use frontend-provided notification_id or generate simple fallback
+            if not notification_id:
+                import secrets
+                notification_id = f"NOT{secrets.token_hex(4).upper()}"
             
             # Calculate expiry if specified
             expires_at = None

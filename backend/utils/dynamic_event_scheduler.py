@@ -37,7 +37,14 @@ class ScheduledTrigger:
     trigger_time: datetime
     event_id: str
     trigger_type: EventTriggerType
-    trigger_id: str = field(default_factory=lambda: f"{datetime.now().timestamp()}")
+    trigger_id: str = field(default="")
+    
+    def __post_init__(self):
+        """Generate deterministic trigger ID based on event, type, and time"""
+        if not self.trigger_id:
+            # Create deterministic ID: EVENT_TYPE_TIMESTAMP
+            time_str = self.trigger_time.strftime("%Y%m%d_%H%M%S")
+            self.trigger_id = f"{self.event_id}_{self.trigger_type.value}_{time_str}"
     
     def __lt__(self, other):
         """Enable heap ordering by trigger_time"""
@@ -53,6 +60,8 @@ class DynamicEventScheduler:
         self.running = False
         self._scheduler_task: Optional[asyncio.Task] = None
         self._stop_event = asyncio.Event()
+        self.max_downtime_hours = 168  # Maximum hours to check for missed triggers (1 week = 7 * 24 = 168 hours)
+        self.executed_triggers = set()  # Track executed trigger IDs to prevent duplicates
         
     async def initialize(self):
         """Initialize the scheduler with all events from database"""
@@ -62,6 +71,9 @@ class DynamicEventScheduler:
             # Clear existing queue
             self.trigger_queue.clear()
             
+            # Load previously executed triggers to prevent duplicates
+            await self._load_executed_triggers()
+            
             # Load all events from database
             events = await DatabaseOperations.find_many("events", {})
             if not events:
@@ -69,13 +81,24 @@ class DynamicEventScheduler:
                 return
                 
             current_time = datetime.now()
-            added_triggers = 0
             
+            # Step 1: Check for missed triggers during downtime
+            missed_triggers = await self._check_missed_triggers(events, current_time)
+            if missed_triggers:
+                logger.warning(f"⚠️  Detected {len(missed_triggers)} missed triggers during downtime!")
+                await self._execute_missed_triggers(missed_triggers)
+            else:
+                logger.info("✅ No missed triggers detected")
+            
+            # Step 2: Add future triggers to queue
+            added_triggers = 0
             for event in events:
                 triggers_added = await self._add_event_triggers(event, current_time)
                 added_triggers += triggers_added
                 
-            logger.info(f"Initialized scheduler with {added_triggers} triggers from {len(events)} events")
+            logger.info(f"Initialized scheduler with {added_triggers} future triggers from {len(events)} events")
+            if missed_triggers:
+                logger.info(f"Executed {len(missed_triggers)} missed triggers from downtime")
             logger.info(f"Next trigger: {self._get_next_trigger_info()}")
             
         except Exception as e:
@@ -127,6 +150,216 @@ class DynamicEventScheduler:
                 triggers_added += 1
                 
         return triggers_added
+    
+    async def _load_executed_triggers(self):
+        """Load recently executed triggers from database to prevent duplicates"""
+        try:
+            # Load executed triggers from the last 7 days
+            since_time = datetime.now() - timedelta(days=7)
+            
+            # Check event_status_logs for scheduler triggers (CORRECTED COLLECTION NAME)
+            executed_logs = await DatabaseOperations.find_many(
+                "event_status_logs",
+                {
+                    "timestamp": {"$gte": since_time},
+                    "trigger_source": {"$in": ["scheduler", "scheduler_missed_recovery"]},
+                    "event_id": {"$exists": True},
+                    "trigger_type": {"$exists": True}
+                },
+                projection={"event_id": 1, "trigger_type": 1, "timestamp": 1, "trigger_source": 1}
+            )
+            
+            # Also check logs without trigger_source but with scheduler patterns
+            legacy_logs = await DatabaseOperations.find_many(
+                "event_status_logs",
+                {
+                    "timestamp": {"$gte": since_time},
+                    "trigger_type": {"$exists": True},
+                    "event_id": {"$exists": True},
+                    "$or": [
+                        {"trigger_source": {"$exists": False}},
+                        {"trigger_source": None},
+                        {"trigger_source": "N/A"}
+                    ]
+                },
+                projection={"event_id": 1, "trigger_type": 1, "timestamp": 1}
+            )
+            
+            all_logs = executed_logs + legacy_logs
+            
+            # Generate trigger IDs from the logs
+            for log in all_logs:
+                event_id = log.get('event_id')
+                trigger_type = log.get('trigger_type') 
+                timestamp = log.get('timestamp')
+                trigger_source = log.get('trigger_source')
+                
+                if not all([event_id, trigger_type, timestamp]):
+                    continue
+                
+                # Convert timestamp to datetime if needed
+                if isinstance(timestamp, str):
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    except:
+                        continue
+                
+                # For missed triggers, we need to find the original trigger time from the event
+                if trigger_source == "scheduler_missed_recovery":
+                    # Get the event to find the actual trigger time
+                    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                    if event:
+                        # Map trigger type to event field
+                        field_mapping = {
+                            "registration_open": "registration_start_date",
+                            "registration_close": "registration_end_date", 
+                            "event_start": "start_datetime",
+                            "event_end": "end_datetime",
+                            "certificate_start": "certificate_start_date",
+                            "certificate_end": "certificate_end_date"
+                        }
+                        
+                        date_field = field_mapping.get(trigger_type)
+                        if date_field and event.get(date_field):
+                            trigger_time = event[date_field]
+                            if isinstance(trigger_time, str):
+                                try:
+                                    trigger_time = datetime.fromisoformat(trigger_time.replace('Z', '+00:00'))
+                                except:
+                                    continue
+                            
+                            # Generate the trigger ID using the original trigger time
+                            time_str = trigger_time.strftime("%Y%m%d_%H%M%S")
+                            trigger_id = f"{event_id}_{trigger_type}_{time_str}"
+                            self.executed_triggers.add(trigger_id)
+                else:
+                    # For legacy logs or regular scheduler triggers, try to map back to original time
+                    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                    if event:
+                        field_mapping = {
+                            "registration_open": "registration_start_date",
+                            "registration_close": "registration_end_date", 
+                            "event_start": "start_datetime",
+                            "event_end": "end_datetime",
+                            "certificate_start": "certificate_start_date",
+                            "certificate_end": "certificate_end_date"
+                        }
+                        
+                        date_field = field_mapping.get(trigger_type)
+                        if date_field and event.get(date_field):
+                            trigger_time = event[date_field]
+                            if isinstance(trigger_time, str):
+                                try:
+                                    trigger_time = datetime.fromisoformat(trigger_time.replace('Z', '+00:00'))
+                                except:
+                                    continue
+                            
+                            # Generate the trigger ID using the original trigger time
+                            time_str = trigger_time.strftime("%Y%m%d_%H%M%S")
+                            trigger_id = f"{event_id}_{trigger_type}_{time_str}"
+                            self.executed_triggers.add(trigger_id)
+            
+            logger.info(f"📚 Loaded {len(self.executed_triggers)} recently executed triggers to prevent duplicates")
+            if self.executed_triggers:
+                logger.debug(f"Executed trigger IDs: {list(self.executed_triggers)[:5]}...")  # Show first 5
+            
+        except Exception as e:
+            logger.error(f"Error loading executed triggers: {e}")
+            import traceback
+            traceback.print_exc()
+            self.executed_triggers = set()
+
+    async def _check_missed_triggers(self, events: List[Dict], current_time: datetime) -> List[ScheduledTrigger]:
+        """Check for triggers that should have executed but haven't been executed yet"""
+        missed_triggers = []
+        
+        # Check triggers from the last 24 hours (or max_downtime_hours)
+        downtime_start = current_time - timedelta(hours=self.max_downtime_hours)
+        
+        logger.info(f"🔍 Checking for missed triggers between {downtime_start} and {current_time}")
+        
+        for event in events:
+            event_id = event.get('event_id')
+            if not event_id:
+                continue
+                
+            # Define trigger mappings with their corresponding date fields
+            date_fields = {
+                'registration_start_date': EventTriggerType.REGISTRATION_OPEN,
+                'registration_end_date': EventTriggerType.REGISTRATION_CLOSE,
+                'start_datetime': EventTriggerType.EVENT_START,
+                'end_datetime': EventTriggerType.EVENT_END,
+            }
+            
+            # Add certificate triggers if available
+            if event.get('certificate_start_date'):
+                date_fields['certificate_start_date'] = EventTriggerType.CERTIFICATE_START
+            if event.get('certificate_end_date'):
+                date_fields['certificate_end_date'] = EventTriggerType.CERTIFICATE_END
+            
+            # Check each date field for missed triggers
+            for date_field, trigger_type in date_fields.items():
+                date_value = event.get(date_field)
+                if not date_value:
+                    continue
+                
+                # Convert string to datetime if needed
+                if isinstance(date_value, str):
+                    try:
+                        trigger_time = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                    except (ValueError, AttributeError):
+                        continue
+                else:
+                    trigger_time = date_value
+                
+                # Check if this trigger should have fired in the downtime window
+                if downtime_start <= trigger_time <= current_time:
+                    missed_trigger = ScheduledTrigger(
+                        trigger_time=trigger_time,
+                        event_id=event_id,
+                        trigger_type=trigger_type
+                    )
+                    
+                    # **CRITICAL FIX**: Check if this trigger was already executed
+                    if missed_trigger.trigger_id not in self.executed_triggers:
+                        missed_triggers.append(missed_trigger)
+                        logger.warning(f"⚠️  Missed trigger: {trigger_type.value} for {event_id} at {trigger_time}")
+                    else:
+                        logger.info(f"✅ Trigger already executed: {trigger_type.value} for {event_id} at {trigger_time}")
+        
+        return missed_triggers
+    
+    async def _execute_missed_triggers(self, missed_triggers: List[ScheduledTrigger]):
+        """Execute missed triggers in chronological order"""
+        logger.info(f"⚡ Executing {len(missed_triggers)} missed triggers...")
+        
+        # Sort missed triggers by their original scheduled time
+        missed_triggers.sort(key=lambda t: t.trigger_time)
+        
+        successful_executions = 0
+        failed_executions = 0
+        
+        for trigger in missed_triggers:
+            try:
+                logger.info(f"🔄 Executing missed trigger: {trigger.trigger_type.value} for {trigger.event_id}")
+                
+                # Execute the trigger (same as regular execution)
+                await self._execute_trigger(trigger, is_missed=True)
+                
+                # **CRITICAL FIX**: Mark trigger as executed by adding to executed_triggers set
+                self.executed_triggers.add(trigger.trigger_id)
+                logger.info(f"🗂️  Marked trigger as executed: {trigger.trigger_id}")
+                
+                successful_executions += 1
+                
+                # Small delay between executions to avoid overwhelming the system
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to execute missed trigger {trigger.trigger_type.value} for {trigger.event_id}: {e}")
+                failed_executions += 1
+        
+        logger.info(f"✅ Missed trigger execution complete: {successful_executions} successful, {failed_executions} failed")
         
     async def add_new_event(self, event: Dict[str, Any]):
         """Add triggers for a newly created event"""
@@ -243,6 +476,8 @@ class DynamicEventScheduler:
                 # Execute all ready triggers
                 for trigger in ready_triggers:
                     await self._execute_trigger(trigger)
+                    # **CRITICAL FIX**: Mark regular triggers as executed too
+                    self.executed_triggers.add(trigger.trigger_id)
                 
                 # Check if we have more triggers to process
                 if not self.trigger_queue:
@@ -281,20 +516,21 @@ class DynamicEventScheduler:
                 
         logger.info("Scheduler loop ended")
                 
-    async def _execute_trigger(self, trigger: ScheduledTrigger):
+    async def _execute_trigger(self, trigger: ScheduledTrigger, is_missed: bool = False):
         """Execute a specific trigger"""
         try:
-            logger.info(f"Executing trigger: {trigger.trigger_type.value} for event {trigger.event_id}")
+            execution_type = "missed" if is_missed else "scheduled"
+            logger.info(f"Executing {execution_type} trigger: {trigger.trigger_type.value} for event {trigger.event_id}")
             
             # Update the specific event's status
-            await self._update_event_status(trigger.event_id, trigger.trigger_type)
+            await self._update_event_status(trigger.event_id, trigger.trigger_type, is_missed)
             
-            logger.info(f"Successfully executed trigger: {trigger.trigger_type.value} for event {trigger.event_id}")
+            logger.info(f"Successfully executed {execution_type} trigger: {trigger.trigger_type.value} for event {trigger.event_id}")
             
         except Exception as e:
             logger.error(f"Error executing trigger {trigger.trigger_type.value} for event {trigger.event_id}: {str(e)}")
             
-    async def _update_event_status(self, event_id: str, trigger_type: EventTriggerType):
+    async def _update_event_status(self, event_id: str, trigger_type: EventTriggerType, is_missed: bool = False):
         """Update the status of a specific event"""
         try:
             # Fetch the current event data
@@ -309,6 +545,7 @@ class DynamicEventScheduler:
             # Update if status has changed
             current_status = event.get('status', 'unknown')
             current_sub_status = event.get('sub_status', 'unknown')
+            
             if current_status != new_status or current_sub_status != new_sub_status:
                 success = await DatabaseOperations.update_one(
                     "events",
@@ -321,14 +558,20 @@ class DynamicEventScheduler:
                     }}                )
                 
                 if success:
-                    logger.info(f"Updated event {event_id} status: {current_status}/{current_sub_status} -> {new_status}/{new_sub_status}")
+                    execution_type = "missed" if is_missed else "scheduled"
+                    logger.info(f"Updated event {event_id} status: {current_status}/{current_sub_status} -> {new_status}/{new_sub_status} ({execution_type} trigger)")
                     
-                    # Log the status change for auditing
-                    await self._log_status_change(event_id, f"{current_status}/{current_sub_status}", f"{new_status}/{new_sub_status}", trigger_type)
+                    # Log the status change for auditing with missed trigger info
+                    await self._log_status_change(event_id, f"{current_status}/{current_sub_status}", f"{new_status}/{new_sub_status}", trigger_type, is_missed)
                 else:
                     logger.error(f"Failed to update status for event {event_id}")
             else:
-                logger.info(f"Event {event_id} status unchanged: {current_status}/{current_sub_status}")
+                execution_type = "missed" if is_missed else "scheduled"
+                logger.info(f"Event {event_id} status unchanged: {current_status}/{current_sub_status} ({execution_type} trigger)")
+                
+                # IMPORTANT: Log missed triggers even when status doesn't change for audit trail
+                if is_missed:
+                    await self._log_status_change(event_id, f"{current_status}/{current_sub_status}", f"{current_status}/{current_sub_status}", trigger_type, is_missed)
                 
         except Exception as e:
             logger.error(f"Error updating status for event {event_id}: {str(e)}")
@@ -379,7 +622,7 @@ class DynamicEventScheduler:
             # Fallback
             return "draft", "draft"
             
-    async def _log_status_change(self, event_id: str, old_status: str, new_status: str, trigger_type: EventTriggerType):
+    async def _log_status_change(self, event_id: str, old_status: str, new_status: str, trigger_type: EventTriggerType, is_missed: bool = False):
         """Log status changes using the unified event action logger"""
         try:
             # Import here to avoid circular imports
@@ -389,24 +632,35 @@ class DynamicEventScheduler:
             event = await DatabaseOperations.find_one("events", {"event_id": event_id})
             event_name = event.get("event_name", "Unknown Event") if event else "Unknown Event"
             
+            # Enhanced metadata for missed triggers
+            execution_type = "missed_trigger_recovery" if is_missed else "scheduled_trigger"
+            trigger_source = "scheduler_missed_recovery" if is_missed else "scheduler"
+            
             # Use the unified logging system
             await event_action_logger.log_status_change(
                 event_id=event_id,
                 event_name=event_name,
                 old_status=old_status,
                 new_status=new_status,
-                trigger_source="scheduler",
+                trigger_source=trigger_source,
                 trigger_type=trigger_type.value,
                 metadata={
-                    "scheduler_version": "dynamic_v1",
+                    "scheduler_version": "dynamic_v1_enhanced",
                     "trigger_timestamp": datetime.now().isoformat(),
-                    "automated": True
+                    "automated": True,
+                    "execution_type": execution_type,
+                    "is_missed_trigger": is_missed,
+                    "recovered_from_downtime": is_missed
                 }
             )
             
+            # Additional logging for missed triggers
+            if is_missed:
+                logger.info(f"🔄 AUDIT: Missed trigger recovery logged for {event_id} - {trigger_type.value}")
+            
         except Exception as e:
             logger.error(f"Error logging status change for event {event_id}: {str(e)}")
-            # Fallback to basic logging if unified system fails
+            # Enhanced fallback logging with missed trigger info
             try:
                 log_entry = {
                     "event_id": event_id,
@@ -414,10 +668,17 @@ class DynamicEventScheduler:
                     "new_status": new_status,
                     "trigger_type": trigger_type.value,
                     "timestamp": datetime.now(),
-                    "scheduler_version": "dynamic_v1"
+                    "scheduler_version": "dynamic_v1_enhanced",
+                    "execution_type": "missed_trigger_recovery" if is_missed else "scheduled_trigger",
+                    "is_missed_trigger": is_missed,
+                    "recovered_from_downtime": is_missed,
+                    "trigger_source": "scheduler_missed_recovery" if is_missed else "scheduler"
                 }
                 
                 await DatabaseOperations.insert_one("event_status_logs", log_entry)
+                
+                if is_missed:
+                    logger.info(f"🔄 FALLBACK AUDIT: Missed trigger recovery logged for {event_id}")
                 
             except Exception as fallback_error:
                 logger.error(f"Fallback logging also failed for event {event_id}: {str(fallback_error)}")
@@ -516,6 +777,11 @@ async def remove_event_from_scheduler(event_id: str):
 async def get_scheduler_status():
     """Get current scheduler status"""
     return await dynamic_scheduler.get_status()
+
+def set_max_downtime_hours(hours: int):
+    """Set the maximum hours to check for missed triggers on startup"""
+    dynamic_scheduler.max_downtime_hours = hours
+    logger.info(f"Set max downtime check to {hours} hours")
 
 # Backward compatibility alias
 scheduler = dynamic_scheduler

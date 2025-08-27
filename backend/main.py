@@ -30,9 +30,7 @@ print("Development mode: Allowing localhost origins for credentials support")
 # Define allowed origins for development (cannot use "*" with credentials)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",    
-    "http://localhost:8080", 
-    "http://127.0.0.1:8080",
+    "http://127.0.0.1:3000",
 ]
 
 print(f"CORS allowed origins: {ALLOWED_ORIGINS}")

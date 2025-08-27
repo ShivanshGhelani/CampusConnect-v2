@@ -7,8 +7,8 @@ import LoadingSpinner from '../../../../components/LoadingSpinner';
 // Phase 1 Integration: Validation & ID Generation
 import { validators, useValidation } from '../../../../utils/validators';
 import { 
-  generateTempRegistrationId, 
-  generateTempTeamId, 
+  generateRegistrationId,      // FIXED: Use real ID instead of temp
+  generateTeamRegistrationId,  // FIXED: Use real team ID instead of temp
   generateSessionId,
   idValidators 
 } from '../../../../utils/idGenerator';
@@ -60,19 +60,19 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       const newSessionId = generateSessionId();
       setSessionId(newSessionId);
       
-      // Generate temporary registration ID for faculty
+      // Generate REAL registration ID for faculty (not temp)
       if (user?.faculty_id && eventId) {
-        const tempRegId = generateTempRegistrationId(
+        const registrationId = generateRegistrationId(
           user.faculty_id,
           eventId,
           user.full_name || 'Faculty'
         );
-        setTempRegistrationId(tempRegId);
+        setTempRegistrationId(registrationId);  // Variable name kept for compatibility
         
         // Store session data for persistence
         const sessionData = {
           sessionId: newSessionId,
-          tempRegistrationId: tempRegId,
+          tempRegistrationId: registrationId,  // This is now a REAL ID
           eventId: eventId,
           userId: user.faculty_id,
           userType: 'faculty',
@@ -91,12 +91,12 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   // Generate team ID when team registration is enabled for faculty
   useEffect(() => {
     if (isTeamRegistration && formData.team_name && eventId) {
-      const tempTeamIdValue = generateTempTeamId(
+      const teamIdValue = generateTeamRegistrationId(
         formData.team_name,
         eventId,
-        user?.full_name || 'Faculty Leader'
+        user?.employee_id || user?.full_name || 'Faculty Leader'
       );
-      setTempTeamId(tempTeamIdValue);
+      setTempTeamId(teamIdValue);
     }
   }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
 

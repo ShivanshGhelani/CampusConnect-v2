@@ -11,7 +11,6 @@ from models.audit_log import (
     AuditLog, AuditActionType, AuditSeverity,
     AuditLogResponse, AuditLogListResponse, AuditLogFilter, AuditLogStats
 )
-from core.id_generator import generate_audit_id
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,8 @@ class AuditLogService:
         performed_by_user_agent: Optional[str] = None,
         session_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        duration_ms: Optional[int] = None
+        duration_ms: Optional[int] = None,
+        audit_id: Optional[str] = None  # Accept frontend-generated ID
     ) -> AuditLogResponse:
         """Log an administrative action"""
         try:
@@ -57,8 +57,10 @@ class AuditLogService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            # Generate audit log ID
-            audit_id = generate_audit_id()
+            # Use frontend-provided audit_id or generate simple fallback
+            if not audit_id:
+                import secrets
+                audit_id = f"AUD{secrets.token_hex(4).upper()}"
             
             # Create audit log entry
             audit_log = AuditLog(

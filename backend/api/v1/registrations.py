@@ -75,3 +75,18 @@ async def get_event_registrations(
     """Get all registrations for an event (admin only)"""
     result = await event_registration_service.get_event_registrations(event_id=event_id)
     return result
+
+@router.get("/event/{event_id}/recent")
+async def get_recent_registrations(
+    event_id: str,
+    limit: int = 10
+):
+    """Get recent registrations for an event (public endpoint for EventDetail.jsx)"""
+    # Import the enhanced service for recent registrations
+    from scripts.enhanced_registration_service import enhanced_registration_service
+    
+    result = await enhanced_registration_service.get_recent_registrations(
+        event_id=event_id,
+        limit=limit
+    )
+    return result

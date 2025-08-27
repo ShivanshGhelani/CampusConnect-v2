@@ -252,6 +252,29 @@ async def get_event_details(event_id: str, student: Student = Depends(get_curren
         logger.error(f"Error getting event details: {str(e)}")
         return {"success": False, "message": f"Error retrieving event details: {str(e)}"}
 
+@router.get("/timeline/{event_id}")
+async def get_event_timeline(event_id: str):
+    """Get comprehensive timeline information for an event"""
+    try:
+        # Get event details with updated status
+        event = await EventStatusManager.get_event_by_id(event_id)
+        if not event:
+            return {"success": False, "message": "Event not found"}
+        
+        # Get timeline information
+        timeline_info = await EventStatusManager.get_event_timeline_info(event)
+        
+        return {
+            "success": True,
+            "message": "Timeline information retrieved successfully",
+            "timeline": timeline_info,
+            "event_id": event_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting event timeline: {str(e)}")
+        return {"success": False, "message": f"Error retrieving timeline: {str(e)}"}
+
 @router.get("/categories")
 async def get_event_categories():
     """Get list of all event categories"""

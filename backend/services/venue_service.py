@@ -8,7 +8,6 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from database.operations import DatabaseOperations
 from models.venue import Venue, VenueCreate, VenueUpdate, VenueResponse
-from core.id_generator import generate_base_id
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +16,13 @@ class VenueService:
     """Service class for managing university venues"""
 
     @staticmethod
-    async def create_venue(venue_data: VenueCreate, created_by: str) -> VenueResponse:
+    async def create_venue(venue_data: VenueCreate, created_by: str, venue_id: str = None) -> VenueResponse:
         """Create a new venue"""
         try:
-            # Generate unique venue ID
-            venue_id = generate_base_id("VEN", 8)
+            # Use frontend-provided venue_id or generate simple fallback
+            if not venue_id:
+                import secrets
+                venue_id = f"VEN{secrets.token_hex(4).upper()}"
             
             # Create venue document
             venue_doc = {
