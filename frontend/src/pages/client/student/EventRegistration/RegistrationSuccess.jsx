@@ -23,22 +23,39 @@ const RegistrationSuccess = () => {
         // ALWAYS fetch fresh data from API to get updated department information
         // Don't use cached navigation state data as it may be outdated
         
-        // If no state data, try to fetch from API
-        if (eventId) {
-          const [eventResponse, statusResponse] = await Promise.all([
-            clientAPI.getEventDetails(eventId),
-            clientAPI.getRegistrationStatus(eventId)
-          ]);
+        if (!eventId) {
+          setError('Event ID not provided');
+          setLoading(false);
+          return;
+        }
 
-          const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
-          setEvent(eventData);
+        console.log('Loading registration data for eventId:', eventId);
+        
+        const [eventResponse, statusResponse] = await Promise.all([
+          clientAPI.getEventDetails(eventId),
+          clientAPI.getRegistrationStatus(eventId)
+        ]);
 
-          console.log('Registration status API response:', statusResponse.data);
-          console.log('Registration data structure:', JSON.stringify(statusResponse.data.full_registration_data, null, 2));
+        console.log('Event response:', eventResponse.data);
+        console.log('Status response:', statusResponse.data);
 
-          if (statusResponse.data.success && statusResponse.data.registered) {
-            const regData = statusResponse.data.full_registration_data;
-            
+        const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
+        setEvent(eventData);
+
+        if (statusResponse.data.success && statusResponse.data.registered) {
+          let regData = statusResponse.data.full_registration_data;
+          
+          // Handle case where full_registration_data might be null/undefined
+          if (!regData || typeof regData !== 'object') {
+            console.log('full_registration_data is missing or invalid, creating from response data');
+            regData = {
+              registration_id: statusResponse.data.registration_id,
+              registration_type: statusResponse.data.registration_type,
+              registration_datetime: statusResponse.data.registration_datetime,
+              ...(statusResponse.data.registration_data || {}),
+              ...(statusResponse.data.student_data || {})
+            };
+          } else {
             // Add the top-level fields to the registration data for compatibility
             regData.registration_id = statusResponse.data.registration_id;
             regData.registration_type = statusResponse.data.registration_type;
@@ -48,13 +65,12 @@ const RegistrationSuccess = () => {
             if (regData.student_data) {
               Object.assign(regData, regData.student_data);
             }
-            
-            setRegistrationData(regData);
-          } else {
-            setError('Registration not found or invalid');
           }
+          
+          console.log('Final registration data:', regData);
+          setRegistrationData(regData);
         } else {
-          setError('Event ID not provided');
+          setError('Registration not found or invalid');
         }
         
         setLoading(false);

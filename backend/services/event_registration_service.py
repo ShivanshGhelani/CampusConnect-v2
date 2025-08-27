@@ -82,7 +82,63 @@ class EventRegistrationService:
             # Insert registration
             await DatabaseOperations.insert_one(self.collection, registration_doc)
             
+            # Update student document - add event to event_participations
+            try:
+                logger.info(f"Updating student document for enrollment: {enrollment_no}")
+                student_update_result = await DatabaseOperations.update_one(
+                    "students",
+                    {"enrollment_no": enrollment_no},
+                    {
+                        "$addToSet": {
+                            "event_participations": {
+                                "event_id": event_id,
+                                "event_name": event_data["event_name"],
+                                "registration_id": registration_id,
+                                "registration_type": "individual",
+                                "registration_date": registration_doc["registration"]["registered_at"],
+                                "status": "registered"
+                            }
+                        }
+                    }
+                )
+                logger.info(f"Student document update result: {student_update_result}")
+                # DatabaseOperations.update_one returns True for success, False for failure
+                if student_update_result is False:
+                    raise Exception(f"Student document update failed for {enrollment_no}")
+            except Exception as e:
+                logger.error(f"CRITICAL: Failed to update student document: {e}")
+                # Don't silently continue - this is a critical failure
+                raise Exception(f"Student document update failed: {e}")
+            
+            # Update event document - increment registration stats
+            try:
+                event_update_result = await DatabaseOperations.update_one(
+                    "events",
+                    {"event_id": event_id},
+                    {
+                        "$inc": {
+                            "registration_stats.individual_count": 1,
+                            "registration_stats.total_participants": 1
+                        },
+                        "$addToSet": {
+                            "registered_students": enrollment_no
+                        },
+                        "$set": {
+                            "registration_stats.last_updated": datetime.utcnow()
+                        }
+                    }
+                )
+                logger.info(f"Event document update result: {event_update_result}")
+                # DatabaseOperations.update_one returns True for success, False for failure
+                if event_update_result is False:
+                    raise Exception(f"Event document update failed for {event_id}")
+            except Exception as e:
+                logger.error(f"CRITICAL: Failed to update event document: {e}")
+                # Don't silently continue - this is a critical failure
+                raise Exception(f"Event document update failed: {e}")
+            
             logger.info(f"Individual registration successful: {registration_id}")
+            logger.info(f"Updated student and event documents for registration: {registration_id}")
             
             return RegistrationResponse(
                 success=True,
@@ -184,6 +240,48 @@ class EventRegistrationService:
             
             logger.info(f"Team registration successful: {team_name} ({len(team_registration_ids)} members)")
             
+            # Update all team members' student documents
+            all_team_enrollments = team_members  # team_members already includes the leader
+            
+            for enrollment in all_team_enrollments:
+                await DatabaseOperations.update_one(
+                    "students",
+                    {"enrollment_no": enrollment},
+                    {
+                        "$addToSet": {
+                            "event_participations": {
+                                "event_id": event_id,
+                                "event_name": event_data["event_name"],
+                                "registration_id": f"TEAM_{team_name}_{event_id}",
+                                "registration_type": "team",
+                                "team_name": team_name,
+                                "registration_date": datetime.utcnow(),
+                                "status": "registered"
+                            }
+                        }
+                    }
+                )
+            
+            # Update event document - increment team registration stats
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {
+                    "$inc": {
+                        "registration_stats.team_count": 1,
+                        "registration_stats.total_participants": len(all_team_enrollments)
+                    },
+                    "$addToSet": {
+                        "registered_students": {"$each": all_team_enrollments}
+                    },
+                    "$set": {
+                        "registration_stats.last_updated": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.info(f"Updated student and event documents for team registration: {team_name}")
+            
             return RegistrationResponse(
                 success=True,
                 message=f"Team registration successful ({len(team_registration_ids)} members)",
@@ -207,9 +305,12 @@ class EventRegistrationService:
         enrollment_no: str,
         event_id: str
     ) -> Dict[str, Any]:
-        """Cancel student registration for event."""
+        """Cancel student registration for event and clean up all related data."""
         try:
-            result = await DatabaseOperations.delete_one(
+            logger.info(f"🔍 CANCEL START: {enrollment_no} -> {event_id}")
+            
+            # First, find the registration to get details
+            registration = await DatabaseOperations.find_one(
                 self.collection,
                 {
                     "student.enrollment_no": enrollment_no,
@@ -217,21 +318,99 @@ class EventRegistrationService:
                 }
             )
             
-            if result.deleted_count == 0:
+            if not registration:
+                logger.info(f"🔍 CANCEL: No registration found")
                 return {
                     "success": False,
                     "message": "Registration not found or already cancelled"
                 }
             
-            logger.info(f"Registration cancelled: {enrollment_no} -> {event_id}")
+            registration_id = registration.get("registration_id")
+            registration_type = registration.get("registration", {}).get("type", "individual")
+            
+            logger.info(f"🔍 CANCEL: Found registration {registration_id}, type: {registration_type}")
+            logger.info(f"Cancelling registration: {registration_id} ({enrollment_no} -> {event_id})")
+            
+            # 1. Delete from student_registrations collection
+            logger.info(f"🔍 CANCEL: About to delete from {self.collection}")
+            delete_result = await DatabaseOperations.delete_one(
+                self.collection,
+                {
+                    "student.enrollment_no": enrollment_no,
+                    "event.event_id": event_id
+                }
+            )
+            logger.info(f"🔍 CANCEL: Delete result: {delete_result}, type: {type(delete_result)}")
+            
+            # DatabaseOperations.delete_one returns boolean (True if deleted, False if not found)
+            if not delete_result:
+                logger.error(f"🔍 CANCEL: Delete failed - registration not found")
+                return {
+                    "success": False,
+                    "message": "Failed to delete registration document - not found"
+                }
+            
+            # 2. Remove from student's event_participations array
+            try:
+                student_update_result = await DatabaseOperations.update_one(
+                    "students",
+                    {"enrollment_no": enrollment_no},
+                    {
+                        "$pull": {
+                            "event_participations": {
+                                "event_id": event_id
+                            }
+                        }
+                    }
+                )
+                logger.info(f"Removed participation from student document: {student_update_result}")
+            except Exception as e:
+                logger.error(f"Failed to update student document during cancellation: {e}")
+                # Continue with event update even if student update fails
+            
+            # 3. Update event document - decrement stats and remove from registered list
+            try:
+                # Determine which counters to decrement
+                decrement_update = {
+                    "registration_stats.total_participants": -1
+                }
+                
+                if registration_type == "individual":
+                    decrement_update["registration_stats.individual_count"] = -1
+                elif registration_type in ["team", "team_leader", "team_member"]:
+                    decrement_update["registration_stats.team_count"] = -1
+                
+                event_update_result = await DatabaseOperations.update_one(
+                    "events",
+                    {"event_id": event_id},
+                    {
+                        "$inc": decrement_update,
+                        "$pull": {
+                            "registered_students": enrollment_no
+                        },
+                        "$set": {
+                            "registration_stats.last_updated": datetime.utcnow()
+                        }
+                    }
+                )
+                logger.info(f"Updated event document during cancellation: {event_update_result}")
+            except Exception as e:
+                logger.error(f"Failed to update event document during cancellation: {e}")
+                # Continue even if event update fails
+            
+            logger.info(f"Registration cancellation completed: {registration_id}")
             
             return {
                 "success": True,
-                "message": "Registration cancelled successfully"
+                "message": "Registration cancelled successfully",
+                "registration_id": registration_id
             }
             
         except Exception as e:
             logger.error(f"Registration cancellation error: {e}")
+            # Add detailed error tracking
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             return {
                 "success": False,
                 "message": f"Cancellation failed: {str(e)}"

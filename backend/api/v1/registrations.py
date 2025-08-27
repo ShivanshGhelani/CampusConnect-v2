@@ -12,19 +12,8 @@ from dependencies.auth import get_current_student, get_current_admin
 
 router = APIRouter(prefix="/registrations", tags=["registrations"])
 
-@router.post("/individual/{event_id}")
-async def register_individual(
-    event_id: str,
-    registration_data: Dict[str, Any] = None,
-    current_user=Depends(get_current_student)
-):
-    """Register individual student for event"""
-    result = await event_registration_service.register_individual(
-        enrollment_no=current_user.enrollment_no,
-        event_id=event_id,
-        additional_data=registration_data or {}
-    )
-    return result
+# REMOVED: Redundant /individual/{event_id} endpoint 
+# Frontend uses /api/v1/client/registration/register instead
 
 @router.get("/status/{event_id}")
 async def get_registration_status(

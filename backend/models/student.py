@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List, Dict
+from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Optional, List, Dict, Union, Any
 from datetime import datetime
 from passlib.context import CryptContext
 
@@ -53,7 +53,21 @@ class Student(BaseModel):
     department: Optional[str] = Field(default=None, description="Department name")
     semester: Optional[int] = Field(default=None, ge=1, le=8, description="Current semester (1-8)")
     is_active: bool = Field(default=True, description="Whether the student account is active")
-    event_participations: Dict[str, EventParticipation] = Field(default={}, description="Event participations mapped by event_id")
+    event_participations: Any = Field(default=[], description="Event participations as list of participation objects")
+    
+    @validator('event_participations', pre=True, always=True)
+    def validate_event_participations(cls, v):
+        """Ensure event_participations is always a list"""
+        if v is None:
+            return []
+        elif isinstance(v, dict):
+            # Convert dict format to list format for backward compatibility
+            return list(v.values()) if v else []
+        elif isinstance(v, list):
+            return v
+        else:
+            # Fallback: return empty list for any other type
+            return []
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
     last_login: Optional[datetime] = Field(default=None, description="Last successful login timestamp")
     date_of_birth: Optional[datetime] = Field(default=None, description="Date of birth of the student")

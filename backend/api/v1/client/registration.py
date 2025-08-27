@@ -40,19 +40,19 @@ async def register_for_event(
         # Handle different registration actions
         if request.action == "register":
             if request.registration_type == "individual":
-                # Individual registration
+                # Individual registration - FIXED: Pass student_data as additional_data for ID generation
                 result = await event_registration_service.register_individual(
                     enrollment_no=user_id,
                     event_id=request.event_id,
-                    additional_data=request.student_data
+                    additional_data=request.student_data  # Changed to use student_data
                 )
             elif request.registration_type == "team":
-                # Team registration
+                # Team registration - FIXED: Pass student_data as additional_data for ID generation
                 result = await event_registration_service.register_team(
                     team_leader_enrollment=user_id,
                     event_id=request.event_id,
                     team_data=request.team_data,
-                    additional_data=request.student_data
+                    additional_data=request.student_data  # Changed to use student_data
                 )
             else:
                 raise HTTPException(status_code=400, detail="Invalid registration type")
@@ -113,10 +113,14 @@ async def cancel_registration(
         if not hasattr(current_user, 'enrollment_no'):
             raise HTTPException(status_code=400, detail="Only students can cancel registrations")
         
+        logger.info(f"🔍 API: Starting cancel registration for {current_user.enrollment_no} -> {event_id}")
+        
         result = await event_registration_service.cancel_registration(
             enrollment_no=current_user.enrollment_no,
             event_id=event_id
         )
+        
+        logger.info(f"🔍 API: Cancel registration completed: {result}")
         return result
         
     except HTTPException:

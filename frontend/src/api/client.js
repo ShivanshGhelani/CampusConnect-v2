@@ -20,21 +20,21 @@ export const clientAPI = {
   
   unregisterFromEvent: (eventId) => api.delete(`/api/v1/client/registration/unregister/${eventId}`),
   
-  // LEGACY SUPPORT: Keep old registration methods for backward compatibility
+  // FIXED: Updated to match new backend API structure
   registerIndividual: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {
     event_id: eventId,
     registration_type: 'individual',
-    additional_data: registrationData
+    student_data: registrationData  // Changed from additional_data to student_data
   }),
   
   registerTeam: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {
     event_id: eventId,
     registration_type: 'team',
-    team_info: registrationData.team_info,
-    additional_data: registrationData
+    team_data: registrationData.team_info || {},
+    student_data: registrationData  // Changed from additional_data to student_data
   }),
   
-  cancelRegistration: (eventId) => api.delete(`/api/v1/client/registration/unregister/${eventId}`),
+  cancelRegistration: (eventId) => api.delete(`/api/v1/client/registration/cancel/${eventId}`),
   
   // Student lookup and validation (keep existing for form validation)
   lookupStudent: (enrollmentNo) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}`),

@@ -305,7 +305,7 @@ function Dashboard() {
                       Updated: <span className="font-mono">{formatTime(lastRefreshed)}</span>
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      Server Time (UTC)
+                      Local Time (IST)
                     </div>
                   </div>
                 </div>

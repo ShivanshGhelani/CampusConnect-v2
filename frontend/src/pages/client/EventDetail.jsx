@@ -1505,25 +1505,6 @@ function EventDetail() {
                     <span className="text-sm font-semibold text-green-600">₹{event.registration_fee}</span>
                   </div>
                 )}
-
-                {/* Participants Range */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">
-                    {event.registration_mode && event.registration_mode.toLowerCase() === 'team' ? 'Team Size' : 'Participants'}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {(event.min_participants || event.max_participants) ? (
-                      event.min_participants && event.max_participants
-                        ? `${event.min_participants} - ${event.max_participants}`
-                        : event.min_participants
-                          ? `Min: ${event.min_participants}`
-                          : event.max_participants
-                            ? `Max: ${event.max_participants}`
-                            : 'No limit specified'
-                    ) : 'No limit specified'}
-                  </span>
-                </div>
-
                 {/* Current Registrations */}
                 {event.registration_stats && (
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">

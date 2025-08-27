@@ -217,8 +217,8 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
         if not student_data:
             return {"success": False, "message": "Student not found"}
         
-        # Analyze event participations
-        event_participations = student_data.get('event_participations', {})
+        # Analyze event participations - FIXED: event_participations is a list, not dict
+        event_participations = student_data.get('event_participations', [])
         
         stats = {
             "total_registrations": len(event_participations),
@@ -231,7 +231,7 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
         }
         
         # Calculate statistics
-        for event_id, participation in event_participations.items():
+        for participation in event_participations:  # FIXED: iterate over list directly
             # Count attendance
             if participation.get('attendance_id'):
                 stats["attendance_marked"] += 1
@@ -253,11 +253,12 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
             
             # Collect recent activities
             activities = []
-            if participation.get('registration_datetime'):
+            event_id = participation.get('event_id')  # Get event_id from participation
+            if participation.get('registration_date'):  # FIXED: field name
                 activities.append({
                     "type": "registration",
                     "event_id": event_id,
-                    "timestamp": participation.get('registration_datetime'),
+                    "timestamp": participation.get('registration_date'),  # FIXED: field name
                     "description": f"Registered for event"
                 })
             
@@ -340,8 +341,8 @@ async def get_event_history(student: Student = Depends(require_student_login)):
         if not student_data:
             return {"success": False, "message": "Student not found"}
         
-        # Get event participations
-        event_participations = student_data.get('event_participations', {})
+        # Get event participations - FIXED: event_participations is a list, not dict
+        event_participations = student_data.get('event_participations', [])
         
         if not event_participations:
             return {
@@ -352,7 +353,8 @@ async def get_event_history(student: Student = Depends(require_student_login)):
         
         # Get event details for each participation
         event_history = []
-        for event_id, participation in event_participations.items():
+        for participation in event_participations:  # FIXED: iterate over list directly
+            event_id = participation.get('event_id')
             # Get event details
             event = await DatabaseOperations.find_one("events", {"event_id": event_id})
             if event:
@@ -367,7 +369,7 @@ async def get_event_history(student: Student = Depends(require_student_login)):
                     "registration_data": {
                         "registration_id": participation.get('registration_id'),
                         "registration_type": participation.get('registration_type', 'individual'),
-                        "registration_date": participation.get('registration_datetime'),
+                        "registration_date": participation.get('registration_date'),  # FIXED: field name
                         "team_name": participation.get('student_data', {}).get('team_name'),
                         "team_registration_id": participation.get('team_registration_id')
                     },

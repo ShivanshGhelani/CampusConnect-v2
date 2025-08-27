@@ -15,7 +15,10 @@ class EventStatusManager:
     async def calculate_event_status(event: Dict, current_time: datetime = None) -> tuple[str, str]:
         """Calculate the appropriate status and sub_status for an event based on current time"""
         if current_time is None:
-            current_time = datetime.utcnow()
+            # Use local time (IST) for consistency with event dates
+            from datetime import timezone, timedelta
+            ist_timezone = timezone(timedelta(hours=5, minutes=30))
+            current_time = datetime.now(ist_timezone).replace(tzinfo=None)  # Remove timezone for comparison
             
         # Convert string dates to datetime objects
         date_fields = ["start_datetime", "end_datetime", "registration_start_date", "registration_end_date", "certificate_end_date"]
@@ -65,7 +68,10 @@ class EventStatusManager:
     async def update_event_status_if_needed(event: Dict) -> Dict:
         """Update event status if it's outdated based on current time"""
         try:
-            current_time = datetime.utcnow()
+            # Use local time (IST) for consistency with event dates
+            from datetime import timezone, timedelta
+            ist_timezone = timezone(timedelta(hours=5, minutes=30))
+            current_time = datetime.now(ist_timezone).replace(tzinfo=None)  # Remove timezone for comparison
             current_status = event.get('status', 'draft')
             current_sub_status = event.get('sub_status', 'draft')
             
@@ -186,7 +192,10 @@ class EventStatusManager:
     async def get_event_timeline_info(event: Dict) -> Dict:
         """Get comprehensive timeline information for an event"""
         try:
-            current_time = datetime.utcnow()
+            # Use local time (IST) for consistency with event dates
+            from datetime import timezone, timedelta
+            ist_timezone = timezone(timedelta(hours=5, minutes=30))
+            current_time = datetime.now(ist_timezone).replace(tzinfo=None)  # Remove timezone for comparison
             
             # Ensure event has updated status
             event = await EventStatusManager.update_event_status_if_needed(event)
