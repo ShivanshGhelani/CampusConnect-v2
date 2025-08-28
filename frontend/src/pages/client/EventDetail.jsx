@@ -6,7 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 
 function EventDetail() {
   const { eventId } = useParams();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, userType } = useAuth(); // Added userType from auth context
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,12 +162,11 @@ function EventDetail() {
       return;
     }
 
-    // Determine if it's faculty or student based on user context
-    const userType = user?.role || user?.userType || 'student';
+    // Use userType from auth context instead of user object properties
     const isTeamEvent = event?.event_type === 'team' || event?.registration_type === 'team';
 
     if (userType === 'faculty') {
-      // Faculty registration routes (future implementation)
+      // Faculty registration routes
       if (isTeamEvent) {
         navigate(`/faculty/events/${eventId}/register-team`);
       } else {

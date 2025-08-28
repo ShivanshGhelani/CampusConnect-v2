@@ -4,9 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import LoadingSpinner from '../LoadingSpinner';
 import StudentEventRegistration from '../../pages/client/student/EventRegistration/StudentEventRegistration';
-import AlreadyRegistered from '../../pages/client/student/EventRegistration/AlreadyRegistered';
 import FacultyEventRegistration from '../../pages/client/faculty/EventRegistration/FacultyEventRegistration';
-import FacultyAlreadyRegistered from '../../pages/client/faculty/EventRegistration/FacultyAlreadyRegistered';
 import Layout from '../client/Layout';
 
 /**
@@ -75,7 +73,7 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
           console.log('Registration status response in router:', statusResponse.data);
           setRegistrationStatus(statusResponse.data);
           
-          // If already registered, we'll show the AlreadyRegistered component
+          // If already registered, we'll redirect to the registration success page
           if (statusResponse.data.success && statusResponse.data.registered) {
             setLoading(false);
             return;
@@ -148,12 +146,16 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
   
   if (userType === 'student') {
     if (registrationStatus?.success && registrationStatus?.registered) {
-      return <AlreadyRegistered key={componentKey} />;
+      // Redirect to registration success page to show existing registration details
+      navigate(`/client/events/${eventId}/registration-success`, { replace: true });
+      return null;
     }
     return <StudentEventRegistration key={componentKey} forceTeamMode={forceTeamMode} />;
   } else if (userType === 'faculty') {
     if (registrationStatus?.success && registrationStatus?.registered) {
-      return <FacultyAlreadyRegistered key={componentKey} />;
+      // Redirect faculty to registration success page (same as students)
+      navigate(`/client/events/${eventId}/registration-success`, { replace: true });
+      return null;
     }
     return <FacultyEventRegistration key={componentKey} forceTeamMode={forceTeamMode} />;
   }

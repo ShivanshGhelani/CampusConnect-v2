@@ -42,6 +42,26 @@ export const clientAPI = {
     params: { enrollment_no: enrollmentNo, event_id: eventId } 
   }),
   
+  // Faculty lookup and validation
+  lookupFaculty: (employeeId) => api.get(`/api/v1/client/registration/lookup/faculty/${employeeId}`),
+  validateFacultyParticipant: (employeeId, eventId) => api.get('/api/v1/client/registration/validate-faculty-participant', { 
+    params: { employee_id: employeeId, event_id: eventId } 
+  }),
+  
+  // Faculty registration methods
+  registerFacultyIndividual: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {
+    event_id: eventId,
+    registration_type: 'individual',
+    faculty_data: registrationData
+  }),
+  
+  registerFacultyTeam: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {
+    event_id: eventId,
+    registration_type: 'team',
+    team_data: registrationData.team_info || {},
+    faculty_data: registrationData
+  }),
+  
   // Team management (using new participation system)
   getTeamDetails: (eventId) => api.get(`/api/v1/client/registration/event/${eventId}/status`),
   addTeamParticipant: (eventId, teamData) => api.post('/api/v1/client/registration/register', {

@@ -122,9 +122,30 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Cleanup on unmount
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
+  }, []);
+
+  // Initialize participants array for team registration
+  const initializeParticipants = useCallback((count) => {
+    const participants = Array(count).fill(null).map((_, index) => ({
+      id: index + 1,
+      enrollment_no: '',
+      full_name: '',
+      email: '',
+      mobile_no: '',
+      department: '',
+      semester: '',
+      year: '',
+      isValid: false,
+      isValidating: false,
+      validationError: ''
+    }));
+    
+    setFormData(prev => ({ ...prev, participants }));
+    setParticipantCount(count);
   }, []);
 
   // CLEAN & OPTIMIZED: Simple data loading using existing AuthContext
@@ -269,27 +290,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     };
 
     loadData();
-  }, [user?.enrollment_no, eventId, location.pathname, forceTeamMode]);
-
-  // Initialize participants array for team registration
-  const initializeParticipants = useCallback((count) => {
-    const participants = Array(count).fill(null).map((_, index) => ({
-      id: index + 1,
-      enrollment_no: '',
-      full_name: '',
-      email: '',
-      mobile_no: '',
-      department: '',
-      semester: '',
-      year: '',
-      isValid: false,
-      isValidating: false,
-      validationError: ''
-    }));
-    
-    setFormData(prev => ({ ...prev, participants }));
-    setParticipantCount(count);
-  }, []);
+  }, [user?.enrollment_no, eventId, location.pathname, forceTeamMode, initializeParticipants]);
 
   // Enhanced form field changes with validation
   const handleFieldChange = (field, value) => {
@@ -732,8 +733,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       console.error('Registration error:', error);
       
       if (error.response?.status === 409) {
-        navigate(`/student/events/${eventId}/already-registered`, {
-          state: { event: event }
+        navigate(`/client/events/${eventId}/registration-success`, {
+          replace: true
         });
         return;
       } else if (error.response?.status === 400) {

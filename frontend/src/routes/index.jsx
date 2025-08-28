@@ -31,7 +31,6 @@ import ProfilePage from '../pages/client/student/Account/ProfilePage';
 import EditProfile from '../pages/client/student/Account/EditProfile';
 import TeamManagement from '../pages/client/student/Account/TeamManagement';
 import RegistrationRouter from '../components/common/RegistrationRouter';
-import AlreadyRegistered from '../pages/client/student/EventRegistration/AlreadyRegistered';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
 
 // Attendance components
@@ -262,14 +261,6 @@ function AppRoutes() {
             element={
               <ProtectedRoute userType="student">
                 <RegistrationRouter forceTeamMode={true} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="student/events/:eventId/already-registered"
-            element={
-              <ProtectedRoute userType="student">
-                <AlreadyRegistered />
               </ProtectedRoute>
             }
           />

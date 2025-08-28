@@ -95,8 +95,8 @@ const RegistrationSuccess = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
+      <Layout noPadding={true}>
+        <div className="min-h-screen flex items-center justify-center pt-20 md:pt-24">
           <LoadingSpinner />
         </div>
       </Layout>
@@ -105,8 +105,8 @@ const RegistrationSuccess = () => {
 
   if (error || !registrationData || !event) {
     return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
+      <Layout noPadding={true}>
+        <div className="min-h-screen flex items-center justify-center pt-20 md:pt-24">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
@@ -134,7 +134,7 @@ const RegistrationSuccess = () => {
   const teamMembers = registrationData.team_members || registrationData.student_data?.team_members || [];
 
   return (
-    <Layout>
+    <Layout noPadding={true}>
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
         <div className="container mx-auto px-4 py-8">
           {/* Success Header */}
@@ -142,9 +142,9 @@ const RegistrationSuccess = () => {
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
               <i className="fas fa-check text-white text-2xl"></i>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Successful!</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Details</h1>
             <p className="text-lg text-gray-600">
-              You have successfully registered for{' '}
+              Your registration for{' '}
               <span className="font-semibold text-blue-600">
                 {event?.event_name || event?.title || event?.name || 'the event'}
               </span>
@@ -156,7 +156,7 @@ const RegistrationSuccess = () => {
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Registration Confirmed</h2>
+                  <h2 className="text-2xl font-bold mb-2">Registration Details</h2>
                   <h3 className="text-xl text-blue-100">
                     {event?.event_name || event?.title || event?.name || 'Event'}
                   </h3>
