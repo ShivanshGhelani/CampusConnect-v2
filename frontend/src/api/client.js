@@ -30,7 +30,12 @@ export const clientAPI = {
   registerTeam: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {
     event_id: eventId,
     registration_type: 'team',
-    team_data: registrationData.team_info || {},
+    team_data: {
+      team_name: registrationData.team_name,
+      team_members: registrationData.team_members?.map(member => member.enrollment_no) || [],
+      team_registration_ids: registrationData.team_registration_ids || [],
+      additional_data: registrationData
+    },
     student_data: registrationData  // Changed from additional_data to student_data
   }),
   
@@ -38,6 +43,7 @@ export const clientAPI = {
   
   // Student lookup and validation (keep existing for form validation)
   lookupStudent: (enrollmentNo) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}`),
+  checkStudentEligibility: (enrollmentNo, eventId) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}/eligibility/${eventId}`),
   validateParticipant: (enrollmentNo, eventId) => api.get('/api/v1/client/registration/validate-participant', { 
     params: { enrollment_no: enrollmentNo, event_id: eventId } 
   }),

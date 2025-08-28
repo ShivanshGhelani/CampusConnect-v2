@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
@@ -11,19 +11,35 @@ function FacultyProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // Memoize user object to prevent unnecessary re-renders
-  // Only re-memoize if core user properties actually change
+  // Create truly stable user object that only changes when core properties change
   const memoizedUser = useMemo(() => {
     if (!user) return null;
+    
+    // Only include properties that actually matter for avatar fetching
+    // This prevents unnecessary re-memoization due to unrelated user data changes
     return {
       employee_id: user.employee_id,
       user_type: user.user_type,
-      full_name: user.full_name,
-      email: user.email
+      // Only include display properties if they're actually used by useAvatar
+      ...(user.full_name && { full_name: user.full_name }),
+      ...(user.email && { email: user.email })
     };
-  }, [user?.employee_id, user?.user_type, user?.full_name, user?.email]);
+  }, [
+    user?.employee_id, 
+    user?.user_type,
+    user?.full_name,
+    user?.email
+  ]);
   
-  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(memoizedUser, 'faculty');
+  // Memoize userType as well to prevent string re-creation
+  const userType = useMemo(() => 'faculty', []);
+  
+  const { 
+    avatarUrl, 
+    updateAvatar, 
+    forceRefreshAvatar, 
+    isLoading: avatarLoading 
+  } = useAvatar(memoizedUser, userType);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({
@@ -33,6 +49,9 @@ function FacultyProfilePage() {
     certificates_earned: 0
   });
   const [loading, setLoading] = useState(true);
+  
+  // Make sure modal state doesn't affect the user object
+  // These should be separate from user-related state
   const [showEventsModal, setShowEventsModal] = useState(false);
   const [showEventDetailModal, setShowEventDetailModal] = useState(false);
   const [selectedEventDetail, setSelectedEventDetail] = useState(null);
@@ -44,6 +63,11 @@ function FacultyProfilePage() {
   const [currentEventId, setCurrentEventId] = useState(null);
   const [currentEventName, setCurrentEventName] = useState('');
   const [cancellingRegistration, setCancellingRegistration] = useState(false);
+
+  // Create stable callback for avatar updates
+  const handleAvatarUpdate = useCallback((newAvatarUrl) => {
+    updateAvatar(newAvatarUrl);
+  }, [updateAvatar]);
 
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
@@ -177,21 +201,21 @@ function FacultyProfilePage() {
     }
   };
 
-  // Modal functions
-  const openEventsModal = () => setShowEventsModal(true);
-  const closeEventsModal = () => setShowEventsModal(false);
+  // Modal handlers should be memoized to prevent unnecessary re-renders
+  const openEventsModal = useCallback(() => setShowEventsModal(true), []);
+  const closeEventsModal = useCallback(() => setShowEventsModal(false), []);
 
-  const openEventDetailModal = (eventDetail) => {
+  const openEventDetailModal = useCallback((eventDetail) => {
     setSelectedEventDetail(eventDetail);
     setShowEventDetailModal(true);
-  };
+  }, []);
 
-  const closeEventDetailModal = () => {
+  const closeEventDetailModal = useCallback(() => {
     setShowEventDetailModal(false);
     setSelectedEventDetail(null);
-  };
+  }, []);
 
-  const openTeamDetailModal = async (teamDetail) => {
+  const openTeamDetailModal = useCallback(async (teamDetail) => {
     try {
       // Fetch team details if team_registration_id is available
       if (teamDetail.teamId) {
@@ -226,43 +250,41 @@ function FacultyProfilePage() {
       });
       setShowTeamDetailModal(true);
     }
-  };
+  }, []);
 
-  const closeTeamDetailModal = () => {
+  const closeTeamDetailModal = useCallback(() => {
     setShowTeamDetailModal(false);
     setSelectedTeamDetail(null);
-  };
+  }, []);
 
-  const openQRCodeModal = (qrData) => {
+  const openQRCodeModal = useCallback((qrData) => {
     setSelectedQRData(qrData);
     setShowQRCodeModal(true);
-  };
+  }, []);
 
-  const closeQRCodeModal = () => {
+  const closeQRCodeModal = useCallback(() => {
     setShowQRCodeModal(false);
     setSelectedQRData(null);
-  };
+  }, []);
 
-  const confirmCancelRegistration = (eventId, eventName) => {
+  const confirmCancelRegistration = useCallback((eventId, eventName) => {
     setCurrentEventId(eventId);
     setCurrentEventName(eventName);
     setShowCancelModal(true);
-  };
+  }, []);
 
-  const closeCancelModal = () => {
+  const closeCancelModal = useCallback(() => {
     setShowCancelModal(false);
     setCurrentEventId(null);
     setCurrentEventName('');
-  };
+  }, []);
 
   const handleCancelRegistration = async () => {
     if (!currentEventId) return;
 
     try {
       setCancellingRegistration(true);
-      const response = await api.post('/api/v1/client/events/cancel-registration', {
-        event_id: currentEventId
-      });
+      const response = await api.delete(`/api/v1/client/registration/cancel/${currentEventId}`);
 
       if (response.data.success) {
         // Refresh event history
@@ -278,19 +300,17 @@ function FacultyProfilePage() {
         }
 
         closeCancelModal();
+        console.log('Faculty registration cancelled successfully');
       } else {
-        alert(response.data.message || 'Failed to cancel registration');
+        console.error('Failed to cancel faculty registration:', response.data.message);
+        alert('Failed to cancel registration: ' + (response.data.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error cancelling registration:', error);
+      console.error('Error cancelling faculty registration:', error);
       alert('Error cancelling registration. Please try again.');
     } finally {
       setCancellingRegistration(false);
     }
-  };
-
-  const handleAvatarUpdate = (newAvatarUrl) => {
-    updateAvatar(newAvatarUrl);
   };
 
   if (!user || user.user_type !== 'faculty') {
@@ -301,34 +321,19 @@ function FacultyProfilePage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Loading State */}
-      {loading && (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 border-2 border-seafoam-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-slate-600 font-medium">Loading profile...</span>
-          </div>
-        </div>
-      )}
-      {/* Main Content */}
-      {!loading && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">
           {/* Main 2-Column Layout */}
           <div className="flex gap-8">
             {/* Left Column */}
             <div className="space-y-3 sticky top-8 h-fit w-140 flex-shrink-0">
-              {/* Profile Card with Faculty Info & Quick Actions */}
-              <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+              {/* ✅ FIX: Conditionally render Profile Card or Skeleton */}
+              {loading || !profileData ? (
+                <ProfileCardSkeleton />
+              ) : (
+                /* This is your existing Profile Card JSX */
+                <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
                 {/* Profile Header Section */}
                 <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-8 border-b border-slate-200 overflow-hidden">
                   {/* Background Pattern */}
@@ -513,6 +518,7 @@ function FacultyProfilePage() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Right Column */}
@@ -596,7 +602,6 @@ function FacultyProfilePage() {
             </div>
           </div>
         </div>
-      )}
 
       {/* All Events Modal */}
       {showEventsModal && (
@@ -1162,5 +1167,29 @@ function FacultyProfilePage() {
     </div>
   );
 }
+
+// Add this at the bottom of FacultyProfilePage.jsx, outside the main component
+const ProfileCardSkeleton = () => (
+  <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden animate-pulse">
+    {/* Header Skeleton */}
+    <div className="px-8 py-8">
+      <div className="flex items-center gap-6">
+        <div className="w-24 h-24 rounded-full bg-slate-200"></div>
+        <div className="flex-1 space-y-3">
+          <div className="h-6 bg-slate-200 rounded w-3/4"></div>
+          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+          <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+        </div>
+      </div>
+    </div>
+    {/* Body Skeleton */}
+    <div className="p-8 space-y-3">
+      <div className="h-10 bg-slate-100 rounded-xl"></div>
+      <div className="h-10 bg-slate-100 rounded-xl"></div>
+      <div className="h-10 bg-slate-100 rounded-xl"></div>
+      <div className="h-10 bg-slate-100 rounded-xl"></div>
+    </div>
+  </div>
+);
 
 export default FacultyProfilePage;

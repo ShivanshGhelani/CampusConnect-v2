@@ -57,8 +57,9 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
   // Debug: Check event status for cancel button visibility
   const shouldShowCancelButtons = reg.event.status === "upcoming" && reg.event.sub_status === "registration_open";
 
-  // Debug: Check View Team button visibility
-  const shouldShowViewTeamButton = reg.registration?.registration_type === "team_member";
+  // Debug: Check View Team button visibility - show for team members who are not team leaders
+  const shouldShowViewTeamButton = (reg.registration?.registration_type === "team_member" || reg.registration?.registration_type === "team") && 
+    !(reg.registration?.is_team_leader || reg.registration?.registration_type === "team_leader");
 
   // Effect to fetch team name if it's null for team members
   useEffect(() => {
@@ -134,22 +135,22 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                 {reg.event.venue && reg.event.venue !== 'N/A' && reg.event.venue !== 'n/a' && reg.event.venue !== 'NA' ? reg.event.venue : 'TBD'}
               </p>
             </div>
-          </div>        
+          </div>
         </div>
 
         {/* Registration Details and Action Buttons - Left/Right Layout */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 items-">
           {/* Left Column: Registration Details Badges */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 ">
             {/* Registration Type Badge */}
             {reg.registration?.registration_type && (
               <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium w-fit ${(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team')
-                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                  : reg.registration.registration_type === 'individual'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : reg.registration.registration_type === 'team_member'
-                      ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                      : 'bg-slate-50 text-slate-700 border border-slate-200'
+                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                : reg.registration.registration_type === 'individual'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : reg.registration.registration_type === 'team_member'
+                    ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                    : 'bg-slate-50 text-slate-700 border border-slate-200'
                 }`}>
                 {(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team') && (
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,27 +167,40 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 )}
-                {reg.registration.registration_type === 'team' ? 'Team Leader' :
-                  reg.registration.registration_type === 'team_member' ?
+                {reg.registration.is_team_leader || reg.registration.registration_type === 'team_leader' ? `Team Leader${teamName ? ` - ${teamName}` : ''}` :
+                  (reg.registration.registration_type === 'team_member' || reg.registration.registration_type === 'team') ?
                     `Team Member${teamName ? ` - ${teamName}` : ''}` :
-                    reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    reg.registration.registration_type === 'individual' ? 'Individual' :
+                      reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </span>
             )}
-
-            {/* Registration ID Badge */}
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 w-fit">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="font-mono font-semibold">
-                {reg.registration?.registrar_id || reg.registration?.registration_id || 'N/A'}
+            <div className="gap-2 flex h-auto">
+              {/* Registration ID Badge */}
+              <span className="inline-flex items-center gap-1.5 px-2 py-2 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 w-fit">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="font-mono font-semibold">
+                  {reg.registration?.registrar_id || reg.registration?.registration_id || 'N/A'}
+                </span>
               </span>
-            </span>
+              {/* Team Registration ID Badge (only for team registrations) */}
+              {(reg.registration?.registration_type === 'team' || reg.registration?.registration_type === 'team_member' || reg.registration?.registration_type === 'team_leader') && reg.registration?.team_registration_id && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 w-fit">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                  <span className="font-mono font-semibold text-xs">
+                    {reg.registration?.team_registration_id}
+                  </span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Right Column: Action Buttons (2 per row) */}
           {showActions && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 max-w-sm justify-between items-end">
               {/* Row 1: QR Code + Details */}
               <div className="flex gap-1.5">
                 <button
@@ -198,7 +212,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     registrationType: reg.registration?.registration_type,
                     teamName: teamName || reg.registration?.team_name
                   })}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-green-100 hover:border-green-200 flex-1 justify-center"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-green-100 hover:border-green-200 flex-1 justify-center text-nowrap"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -220,8 +234,8 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
 
               {/* Row 2: Conditional buttons (Team Management / View Team) */}
               <div className="flex gap-1.5">
-                {/* Team Management Button - Always show for team leaders */}
-                {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
+                {/* Team Management Button - Show only for team leaders */}
+                {(reg.registration?.registration_type === "team_leader" || reg.registration?.is_team_leader) && (
                   <Link
                     to={`/client/events/${reg.event_id}/manage-team`}
                     className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100 flex-1 justify-center"
@@ -245,18 +259,16 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     })}
                     className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200 flex-1 justify-center"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 1024 1024" class="icon" version="1.1"><path d="M764.077495 365.4687c25.787576-28.703601 41.628106-66.514662 41.628106-108.047547 0-89.337066-72.67538-162.023709-162.023709-162.02371S481.658182 168.084087 481.658182 257.421153h45.226039c0-64.405459 52.403475-116.797671 116.797671-116.797671s116.797671 52.392212 116.79767 116.797671-52.403475 116.797671-116.79767 116.79767c-20.647671 0-40.964628-5.4655-58.741325-15.822099l-22.745613 39.086822c24.666421 14.365111 52.844769 21.961316 81.486938 21.961316 31.034988 0 59.955653-8.924184 84.62105-24.116595 2.73275 4.021822 144.402643 55.220183 154.273921 292.470796 0.507847 12.15659 10.511207 21.674628 22.568481 21.674628 0.330715 0 0.639928-0.011263 0.971667-0.022526 12.477067-0.51911 22.171213-11.052842 21.641864-23.529908-9.692098-233.333227-126.929016-303.970051-163.68138-320.452557z" fill="violet" /><path d="M541.966052 518.12181c29.268786-33.91313 47.104868-77.952485 47.104868-126.15803 0-106.683731-86.809093-193.481562-193.492825-193.481562S202.107796 285.279025 202.107796 391.962756c0 48.204521 17.828915 92.240805 47.090534 126.153935-51.365255 30.577311-153.310445 121.144064-153.310445 358.758155 0 12.488329 10.113939 22.613531 22.613531 22.613531s22.613531-10.125202 22.613531-22.613531c0-244.454669 113.552978-312.788776 143.593774-326.583583 31.432256 22.083159 69.622154 35.163294 110.869374 35.163294 41.246196 0 79.440191-13.080135 110.876542-35.163294 30.045915 13.80607 143.609132 82.134033 143.609132 326.583583 0 12.488329 10.113939 22.613531 22.613531 22.613531 12.498568 0 22.613531-10.125202 22.613531-22.613531-0.001024-237.6059-101.951333-328.172653-153.324779-358.753036zM247.333835 391.962756c0-81.752124 66.492137-148.255523 148.24426-148.255523s148.265762 66.5034 148.265762 148.255523-66.514662 148.265762-148.265762 148.265762-148.244261-66.513638-148.24426-148.265762z" fill="violet" /></svg>
                     View Team
                   </button>
                 )}
-              </div>
+              
 
               {/* Row 3: Cancel buttons (when registration is open) */}
               {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
                 <div className="flex gap-1.5">
-                  {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
+                  {(reg.registration?.registration_type === "team_leader" || reg.registration?.is_team_leader) && (
                     <button
                       onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
                       className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100 flex-1 justify-center"
@@ -281,6 +293,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                   )}
                 </div>
               )}
+            </div>
             </div>
           )}
         </div>

@@ -214,6 +214,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         setTeamSizeMin(eventData.team_size_min || 2);
         setTeamSizeMax(eventData.team_size_max || 5);
 
+        // Initialize participants array for team registration
+        if (shouldUseTeamMode && (!formData.participants || formData.participants.length === 0)) {
+          const minParticipants = (eventData.team_size_min || 2) - 1; // Subtract 1 for team leader
+          initializeParticipants(minParticipants);
+        }
+
         // Step 5: Initialize form with complete profile data
         console.log('📝 Initializing form with user data...');
         
@@ -362,43 +368,90 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Enhanced participant field changes with validation
   const handleParticipantChange = (participantId, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      participants: prev.participants.map(p => 
-        p.id === participantId 
-          ? { ...p, [field]: value, validationError: '' }
-          : p
-      )
-    }));
-    
-    // Real-time validation for participant fields
+    // Real-time duplicate check for enrollment numbers
     if (field === 'enrollment_no' && value && value.trim()) {
-      setTimeout(() => {
-        validateParticipantEnrollment(participantId, value.trim());
-      }, 500);
-    } else if (field === 'email' && value && value.trim()) {
-      const emailValidation = validators.validationResult.email(value);
-      if (!emailValidation.isValid) {
-        setFormData(prev => ({
-          ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { ...p, validationError: emailValidation.message }
-              : p
-          )
-        }));
+      const enrollmentNo = value.trim().toUpperCase();
+      
+      // Check against team leader
+      const leaderEnrollment = formData.enrollment_no?.trim()?.toUpperCase() || '';
+      
+      // Check against other participants
+      const otherParticipants = formData.participants
+        ?.filter(p => p.id !== participantId && p.enrollment_no?.trim())
+        ?.map(p => p.enrollment_no.trim().toUpperCase()) || [];
+      
+      let duplicateError = '';
+      if (enrollmentNo === leaderEnrollment) {
+        duplicateError = 'Team leader cannot be added as participant';
+      } else if (otherParticipants.includes(enrollmentNo)) {
+        duplicateError = 'Duplicate enrollment number in team';
       }
-    } else if (field === 'mobile_no' && value && value.trim()) {
-      const phoneValidation = validators.validationResult.phone(value);
-      if (!phoneValidation.isValid) {
-        setFormData(prev => ({
-          ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { ...p, validationError: phoneValidation.message }
-              : p
-          )
-        }));
+      
+      setFormData(prev => ({
+        ...prev,
+        participants: prev.participants.map(p => 
+          p.id === participantId 
+            ? { 
+                ...p, 
+                [field]: value, 
+                validationError: duplicateError,
+                isValid: !duplicateError && p.isValid,
+                // Clear auto-filled data if it's a duplicate
+                ...(duplicateError ? {
+                  full_name: '',
+                  email: '',
+                  mobile_no: '',
+                  department: '',
+                  semester: '',
+                  year: ''
+                } : {})
+              }
+            : p
+        )
+      }));
+      
+      // Only proceed with API validation if no duplicate
+      if (!duplicateError) {
+        setTimeout(() => {
+          validateParticipantEnrollment(participantId, value.trim());
+        }, 500);
+      }
+    } else {
+      // For non-enrollment fields, just update normally
+      setFormData(prev => ({
+        ...prev,
+        participants: prev.participants.map(p => 
+          p.id === participantId 
+            ? { ...p, [field]: value, validationError: '' }
+            : p
+        )
+      }));
+      
+      // Real-time validation for other fields
+      if (field === 'email' && value && value.trim()) {
+        const emailValidation = validators.validationResult.email(value);
+        if (!emailValidation.isValid) {
+          setFormData(prev => ({
+            ...prev,
+            participants: prev.participants.map(p => 
+              p.id === participantId 
+                ? { ...p, validationError: emailValidation.message }
+                : p
+            )
+          }));
+        }
+      } else if (field === 'mobile_no' && value && value.trim()) {
+        const phoneValidation = validators.validationResult.phone(value);
+        if (!phoneValidation.isValid) {
+          setFormData(prev => ({
+            ...prev,
+            participants: prev.participants.map(p => 
+              p.id === participantId 
+                ? { ...p, validationError: phoneValidation.message }
+                : p
+            )
+          }));
+        }
       }
     }
   };
@@ -443,54 +496,57 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       return;
     }
 
-    // Check for duplicates
-    setFormData(prev => {
-      const leaderEnrollment = prev.enrollment_no?.trim()?.toUpperCase() || '';
-      const otherParticipants = prev.participants
-        ?.filter(p => p.id !== participantId && p.enrollment_no?.trim())
-        ?.map(p => p.enrollment_no.trim().toUpperCase()) || [];
+    // Check for duplicates FIRST
+    const currentFormData = formData;
+    const leaderEnrollment = currentFormData.enrollment_no?.trim()?.toUpperCase() || '';
+    const otherParticipants = currentFormData.participants
+      ?.filter(p => p.id !== participantId && p.enrollment_no?.trim())
+      ?.map(p => p.enrollment_no.trim().toUpperCase()) || [];
 
-      if (enrollmentNo.toUpperCase() === leaderEnrollment) {
-        return {
-          ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { 
-                  ...p, 
-                  isValidating: false, 
-                  isValid: false,
-                  validationError: 'Team leader cannot be added as participant' 
-                }
-              : p
-          )
-        };
-      }
+    // Check if this enrollment number is the team leader
+    if (enrollmentNo.toUpperCase() === leaderEnrollment) {
+      setFormData(prev => ({
+        ...prev,
+        participants: prev.participants.map(p => 
+          p.id === participantId 
+            ? { 
+                ...p, 
+                isValidating: false, 
+                isValid: false,
+                validationError: 'Team leader cannot be added as participant' 
+              }
+            : p
+        )
+      }));
+      return;
+    }
 
-      if (otherParticipants.includes(enrollmentNo.toUpperCase())) {
-        return {
-          ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { 
-                  ...p, 
-                  isValidating: false, 
-                  isValid: false,
-                  validationError: 'Duplicate enrollment number in team' 
-                }
-              : p
-          )
-        };
-      }
+    // Check if this enrollment number already exists in other participants
+    if (otherParticipants.includes(enrollmentNo.toUpperCase())) {
+      setFormData(prev => ({
+        ...prev,
+        participants: prev.participants.map(p => 
+          p.id === participantId 
+            ? { 
+                ...p, 
+                isValidating: false, 
+                isValid: false,
+                validationError: 'Duplicate enrollment number in team' 
+              }
+            : p
+        )
+      }));
+      return;
+    }
 
-      return prev;
-    });
-
-    // Fetch student data from API for auto-fill
+    // Fetch student data from API for auto-fill and eligibility check
     try {
-      const response = await clientAPI.lookupStudent(enrollmentNo);
+      const response = await clientAPI.checkStudentEligibility(enrollmentNo, eventId);
       
       if (response.data.success && response.data.found) {
         const studentData = response.data.student_data;
+        const isEligible = response.data.eligible;
+        const eligibilityMessage = response.data.message;
         
         setFormData(prev => ({
           ...prev,
@@ -499,8 +555,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
               ? { 
                   ...p, 
                   isValidating: false, 
-                  isValid: true,
-                  validationError: '',
+                  isValid: isEligible,
+                  validationError: isEligible ? '' : eligibilityMessage,
                   full_name: studentData.full_name || '',
                   email: studentData.email || '',
                   mobile_no: studentData.mobile_no || '',
@@ -662,23 +718,50 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           throw new Error(`Team cannot exceed ${teamSizeMax} members including leader`);
         }
 
+        // Check for duplicate enrollment numbers in team
+        const allEnrollmentNumbers = [
+          formData.enrollment_no.trim().toUpperCase(),
+          ...validParticipants.map(p => p.enrollment_no.trim().toUpperCase())
+        ];
+        
+        const duplicates = allEnrollmentNumbers.filter((item, index) => allEnrollmentNumbers.indexOf(item) !== index);
+        if (duplicates.length > 0) {
+          throw new Error(`Duplicate enrollment numbers found in team: ${duplicates.join(', ')}`);
+        }
+
+        // Check for participants with validation errors
         const invalidParticipants = validParticipants.filter(p => {
           const enrollmentValidation = validators.validationResult.enrollment(p.enrollment_no);
-          return !p.isValid || !enrollmentValidation.isValid;
+          return !p.isValid || !enrollmentValidation.isValid || p.validationError;
         });
         
         if (invalidParticipants.length > 0) {
-          throw new Error('Please ensure all participants have valid enrollment numbers');
+          const errorMessages = invalidParticipants.map(p => 
+            `${p.enrollment_no}: ${p.validationError || 'Invalid enrollment number'}`
+          );
+          throw new Error(`Please fix the following participant errors:\n${errorMessages.join('\n')}`);
         }
 
         registrationData.team_name = formData.team_name.trim();
         registrationData.temp_team_id = tempTeamId;
-        registrationData.team_members = validParticipants.map(p => ({
-          enrollment_no: p.enrollment_no.trim(),
-          name: p.full_name,
-          email: p.email,
-          mobile_no: p.mobile_no
-        }));
+        
+        // Include team leader + participants in team_members array
+        const teamLeader = {
+          enrollment_no: formData.enrollment_no.trim(),
+          name: formData.full_name,
+          email: formData.email,
+          mobile_no: formData.mobile_no
+        };
+        
+        registrationData.team_members = [
+          teamLeader,
+          ...validParticipants.map(p => ({
+            enrollment_no: p.enrollment_no.trim(),
+            name: p.full_name,
+            email: p.email,
+            mobile_no: p.mobile_no
+          }))
+        ];
       }
 
       // Submit registration
@@ -938,7 +1021,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                             <span className="ml-2 text-sm font-normal text-gray-600">
                               {participant.isValidating && <span className="text-blue-600">(Validating...)</span>}
                               {participant.isValid && !participant.validationError && <span className="text-green-600">(✓ Valid)</span>}
-                              {participant.validationError && <span className="text-red-600">(⚠ {participant.validationError})</span>}
+
                             </span>
                           </h3>
                           

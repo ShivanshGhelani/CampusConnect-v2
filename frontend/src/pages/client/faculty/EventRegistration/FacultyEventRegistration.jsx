@@ -423,7 +423,17 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         team_data: isTeamRegistration ? {
           team_name: formData.team_name,
           team_members: formData.participants.map(p => p.employee_id).filter(id => id.trim()),
-          team_leader: user?.employee_id
+          team_leader: user?.employee_id,
+          // Generate individual registration IDs for each team member
+          team_registration_ids: formData.participants
+            .filter(p => p.employee_id && p.employee_id.trim())
+            .map(participant => 
+              generateRegistrationId(
+                participant.employee_id,
+                eventId,
+                participant.full_name || 'Faculty Member'
+              )
+            )
         } : {},
         action: 'register'
       };
@@ -485,8 +495,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
 
 
   return (
-    <Layout>
-      <div className="bg-gradient-to-br from-purple-50 to-blue-100 py-8 px-4 sm:px-6 lg:px-8">
+    <Layout className = "noPadding={true}">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-100 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-xl w-full mx-auto space-y-8">
           {/* Header */}
           <div className="text-center">
@@ -500,10 +510,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 {event?.event_name || event?.title || event?.name || 'Unknown Event'}
               </h2>
-              <p className="text-lg text-gray-600 mb-4">
-                Please fill out the form below to participate in this event.
-              </p>
-
               {error && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
                   <i className="fas fa-exclamation-triangle mr-2"></i>{error}
@@ -720,7 +726,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
                     {/* Individual Registration Form */}
                     <div>
                       <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                         <div>
                           <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">
                             Full Name *

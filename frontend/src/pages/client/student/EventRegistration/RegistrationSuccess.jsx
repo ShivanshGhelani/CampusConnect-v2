@@ -9,7 +9,7 @@ const RegistrationSuccess = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // State management
   const [loading, setLoading] = useState(true);
   const [registrationData, setRegistrationData] = useState(null);
@@ -20,9 +20,6 @@ const RegistrationSuccess = () => {
   useEffect(() => {
     const loadRegistrationData = async () => {
       try {
-        // ALWAYS fetch fresh data from API to get updated department information
-        // Don't use cached navigation state data as it may be outdated
-        
         if (!eventId) {
           setError('Event ID not provided');
           setLoading(false);
@@ -30,7 +27,7 @@ const RegistrationSuccess = () => {
         }
 
         console.log('Loading registration data for eventId:', eventId);
-        
+
         const [eventResponse, statusResponse] = await Promise.all([
           clientAPI.getEventDetails(eventId),
           clientAPI.getRegistrationStatus(eventId)
@@ -44,39 +41,67 @@ const RegistrationSuccess = () => {
 
         if (statusResponse.data.success && statusResponse.data.registered) {
           let regData = statusResponse.data.full_registration_data;
-          
+
           // Handle case where full_registration_data might be null/undefined
           if (!regData || typeof regData !== 'object') {
             console.log('full_registration_data is missing or invalid, creating from response data');
             regData = {
               registration_id: statusResponse.data.registration_id,
               registration_type: statusResponse.data.registration_type,
-              registration_datetime: statusResponse.data.registration_datetime,
-              ...(statusResponse.data.registration_data || {}),
-              ...(statusResponse.data.student_data || {})
+              registration_datetime: statusResponse.data.registered_at,
+              team: statusResponse.data.team_info, // Add team info from response
+              ...(statusResponse.data.student_data || {}),
+              ...(statusResponse.data.event_data || {})
             };
           } else {
             // Add the top-level fields to the registration data for compatibility
             regData.registration_id = statusResponse.data.registration_id;
             regData.registration_type = statusResponse.data.registration_type;
-            regData.registration_datetime = statusResponse.data.registration_datetime;
-            
+            regData.registration_datetime = statusResponse.data.registered_at;
+
+            // Ensure team info is available at top level
+            if (statusResponse.data.team_info) {
+              regData.team = statusResponse.data.team_info;
+            }
+
             // Flatten student_data to top level for frontend compatibility
-            if (regData.student_data) {
-              Object.assign(regData, regData.student_data);
+            if (regData.student_data || statusResponse.data.student_data) {
+              const studentData = regData.student_data || statusResponse.data.student_data;
+              Object.assign(regData, studentData);
+            }
+
+            // Add registration details from the nested structure
+            if (regData.registration) {
+              regData.registration_status = regData.registration.status;
+              regData.registered_at = regData.registration.registered_at;
             }
           }
-          
+
           console.log('Final registration data:', regData);
+          console.log('Team info from response:', statusResponse.data.team_info);
+          console.log('Team data in regData:', regData.team);
           setRegistrationData(regData);
         } else {
-          setError('Registration not found or invalid');
+          // Enhanced error handling with debugging info
+          console.error('Registration status failed:', statusResponse.data);
+
+          let errorMessage = 'Registration not found for this event';
+
+          // Try to provide more helpful error information
+          if (statusResponse.data.message) {
+            errorMessage = statusResponse.data.message;
+          }
+
+          // Check if user has any registrations at all (debugging)
+          console.log('Checking for any recent registrations...');
+
+          setError(`${errorMessage}. Please check that you're viewing the correct event or contact support if this is unexpected.`);
         }
-        
+
         setLoading(false);
       } catch (err) {
         console.error('Error loading registration data:', err);
-        setError('Failed to load registration data');
+        setError('Failed to load registration data. Please try refreshing the page or contact support.');
         setLoading(false);
       }
     };
@@ -86,11 +111,11 @@ const RegistrationSuccess = () => {
 
   // Helper functions
   const getDepartment = (data) => {
-    return data?.department || 
-           data?.student_data?.department ||
-           data?.dept ||
-           data?.branch ||
-           'N/A';
+    return data?.department ||
+      data?.student_data?.department ||
+      data?.dept ||
+      data?.branch ||
+      'N/A';
   };
 
   if (loading) {
@@ -126,12 +151,42 @@ const RegistrationSuccess = () => {
   }
 
   // Check registration type
-  const isTeamRegistration = registrationData.registration_type === 'team_leader' || 
-                            registrationData.registration_type === 'team';
-  
-  // Get team data
-  const teamName = registrationData.team_name || registrationData.student_data?.team_name;
-  const teamMembers = registrationData.team_members || registrationData.student_data?.team_members || [];
+  const isTeamRegistration = registrationData.registration_type === 'team_leader' ||
+    registrationData.registration_type === 'team';
+
+  // Get team data - check multiple possible locations for new team structure
+  const teamName = registrationData.team_name ||
+    registrationData.student_data?.team_name ||
+    registrationData.team?.team_name;
+
+  // For new team structure, team_members is an array of member objects with student info
+  const teamMembers = registrationData.team_members ||
+    registrationData.student_data?.team_members ||
+    registrationData.team?.team_members ||
+    [];
+
+  // Get team size - if we have team info from backend, use the actual size
+  const actualTeamSize = registrationData.team?.team_size ||
+    (teamMembers.length > 0 ? teamMembers.length : 1);
+
+  // Get team leader info - for new structure, find the member with is_team_leader: true
+  const teamLeader = teamMembers.find(member => member.is_team_leader) ||
+    (registrationData.is_team_leader ? registrationData : null);
+
+  // Get non-leader team members for participants section
+  const teamParticipants = teamMembers.filter(member => !member.is_team_leader);
+
+  // For backward compatibility, also check if current user is team leader
+  const currentUserAsLeader = registrationData.team?.team_leader === registrationData.enrollment_no;
+
+  console.log('Team registration debug:');
+  console.log('- isTeamRegistration:', isTeamRegistration);
+  console.log('- teamName:', teamName);
+  console.log('- teamMembers:', teamMembers);
+  console.log('- teamLeader:', teamLeader);
+  console.log('- teamParticipants:', teamParticipants);
+  console.log('- actualTeamSize:', actualTeamSize);
+  console.log('- currentUserAsLeader:', currentUserAsLeader);
 
   return (
     <Layout noPadding={true}>
@@ -176,11 +231,11 @@ const RegistrationSuccess = () => {
                   <i className="fas fa-qrcode mr-2 text-blue-600"></i>
                   {isTeamRegistration ? 'Team Attendance QR Code' : 'Your Attendance QR Code'}
                 </h4>
-                
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* QR Code Display */}
                   <div className="flex justify-center">
-                    <QRCodeDisplay 
+                    <QRCodeDisplay
                       registrationData={registrationData}
                       eventData={event}
                       size="medium"
@@ -189,7 +244,7 @@ const RegistrationSuccess = () => {
                       style="blue"
                     />
                   </div>
-                  
+
                   {/* Registration Details */}
                   <div className="space-y-4">
                     <div className="bg-white border border-blue-300 rounded-lg p-4">
@@ -211,7 +266,7 @@ const RegistrationSuccess = () => {
                           {registrationData.team_name || 'Team Name'}
                         </div>
                         <p className="text-sm text-purple-700 mt-1">
-                          Size: {((registrationData.team_members || []).length + 1)} members
+                          Size: {((registrationData.team_members || []).length)} members
                         </p>
                       </div>
                     )}
@@ -236,7 +291,7 @@ const RegistrationSuccess = () => {
                             </ul>
                           ) : (
                             <p className="text-sm">
-                              Present this QR code to event organizers for attendance marking. 
+                              Present this QR code to event organizers for attendance marking.
                               Keep it saved on your device or download a copy.
                             </p>
                           )}
@@ -254,7 +309,7 @@ const RegistrationSuccess = () => {
                     <i className="fas fa-users mr-2 text-green-600"></i>
                     Team Information
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Team Name</label>
@@ -265,33 +320,47 @@ const RegistrationSuccess = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Team Size</label>
                       <p className="text-lg font-semibold text-gray-900">
-                        {teamMembers.length + 1} members
+                        {actualTeamSize} members
                       </p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Team Leader</label>
                     <div className="bg-white border border-gray-300 rounded-lg p-3">
                       <p className="font-semibold text-gray-900">
-                        {registrationData.full_name || registrationData.student_data?.full_name || 'N/A'}
+                        {teamLeader ?
+                          (teamLeader.student?.name || teamLeader.name || teamLeader.full_name) :
+                          (registrationData.full_name || registrationData.student_data?.full_name || 'N/A')
+                        }
                       </p>
                       <p className="text-sm text-gray-600">
-                        {registrationData.enrollment_no || registrationData.student_data?.enrollment_no || 'N/A'} | {getDepartment(registrationData)}
+                        {teamLeader ?
+                          `${teamLeader.student?.enrollment_no || teamLeader.enrollment_no} | ${getDepartment(teamLeader.student || teamLeader)}` :
+                          `${registrationData.enrollment_no || registrationData.student_data?.enrollment_no || 'N/A'} | ${getDepartment(registrationData)}`
+                        }
+                        <span className="text-sm text-gray-600">
+                          | {teamLeader.registration_id || teamLeader.student?.registration_id || 'N/A'}
+                        </span>
                       </p>
                     </div>
                   </div>
-                  
-                  {teamMembers.length > 0 && (
+
+                  {teamParticipants.length > 0 && (
                     <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Team Participants</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Team Members ({teamParticipants.length})
+                      </label>
                       <div className="space-y-2">
-                        {teamMembers.map((member, index) => (
+                        {teamParticipants.map((member, index) => (
                           <div key={index} className="bg-white border border-gray-300 rounded-lg p-3 flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-gray-900">{member.name || member.full_name}</p>
+                              <p className="font-medium text-gray-900">
+                                {member.student?.name || member.name || member.full_name || 'N/A'}
+                              </p>
                               <p className="text-sm text-gray-600">
-                                {member.enrollment_no} | {getDepartment(member)}
+                                {member.student?.enrollment_no || member.enrollment_no || 'N/A'} |   {getDepartment(member.student || member)} |
+                                {member.registration_id || member.registrar_id || 'N/A'}
                               </p>
                             </div>
                             <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">

@@ -167,8 +167,8 @@ class EventRegistrationService:
         team_data: Dict[str, Any]
     ) -> RegistrationResponse:
         """
-        Register team for event.
-        Creates documents for all team members with shared team information.
+        Register team for event - creates ONE document with all team members.
+        Each member gets their own registration_id within the team document.
         """
         try:
             team_name = team_data.get("team_name")
@@ -197,14 +197,9 @@ class EventRegistrationService:
             if not event_data:
                 return RegistrationResponse(success=False, message="Event not found")
             
-            # Create team registration for each member
-            team_registration_ids = []
-            team_info = {
-                "team_name": team_name,
-                "team_leader": team_leader_enrollment,
-                "team_members": team_members,
-                "team_size": len(team_members)
-            }
+            # Generate individual registration IDs for each team member
+            team_registration_details = []
+            team_leader_reg_id = team_data.get("additional_data", {}).get("registration_id")
             
             for enrollment_no in team_members:
                 # Get student data
@@ -212,33 +207,137 @@ class EventRegistrationService:
                 if not student_data:
                     continue
                 
-                # FIXED: Use frontend-generated team registration IDs if available
-                member_reg_id = None
-                if team_data and "team_registration_ids" in team_data:
-                    # Frontend provides individual registration IDs for team members
-                    team_reg_ids = team_data["team_registration_ids"]
-                    member_index = team_members.index(enrollment_no)
-                    if member_index < len(team_reg_ids):
-                        member_reg_id = team_reg_ids[member_index]
-                
-                registration_id = member_reg_id or f"REG_{enrollment_no}_{event_id}"
-                if member_reg_id:
-                    logger.info(f"Using frontend team registration_id: {registration_id}")
+                # Generate registration ID for this member
+                if enrollment_no == team_leader_enrollment and team_leader_reg_id:
+                    # Use team leader's frontend-generated ID
+                    member_reg_id = team_leader_reg_id
                 else:
-                    logger.warning(f"No team registration_id from frontend, generated: {registration_id}")
+                    # Generate frontend-style ID for other members
+                    import random
+                    import string
+                    member_reg_id = "REG" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
                 
-                # Create registration document for team member
-                registration_doc = await self._create_registration_document(
-                    registration_id=registration_id,
-                    student_data=student_data,
-                    event_data=event_data,
-                    registration_type="team",
-                    team_info=team_info,
-                    additional_data=team_data.get("additional_data", {})
+                team_registration_details.append({
+                    "registration_id": member_reg_id,
+                    "student": {
+                        "enrollment_no": student_data["enrollment_no"],
+                        "name": student_data.get("full_name", student_data.get("name", "")),
+                        "email": student_data.get("email", ""),
+                        "phone": student_data.get("phone"),
+                        "department": student_data.get("department"),
+                        "year": student_data.get("year")
+                    },
+                    "is_team_leader": enrollment_no == team_leader_enrollment,
+                    "attendance": self._create_attendance_structure(
+                        await self._get_event_attendance_strategy(event_data), 
+                        event_data
+                    ),
+                    "feedback": {
+                        "submitted": False,
+                        "rating": None,
+                        "comments": None,
+                        "submitted_at": None
+                    },
+                    "certificate": {
+                        "eligible": False,
+                        "issued": False,
+                        "certificate_id": None,
+                        "issued_at": None
+                    }
+                })
+            
+            # Create single team registration document
+            team_registration_id = f"TEAM_{team_name.replace(' ', '_').upper()}_{event_id}"
+            
+            team_registration_doc = {
+                "registration_id": team_registration_id,
+                "registration_type": "team",
+                "event": {
+                    "event_id": event_data["event_id"],
+                    "event_name": event_data.get("event_name", ""),
+                    "event_type": event_data.get("event_type", ""),
+                    "start_datetime": event_data.get("start_datetime"),
+                    "end_datetime": event_data.get("end_datetime")
+                },
+                "team": {
+                    "team_name": team_name,
+                    "team_leader": team_leader_enrollment,
+                    "team_size": len(team_members),
+                    "registered_at": datetime.utcnow(),
+                    "status": "confirmed"
+                },
+                "team_members": team_registration_details,
+                "additional_data": team_data.get("additional_data", {}),
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            # Insert single team registration document
+            await DatabaseOperations.insert_one(self.collection, team_registration_doc)
+            
+            logger.info(f"Team registration successful: {team_name} ({len(team_registration_details)} members)")
+            
+            # Update all team members' student documents
+            for member_detail in team_registration_details:
+                enrollment = member_detail["student"]["enrollment_no"]
+                await DatabaseOperations.update_one(
+                    "students",
+                    {"enrollment_no": enrollment},
+                    {
+                        "$addToSet": {
+                            "event_participations": {
+                                "event_id": event_id,
+                                "event_name": event_data["event_name"],
+                                "registration_id": member_detail["registration_id"],
+                                "team_registration_id": team_registration_id,
+                                "registration_type": "team",
+                                "team_name": team_name,
+                                "is_team_leader": member_detail["is_team_leader"],
+                                "registration_date": datetime.utcnow(),
+                                "status": "registered"
+                            }
+                        }
+                    }
                 )
-                
-                await DatabaseOperations.insert_one(self.collection, registration_doc)
-                team_registration_ids.append(registration_id)
+            
+            # Update event document - increment team registration stats
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {
+                    "$inc": {
+                        "registration_stats.team_count": 1,
+                        "registration_stats.total_participants": len(team_members)
+                    },
+                    "$addToSet": {
+                        "registered_students": {"$each": team_members}
+                    },
+                    "$set": {
+                        "registration_stats.last_updated": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.info(f"Updated student and event documents for team registration: {team_name}")
+            
+            return RegistrationResponse(
+                success=True,
+                message=f"Team registration successful ({len(team_registration_details)} members)",
+                registration_id=team_registration_id,
+                data={
+                    "team_name": team_name,
+                    "team_registration_id": team_registration_id,
+                    "team_members": team_registration_details,
+                    "team_leader": team_leader_enrollment
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Team registration failed: {e}")
+            return RegistrationResponse(
+                success=False,
+                message=f"Team registration failed: {str(e)}"
+            )
             
             logger.info(f"Team registration successful: {team_name} ({len(team_registration_ids)} members)")
             
@@ -311,101 +410,62 @@ class EventRegistrationService:
         try:
             logger.info(f"🔍 CANCEL START: {enrollment_no} -> {event_id}")
             
-            # First, find the registration to get details
-            registration = await DatabaseOperations.find_one(
+            # First, check for individual registration
+            individual_registration = await DatabaseOperations.find_one(
                 self.collection,
                 {
                     "student.enrollment_no": enrollment_no,
-                    "event.event_id": event_id
+                    "event.event_id": event_id,
+                    "registration_type": "individual"
                 }
             )
             
-            if not registration:
-                logger.info(f"🔍 CANCEL: No registration found")
-                return {
-                    "success": False,
-                    "message": "Registration not found or already cancelled"
-                }
+            # If individual registration found, handle it
+            if individual_registration:
+                return await self._cancel_individual_registration(enrollment_no, event_id, individual_registration)
             
-            registration_id = registration.get("registration_id")
-            registration_type = registration.get("registration", {}).get("type", "individual")
-            
-            logger.info(f"🔍 CANCEL: Found registration {registration_id}, type: {registration_type}")
-            logger.info(f"Cancelling registration: {registration_id} ({enrollment_no} -> {event_id})")
-            
-            # 1. Delete from student_registrations collection
-            logger.info(f"🔍 CANCEL: About to delete from {self.collection}")
-            delete_result = await DatabaseOperations.delete_one(
+            # Check for team registration where this student is a team member
+            team_registration = await DatabaseOperations.find_one(
                 self.collection,
                 {
-                    "student.enrollment_no": enrollment_no,
-                    "event.event_id": event_id
+                    "event.event_id": event_id,
+                    "registration_type": "team",
+                    "team_members.student.enrollment_no": enrollment_no
                 }
             )
-            logger.info(f"🔍 CANCEL: Delete result: {delete_result}, type: {type(delete_result)}")
             
-            # DatabaseOperations.delete_one returns boolean (True if deleted, False if not found)
-            if not delete_result:
-                logger.error(f"🔍 CANCEL: Delete failed - registration not found")
-                return {
-                    "success": False,
-                    "message": "Failed to delete registration document - not found"
-                }
-            
-            # 2. Remove from student's event_participations array
-            try:
-                student_update_result = await DatabaseOperations.update_one(
-                    "students",
-                    {"enrollment_no": enrollment_no},
-                    {
-                        "$pull": {
-                            "event_participations": {
-                                "event_id": event_id
-                            }
-                        }
-                    }
-                )
-                logger.info(f"Removed participation from student document: {student_update_result}")
-            except Exception as e:
-                logger.error(f"Failed to update student document during cancellation: {e}")
-                # Continue with event update even if student update fails
-            
-            # 3. Update event document - decrement stats and remove from registered list
-            try:
-                # Determine which counters to decrement
-                decrement_update = {
-                    "registration_stats.total_participants": -1
-                }
+            if team_registration:
+                # Check if this student is the team leader
+                team_members = team_registration.get("team_members", [])
+                user_member = None
+                for member in team_members:
+                    if member.get("student", {}).get("enrollment_no") == enrollment_no:
+                        user_member = member
+                        break
                 
-                if registration_type == "individual":
-                    decrement_update["registration_stats.individual_count"] = -1
-                elif registration_type in ["team", "team_leader", "team_member"]:
-                    decrement_update["registration_stats.team_count"] = -1
-                
-                event_update_result = await DatabaseOperations.update_one(
-                    "events",
-                    {"event_id": event_id},
-                    {
-                        "$inc": decrement_update,
-                        "$pull": {
-                            "registered_students": enrollment_no
-                        },
-                        "$set": {
-                            "registration_stats.last_updated": datetime.utcnow()
-                        }
+                if not user_member:
+                    logger.info(f"🔍 CANCEL: Student not found in team members")
+                    return {
+                        "success": False,
+                        "message": "Student not found in team registration"
                     }
-                )
-                logger.info(f"Updated event document during cancellation: {event_update_result}")
-            except Exception as e:
-                logger.error(f"Failed to update event document during cancellation: {e}")
-                # Continue even if event update fails
+                
+                # Only team leaders can cancel the entire team
+                if not user_member.get("is_team_leader", False):
+                    logger.info(f"🔍 CANCEL: Only team leaders can cancel team registration")
+                    return {
+                        "success": False,
+                        "message": "Only team leaders can cancel team registration"
+                    }
+                
+                # Cancel the entire team
+                return await self._cancel_team_registration(event_id, team_registration)
             
-            logger.info(f"Registration cancellation completed: {registration_id}")
-            
+            # No registration found
+            logger.info(f"🔍 CANCEL: No registration found")
             return {
-                "success": True,
-                "message": "Registration cancelled successfully",
-                "registration_id": registration_id
+                "success": False,
+                "message": "Registration not found or already cancelled"
             }
             
         except Exception as e:
@@ -418,37 +478,272 @@ class EventRegistrationService:
                 "message": f"Cancellation failed: {str(e)}"
             }
     
+    async def _cancel_individual_registration(
+        self,
+        enrollment_no: str,
+        event_id: str,
+        registration: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Cancel individual registration."""
+        try:
+            registration_id = registration.get("registration_id")
+            logger.info(f"🔍 CANCEL INDIVIDUAL: {registration_id}")
+            
+            # 1. Delete from student_registrations collection
+            delete_result = await DatabaseOperations.delete_one(
+                self.collection,
+                {
+                    "student.enrollment_no": enrollment_no,
+                    "event.event_id": event_id,
+                    "registration_type": "individual"
+                }
+            )
+            
+            if not delete_result:
+                return {
+                    "success": False,
+                    "message": "Failed to delete registration document"
+                }
+            
+            # 2. Remove from student's event_participations
+            await DatabaseOperations.update_one(
+                "students",
+                {"enrollment_no": enrollment_no},
+                {
+                    "$pull": {
+                        "event_participations": {
+                            "event_id": event_id
+                        }
+                    }
+                }
+            )
+            
+            # 3. Update event document
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {
+                    "$inc": {
+                        "registration_stats.individual_count": -1,
+                        "registration_stats.total_participants": -1
+                    },
+                    "$pull": {
+                        "registered_students": enrollment_no
+                    },
+                    "$set": {
+                        "registration_stats.last_updated": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.info(f"Individual registration cancelled: {registration_id}")
+            return {
+                "success": True,
+                "message": "Individual registration cancelled successfully",
+                "registration_id": registration_id
+            }
+            
+        except Exception as e:
+            logger.error(f"Individual cancellation error: {e}")
+            return {
+                "success": False,
+                "message": f"Individual cancellation failed: {str(e)}"
+            }
+    
+    async def _cancel_team_registration(
+        self,
+        event_id: str,
+        team_registration: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Cancel entire team registration."""
+        try:
+            team_registration_id = team_registration.get("registration_id")
+            team_name = team_registration.get("team", {}).get("team_name", "")
+            team_members = team_registration.get("team_members", [])
+            
+            logger.info(f"🔍 CANCEL TEAM: {team_registration_id} with {len(team_members)} members")
+            
+            # 1. Delete the team document from student_registrations
+            delete_result = await DatabaseOperations.delete_one(
+                self.collection,
+                {
+                    "registration_id": team_registration_id,
+                    "event.event_id": event_id,
+                    "registration_type": "team"
+                }
+            )
+            
+            if not delete_result:
+                return {
+                    "success": False,
+                    "message": "Failed to delete team registration document"
+                }
+            
+            # 2. Remove from ALL team members' event_participations
+            member_enrollments = []
+            for member in team_members:
+                enrollment = member.get("student", {}).get("enrollment_no")
+                if enrollment:
+                    member_enrollments.append(enrollment)
+                    
+                    # Remove from each student's event_participations
+                    await DatabaseOperations.update_one(
+                        "students",
+                        {"enrollment_no": enrollment},
+                        {
+                            "$pull": {
+                                "event_participations": {
+                                    "event_id": event_id
+                                }
+                            }
+                        }
+                    )
+            
+            # 3. Update event document - remove all team members and decrement stats
+            await DatabaseOperations.update_one(
+                "events",
+                {"event_id": event_id},
+                {
+                    "$inc": {
+                        "registration_stats.team_count": -1,
+                        "registration_stats.total_participants": -len(member_enrollments)
+                    },
+                    "$pullAll": {
+                        "registered_students": member_enrollments
+                    },
+                    "$set": {
+                        "registration_stats.last_updated": datetime.utcnow()
+                    }
+                }
+            )
+            
+            logger.info(f"Team registration cancelled: {team_name} ({len(member_enrollments)} members removed)")
+            return {
+                "success": True,
+                "message": f"Team registration cancelled successfully ({team_name})",
+                "registration_id": team_registration_id,
+                "team_name": team_name,
+                "members_removed": len(member_enrollments)
+            }
+            
+        except Exception as e:
+            logger.error(f"Team cancellation error: {e}")
+            return {
+                "success": False,
+                "message": f"Team cancellation failed: {str(e)}"
+            }
+    
     async def get_registration_status(
         self,
         enrollment_no: str,
         event_id: str
     ) -> Dict[str, Any]:
-        """Get registration status for student and event."""
+        """Get registration status for student and event - handles both individual and team registrations."""
         try:
-            registration = await DatabaseOperations.find_one(
+            logger.info(f"Getting registration status for student {enrollment_no} and event {event_id}")
+            
+            # Check individual registration first
+            individual_registration = await DatabaseOperations.find_one(
                 self.collection,
                 {
                     "student.enrollment_no": enrollment_no,
-                    "event.event_id": event_id
+                    "event.event_id": event_id,
+                    "registration_type": "individual"
                 }
             )
             
-            if not registration:
+            if individual_registration:
+                logger.info(f"Found individual registration {individual_registration['registration_id']} for student {enrollment_no}")
+                
+                # Convert ObjectIds to strings for JSON serialization
+                from core.json_encoder import CustomJSONEncoder
+                import json
+                
+                serialized_data = json.loads(json.dumps(individual_registration, cls=CustomJSONEncoder))
+                
                 return {
-                    "success": False,
-                    "message": "Registration not found",
-                    "registered": False
+                    "success": True,
+                    "registered": True,
+                    "registration_id": individual_registration["registration_id"],
+                    "registration_type": "individual",
+                    "status": individual_registration["registration"]["status"],
+                    "registered_at": individual_registration["registration"]["registered_at"],
+                    "attendance_structure": individual_registration["attendance"],
+                    "full_registration_data": serialized_data,
+                    "student_data": individual_registration.get("student"),
+                    "event_data": individual_registration.get("event")
                 }
             
+            # Check team registration
+            team_registration = await DatabaseOperations.find_one(
+                self.collection,
+                {
+                    "event.event_id": event_id,
+                    "registration_type": "team",
+                    "team_members.student.enrollment_no": enrollment_no
+                }
+            )
+            
+            if team_registration:
+                # Find the specific member's data within the team
+                member_data = None
+                for member in team_registration.get("team_members", []):
+                    if member["student"]["enrollment_no"] == enrollment_no:
+                        member_data = member
+                        break
+                
+                if member_data:
+                    logger.info(f"Found team registration {team_registration['registration_id']} for student {enrollment_no}")
+                    
+                    # Convert ObjectIds to strings for JSON serialization
+                    from core.json_encoder import CustomJSONEncoder
+                    import json
+                    
+                    serialized_data = json.loads(json.dumps(team_registration, cls=CustomJSONEncoder))
+                    
+                    return {
+                        "success": True,
+                        "registered": True,
+                        "registration_id": member_data["registration_id"],
+                        "team_registration_id": team_registration["registration_id"],
+                        "registration_type": "team",
+                        "status": team_registration["team"]["status"],
+                        "registered_at": team_registration["team"]["registered_at"],
+                        "is_team_leader": member_data.get("is_team_leader", False),
+                        "team_info": team_registration.get("team"),
+                        "team_members": team_registration.get("team_members"),
+                        "attendance_structure": member_data.get("attendance"),
+                        "full_registration_data": serialized_data,
+                        "student_data": member_data.get("student"),
+                        "event_data": team_registration.get("event")
+                    }
+            
+            # No registration found
+            logger.warning(f"No registration found for student {enrollment_no} and event {event_id}")
+            
+            # Debug: Check if student has any registrations
+            any_registration = await DatabaseOperations.find_one(
+                self.collection,
+                {"$or": [
+                    {"student.enrollment_no": enrollment_no},
+                    {"team_members.student.enrollment_no": enrollment_no}
+                ]}
+            )
+            
+            if any_registration:
+                event_ref = any_registration.get('event', {}) if 'event' in any_registration else any_registration.get('team_members', [{}])[0].get('event', {})
+                logger.info(f"Student {enrollment_no} has registration for event {event_ref.get('event_id', 'unknown')}")
+            else:
+                logger.info(f"Student {enrollment_no} has no registrations at all")
+            
             return {
-                "success": True,
-                "registered": True,
-                "registration_id": registration["registration_id"],
-                "registration_type": registration["registration"]["type"],
-                "status": registration["registration"]["status"],
-                "registered_at": registration["registration"]["registered_at"],
-                "team_info": registration.get("team"),
-                "attendance_structure": registration["attendance"]
+                "success": False,
+                "message": "Registration not found for this event",
+                "registered": False,
+                "debug_info": {
+                    "student_has_other_registrations": bool(any_registration),
+                    "other_event_id": event_ref.get('event_id') if any_registration else None
+                }
             }
             
         except Exception as e:
@@ -509,14 +804,32 @@ class EventRegistrationService:
         enrollment_no: str,
         event_id: str
     ) -> Optional[Dict[str, Any]]:
-        """Check if student already registered for event."""
-        return await DatabaseOperations.find_one(
+        """Check if student already registered for event - handles both individual and team registrations."""
+        
+        # Check individual registration
+        individual_reg = await DatabaseOperations.find_one(
             self.collection,
             {
                 "student.enrollment_no": enrollment_no,
-                "event.event_id": event_id
+                "event.event_id": event_id,
+                "registration_type": "individual"
             }
         )
+        
+        if individual_reg:
+            return individual_reg
+        
+        # Check team registration - student could be in team_members array
+        team_reg = await DatabaseOperations.find_one(
+            self.collection,
+            {
+                "event.event_id": event_id,
+                "registration_type": "team",
+                "team_members.student.enrollment_no": enrollment_no
+            }
+        )
+        
+        return team_reg
     
     async def _get_student_and_event_data(
         self,

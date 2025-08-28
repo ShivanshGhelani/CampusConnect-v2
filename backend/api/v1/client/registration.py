@@ -215,6 +215,7 @@ async def lookup_faculty(
         if not faculty:
             return {
                 "success": False,
+                "found": False,
                 "message": "Faculty not found"
             }
         
@@ -230,9 +231,140 @@ async def lookup_faculty(
         
         return {
             "success": True,
-            "faculty": faculty_info
+            "found": True,
+            "faculty_data": faculty_info
         }
         
     except Exception as e:
         logger.error(f"Error looking up faculty: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Faculty lookup failed: {str(e)}")
+
+@router.get("/lookup/student/{enrollment_no}")
+async def lookup_student(
+    enrollment_no: str,
+    current_user=Depends(get_current_user)
+):
+    """Lookup student by enrollment number for registration purposes"""
+    try:
+        from database.operations import DatabaseOperations
+        
+        # Find student by enrollment_no
+        student = await DatabaseOperations.find_one(
+            "students",
+            {"enrollment_no": enrollment_no}
+        )
+        
+        if not student:
+            return {
+                "success": False,
+                "found": False,
+                "message": "Student not found in database"
+            }
+        
+        # Return only public student information for registration
+        student_info = {
+            "enrollment_no": student["enrollment_no"],
+            "full_name": student.get("full_name", ""),
+            "email": student.get("email", ""),
+            "mobile_no": student.get("mobile_no", ""),
+            "department": student.get("department", ""),
+            "semester": student.get("semester", "")
+        }
+        
+        return {
+            "success": True,
+            "found": True,
+            "student_data": student_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Error looking up student: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Student lookup failed: {str(e)}")
+
+@router.get("/lookup/student/{enrollment_no}/eligibility/{event_id}")
+async def check_student_eligibility(
+    enrollment_no: str,
+    event_id: str,
+    current_user=Depends(get_current_user)
+):
+    """Check if student is eligible for specific event based on event criteria"""
+    try:
+        from database.operations import DatabaseOperations
+        
+        # Find student
+        student = await DatabaseOperations.find_one(
+            "students",
+            {"enrollment_no": enrollment_no}
+        )
+        
+        if not student:
+            return {
+                "success": False,
+                "found": False,
+                "eligible": False,
+                "message": "Student not found in database"
+            }
+        
+        # Find event
+        event = await DatabaseOperations.find_one(
+            "events",
+            {"event_id": event_id}
+        )
+        
+        if not event:
+            return {
+                "success": False,
+                "found": True,
+                "eligible": False,
+                "message": "Event not found"
+            }
+        
+        # Check eligibility criteria
+        eligibility_issues = []
+        
+        # Check department eligibility
+        if "student_department" in event and event["student_department"]:
+            allowed_departments = event["student_department"]
+            if isinstance(allowed_departments, str):
+                allowed_departments = [allowed_departments]
+            
+            student_dept = student.get("department", "")
+            if student_dept not in allowed_departments:
+                eligibility_issues.append(f"Department '{student_dept}' not eligible. Allowed: {', '.join(allowed_departments)}")
+        
+        # Check semester eligibility
+        if "student_semester" in event and event["student_semester"]:
+            allowed_semesters = event["student_semester"]
+            if isinstance(allowed_semesters, (int, str)):
+                allowed_semesters = [int(allowed_semesters)]
+            elif isinstance(allowed_semesters, list):
+                allowed_semesters = [int(s) for s in allowed_semesters]
+            
+            student_sem = int(student.get("semester", 0))
+            if student_sem not in allowed_semesters:
+                eligibility_issues.append(f"Semester {student_sem} not eligible. Allowed: {', '.join(map(str, allowed_semesters))}")
+        
+        # Return eligibility result
+        is_eligible = len(eligibility_issues) == 0
+        
+        student_info = {
+            "enrollment_no": student["enrollment_no"],
+            "full_name": student.get("full_name", ""),
+            "email": student.get("email", ""),
+            "mobile_no": student.get("mobile_no", ""),
+            "department": student.get("department", ""),
+            "semester": student.get("semester", "")
+        }
+        
+        return {
+            "success": True,
+            "found": True,
+            "eligible": is_eligible,
+            "student_data": student_info,
+            "eligibility_issues": eligibility_issues,
+            "message": "Eligible for event" if is_eligible else f"Not eligible: {'; '.join(eligibility_issues)}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking student eligibility: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Eligibility check failed: {str(e)}")

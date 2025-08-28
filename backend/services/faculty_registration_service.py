@@ -223,7 +223,8 @@ class FacultyRegistrationService:
                     if member_index < len(team_reg_ids):
                         member_reg_id = team_reg_ids[member_index]
 
-                registration_id = member_reg_id or f"REG_FAC_{employee_id}_{event_id}"
+                # Generate consistent registration ID format if not provided
+                registration_id = member_reg_id or f"REG{self._generate_random_string(8)}"
                 if member_reg_id:
                     logger.info(
                         f"Using frontend team registration_id: {registration_id}"
@@ -671,6 +672,17 @@ class FacultyRegistrationService:
 
         except Exception:
             return 1  # Fallback to single day
+
+    def _generate_random_string(self, length: int = 8) -> str:
+        """
+        Generate random string matching frontend format.
+        Used for fallback registration ID generation.
+        """
+        import random
+        import string
+        
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
 
 
 # Service instance

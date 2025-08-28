@@ -413,8 +413,9 @@ async def get_event_history(student: Student = Depends(require_student_login)):
                         "registration_id": participation.get('registration_id'),
                         "registration_type": participation.get('registration_type', 'individual'),
                         "registration_date": participation.get('registration_date'),  # FIXED: field name
-                        "team_name": participation.get('student_data', {}).get('team_name'),
-                        "team_registration_id": participation.get('team_registration_id')
+                        "team_name": participation.get('team_name') or participation.get('student_data', {}).get('team_name'),
+                        "team_registration_id": participation.get('team_registration_id'),
+                        "is_team_leader": participation.get('is_team_leader', False)
                     },
                     "participation_status": {
                         "attended": bool(participation.get('attendance_id')),
