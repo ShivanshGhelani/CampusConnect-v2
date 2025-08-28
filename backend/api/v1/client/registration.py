@@ -344,6 +344,44 @@ async def check_student_eligibility(
             if student_sem not in allowed_semesters:
                 eligibility_issues.append(f"Semester {student_sem} not eligible. Allowed: {', '.join(map(str, allowed_semesters))}")
         
+        # Check if student is already registered for this event
+        existing_registration = await DatabaseOperations.find_one(
+            "student_registrations",
+            {
+                "$or": [
+                    # Check for individual registration
+                    {
+                        "student.enrollment_no": enrollment_no,
+                        "event.event_id": event_id,
+                        "registration.type": "individual"
+                    },
+                    # Check if student is team leader in team registration
+                    {
+                        "team.team_leader": enrollment_no,
+                        "event.event_id": event_id,
+                        "registration_type": "team"
+                    },
+                    # Check if student is team member in team registration
+                    {
+                        "team_members.student.enrollment_no": enrollment_no,
+                        "event.event_id": event_id,
+                        "registration_type": "team"
+                    }
+                ]
+            }
+        )
+        
+        if existing_registration:
+            # Student is already registered - determine registration type
+            reg_type = "individual"
+            if existing_registration.get("registration_type") == "team":
+                if existing_registration.get("team", {}).get("team_leader") == enrollment_no:
+                    reg_type = "team leader"
+                else:
+                    reg_type = "team member"
+            
+            eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+        
         # Return eligibility result
         is_eligible = len(eligibility_issues) == 0
         
@@ -362,6 +400,8 @@ async def check_student_eligibility(
             "eligible": is_eligible,
             "student_data": student_info,
             "eligibility_issues": eligibility_issues,
+            "already_registered": existing_registration is not None,
+            "registration_type": existing_registration.get("registration_type") if existing_registration else None,
             "message": "Eligible for event" if is_eligible else f"Not eligible: {'; '.join(eligibility_issues)}"
         }
         

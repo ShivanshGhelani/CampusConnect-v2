@@ -416,7 +416,7 @@ class EventRegistrationService:
                 {
                     "student.enrollment_no": enrollment_no,
                     "event.event_id": event_id,
-                    "registration_type": "individual"
+                    "registration.type": "individual"  # Fixed: use registration.type instead of registration_type
                 }
             )
             
@@ -429,7 +429,7 @@ class EventRegistrationService:
                 self.collection,
                 {
                     "event.event_id": event_id,
-                    "registration_type": "team",
+                    "registration_type": "team",  # Fixed: use top-level registration_type for team registrations
                     "team_members.student.enrollment_no": enrollment_no
                 }
             )
@@ -495,7 +495,7 @@ class EventRegistrationService:
                 {
                     "student.enrollment_no": enrollment_no,
                     "event.event_id": event_id,
-                    "registration_type": "individual"
+                    "registration.type": "individual"  # Fixed: use registration.type instead of registration_type
                 }
             )
             
@@ -648,7 +648,7 @@ class EventRegistrationService:
                 {
                     "student.enrollment_no": enrollment_no,
                     "event.event_id": event_id,
-                    "registration_type": "individual"
+                    "registration.type": "individual"
                 }
             )
             

@@ -547,7 +547,47 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         const studentData = response.data.student_data;
         const isEligible = response.data.eligible;
         const eligibilityMessage = response.data.message;
+        const alreadyRegistered = response.data.already_registered;
+        const registrationType = response.data.registration_type;
         
+        // Check if student is already registered for this event
+        if (alreadyRegistered) {
+          let registrationMessage = '';
+          if (registrationType === 'team') {
+            // Check if they're team leader or member
+            if (eligibilityMessage.includes('team leader')) {
+              registrationMessage = 'Student is already registered as team leader for this event';
+            } else {
+              registrationMessage = 'Student is already registered as team member for this event';
+            }
+          } else {
+            registrationMessage = 'Student is already registered individually for this event';
+          }
+          
+          setFormData(prev => ({
+            ...prev,
+            participants: prev.participants.map(p => 
+              p.id === participantId 
+                ? { 
+                    ...p, 
+                    isValidating: false, 
+                    isValid: false,
+                    validationError: registrationMessage,
+                    // Clear auto-filled data since student can't be added
+                    full_name: '',
+                    email: '',
+                    mobile_no: '',
+                    department: '',
+                    semester: '',
+                    year: ''
+                  }
+                : p
+            )
+          }));
+          return;
+        }
+        
+        // Student is not already registered, proceed with normal validation
         setFormData(prev => ({
           ...prev,
           participants: prev.participants.map(p => 

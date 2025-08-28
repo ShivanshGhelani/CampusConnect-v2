@@ -139,9 +139,9 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
         </div>
 
         {/* Registration Details and Action Buttons - Left/Right Layout */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 items-">
+        <div className="grid grid-cols-[60%_40%] pt-2 border-t border-slate-100 items-start">
           {/* Left Column: Registration Details Badges */}
-          <div className="flex flex-col gap-2 ">
+          <div className="flex flex-col gap-2.5 ">
             {/* Registration Type Badge */}
             {reg.registration?.registration_type && (
               <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium w-fit ${(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team')
@@ -167,6 +167,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 )}
+                
                 {reg.registration.is_team_leader || reg.registration.registration_type === 'team_leader' ? `Team Leader${teamName ? ` - ${teamName}` : ''}` :
                   (reg.registration.registration_type === 'team_member' || reg.registration.registration_type === 'team') ?
                     `Team Member${teamName ? ` - ${teamName}` : ''}` :
@@ -176,7 +177,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
             )}
             <div className="gap-2 flex h-auto">
               {/* Registration ID Badge */}
-              <span className="inline-flex items-center gap-1.5 px-2 py-2 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 w-fit">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 w-fit">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -257,7 +258,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                       teamId: reg.registration?.team_registration_id,
                       userRole: reg.registration?.registration_type
                     })}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200 flex-1 justify-center"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 -mx-1 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200 flex-1 justify-center"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 1024 1024" class="icon" version="1.1"><path d="M764.077495 365.4687c25.787576-28.703601 41.628106-66.514662 41.628106-108.047547 0-89.337066-72.67538-162.023709-162.023709-162.02371S481.658182 168.084087 481.658182 257.421153h45.226039c0-64.405459 52.403475-116.797671 116.797671-116.797671s116.797671 52.392212 116.79767 116.797671-52.403475 116.797671-116.79767 116.79767c-20.647671 0-40.964628-5.4655-58.741325-15.822099l-22.745613 39.086822c24.666421 14.365111 52.844769 21.961316 81.486938 21.961316 31.034988 0 59.955653-8.924184 84.62105-24.116595 2.73275 4.021822 144.402643 55.220183 154.273921 292.470796 0.507847 12.15659 10.511207 21.674628 22.568481 21.674628 0.330715 0 0.639928-0.011263 0.971667-0.022526 12.477067-0.51911 22.171213-11.052842 21.641864-23.529908-9.692098-233.333227-126.929016-303.970051-163.68138-320.452557z" fill="violet" /><path d="M541.966052 518.12181c29.268786-33.91313 47.104868-77.952485 47.104868-126.15803 0-106.683731-86.809093-193.481562-193.492825-193.481562S202.107796 285.279025 202.107796 391.962756c0 48.204521 17.828915 92.240805 47.090534 126.153935-51.365255 30.577311-153.310445 121.144064-153.310445 358.758155 0 12.488329 10.113939 22.613531 22.613531 22.613531s22.613531-10.125202 22.613531-22.613531c0-244.454669 113.552978-312.788776 143.593774-326.583583 31.432256 22.083159 69.622154 35.163294 110.869374 35.163294 41.246196 0 79.440191-13.080135 110.876542-35.163294 30.045915 13.80607 143.609132 82.134033 143.609132 326.583583 0 12.488329 10.113939 22.613531 22.613531 22.613531 12.498568 0 22.613531-10.125202 22.613531-22.613531-0.001024-237.6059-101.951333-328.172653-153.324779-358.753036zM247.333835 391.962756c0-81.752124 66.492137-148.255523 148.24426-148.255523s148.265762 66.5034 148.265762 148.255523-66.514662 148.265762-148.265762 148.265762-148.244261-66.513638-148.24426-148.265762z" fill="violet" /></svg>
                     View Team
