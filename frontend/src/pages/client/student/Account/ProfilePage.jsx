@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
@@ -9,7 +9,20 @@ import api from '../../../../api/base';
 
 function ProfilePage() {
   const { user } = useAuth();
-  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(user);
+  
+  // Memoize user object to prevent unnecessary re-renders  
+  // Only re-memoize if core user properties actually change
+  const memoizedUser = useMemo(() => {
+    if (!user) return null;
+    return {
+      enrollment_no: user.enrollment_no,
+      user_type: user.user_type,
+      full_name: user.full_name,
+      email: user.email
+    };
+  }, [user?.enrollment_no, user?.user_type, user?.full_name, user?.email]);
+  
+  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(memoizedUser, 'student');
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({

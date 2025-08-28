@@ -1,153 +1,140 @@
-import { useState, useEffect, useMemo } from 'react';
-import { getAvatarUrl } from '../services/unifiedStorage';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../api/base';
-import { useAuth } from '../context/AuthContext';
+import { 
+  getGlobalAvatarState, 
+  setGlobalAvatarState, 
+  addAvatarListener, 
+  removeAvatarListener, 
+  updateAllAvatarListeners 
+} from '../utils/avatarUtils';
 
-// Global avatar state
-let globalAvatarUrl = null;
-let avatarListeners = [];
-let isAvatarFetched = false; // Track if we've already fetched the avatar
-let isFetching = false; // Prevent multiple simultaneous fetches
-let currentUserId = null; // Track current user to detect user changes
+export { resetAvatarGlobalState } from '../utils/avatarUtils';
 
-// Export function to reset global avatar state (for logout/user change)
-export const resetAvatarGlobalState = () => {
-  console.log('🔄 Resetting global avatar state (logout/user change)');
-  globalAvatarUrl = null;
-  isAvatarFetched = false;
-  isFetching = false;
-  currentUserId = null;
-  // Notify all listeners to clear their avatar state
-  avatarListeners.forEach(listener => listener(null));
-};
-
-export const useAvatar = (user) => {
-  const { userType } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState(globalAvatarUrl);
-  
-  // Create stable user ID for comparison (prevent unnecessary re-renders)
+export const useAvatar = (user, userType) => {
+  // Create stable user ID for comparison
   const userId = useMemo(() => {
     return user?.enrollment_no || user?.employee_id || user?.username;
   }, [user?.enrollment_no, user?.employee_id, user?.username]);
   
-  // Memoize user type to prevent re-renders
+  // Memoize stable user type
   const stableUserType = useMemo(() => userType, [userType]);
+  
+  // Get initial state from global cache
+  const initialState = useMemo(() => {
+    const { globalAvatarUrl, isAvatarFetched, currentUserId } = getGlobalAvatarState();
+    return (isAvatarFetched && currentUserId === userId) ? globalAvatarUrl : null;
+  }, [userId]);
+  
+  const [avatarUrl, setAvatarUrl] = useState(initialState);
+  
+  // Use ref to track if we've already fetched for this component instance
+  const hasInitialized = useMemo(() => ({ current: false }), []);
   
   useEffect(() => {
     // Add this component to listeners
-    avatarListeners.push(setAvatarUrl);
-
-    // Check if user has ACTUALLY changed (more stable detection)
-    if (userId && userId !== currentUserId) {
-      console.log('🔄 User changed detected:', {
-        previousUser: currentUserId,
-        newUser: userId
-      });
+    addAvatarListener(setAvatarUrl);
+    
+    // Only run initialization logic once per component instance
+    if (!hasInitialized.current && userId && stableUserType) {
+      hasInitialized.current = true;
       
-      // Reset avatar state for new user
-      globalAvatarUrl = null;
-      isAvatarFetched = false;
-      isFetching = false;
-      currentUserId = userId;
+      const { currentUserId: cachedUserId, isAvatarFetched: alreadyFetched, globalAvatarUrl: cachedAvatar, isFetching } = getGlobalAvatarState();
       
-      // Immediately update current component with null avatar
-      setAvatarUrl(null);
+      if (userId !== cachedUserId) {
+        console.log('🔄 User changed detected:', { previousUser: cachedUserId, newUser: userId });
+        
+        // Reset for new user
+        setGlobalAvatarState({
+          globalAvatarUrl: null,
+          isAvatarFetched: false,
+          isFetching: false,
+          currentUserId: userId
+        });
+        setAvatarUrl(null);
+        
+        // Fetch avatar for new user
+        fetchAvatarInternal(userId, stableUserType);
+      } else if (!alreadyFetched && !isFetching) {
+        // Fetch if not cached and not currently fetching
+        fetchAvatarInternal(userId, stableUserType);
+      } else if (alreadyFetched && cachedUserId === userId) {
+        // Use cached value
+        setAvatarUrl(cachedAvatar);
+      }
     }
 
-    // Set current user if not set but user exists
-    if (userId && !currentUserId) {
-      currentUserId = userId;
-    }
-
-    // Fetch avatar on mount if we haven't fetched it yet and user exists
-    if (!isAvatarFetched && user && stableUserType && !isFetching && userId) {
-      console.log('useAvatar: Initial fetch triggered for user:', userId);
-      fetchAvatar();
-    } else if (isAvatarFetched && globalAvatarUrl !== null) {
-      console.log('useAvatar: Avatar already fetched, using cached value for same user');
-      setAvatarUrl(globalAvatarUrl);
-    } else if (isAvatarFetched && globalAvatarUrl === null) {
-      // Even if avatar is null, set it to prevent flicker
-      setAvatarUrl(null);
-    }
-
-    // Cleanup listener on unmount
     return () => {
-      avatarListeners = avatarListeners.filter(listener => listener !== setAvatarUrl);
+      removeAvatarListener(setAvatarUrl);
     };
-  }, [userId, stableUserType, user]); // More stable dependencies
-  const fetchAvatar = async () => {
-    if (!user || !userType || isFetching) return;
+  }, [userId, stableUserType]); // Stable dependencies only
+  
+  // Internal fetch function
+  const fetchAvatarInternal = async (userIdToFetch, userTypeToFetch) => {
+    const { isFetching: currentlyFetching, isAvatarFetched: alreadyFetched, currentUserId: cachedUserId } = getGlobalAvatarState();
     
-    const userId = user.enrollment_no || user.employee_id || user.username;
-    
-    // Skip fetch if already fetched for the same user
-    if (isAvatarFetched && currentUserId === userId) {
-      console.log('useAvatar: Avatar already fetched for current user, skipping');
+    if ((alreadyFetched && cachedUserId === userIdToFetch) || currentlyFetching) {
       return;
     }
     
-    console.log('useAvatar: Fetching avatar for user:', userId);
-    isFetching = true;
+    console.log('useAvatar: Fetching avatar for user:', userIdToFetch);
+    setGlobalAvatarState({ isFetching: true });
     
     try {
-      // Use different API endpoint based on user type
-      const endpoint = userType === 'faculty' 
+      const endpoint = userTypeToFetch === 'faculty' 
         ? '/api/v1/client/profile/faculty/info' 
         : '/api/v1/client/profile/info';
       
       const response = await api.get(endpoint);
       if (response.data.success && response.data.profile?.avatar_url) {
-        // Use the stored avatar_url directly
         const avatarUrl = response.data.profile.avatar_url;
-        
-        console.log('useAvatar: Avatar found for user', userId);
-        updateGlobalAvatar(avatarUrl);
+        updateAllAvatarListeners(avatarUrl);
+        setGlobalAvatarState({ 
+          globalAvatarUrl: avatarUrl,
+          isAvatarFetched: true, 
+          currentUserId: userIdToFetch, 
+          isFetching: false 
+        });
       } else {
-        console.log('useAvatar: No avatar found for user', userId);
-        updateGlobalAvatar(null);
+        updateAllAvatarListeners(null);
+        setGlobalAvatarState({ 
+          globalAvatarUrl: null,
+          isAvatarFetched: true, 
+          currentUserId: userIdToFetch, 
+          isFetching: false 
+        });
       }
-      
-      // Mark as fetched regardless of result
-      isAvatarFetched = true;
-      console.log('useAvatar: Fetch completed for user', userId);
     } catch (error) {
-      console.error('Error fetching avatar for user', userId, ':', error);
-      updateGlobalAvatar(null);
-      isAvatarFetched = true; // Even on error, mark as fetched to prevent retry loops
-    } finally {
-      isFetching = false;
+      console.error('Error fetching avatar:', error);
+      updateAllAvatarListeners(null);
+      setGlobalAvatarState({ 
+        globalAvatarUrl: null,
+        isAvatarFetched: true, 
+        currentUserId: userIdToFetch, 
+        isFetching: false 
+      });
     }
   };
+  
+  // Create stable functions that don't change on re-renders
+  const refreshAvatar = useCallback(() => {
+    if (userId && stableUserType) {
+      fetchAvatarInternal(userId, stableUserType);
+    }
+  }, [userId, stableUserType]);
+  
+  const forceRefreshAvatar = useCallback(() => {
+    console.log('useAvatar: Force refresh requested');
+    setGlobalAvatarState({ isAvatarFetched: false, isFetching: false });
+    if (userId && stableUserType) {
+      fetchAvatarInternal(userId, stableUserType);
+    }
+  }, [userId, stableUserType]);
 
-  const updateGlobalAvatar = (newAvatarUrl) => {
-    globalAvatarUrl = newAvatarUrl;
-    // Notify all listeners
-    avatarListeners.forEach(listener => listener(newAvatarUrl));
-  };  const refreshAvatar = () => {
-    // Reset the fetched state to allow fresh fetch
-    console.log('useAvatar: Refresh requested, resetting cache');
-    isAvatarFetched = false;
-    fetchAvatar();
-  };
-  // Force refresh function that bypasses all caching
-  const forceRefreshAvatar = () => {
-    console.log('useAvatar: Force refresh requested, resetting all states');
-    isAvatarFetched = false;
-    isFetching = false; // Reset fetching state too
-    fetchAvatar();
-  };
-
-  // Reset function for logout or user change
-  const resetAvatarState = () => {
-    console.log('useAvatar: Resetting avatar state');
-    resetAvatarGlobalState();
-  };
   return {
     avatarUrl,
     refreshAvatar,
     forceRefreshAvatar,
-    resetAvatarState,
-    updateAvatar: updateGlobalAvatar
+    updateAvatar: updateAllAvatarListeners,
+    isLoading: false
   };
 };

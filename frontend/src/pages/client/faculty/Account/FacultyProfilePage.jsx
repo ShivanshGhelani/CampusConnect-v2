@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
@@ -10,7 +10,20 @@ import api from '../../../../api/base';
 function FacultyProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(user);
+  
+  // Memoize user object to prevent unnecessary re-renders
+  // Only re-memoize if core user properties actually change
+  const memoizedUser = useMemo(() => {
+    if (!user) return null;
+    return {
+      employee_id: user.employee_id,
+      user_type: user.user_type,
+      full_name: user.full_name,
+      email: user.email
+    };
+  }, [user?.employee_id, user?.user_type, user?.full_name, user?.email]);
+  
+  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(memoizedUser, 'faculty');
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({
@@ -97,7 +110,18 @@ function FacultyProfilePage() {
       sub_status: item.sub_status,
       category: item.category
     },
-    registration: item.registration_data,
+    // FIXED: Ensure registration data has the proper structure for ProfileEventCard
+    registration: {
+      registration_id: item.registration_data?.registration_id || 'N/A',
+      registration_type: item.registration_data?.registration_type || 'individual',
+      registration_date: item.registration_data?.registration_date,
+      status: item.registration_data?.status || 'confirmed',
+      // Faculty-specific fields
+      employee_id: user?.employee_id,
+      registrar_id: item.registration_data?.registration_id, // For QR code compatibility
+      team_name: item.registration_data?.team_name || null,
+      team_registration_id: item.registration_data?.team_registration_id || null
+    },
     participation_status: item.participation_status
   }));
 
@@ -267,7 +291,6 @@ function FacultyProfilePage() {
 
   const handleAvatarUpdate = (newAvatarUrl) => {
     updateAvatar(newAvatarUrl);
-    forceRefreshAvatar();
   };
 
   if (!user || user.user_type !== 'faculty') {
@@ -661,7 +684,7 @@ function FacultyProfilePage() {
 
       {/* QR Code Modal */}
       {showQRCodeModal && selectedQRData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200">
@@ -685,38 +708,48 @@ function FacultyProfilePage() {
               </div>
             </div>
 
+
+            
             {/* Modal Content */}
             <div className="p-6">
               <QRCodeDisplay
-                registrationData={selectedQRData}
-                onClose={closeQRCodeModal}
+                registrationData={selectedQRData?.registration}
+                eventData={selectedQRData?.event}
+                size="large"
+                showDownload={true}
+                showDetails={true}
+                style="blue"
               />
             </div>
           </div>
         </div>
       )
       }
-
-      {/* Event Detail Modal - Simple version for faculty */}
+      {/* Event Detail Modal */}
       {showEventDetailModal && selectedEventDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+            <div className="px-8 py-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">Event Details</h3>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 truncate">
+                      {selectedEventDetail.event.event_name}
+                    </h3>
+                    <span className="text-sm text-slate-500 font-medium">Event Details & Status</span>
+                  </div>
                 </div>
                 <button
                   onClick={closeEventDetailModal}
-                  className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center transition-colors duration-200"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
                 >
-                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -724,48 +757,354 @@ function FacultyProfilePage() {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">
-                    {selectedEventDetail.event?.event_name}
+            <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                {/* Event Information */}
+                <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Event Information
                   </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-slate-500">Department</p>
-                      <p className="font-semibold">{selectedEventDetail.event?.organizing_department || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Date</p>
-                      <p className="font-semibold">
-                        {selectedEventDetail.event?.start_datetime
-                          ? new Date(selectedEventDetail.event.start_datetime).toLocaleDateString()
-                          : 'TBD'}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-sm font-medium text-slate-600">Date & Time</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedEventDetail.event.start_datetime ?
+                          new Date(selectedEventDetail.event.start_datetime).toLocaleString('en-US', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : 'TBD'
+                        }
                       </p>
                     </div>
-                    <div>
-                      <p className="text-slate-500">Venue</p>
-                      <p className="font-semibold">{selectedEventDetail.event?.venue || 'TBD'}</p>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-sm font-medium text-slate-600">Venue</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedEventDetail.event.venue && selectedEventDetail.event.venue !== 'N/A' ? selectedEventDetail.event.venue : 'TBD'}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-slate-500">Status</p>
-                      <p className="font-semibold capitalize">{selectedEventDetail.event?.status || 'Unknown'}</p>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <span className="text-sm font-medium text-slate-600">Category</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedEventDetail.event.category || 'General'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-sm font-medium text-slate-600">Registration ID</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900 font-mono">
+                        {selectedEventDetail.registration?.registrar_id || selectedEventDetail.registration?.registration_id || 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <h5 className="font-semibold text-slate-900 mb-2">Registration Information</h5>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-slate-500">Registration ID</p>
-                      <p className="font-semibold font-mono">{selectedEventDetail.registration?.registration_id || 'N/A'}</p>
+                {/* Participation Status */}
+                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Your Participation Status
+                  </h4>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Attendance Status */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                          <span className="text-sm font-semibold text-slate-900">Attendance</span>
+                        </div>
+                        {selectedEventDetail.participation_status?.attended ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Marked
+                          </span>
+                        ) : selectedEventDetail.event.status === 'completed' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Not Marked
+                          </span>
+                        ) : selectedEventDetail.event.status === 'ongoing' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Available Soon
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedEventDetail.participation_status?.attended && (
+                        <div className="space-y-3">
+                          {/* Attendance Details */}
+                          <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-sm font-semibold text-emerald-800">Attendance Confirmed</span>
+                            </div>
+                            <div className="text-xs text-emerald-700 space-y-1">
+                              <p><strong>Attendance ID:</strong> <span className="font-mono bg-white px-2 py-0.5 rounded border">{selectedEventDetail.participation_status.attendance_id}</span></p>
+                              {selectedEventDetail.participation_status.attendance_date && (
+                                <p><strong>Marked At:</strong> {new Date(selectedEventDetail.participation_status.attendance_date).toLocaleString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Attendance Type Indicators */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-blue-800">Physical Attendance</span>
+                              <svg className="w-3 h-3 text-emerald-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-purple-800">Virtual Attendance</span>
+                              <svg className="w-3 h-3 text-emerald-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedEventDetail.event.status === 'ongoing' && !selectedEventDetail.participation_status?.attended && (
+                        <div className="space-y-3 mt-3">
+                          <p className="text-xs text-slate-600">
+                            Attendance marking is now available! Choose your attendance method:
+                          </p>
+
+                          {/* Attendance Options */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-blue-800">Physical Attendance</span>
+                              <svg className="w-3 h-3 text-orange-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-purple-800">Virtual Attendance</span>
+                              <svg className="w-3 h-3 text-orange-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                          </div>
+
+                          <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+                            <p><strong>Physical:</strong> Be present at the venue and use QR code or location-based marking.</p>
+                            <p><strong>Virtual:</strong> Join online session and mark attendance through the platform.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedEventDetail.event.status === 'upcoming' && (
+                        <div className="mt-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 opacity-75">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-blue-800">Physical Attendance</span>
+                              <svg className="w-3 h-3 text-slate-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200 opacity-75">
+                              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-purple-800">Virtual Attendance</span>
+                              <svg className="w-3 h-3 text-slate-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-2">
+                            Both physical and virtual attendance options will be available during the event.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-slate-500">Registration Type</p>
-                      <p className="font-semibold capitalize">{selectedEventDetail.registration?.registration_type || 'Individual'}</p>
+
+                    {/* Feedback Status */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <span className="text-sm font-semibold text-slate-900">Feedback</span>
+                        </div>
+                        {selectedEventDetail.participation_status?.feedback_submitted ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Submitted
+                          </span>
+                        ) : selectedEventDetail.event.status === 'completed' || selectedEventDetail.event.status === 'ongoing' ? (
+                          <Link
+                            to={`/client/events/${selectedEventDetail.event_id}/feedback`}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 transition-colors"
+                            onClick={closeEventDetailModal}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Submit Now
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Not Available
+                          </span>
+                        )}
+                      </div>
+                      {selectedEventDetail.participation_status?.feedback_submitted && (
+                        <div className="text-xs text-slate-600">
+                          <p><strong>Feedback ID:</strong> {selectedEventDetail.participation_status.feedback_id}</p>
+                          {selectedEventDetail.participation_status.feedback_date && (
+                            <p><strong>Submitted At:</strong> {new Date(selectedEventDetail.participation_status.feedback_date).toLocaleString()}</p>
+                          )}
+                        </div>
+                      )}
+                      {(selectedEventDetail.event.status === 'completed' || selectedEventDetail.event.status === 'ongoing') && !selectedEventDetail.participation_status?.feedback_submitted && (
+                        <p className="text-xs text-slate-600 mt-2">
+                          Your feedback helps us improve future events. Please take a moment to share your experience.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Certificate Status */}
+                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          <span className="text-sm font-semibold text-slate-900">Certificate</span>
+                        </div>
+                        {selectedEventDetail.participation_status?.certificate_earned ? (
+                          <Link
+                            to="/client/certificates"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
+                            onClick={closeEventDetailModal}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download
+                          </Link>
+                        ) : selectedEventDetail.event.status === 'completed' && selectedEventDetail.participation_status?.attended ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Processing
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Not Available
+                          </span>
+                        )}
+                      </div>
+                      {selectedEventDetail.participation_status?.certificate_earned && (
+                        <div className="text-xs text-slate-600">
+                          <p><strong>Certificate ID:</strong> {selectedEventDetail.participation_status.certificate_id}</p>
+                        </div>
+                      )}
+                      {selectedEventDetail.event.status === 'completed' && selectedEventDetail.participation_status?.attended && !selectedEventDetail.participation_status?.certificate_earned && (
+                        <p className="text-xs text-slate-600 mt-2">
+                          Your certificate is being processed. It will be available in your certificates section once ready.
+                        </p>
+                      )}
+                      {(!selectedEventDetail.participation_status?.attended && selectedEventDetail.event.status === 'completed') && (
+                        <p className="text-xs text-slate-600 mt-2">
+                          Attendance is required to receive a certificate for this event.
+                        </p>
+                      )}
                     </div>
                   </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4 border-t border-slate-200">
+                  <Link
+                    to={`/client/events/${selectedEventDetail.event_id}`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-semibold"
+                    onClick={closeEventDetailModal}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View Full Event
+                  </Link>
+                  <button
+                    onClick={closeEventDetailModal}
+                    className="px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>

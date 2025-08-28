@@ -3,7 +3,7 @@ import { authAPI } from '../api/auth';
 import { clientAPI } from '../api/client';
 
 // Import avatar reset function
-import { resetAvatarGlobalState } from '../hooks/useAvatar';
+import { resetAvatarGlobalState } from '../utils/avatarUtils';
 
 // Import session avatar cache
 import { sessionAvatarCache } from '../services/sessionAvatarCache';

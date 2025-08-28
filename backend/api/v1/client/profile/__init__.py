@@ -142,6 +142,12 @@ async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_lo
         if not faculty_data:
             return {"success": False, "message": "Faculty profile not found"}
         
+        # FIXED: Check both possible field names for event participations
+        event_participations = (
+            faculty_data.get('event_participations', []) or 
+            faculty_data.get('event_participation', [])
+        )
+        
         # Remove sensitive information
         profile_data = {
             "employee_id": faculty_data.get('employee_id', ''),
@@ -161,7 +167,7 @@ async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_lo
             "profile_created_at": faculty_data.get('created_at', '').isoformat() if hasattr(faculty_data.get('created_at', ''), 'isoformat') else faculty_data.get('created_at', ''),
             "last_updated": faculty_data.get('updated_at', '').isoformat() if hasattr(faculty_data.get('updated_at', ''), 'isoformat') else faculty_data.get('updated_at', ''),
             "is_active": faculty_data.get('is_active', True),
-            "event_participation": faculty_data.get('event_participation', [])
+            "event_participation": event_participations  # Use the corrected field
         }
         
         return {
@@ -522,24 +528,36 @@ async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty
         if not faculty_data:
             return {"success": False, "message": "Faculty not found"}
         
-        # Analyze event participations
-        event_participation = faculty_data.get('event_participation', [])
+        # FIXED: Check both possible field names for event participations
+        # Try both 'event_participations' (plural) and 'event_participation' (singular)
+        event_participation = (
+            faculty_data.get('event_participations', []) or 
+            faculty_data.get('event_participation', [])
+        )
+        
+        # If it's a list of objects with event_id, extract the event_ids for counting
+        if event_participation and isinstance(event_participation[0], dict):
+            participation_count = len(event_participation)
+            event_ids = [p.get('event_id') for p in event_participation if p.get('event_id')]
+        else:
+            participation_count = len(event_participation)
+            event_ids = event_participation
         
         stats = {
-            "total_events_participated": len(event_participation),
-            "total_registrations": len(event_participation),  # For compatibility with frontend
-            "attendance_marked": len(event_participation),   # Assuming faculty attended events they participated in
+            "total_events_participated": participation_count,
+            "total_registrations": participation_count,  # For compatibility with frontend
+            "attendance_marked": participation_count,   # Assuming faculty attended events they participated in
             "feedback_submitted": 0,  # Could be extended based on faculty feedback system
-            "certificates_earned": len(event_participation),  # Assuming faculty get certificates
-            "individual_registrations": len(event_participation),
+            "certificates_earned": participation_count,  # Assuming faculty get certificates
+            "individual_registrations": participation_count,
             "team_registrations": 0,  # Faculty typically don't do team registrations
             "recent_activities": []
         }
         
         # Get recent activities (limit to last 5 events)
-        if event_participation:
+        if event_ids:
             # Get event details for recent activities
-            recent_event_ids = event_participation[-5:]  # Last 5 events
+            recent_event_ids = event_ids[-5:] if len(event_ids) > 5 else event_ids  # Last 5 events
             for event_id in recent_event_ids:
                 try:
                     event = await DatabaseOperations.find_one("events", {"event_id": event_id})
@@ -578,10 +596,27 @@ async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_l
                 "event_history": []
             }
         
-        # Get faculty event participations
-        event_participation = faculty_data.get('event_participation', [])
+        # FIXED: Check both possible field names for event participations
+        # Try both 'event_participations' (plural) and 'event_participation' (singular)
+        event_participations = (
+            faculty_data.get('event_participations', []) or 
+            faculty_data.get('event_participation', [])
+        )
         
-        if not event_participation:
+        # If it's a list of objects with event_id, extract the event_ids
+        if event_participations and isinstance(event_participations[0], dict):
+            event_ids = []
+            participations_dict = {}
+            for participation in event_participations:
+                if isinstance(participation, dict) and 'event_id' in participation:
+                    event_id = participation['event_id']
+                    event_ids.append(event_id)
+                    participations_dict[event_id] = participation
+            event_participations = event_ids
+        else:
+            participations_dict = {}
+        
+        if not event_participations:
             return {
                 "success": True,
                 "message": "No event participation history found",
@@ -591,21 +626,24 @@ async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_l
         event_history = []
         
         # Process each event participation
-        for event_id in event_participation:
+        for event_id in event_participations:
             try:
                 # Get event details
                 event = await DatabaseOperations.find_one("events", {"event_id": event_id})
                 if not event:
                     continue
                 
-                # Get faculty registration for this event from student_registrations collection
+                # Get faculty registration for this event from faculty_registrations collection
                 registration = await DatabaseOperations.find_one(
-                    "student_registrations",
+                    "faculty_registrations",
                     {
-                        "student.employee_id": faculty.employee_id,
+                        "faculty.employee_id": faculty.employee_id,
                         "event.event_id": event_id
                     }
                 )
+                
+                # Get participation data if available
+                participation_data = participations_dict.get(event_id, {})
                 
                 # Create history item with similar structure to student event history
                 history_item = {
@@ -617,12 +655,24 @@ async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_l
                     "status": event.get("status", "unknown"),
                     "sub_status": event.get("sub_status", "unknown"),
                     "registration_data": {
-                        "registration_id": registration.get("registration_id", "N/A") if registration else "N/A",
-                        "registration_type": registration.get("registration", {}).get("registration_type", "individual") if registration else "individual",
-                        "registration_date": registration.get("registration", {}).get("registered_at") if registration else None,
-                        "status": registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
+                        "registration_id": (
+                            participation_data.get("registration_id") or
+                            registration.get("registration_id", "N/A") if registration else "N/A"
+                        ),
+                        "registration_type": (
+                            participation_data.get("registration_type") or
+                            registration.get("registration", {}).get("registration_type", "individual") if registration else "individual"
+                        ),
+                        "registration_date": (
+                            participation_data.get("registration_date") or
+                            registration.get("registration", {}).get("registered_at") if registration else None
+                        ),
+                        "status": (
+                            participation_data.get("status") or
+                            registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
+                        )
                     },
-                    "participation_status": "registered"
+                    "participation_status": participation_data.get("status", "registered")
                 }
                 
                 event_history.append(history_item)

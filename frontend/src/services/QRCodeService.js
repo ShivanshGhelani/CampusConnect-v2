@@ -18,6 +18,7 @@ class QRCodeService {
    */
   generateQRData(registrationData, eventData, options = {}) {
     const isTeamRegistration = registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader';
+    const isFacultyRegistration = registrationData.employee_id !== undefined;
     
     const qrData = {
       // Core identification
@@ -27,11 +28,21 @@ class QRCodeService {
       
       // Registration type
       type: isTeamRegistration ? 'team' : 'individual',
+      user_type: isFacultyRegistration ? 'faculty' : 'student',
       
-      // Team leader info (always present for both individual and team)
+      // User info (works for both student and faculty)
+      user: {
+        name: registrationData.full_name || registrationData.student_data?.full_name,
+        id: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no,
+        department: this.getDepartment(registrationData),
+        email: registrationData.email || registrationData.student_data?.email,
+        type: isFacultyRegistration ? 'faculty' : 'student'
+      },
+      
+      // Legacy field for backward compatibility (map to user)
       leader: {
         name: registrationData.full_name || registrationData.student_data?.full_name,
-        enrollment: registrationData.enrollment_no || registrationData.student_data?.enrollment_no,
+        enrollment: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no,
         department: this.getDepartment(registrationData),
         email: registrationData.email || registrationData.student_data?.email
       },
@@ -53,7 +64,7 @@ class QRCodeService {
       
       // Metadata
       generated: new Date().toISOString(),
-      version: '2.0' // Updated version for new team QR format
+      version: '2.1' // Updated version for faculty support
     };
 
     return qrData;
@@ -95,10 +106,10 @@ class QRCodeService {
     const eventId = eventData.event_id || eventData.id;
     const teamName = (registrationData.team_name || registrationData.student_data?.team_name || 'TEAM')
       .replace(/[^A-Z0-9]/gi, '').toUpperCase();
-    const leaderEnrollment = (registrationData.enrollment_no || registrationData.student_data?.enrollment_no || '000')
+    const leaderId = (registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || '000')
       .slice(-6);
     
-    return `TEAM_${eventId}_${teamName}_${leaderEnrollment}`;
+    return `TEAM_${eventId}_${teamName}_${leaderId}`;
   }
 
   /**
@@ -183,10 +194,11 @@ class QRCodeService {
     const regId = registrationData.registration_id || registrationData.registrar_id;
     const eventName = (eventData.event_name || eventData.title || eventData.name || 'Event')
       .replace(/[^a-zA-Z0-9]/g, '_');
-    const studentName = (registrationData.full_name || registrationData.student_data?.full_name || 'Student')
+    const userName = (registrationData.full_name || registrationData.student_data?.full_name || 'User')
       .replace(/[^a-zA-Z0-9]/g, '_');
+    const userType = registrationData.employee_id ? 'Faculty' : 'Student';
     
-    return `QR_${eventName}_${studentName}_${regId}.png`;
+    return `QR_${eventName}_${userType}_${userName}_${regId}.png`;
   }
 
   /**

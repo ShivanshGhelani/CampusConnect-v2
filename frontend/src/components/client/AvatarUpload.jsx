@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, memo } from 'react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { uploadAvatar, deleteAvatar, getAvatarUrl } from '../../services/unifiedStorage';
@@ -8,7 +8,7 @@ import api from '../../api/base';
 import Loader from '../ui/Loader';
 import '../../utils/webpTest'; // Import WebP test utility
 
-function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
+const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
   const { user } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [crop, setCrop] = useState();
@@ -436,6 +436,6 @@ function AvatarUpload({ currentAvatar, onAvatarUpdate, className = "" }) {
       />
     </>
   );
-}
+});
 
 export default AvatarUpload;

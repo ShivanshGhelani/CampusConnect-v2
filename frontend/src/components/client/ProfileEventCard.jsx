@@ -14,7 +14,7 @@ const StatusBadge = ({ status }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )
-    },    ongoing: {
+    }, ongoing: {
       bg: '',
       text: 'text-emerald-700',
       label: 'Live',
@@ -50,22 +50,22 @@ const StatusBadge = ({ status }) => {
 const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onViewDetails, onViewTeam, onViewQRCode }) => {
   // Registration data available for debugging if needed
   // reg.event_id, reg.event?.event_name, reg.registration?.registration_type, etc.
-  
+
   // State for dynamic team name fetching
   const [teamName, setTeamName] = useState(reg.registration?.team_name);
-  
+
   // Debug: Check event status for cancel button visibility
   const shouldShowCancelButtons = reg.event.status === "upcoming" && reg.event.sub_status === "registration_open";
-  
+
   // Debug: Check View Team button visibility
   const shouldShowViewTeamButton = reg.registration?.registration_type === "team_member";
 
   // Effect to fetch team name if it's null for team members
   useEffect(() => {
     const fetchTeamName = async () => {
-      if (reg.registration?.registration_type === 'team_member' && 
-          !reg.registration?.team_name && 
-          reg.registration?.team_registration_id) {
+      if (reg.registration?.registration_type === 'team_member' &&
+        !reg.registration?.team_name &&
+        reg.registration?.team_registration_id) {
         try {
           const response = await api.get(`/api/v1/client/profile/team-info/${reg.event_id}/${reg.registration.team_registration_id}`);
           if (response.data.success && response.data.data?.team_name) {
@@ -92,14 +92,14 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-slate-900 text-sm mb-0.5 truncate group-hover:text-blue-700 transition-colors">
                 {reg.event.event_name}
               </h3>
             </div>
           </div>
-          
+
           <StatusBadge status={reg.event.status} />
         </div>
       </div>
@@ -121,7 +121,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
               </p>
             </div>
           </div>
-          
+
           <div className="col-span-4 flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
             <div className="w-6 h-6 bg-emerald-100 rounded-md flex items-center justify-center flex-shrink-0">
               <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,22 +134,23 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                 {reg.event.venue && reg.event.venue !== 'N/A' && reg.event.venue !== 'n/a' && reg.event.venue !== 'NA' ? reg.event.venue : 'TBD'}
               </p>
             </div>
-          </div>        </div>
+          </div>        
+        </div>
 
-        {/* Registration Type Badge and Registration ID - Combined Row */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          {/* Registration Type Badge and Registration ID */}
-          <div className="flex items-center gap-3">
+        {/* Registration Details and Action Buttons - Left/Right Layout */}
+        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+          {/* Left Column: Registration Details Badges */}
+          <div className="flex flex-col gap-2">
+            {/* Registration Type Badge */}
             {reg.registration?.registration_type && (
-              <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
-                (reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team')
-                  ? 'bg-purple-50 text-purple-700 border border-purple-200' 
+              <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium w-fit ${(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team')
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
                   : reg.registration.registration_type === 'individual'
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : reg.registration.registration_type === 'team_member'
-                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                  : 'bg-slate-50 text-slate-700 border border-slate-200'
-              }`}>
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : reg.registration.registration_type === 'team_member'
+                      ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                      : 'bg-slate-50 text-slate-700 border border-slate-200'
+                }`}>
                 {(reg.registration.registration_type === 'team_leader' || reg.registration.registration_type === 'team') && (
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -165,15 +166,15 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                   </svg>
                 )}
-                {reg.registration.registration_type === 'team' ? 'Team Leader' : 
-                 reg.registration.registration_type === 'team_member' ? 
-                   `Team Member${teamName ? ` - ${teamName}` : ''}` :
-                   reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {reg.registration.registration_type === 'team' ? 'Team Leader' :
+                  reg.registration.registration_type === 'team_member' ?
+                    `Team Member${teamName ? ` - ${teamName}` : ''}` :
+                    reg.registration.registration_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </span>
             )}
-            
+
             {/* Registration ID Badge */}
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200">
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-50 text-slate-700 border border-slate-200 w-fit">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -183,76 +184,82 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
             </span>
           </div>
 
-          {/* Action Buttons */}
+          {/* Right Column: Action Buttons (2 per row) */}
           {showActions && (
-            <div className="flex items-center gap-1.5">              {/* QR Code Button - Show for all registrations */}
-              <button
-                onClick={() => onViewQRCode && onViewQRCode({
-                  registration: reg.registration,
-                  event: reg.event,
-                  eventId: reg.event_id,
-                  eventName: reg.event.event_name,
-                  registrationType: reg.registration?.registration_type,
-                  teamName: teamName || reg.registration?.team_name
-                })}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1.5 rounded-lg transition-all duration-200 border border-green-100 hover:border-green-200"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                </svg>
-                QR Code
-              </button>
-
-              <button
-                onClick={() => onViewDetails && onViewDetails(reg)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-all duration-200 border border-blue-100 hover:border-blue-200"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Details
-              </button>
-
-              {/* Team Management Button - Always show for team leaders */}
-              {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
-                <Link
-                  to={`/client/events/${reg.event_id}/manage-team`}
-                  className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Manage Team
-                </Link>
-              )}
-
-              {/* View Team Button - Show only for team participants */}
-              {shouldShowViewTeamButton && (
+            <div className="flex flex-col gap-1.5">
+              {/* Row 1: QR Code + Details */}
+              <div className="flex gap-1.5">
                 <button
-                  onClick={() => onViewTeam && onViewTeam({
+                  onClick={() => onViewQRCode && onViewQRCode({
+                    registration: reg.registration,
+                    event: reg.event,
                     eventId: reg.event_id,
                     eventName: reg.event.event_name,
-                    teamName: teamName || reg.registration?.team_name,
-                    teamId: reg.registration?.team_registration_id,
-                    userRole: reg.registration?.registration_type
+                    registrationType: reg.registration?.registration_type,
+                    teamName: teamName || reg.registration?.team_name
                   })}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-green-100 hover:border-green-200 flex-1 justify-center"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                   </svg>
-                  View Team
+                  QR Code
                 </button>
-              )}
 
-              {/* Registration Management Buttons - Show only when registration is open */}
+                <button
+                  onClick={() => onViewDetails && onViewDetails(reg)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-blue-100 hover:border-blue-200 flex-1 justify-center"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Details
+                </button>
+              </div>
+
+              {/* Row 2: Conditional buttons (Team Management / View Team) */}
+              <div className="flex gap-1.5">
+                {/* Team Management Button - Always show for team leaders */}
+                {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
+                  <Link
+                    to={`/client/events/${reg.event_id}/manage-team`}
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100 flex-1 justify-center"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Manage Team
+                  </Link>
+                )}
+
+                {/* View Team Button - Show only for team participants */}
+                {shouldShowViewTeamButton && (
+                  <button
+                    onClick={() => onViewTeam && onViewTeam({
+                      eventId: reg.event_id,
+                      eventName: reg.event.event_name,
+                      teamName: teamName || reg.registration?.team_name,
+                      teamId: reg.registration?.team_registration_id,
+                      userRole: reg.registration?.registration_type
+                    })}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-purple-100 hover:border-purple-200 flex-1 justify-center"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 715.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    View Team
+                  </button>
+                )}
+              </div>
+
+              {/* Row 3: Cancel buttons (when registration is open) */}
               {reg.event.status === "upcoming" && reg.event.sub_status === "registration_open" && (
-                <>
+                <div className="flex gap-1.5">
                   {(reg.registration?.registration_type === "team_leader" || reg.registration?.registration_type === "team") && (
                     <button
                       onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
-                      className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100"
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100 flex-1 justify-center"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -264,7 +271,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                   {reg.registration?.registration_type === "individual" && (
                     <button
                       onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
-                      className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100"
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors duration-200 border border-red-100 flex-1 justify-center"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -272,7 +279,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                       Cancel Registration
                     </button>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
