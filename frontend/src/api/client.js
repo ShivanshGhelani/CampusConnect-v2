@@ -71,8 +71,9 @@ export const clientAPI = {
   getCertificates: () => api.get('/api/v1/client/certificates/available'),
   downloadCertificate: (certificateId) => api.get(`/api/v1/client/certificates/download/${certificateId}`),
   
-  // Profile - Keep existing
-  getProfile: () => api.get('/api/v1/client/profile/dashboard-stats'),
+  // Profile - FIXED: Use correct endpoint for complete profile data
+  getProfile: () => api.get('/api/v1/client/profile/info'),
+  getDashboardStats: () => api.get('/api/v1/client/profile/dashboard-stats'), // Separate endpoint for stats
   updateProfile: (profileData) => api.put('/api/v1/client/profile/update', profileData),
   
   // Notification Management - Keep existing

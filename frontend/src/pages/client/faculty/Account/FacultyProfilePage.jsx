@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
-import { useAvatarFast } from '../../../../hooks/useAvatarFast';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import api from '../../../../api/base';
 
 function FacultyProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatarFast(user);
+  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(user);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({

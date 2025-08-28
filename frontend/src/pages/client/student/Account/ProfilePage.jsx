@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { useAvatar } from '../../../../hooks/useAvatar';
-import { useAvatarFast } from '../../../../hooks/useAvatarFast';
 import ProfileEventCard from '../../../../components/client/ProfileEventCard';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
@@ -10,7 +9,7 @@ import api from '../../../../api/base';
 
 function ProfilePage() {
   const { user } = useAuth();
-  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatarFast(user);
+  const { avatarUrl, updateAvatar, forceRefreshAvatar, isLoading: avatarLoading } = useAvatar(user);
   const [eventHistory, setEventHistory] = useState([]);
   const [profileData, setProfileData] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({

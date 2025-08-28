@@ -17,36 +17,73 @@ router = APIRouter()
 
 @router.get("/info")
 async def get_profile_info(student: Student = Depends(require_student_login)):
-    """Get current student profile information"""
+    """Get current student profile information - FIXED for field mapping"""
     try:
         # Get complete student data from database
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return {"success": False, "message": "Student profile not found"}
-          # Remove sensitive information and ensure all fields are JSON serializable
+        
+        # FIXED: Handle field mapping between backend and frontend
+        def get_mobile_number():
+            """Get mobile number from various possible field names"""
+            return (student_data.get('mobile_no') or 
+                   student_data.get('phone_number') or 
+                   student_data.get('contact_no') or 
+                   '')
+        
+        def format_date_field(date_value):
+            """Safely format date fields"""
+            if not date_value:
+                return ''
+            if hasattr(date_value, 'isoformat'):
+                return date_value.isoformat().split('T')[0]  # Return only date part
+            return str(date_value)
+        
+        # Remove sensitive information and ensure all fields are JSON serializable
         profile_data = {
             "enrollment_no": student_data.get('enrollment_no', ''),
+            "enrollment_number": student_data.get('enrollment_no', ''),  # Alternative field name
             "full_name": student_data.get('full_name', ''),
             "email": student_data.get('email', ''),
-            "mobile_no": student_data.get('mobile_no', ''),
+            
+            # FIXED: Handle multiple possible field names for mobile
+            "mobile_no": get_mobile_number(),
+            "phone_number": get_mobile_number(),  # Provide both for compatibility
+            
             "department": student_data.get('department', ''),
             "semester": student_data.get('semester', ''),
             "year_of_admission": student_data.get('year_of_admission', ''),
-            "date_of_birth": student_data.get('date_of_birth', ''),
+            
+            # FIXED: Proper date formatting
+            "date_of_birth": format_date_field(student_data.get('date_of_birth')),
+            
             "gender": student_data.get('gender', ''),
             "address": student_data.get('address', ''),
             "parent_mobile": student_data.get('parent_mobile', ''),
             "emergency_contact": student_data.get('emergency_contact', ''),
+            
+            # Metadata fields
             "profile_created_at": student_data.get('created_at', '').isoformat() if hasattr(student_data.get('created_at', ''), 'isoformat') else student_data.get('created_at', ''),
             "last_updated": student_data.get('updated_at', '').isoformat() if hasattr(student_data.get('updated_at', ''), 'isoformat') else student_data.get('updated_at', ''),
             "is_active": student_data.get('is_active', True),
             "avatar_url": student_data.get('avatar_url', None)
         }
         
+        # Debug logging to track field availability
+        missing_critical_fields = []
+        for field in ['mobile_no', 'gender', 'date_of_birth']:
+            if not profile_data.get(field):
+                missing_critical_fields.append(field)
+        
+        if missing_critical_fields:
+            logger.warning(f"Missing critical profile fields for student {student.enrollment_no}: {missing_critical_fields}")
+        
         return {
             "success": True,
             "message": "Profile information retrieved successfully",
-            "profile": profile_data
+            "profile": profile_data,
+            "student": profile_data  # Alternative response structure for compatibility
         }
         
     except Exception as e:

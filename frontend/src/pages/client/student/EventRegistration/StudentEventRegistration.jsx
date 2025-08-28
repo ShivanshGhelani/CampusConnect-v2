@@ -4,11 +4,10 @@ import { useAuth } from '../../../../context/AuthContext';
 import { clientAPI } from '../../../../api/client';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-// Phase 1 Integration: Validation & ID Generation
 import { validators, useValidation, validateForm } from '../../../../utils/validators';
 import { 
-  generateRegistrationId,      // FIXED: Use real ID instead of temp
-  generateTeamRegistrationId,  // FIXED: Use real team ID instead of temp
+  generateRegistrationId,
+  generateTeamRegistrationId,
   generateSessionId,
   idValidators 
 } from '../../../../utils/idGenerator';
@@ -19,9 +18,9 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const location = useLocation();
   const { user, userType } = useAuth();
 
-  // Refs to track execution state
-  const eventLoadingRef = useRef(false);
-  const profileLoadingRef = useRef(false);
+  // Refs to track execution state  
+  const dataLoadingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // State management
   const [event, setEvent] = useState(null);
@@ -30,8 +29,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [registrationBlocked, setRegistrationBlocked] = useState(false);
-  const [eventLoaded, setEventLoaded] = useState(false);
-  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -66,19 +63,17 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       const newSessionId = generateSessionId();
       setSessionId(newSessionId);
       
-      // Generate REAL registration ID (not temp)
       if (user?.enrollment_no && eventId) {
         const registrationId = generateRegistrationId(
           user.enrollment_no,
           eventId,
           user.full_name || 'Student'
         );
-        setTempRegistrationId(registrationId);  // Variable name kept for compatibility
+        setTempRegistrationId(registrationId);
         
-        // Store session data for persistence
         const sessionData = {
           sessionId: newSessionId,
-          tempRegistrationId: registrationId,  // This is now a REAL ID
+          tempRegistrationId: registrationId,
           eventId: eventId,
           userId: user.enrollment_no,
           timestamp: Date.now()
@@ -120,128 +115,89 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     return '';
   };
 
-  // Debug formData changes - only for important fields
+  // Cleanup on unmount
   useEffect(() => {
-    if (formData.mobile_no || formData.gender || formData.semester) {
-      console.log('Form data updated:', {
-        mobile_no: formData.mobile_no,
-        gender: formData.gender,
-        semester: formData.semester,
-        profileLoaded: profileLoaded,
-        eventLoaded: eventLoaded
-      });
-    }
-  }, [formData.mobile_no, formData.gender, formData.semester, profileLoaded, eventLoaded]); // Track loading states too
-
-  // Load complete profile data - SEPARATE FROM EVENT LOADING
-  useEffect(() => {
-    if (!user || !user.enrollment_no || profileLoaded || profileLoadingRef.current) return;
-    
-    profileLoadingRef.current = true; // Prevent multiple executions
-    
-    const loadProfileData = async () => {
-      try {
-        console.log('Loading complete profile data...');
-        const response = await clientAPI.getProfile();
-        
-        if (response.data.success && response.data.student) {
-          const profileData = response.data.student;
-          console.log('Profile data loaded:', profileData);
-          
-          // Transform gender to match frontend options (capitalize first letter)
-          const transformGender = (gender) => {
-            if (!gender) return '';
-            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
-          };
-          
-          setFormData(prev => ({
-            ...prev,
-            full_name: profileData.full_name || prev.full_name,
-            enrollment_no: profileData.enrollment_number || prev.enrollment_no,
-            email: profileData.email || prev.email,
-            mobile_no: profileData.phone_number || profileData.mobile_no || prev.mobile_no,
-            department: profileData.department || prev.department,
-            semester: profileData.semester || prev.semester,
-            gender: transformGender(profileData.gender) || prev.gender,
-            date_of_birth: profileData.date_of_birth ? formatDateForInput(profileData.date_of_birth) : prev.date_of_birth,
-          }));
-          
-          setProfileLoaded(true);
-          
-          // Update year display after profile load
-          setTimeout(() => {
-            const yearElement = document.getElementById('year');
-            if (yearElement && profileData.semester) {
-              const year = calculateYear(profileData.semester);
-              yearElement.textContent = year || '-';
-            }
-          }, 100);
-        } else {
-          console.log('No profile data in response, using AuthContext data');
-          setProfileLoaded(true);
-        }
-      } catch (error) {
-        console.warn('Failed to load complete profile data:', error);
-        // Fallback to user data from AuthContext
-        setProfileLoaded(true);
-      } finally {
-        profileLoadingRef.current = false;
-      }
+    return () => {
+      console.log('🧹 Component unmounting, resetting refs');
+      mountedRef.current = false;
+      dataLoadingRef.current = false; // REACT STRICTMODE FIX: Reset loading state on unmount
     };
+  }, []);
 
-    loadProfileData();
-  }, [user?.enrollment_no]); // Only depend on user enrollment to avoid unnecessary calls
-
-  // Load event details and initialize form - ONLY ONCE
+  // CLEAN & OPTIMIZED: Simple data loading using existing AuthContext
   useEffect(() => {
-    if (eventLoaded || !eventId || eventLoadingRef.current) return;
-    
-    eventLoadingRef.current = true; // Prevent multiple executions
-    console.log('Loading event details for eventId:', eventId);
-    
-    const loadEventDetails = async () => {
+    const loadData = async () => {
+      console.log('🔄 useEffect triggered with dependencies:', {
+        hasUser: !!user,
+        userEnrollment: user?.enrollment_no,
+        eventId,
+        dataLoadingRefCurrent: dataLoadingRef.current,
+        mountedRefCurrent: mountedRef.current,
+        pathname: location.pathname
+      });
+      
+      if (!user || !user.enrollment_no || !eventId) {
+        console.log('⚠️ Skipping data load due to missing user/event data');
+        return;
+      }
+      
+      // REACT STRICTMODE FIX: If component is unmounted, don't proceed
+      if (!mountedRef.current) {
+        console.log('⚠️ Component unmounted, skipping data load');
+        return;
+      }
+      
+      // REACT STRICTMODE FIX: Allow re-execution if component remounted
+      if (dataLoadingRef.current && mountedRef.current) {
+        console.log('⚠️ Data loading in progress but component is mounted, allowing execution');
+      } else if (dataLoadingRef.current) {
+        console.log('⚠️ Skipping data load due to ongoing operation');
+        return;
+      }
+      
+      dataLoadingRef.current = true;
+      console.log('🚀 Loading registration data (optimized - single API call)...');
+      
       try {
-        setEventLoaded(true); // Set immediately to prevent multiple calls
+        // Step 1: Use AuthContext user data (already complete from login)
+        console.log('✅ Using AuthContext profile data (already available)');
         
-        const response = await clientAPI.getEventDetails(eventId);
-        
-        // Correctly access the event data from the API response
-        const eventData = response.data.success ? response.data.event : response.data;
+        // Step 2: Load event data (only API call we need)
+        console.log('📋 Loading event data...');
+        const eventResponse = await clientAPI.getEventDetails(eventId);
+        const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
         
         if (!eventData) {
-          throw new Error('Event data not found in response');
+          throw new Error('Event data not found');
         }
         
         setEvent(eventData);
-        
-        // Check registration deadline and block if necessary
+
+        // Step 3: Check registration constraints
         const now = new Date();
         const registrationStart = eventData.registration_start_date ? new Date(eventData.registration_start_date) : null;
         const registrationEnd = eventData.registration_end_date ? new Date(eventData.registration_end_date) : null;
         
         let shouldBlockRegistration = false;
         
-        // Check if registration is not yet open
         if (registrationStart && now < registrationStart) {
           shouldBlockRegistration = true;
           setError(`Registration opens on ${registrationStart.toLocaleDateString()} at ${registrationStart.toLocaleTimeString()}`);
         }
         
-        // Check if registration has closed
         if (registrationEnd && now > registrationEnd) {
           shouldBlockRegistration = true;
           setError(`Registration closed on ${registrationEnd.toLocaleDateString()} at ${registrationEnd.toLocaleTimeString()}`);
         }
         
-        // Check event status
         if (eventData.status !== 'upcoming' || eventData.sub_status !== 'registration_open') {
           shouldBlockRegistration = true;
           setError('Registration is currently not available for this event');
         }
         
         setRegistrationBlocked(shouldBlockRegistration);
-        
-        // Check if URL indicates team registration or use event setting
+
+        // Step 4: Determine team registration mode
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';
         
@@ -249,71 +205,92 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         setTeamSizeMin(eventData.team_size_min || 2);
         setTeamSizeMax(eventData.team_size_max || 5);
 
-        // Initialize form with user data (only if profile not already loaded)        
-        if (user && !profileLoaded) {
-          // Transform gender to match frontend options (capitalize first letter)
-          const transformGender = (gender) => {
-            if (!gender) return '';
-            return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
-          };
+        // Step 5: Initialize form with complete profile data
+        console.log('📝 Initializing form with user data...');
+        
+        // Get complete profile from session storage (set during login)
+        let completeProfile = null;
+        try {
+          const sessionProfile = sessionStorage.getItem('complete_profile');
+          if (sessionProfile) {
+            completeProfile = JSON.parse(sessionProfile);
+            console.log('✅ Using complete profile from session storage');
+          }
+        } catch (e) {
+          console.warn('Could not parse session profile data');
+        }
+        
+        // Use complete profile if available, otherwise use AuthContext user
+        const sourceData = completeProfile || user;
+        
+        const transformGender = (gender) => {
+          if (!gender) return '';
+          return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+        };
+
+        const formInitData = {
+          full_name: sourceData.full_name || '',
+          enrollment_no: sourceData.enrollment_no || sourceData.enrollment_number || '',
+          email: sourceData.email || '',
+          mobile_no: sourceData.mobile_no || sourceData.phone_number || '',
+          department: sourceData.department || '',
+          semester: sourceData.semester || '',
+          gender: transformGender(sourceData.gender) || '',
+          date_of_birth: sourceData.date_of_birth ? formatDateForInput(sourceData.date_of_birth) : '',
+          team_name: '',
+          participants: []
+        };
+
+        // Only update if component is still mounted
+        console.log('🔍 Checking if component is still mounted:', mountedRef.current);
+        if (mountedRef.current) {
+          console.log('📝 Setting form data and clearing loading state...');
+          setFormData(formInitData);
+          setLoading(false);
+          console.log('✅ Loading state set to false');
           
-          const newFormData = {
-            full_name: user.full_name || '',
-            enrollment_no: user.enrollment_no || '',
-            email: user.email || '',
-            mobile_no: user.mobile_no || user.phone_number || '',
-            department: user.department || '',
-            semester: user.semester || '',
-            gender: transformGender(user.gender) || '',
-            date_of_birth: user.date_of_birth ? formatDateForInput(user.date_of_birth) : '',
-            team_name: '',
-            participants: []
-          };
-          
-          setFormData(newFormData);
-          
-          // Also update the year display immediately after setting form data
+          // Update year display after setting form data
           setTimeout(() => {
             const yearElement = document.getElementById('year');
-            if (yearElement && newFormData.semester) {
-              const year = calculateYear(newFormData.semester);
+            if (yearElement && formInitData.semester) {
+              const year = calculateYear(formInitData.semester);
               yearElement.textContent = year || '-';
             }
           }, 100);
-        }
 
-        // Initialize participants for team registration
-        if (shouldUseTeamMode) {
-          const minParticipants = (eventData.team_size_min || 2) - 1; // Excluding leader
-          initializeParticipants(minParticipants);
+          // Initialize participants for team registration
+          if (shouldUseTeamMode) {
+            const minParticipants = (eventData.team_size_min || 2) - 1; // Excluding leader
+            initializeParticipants(minParticipants);
+          }
+
+          console.log('✅ Registration form loaded successfully (1 API call only)');
+        } else {
+          console.log('❌ Component unmounted, but still setting loading to false to prevent infinite loading');
+          // CRITICAL FIX: Set loading to false even if component is unmounted
+          // This prevents infinite loading in React StrictMode development
+          setLoading(false);
         }
 
       } catch (error) {
-        console.error('Error loading event:', error);
-        setError('Failed to load event details');
+        console.error('❌ Error loading registration data:', error);
+        console.log('🔍 Error handler - component mounted?', mountedRef.current);
+        if (mountedRef.current) {
+          setError('Failed to load registration data. Please refresh the page.');
+          setLoading(false);
+          console.log('✅ Loading state set to false in error handler');
+        } else {
+          console.log('❌ Component unmounted during error, but still clearing loading state');
+          setLoading(false);
+        }
       } finally {
-        setLoading(false);
-        eventLoadingRef.current = false; // Reset ref
+        dataLoadingRef.current = false;
+        console.log('🏁 Data loading operation completed, dataLoadingRef reset');
       }
     };
 
-    loadEventDetails();
-  }, [eventId]); // Only depend on eventId
-
-  // Reset flags when eventId changes
-  useEffect(() => {
-    setEventLoaded(false);
-    setLoading(true);
-    eventLoadingRef.current = false;
-    // Don't reset profile data when changing events - it's user-specific, not event-specific
-  }, [eventId]);
-
-  // Update loading state when event loads (don't wait for profile)
-  useEffect(() => {
-    if (eventLoaded) {
-      setLoading(false);
-    }
-  }, [eventLoaded]);
+    loadData();
+  }, [user?.enrollment_no, eventId, location.pathname, forceTeamMode]);
 
   // Initialize participants array for team registration
   const initializeParticipants = useCallback((count) => {
@@ -335,18 +312,16 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setParticipantCount(count);
   }, []);
 
-  // Phase 1 Integration: Enhanced form field changes with validation
+  // Enhanced form field changes with validation
   const handleFieldChange = (field, value) => {
-    // Clear any existing validation error for this field
     clearValidationError(field);
     
-    // Update form data
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
 
-    // Phase 1: Real-time validation
+    // Real-time validation
     if (value && value.trim()) {
       let validationResult = null;
       
@@ -372,10 +347,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           break;
       }
       
-      // If validation failed, show error
       if (validationResult && !validationResult.isValid) {
         setTimeout(() => {
-          // Use a small delay to avoid race conditions
           const fieldErrors = {};
           fieldErrors[field] = validationResult.message;
           Object.keys(fieldErrors).forEach(errorField => {
@@ -390,7 +363,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     // Auto-calculate year when semester changes
     if (field === 'semester') {
       const year = calculateYear(value);
-      // Update year display if element exists
       const yearElement = document.getElementById('year');
       if (yearElement) {
         yearElement.textContent = year || '-';
@@ -408,7 +380,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     }
   };
 
-  // Phase 1 Integration: Enhanced participant field changes with validation
+  // Enhanced participant field changes with validation
   const handleParticipantChange = (participantId, field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -419,9 +391,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       )
     }));
     
-    // Phase 1: Real-time validation for participant fields
+    // Real-time validation for participant fields
     if (field === 'enrollment_no' && value && value.trim()) {
-      // Debounce validation to avoid too many calls
       setTimeout(() => {
         validateParticipantEnrollment(participantId, value.trim());
       }, 500);
@@ -452,13 +423,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     }
   };
 
-  // Phase 1 Integration: Frontend-only participant validation
+  // Frontend-only participant validation
   const validateParticipantEnrollment = async (participantId, enrollmentNo) => {
     if (!enrollmentNo || !enrollmentNo.trim()) {
       return;
     }
 
-    // Safety check to ensure formData is initialized
     if (!formData || !formData.participants) {
       console.error('FormData not properly initialized');
       return;
@@ -474,7 +444,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       )
     }));
 
-    // Phase 1: Use frontend validation for format check
+    // Use frontend validation for format check
     const enrollmentValidation = validators.validationResult.enrollment(enrollmentNo);
     if (!enrollmentValidation.isValid) {
       setFormData(prev => ({
@@ -493,7 +463,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       return;
     }
 
-    // Check for duplicates using the current state
+    // Check for duplicates
     setFormData(prev => {
       const leaderEnrollment = prev.enrollment_no?.trim()?.toUpperCase() || '';
       const otherParticipants = prev.participants
@@ -532,7 +502,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
       }
 
-      // If format is valid and no duplicates, fetch student data from API
       return prev;
     });
 
@@ -543,7 +512,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       if (response.data.success && response.data.found) {
         const studentData = response.data.student_data;
         
-        // Update participant with fetched data
         setFormData(prev => ({
           ...prev,
           participants: prev.participants.map(p => 
@@ -553,7 +521,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                   isValidating: false, 
                   isValid: true,
                   validationError: '',
-                  // Auto-fill with fetched data
                   full_name: studentData.full_name || '',
                   email: studentData.email || '',
                   mobile_no: studentData.mobile_no || '',
@@ -565,7 +532,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           )
         }));
       } else {
-        // Student not found in database
         setFormData(prev => ({
           ...prev,
           participants: prev.participants.map(p => 
@@ -600,7 +566,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Add participant
   const addParticipant = () => {
-    const maxParticipants = teamSizeMax - 1; // Excluding leader
+    const maxParticipants = teamSizeMax - 1;
     if (participantCount >= maxParticipants) {
       setError('Maximum team size reached!');
       return;
@@ -629,7 +595,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Remove participant
   const removeParticipant = () => {
-    const minParticipants = teamSizeMin - 1; // Excluding leader
+    const minParticipants = teamSizeMin - 1;
     if (participantCount <= minParticipants) {
       setError(`Minimum ${minParticipants} participants required!`);
       return;
@@ -642,7 +608,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setParticipantCount(prev => prev - 1);
   };
 
-  // Phase 1 Integration: Enhanced form submission with frontend validation and temporary IDs
+  // Enhanced form submission with frontend validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -655,7 +621,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setSuccess('');
 
     try {
-      // Phase 1: Frontend validation before submission
+      // Frontend validation before submission
       const formValidation = validateForm(formData, {
         full_name: ['required', 'name'],
         enrollment_no: ['required', 'enrollmentNumber'],
@@ -682,7 +648,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }
       }
 
-      // Prepare registration data with Phase 1 enhancements
+      // Prepare registration data
       const registrationData = {
         registration_type: isTeamRegistration ? 'team' : 'individual',
         full_name: formData.full_name.trim(),
@@ -693,21 +659,20 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         semester: parseInt(formData.semester),
         gender: formData.gender,
         date_of_birth: formData.date_of_birth,
-        // FIXED: Send real registration_id generated by frontend
         session_id: sessionId,
-        registration_id: tempRegistrationId,  // This is now a REAL ID, not temp
-        frontend_validated: true, // Flag to indicate frontend validation passed
+        registration_id: tempRegistrationId,
+        frontend_validated: true,
         validation_timestamp: Date.now()
       };
 
-      // Add team-specific data with Phase 1 enhancements
+      // Add team-specific data
       if (isTeamRegistration) {
         if (!formData.team_name || !formData.team_name.trim()) {
           throw new Error('Please enter a team name');
         }
 
         const validParticipants = (formData.participants || []).filter(p => p.enrollment_no && p.enrollment_no.trim());
-        const totalTeamSize = validParticipants.length + 1; // +1 for leader
+        const totalTeamSize = validParticipants.length + 1;
 
         if (totalTeamSize < teamSizeMin) {
           throw new Error(`Team must have at least ${teamSizeMin} members including leader`);
@@ -717,9 +682,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           throw new Error(`Team cannot exceed ${teamSizeMax} members including leader`);
         }
 
-        // Phase 1: Enhanced participant validation
         const invalidParticipants = validParticipants.filter(p => {
-          // Check both frontend validation and enrollment format
           const enrollmentValidation = validators.validationResult.enrollment(p.enrollment_no);
           return !p.isValid || !enrollmentValidation.isValid;
         });
@@ -729,7 +692,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }
 
         registrationData.team_name = formData.team_name.trim();
-        registrationData.temp_team_id = tempTeamId; // Phase 1: Include temporary team ID
+        registrationData.temp_team_id = tempTeamId;
         registrationData.team_members = validParticipants.map(p => ({
           enrollment_no: p.enrollment_no.trim(),
           name: p.full_name,
@@ -738,7 +701,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }));
       }
 
-      // Submit registration using appropriate API method
+      // Submit registration
       let response;
       if (isTeamRegistration) {
         response = await clientAPI.registerTeam(eventId, registrationData);
@@ -750,7 +713,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       
       setSuccess('Registration submitted successfully!');
       
-      // Phase 1: Clean up session data after successful submission
+      // Clean up session data
       if (formSession) {
         localStorage.removeItem(`registration_session_${eventId}`);
         setFormSession(null);
@@ -765,11 +728,11 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           enrollment_no: registrationData.enrollment_no,
           payment_status: response.data.payment_status || 'free',
           team_name: registrationData.team_name,
-          registration_id: tempRegistrationId, // FIXED: Real registration ID from frontend
-          session_id: sessionId, // Session ID for tracking
+          registration_id: tempRegistrationId,
+          session_id: sessionId,
           team_info: isTeamRegistration ? {
             team_name: registrationData.team_name,
-            team_registration_id: tempTeamId, // FIXED: Real team ID from frontend
+            team_registration_id: tempTeamId,
             participant_count: (registrationData.team_members?.length || 0) + 1,
             leader_name: registrationData.full_name,
             leader_enrollment: registrationData.enrollment_no,
@@ -779,7 +742,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         event: event
       };
       
-      // Redirect to success page with data
+      // Redirect to success page
       setTimeout(() => {
         navigate(`/client/events/${eventId}/registration-success`, {
           state: successData
@@ -790,8 +753,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       console.error('Registration error:', error);
       
       if (error.response?.status === 409) {
-        // User is already registered - redirect to already registered page
-        console.log('User already registered, redirecting to already registered page');
         navigate(`/student/events/${eventId}/already-registered`, {
           state: { event: event }
         });
@@ -813,7 +774,11 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-gray-600">Loading registration form...</p>
+            <p className="mt-2 text-sm text-gray-500">Optimized loading - just one moment!</p>
+          </div>
         </div>
       </Layout>
     );
@@ -855,7 +820,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
               Please fill out the form below to participate in this event.
             </p>
 
-            {/* Error message */}
             {error && (
               <div className="mb-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded">
                 <i className="fas fa-exclamation-triangle mr-2"></i>
@@ -863,7 +827,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
               </div>
             )}
 
-            {/* Success message */}
             {success && (
               <div className="mb-4 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-3 rounded">
                 <i className="fas fa-check-circle mr-2"></i>
@@ -1226,15 +1189,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                   {/* Individual Registration Form */}
                   {/* Personal Information */}
                   <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-gray-900">Personal Information</h2>
-                      {!profileLoaded && user && (
-                        <div className="flex items-center text-sm text-blue-600">
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                          Loading complete profile...
-                        </div>
-                      )}
-                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label htmlFor="full_name" className="block text-sm font-semibold text-gray-800 mb-2">

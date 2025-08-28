@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authAPI } from '../api/auth';
+import { clientAPI } from '../api/client';
 
 // Import avatar reset function
 import { resetAvatarGlobalState } from '../hooks/useAvatar';
@@ -186,11 +187,29 @@ export function AuthProvider({ children }) {
       
       if (response.data.success) {
         console.log('Login successful, storing user data:', response.data.user);
+        
         // Store user data locally for UI state (session is handled by cookies)
         localStorage.setItem('user_data', JSON.stringify(response.data.user));
         localStorage.setItem('user_type', userType);
         
-        // No need to store tokens - backend uses session cookies
+        // Store complete profile data for students (simple sessionStorage approach)
+        if (userType === 'student' && response.data.user?.enrollment_no) {
+          try {
+            console.log('🔄 Fetching complete profile data on login...');
+            const profileResponse = await clientAPI.getProfile();
+            
+            if (profileResponse.data.success) {
+              const completeProfile = profileResponse.data.student || profileResponse.data.profile;
+              if (completeProfile) {
+                console.log('✅ Complete profile data stored in session');
+                sessionStorage.setItem('complete_profile', JSON.stringify(completeProfile));
+              }
+            }
+          } catch (profileError) {
+            console.warn('⚠️ Failed to fetch profile data on login:', profileError);
+            // Don't fail login if profile fetch fails
+          }
+        }
         
         dispatch({
           type: authActions.LOGIN_SUCCESS,
@@ -257,6 +276,17 @@ export function AuthProvider({ children }) {
     
     // Clear session storage as well
     sessionStorage.clear();
+    
+    // Clear all cached data on logout
+    try {
+      // Clear localStorage items
+      localStorage.removeItem('user_data');
+      localStorage.removeItem('user_type');
+      sessionStorage.removeItem('complete_profile');
+      console.log('✅ All local storage cleared on logout');
+    } catch (error) {
+      console.error('Failed to clear local storage:', error);
+    }
     
     // CRITICAL FIX: Clear avatar cache to prevent showing previous user's avatar
     try {
