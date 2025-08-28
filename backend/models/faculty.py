@@ -4,7 +4,7 @@ Handles faculty data structure and database operations
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, validator
 from bson import ObjectId
 from enum import Enum
 
@@ -30,7 +30,7 @@ class Faculty(BaseModel):
     date_of_birth: Optional[datetime] = Field(None, description="Faculty date of birth")
     date_of_joining: Optional[datetime] = Field(None, description="Faculty joining date")
     is_active: bool = Field(default=True, description="Whether faculty account is active")
-    event_participation: List[str] = Field(default_factory=list, description="List of event IDs faculty participated in")
+    event_participations: List[str] = Field(default_factory=list, description="List of event IDs faculty participated in")
     # Organizer-specific fields
     is_organizer: bool = Field(default=False, description="Whether faculty can act as organizer")
     assigned_events: List[str] = Field(default_factory=list, description="List of event IDs faculty can organize")
@@ -38,6 +38,27 @@ class Faculty(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
+    
+    @validator('event_participations', pre=True, always=True)
+    def validate_event_participations(cls, v):
+        """Ensure event_participation is always a list of strings"""
+        if v is None:
+            return []
+        elif isinstance(v, dict):
+            # Convert dict format to list format for backward compatibility
+            return list(v.keys()) if v else []
+        elif isinstance(v, list):
+            # If list contains objects, extract event_ids
+            result = []
+            for item in v:
+                if isinstance(item, dict) and 'event_id' in item:
+                    result.append(item['event_id'])
+                elif isinstance(item, str):
+                    result.append(item)
+            return result
+        else:
+            # Fallback: return empty list for any other type
+            return []
     
     class Config:
         validate_by_name = True
@@ -101,7 +122,7 @@ class FacultyResponse(BaseModel):
     date_of_birth: Optional[datetime]
     date_of_joining: Optional[datetime]
     is_active: bool = Field(default=True, description="Whether faculty account is active")
-    event_participation: List[str]
+    event_participations: List[str]
     # Organizer-specific fields
     is_organizer: bool
     assigned_events: List[str]

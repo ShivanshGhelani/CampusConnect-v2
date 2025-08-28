@@ -497,39 +497,40 @@ function ProfilePage() {
                 </div>
 
                 {/* Events List */}
-                <div className="p-6">                      {sortedRegistrations.length > 0 ? (<div className="space-y-4">
-                  {sortedRegistrations.slice(0, 3).map((reg, index) => (
-                    <ProfileEventCard
-                      key={index}
-                      reg={reg}
-                      onCancelRegistration={confirmCancelRegistration}
-                      onViewDetails={openEventDetailModal}
-                      onViewTeam={openTeamDetailModal}
-                      onViewQRCode={openQRCodeModal}
-                    />
-                  ))}
-                </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center">
-                      <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">No Events Yet</h3>
-                    <p className="text-slate-600 mb-6 max-w-sm mx-auto">
-                      Ready to dive into campus life? Discover amazing events and start building your journey!
-                    </p>
-                    <Link
-                      to="/client/events"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-700 text-white rounded-xl hover:bg-blue-500 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl group"
-                    >                            <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                      Explore Events
-                    </Link>
+                <div className="p-6">
+                  {sortedRegistrations.length > 0 ? (<div className="space-y-4">
+                    {sortedRegistrations.slice(0, 3).map((reg, index) => (
+                      <ProfileEventCard
+                        key={index}
+                        reg={reg}
+                        onCancelRegistration={confirmCancelRegistration}
+                        onViewDetails={openEventDetailModal}
+                        onViewTeam={openTeamDetailModal}
+                        onViewQRCode={openQRCodeModal}
+                      />
+                    ))}
                   </div>
-                )}
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center">
+                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">No Events Yet</h3>
+                      <p className="text-slate-600 mb-6 max-w-sm mx-auto">
+                        Ready to dive into campus life? Discover amazing events and start building your journey!
+                      </p>
+                      <Link
+                        to="/client/events"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-700 text-white rounded-xl hover:bg-blue-500 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl group"
+                      >                            <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Explore Events
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1138,8 +1139,8 @@ function ProfilePage() {
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <div className={`w-10 h-10 bg-gradient-to-br rounded-full flex items-center justify-center ${member.registration_type === 'team_leader'
-                                  ? 'from-indigo-100 to-purple-100'
-                                  : 'from-purple-100 to-pink-100'
+                                ? 'from-indigo-100 to-purple-100'
+                                : 'from-purple-100 to-pink-100'
                                 }`}>
                                 <svg className={`w-5 h-5 ${member.registration_type === 'team_leader' ? 'text-indigo-600' : 'text-purple-600'
                                   }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1156,8 +1157,8 @@ function ProfilePage() {
                               </div>
                             </div>
                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${member.registration_type === 'team_leader'
-                                ? 'bg-indigo-100 text-indigo-800'
-                                : 'bg-purple-100 text-purple-800'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : 'bg-purple-100 text-purple-800'
                               }`}>
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 {member.registration_type === 'team_leader' ? (
@@ -1176,8 +1177,8 @@ function ProfilePage() {
                               <span className="font-mono font-semibold text-slate-900">{member.registration_id}</span>
                             </div>
                             <div className={`rounded-lg p-2 ${member.attendance.marked
-                                ? 'bg-emerald-50'
-                                : 'bg-red-50'
+                              ? 'bg-emerald-50'
+                              : 'bg-red-50'
                               }`}>
                               <span className={`block ${member.attendance.marked ? 'text-emerald-600' : 'text-red-600'
                                 }`}>Attendance:</span>

@@ -565,6 +565,94 @@ async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty
         logger.error(f"Error getting faculty dashboard stats: {str(e)}")
         return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}
 
+@router.get("/faculty/event-history")
+async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_login)):
+    """Get complete event participation history for the faculty"""
+    try:
+        # Get faculty data from database
+        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
+        if not faculty_data:
+            return {
+                "success": False,
+                "message": "Faculty not found",
+                "event_history": []
+            }
+        
+        # Get faculty event participations
+        event_participation = faculty_data.get('event_participation', [])
+        
+        if not event_participation:
+            return {
+                "success": True,
+                "message": "No event participation history found",
+                "event_history": []
+            }
+        
+        event_history = []
+        
+        # Process each event participation
+        for event_id in event_participation:
+            try:
+                # Get event details
+                event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                if not event:
+                    continue
+                
+                # Get faculty registration for this event from student_registrations collection
+                registration = await DatabaseOperations.find_one(
+                    "student_registrations",
+                    {
+                        "student.employee_id": faculty.employee_id,
+                        "event.event_id": event_id
+                    }
+                )
+                
+                # Create history item with similar structure to student event history
+                history_item = {
+                    "event_id": event_id,
+                    "event_name": event.get("event_name", "Unknown Event"),
+                    "event_date": event.get("start_datetime"),
+                    "venue": event.get("venue", "TBD"),
+                    "category": event.get("event_type", "Unknown"),
+                    "status": event.get("status", "unknown"),
+                    "sub_status": event.get("sub_status", "unknown"),
+                    "registration_data": {
+                        "registration_id": registration.get("registration_id", "N/A") if registration else "N/A",
+                        "registration_type": registration.get("registration", {}).get("registration_type", "individual") if registration else "individual",
+                        "registration_date": registration.get("registration", {}).get("registered_at") if registration else None,
+                        "status": registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
+                    },
+                    "participation_status": "registered"
+                }
+                
+                event_history.append(history_item)
+                
+            except Exception as e:
+                logger.warning(f"Error processing event {event_id} for faculty {faculty.employee_id}: {e}")
+                continue
+        
+        # Sort by event date (most recent first)
+        def get_sort_key(item):
+            event_date = item.get("event_date")
+            if event_date:
+                try:
+                    return datetime.fromisoformat(str(event_date).replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    return datetime.min
+            return datetime.min
+        
+        event_history.sort(key=get_sort_key, reverse=True)
+        
+        return {
+            "success": True,
+            "message": f"Retrieved {len(event_history)} event participation records",
+            "event_history": event_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting faculty event history: {str(e)}")
+        return {"success": False, "message": f"Error retrieving event history: {str(e)}"}
+
 
 @router.get("/team-details/{event_id}/{team_id}")
 async def get_team_details(
