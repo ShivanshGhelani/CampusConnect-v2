@@ -30,6 +30,11 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const [success, setSuccess] = useState('');
   const [registrationBlocked, setRegistrationBlocked] = useState(false);
 
+  // Debug loading state changes
+  useEffect(() => {
+    console.log('📊 Loading state changed to:', loading);
+  }, [loading]);
+
   // Form data state
   const [formData, setFormData] = useState({
     full_name: '',
@@ -118,9 +123,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Component unmounting, resetting refs');
       mountedRef.current = false;
-      dataLoadingRef.current = false; // REACT STRICTMODE FIX: Reset loading state on unmount
     };
   }, []);
 
@@ -132,26 +135,11 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         userEnrollment: user?.enrollment_no,
         eventId,
         dataLoadingRefCurrent: dataLoadingRef.current,
-        mountedRefCurrent: mountedRef.current,
         pathname: location.pathname
       });
       
-      if (!user || !user.enrollment_no || !eventId) {
-        console.log('⚠️ Skipping data load due to missing user/event data');
-        return;
-      }
-      
-      // REACT STRICTMODE FIX: If component is unmounted, don't proceed
-      if (!mountedRef.current) {
-        console.log('⚠️ Component unmounted, skipping data load');
-        return;
-      }
-      
-      // REACT STRICTMODE FIX: Allow re-execution if component remounted
-      if (dataLoadingRef.current && mountedRef.current) {
-        console.log('⚠️ Data loading in progress but component is mounted, allowing execution');
-      } else if (dataLoadingRef.current) {
-        console.log('⚠️ Skipping data load due to ongoing operation');
+      if (!user || !user.enrollment_no || !eventId || dataLoadingRef.current) {
+        console.log('⚠️ Skipping data load due to missing conditions');
         return;
       }
       
@@ -266,26 +254,17 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
           console.log('✅ Registration form loaded successfully (1 API call only)');
         } else {
-          console.log('❌ Component unmounted, but still setting loading to false to prevent infinite loading');
-          // CRITICAL FIX: Set loading to false even if component is unmounted
-          // This prevents infinite loading in React StrictMode development
-          setLoading(false);
+          console.log('❌ Component unmounted, skipping state updates');
         }
 
       } catch (error) {
         console.error('❌ Error loading registration data:', error);
-        console.log('🔍 Error handler - component mounted?', mountedRef.current);
         if (mountedRef.current) {
           setError('Failed to load registration data. Please refresh the page.');
-          setLoading(false);
-          console.log('✅ Loading state set to false in error handler');
-        } else {
-          console.log('❌ Component unmounted during error, but still clearing loading state');
           setLoading(false);
         }
       } finally {
         dataLoadingRef.current = false;
-        console.log('🏁 Data loading operation completed, dataLoadingRef reset');
       }
     };
 
