@@ -49,6 +49,7 @@ const RegistrationSuccess = () => {
               registration_id: statusResponse.data.registration_id,
               registration_type: statusResponse.data.registration_type,
               registration_datetime: statusResponse.data.registered_at,
+              team_registration_id: statusResponse.data.team_registration_id, // Add team registration ID
               team: statusResponse.data.team_info, // Add team info from response
               ...(statusResponse.data.student_data || {}),
               ...(statusResponse.data.event_data || {})
@@ -58,6 +59,11 @@ const RegistrationSuccess = () => {
             regData.registration_id = statusResponse.data.registration_id;
             regData.registration_type = statusResponse.data.registration_type;
             regData.registration_datetime = statusResponse.data.registered_at;
+
+            // For team registrations, add team_registration_id
+            if (statusResponse.data.team_registration_id) {
+              regData.team_registration_id = statusResponse.data.team_registration_id;
+            }
 
             // Ensure team info is available at top level
             if (statusResponse.data.team_info) {
@@ -249,12 +255,24 @@ const RegistrationSuccess = () => {
                   <div className="space-y-4">
                     <div className="bg-white border border-blue-300 rounded-lg p-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Registration ID
+                        {isTeamRegistration ? 'Team Registration ID' : 'Registration ID'}
                       </label>
                       <div className="text-2xl font-mono font-bold text-blue-600 break-all">
-                        {registrationData.registration_id || registrationData.registrar_id || 'N/A'}
+                        {isTeamRegistration ? 
+                          (
+                           registrationData.team_id ||
+                           registrationData.team_registration_id || 
+                           registrationData.registration_id || 
+                           registrationData.registrar_id || 
+                           'N/A') : 
+                          (registrationData.registration_id || 
+                           registrationData.registrar_id || 
+                           'N/A')
+                        }
                       </div>
-                      <p className="text-xs text-gray-600 mt-2">Keep this ID for backup verification</p>
+                      <p className="text-xs text-gray-600 mt-2">
+                        {isTeamRegistration ? 'Team registration identifier for verification' : 'Keep this ID for backup verification'}
+                      </p>
                     </div>
 
                     {isTeamRegistration && (
