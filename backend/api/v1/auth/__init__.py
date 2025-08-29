@@ -465,6 +465,7 @@ async def faculty_login_api(request: Request, login_data: FacultyLoginRequest):
                 "full_name": faculty.full_name,
                 "email": faculty.email,
                 "department": faculty.department,
+                "contact_no": faculty.contact_no,
                 "user_type": "faculty"
             },
             "auth_type": "token" if tokens else "session",
@@ -910,6 +911,7 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
                 "admin.events.read",
                 "admin.events.create", 
                 "admin.events.update",
+                "admin.events.delete",
                 "admin.students.read",
                 "admin.certificates.create",
                 "admin.certificates.read",

@@ -123,7 +123,7 @@ function EventDetail() {
     };
   }, [currentCertificateTemplate]);
 
-  const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
+  const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "", title = "" }) => {
     const variants = {
       primary: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600',
       secondary: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300',
@@ -136,6 +136,7 @@ function EventDetail() {
       <button
         onClick={onClick}
         disabled={disabled}
+        title={title}
         className={`
           inline-flex items-center px-4 py-2 border rounded-lg font-medium text-sm
           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
@@ -161,7 +162,7 @@ function EventDetail() {
     );
   };
 
-  const DropdownItem = ({ onClick, icon: Icon, children, variant = 'default' }) => {
+  const DropdownItem = ({ onClick, icon: Icon, children, variant = 'default', disabled = false }) => {
     const variants = {
       default: 'text-gray-700 hover:bg-gray-50',
       danger: 'text-red-700 hover:bg-red-50'
@@ -169,8 +170,10 @@ function EventDetail() {
 
     return (
       <button
-        onClick={onClick}
-        className={`w-full flex items-center px-4 py-2 text-sm text-left ${variants[variant]}`}
+        onClick={disabled ? undefined : onClick}
+        disabled={disabled}
+        className={`w-full flex items-center px-4 py-2 text-sm text-left ${variants[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        title={disabled ? (isEventStarted ? "Cannot edit event after it has started" : "Cannot edit completed event") : ""}
       >
         {Icon && <Icon className="w-4 h-4 mr-3" />}
         {children}
@@ -242,7 +245,8 @@ function EventDetail() {
           virtual_only_count: Math.max(0, stats.virtual_only_count || 0),
           physical_only_count: Math.max(0, stats.physical_only_count || 0),
           absent_count: Math.max(0, stats.absent_count || 0),
-          attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0))
+          attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0)),
+          user_type: eventStats.user_type
         };
 
         // Validate data integrity
@@ -649,6 +653,12 @@ function EventDetail() {
   const canDelete = user && ['super_admin', 'organizer_admin'].includes(user.role);
   const isReadOnly = false; // No longer read-only for organizer_admin
 
+  // Conditional button states based on event status
+  const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started'; 
+  const isEventCompleted = event?.status === 'completed';
+  const canTakeAttendance = isEventStarted; // Attendance only when event is ongoing/started
+  const canEditEvent = canEdit && !isEventStarted && !isEventCompleted; // Edit only when event hasn't started and isn't completed
+
 
 
   const InfoCard = ({ icon: Icon, title, children, className = "" }) => (
@@ -782,6 +792,7 @@ function EventDetail() {
             </div>
 
             {/* Action Buttons */}
+            {/* Action Buttons with conditional enabling based on event status */}
             <div className="flex flex-wrap justify-center gap-3">
               {/* Export Dropdown Button */}
 
@@ -790,6 +801,9 @@ function EventDetail() {
                 onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
                 variant="warning"
                 icon={UserCheck}
+                disabled={!canTakeAttendance}
+                className={!canTakeAttendance ? "cursor-not-allowed" : ""}
+                title={!canTakeAttendance ? "Attendance can only be taken when the event is ongoing" : "Take attendance for this event"}
               >
                 Attendance
               </ActionButton>
@@ -803,6 +817,8 @@ function EventDetail() {
                     })}
                     variant="secondary"
                     icon={Edit3}
+                    disabled={isEventStarted}
+                    title={isEventStarted ? "Cannot edit event after it has started" : isEventCompleted ? "Cannot edit completed event" : "Edit event details"}
                   >
                     Edit Event
                   </ActionButton>
@@ -949,12 +965,15 @@ function EventDetail() {
                   {canEdit && (
                     <DropdownItem
                       onClick={() => {
-                        navigate(`/admin/events/${eventId}/edit`, {
-                          state: { eventData: event }
-                        });
-                        setShowMoreActions(false);
+                        if (!isEventStarted && !isEventCompleted) {
+                          navigate(`/admin/events/${eventId}/edit`, {
+                            state: { eventData: event }
+                          });
+                          setShowMoreActions(false);
+                        }
                       }}
                       icon={Edit3}
+                      disabled={isEventStarted || isEventCompleted}
                     >
                       Edit Event
                     </DropdownItem>
@@ -997,8 +1016,9 @@ function EventDetail() {
                         }
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
+                        {console.log(eventStats.user_type)}
                         {eventStats.is_team_based ?
-                          `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (recentRegistrations[0].user_type === 'student' ?
+                          `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (eventStats.user_type === 'student' ?
                           `Students Registered`
                           :
                           `Participants Registered`
