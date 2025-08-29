@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
 import { clientAPI } from '../../../../api/client';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
+import Layout from '../../../../components/client/Layout.jsx';
 
 const TeamManagement = () => {
-  const { eventId } = useParams(); // Only get eventId from URL
+  const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
 
-  // State management
+  // Core state management optimized for new collections
   const [event, setEvent] = useState(null);
-  const [teamInfo, setTeamInfo] = useState(null);
-  const [teamParticipationStatus, setTeamParticipationStatus] = useState(null);
+  const [teamRegistration, setTeamRegistration] = useState(null);
+  const [teamStatus, setTeamStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Modal states
+  // Modal states - simplified
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -26,136 +27,63 @@ const TeamManagement = () => {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showTeamStatusModal, setShowTeamStatusModal] = useState(false);
 
-  // Form states
+  // Form states - optimized for event lifecycle
   const [participantEnrollment, setParticipantEnrollment] = useState('');
   const [enrollmentError, setEnrollmentError] = useState('');
   const [validatingStudent, setValidatingStudent] = useState(false);
-  const [studentDetails, setStudentDetails] = useState(null);
+  const [validatedStudent, setValidatedStudent] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
+
+  // Real-time status tracking
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/auth/login', { state: { from: location } });
       return;
     }
-    
+
     fetchTeamData();
   }, [eventId, isAuthenticated, location]);
 
-  const fetchTeamData = async () => {
+  // Optimized data fetching for new student_registrations collection
+  const fetchTeamData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
-      // Fetch actual data using only eventId
-      const response = await clientAPI.getTeamDetails(eventId);
-      
-      if (response.data.success && response.data.registered) {
-        const registrationData = response.data.full_registration_data;
-        
-        // Add the top-level fields to the registration data for compatibility
-        registrationData.registration_id = response.data.registration_id;
-        registrationData.registration_type = response.data.registration_type;
-        registrationData.registration_datetime = response.data.registration_datetime;
-        
-        // Flatten student_data to top level for frontend compatibility
-        if (registrationData.student_data) {
-          Object.assign(registrationData, registrationData.student_data);
+      setError('');
+
+      // Get registration status from new API structure
+      const response = await clientAPI.getRegistrationStatus(eventId);
+
+      if (response.data.success && response.data.registered && response.data.registration_type === 'team') {
+        // Parse team registration data from student_registrations collection
+        const registration = response.data.full_registration_data;
+
+        // Get event details for UI context
+        const eventResponse = await clientAPI.getEventDetails(eventId);
+        const eventData = eventResponse.data.success ? eventResponse.data.event : null;
+
+        if (!eventData) {
+          throw new Error('Event details not found');
         }
-        
-        // Fetch full event details to get status and substatus information
-        let eventData;
-        try {
-          const eventResponse = await clientAPI.getEventDetails(eventId);
-          eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
-          // Add the missing fields if not available
-          eventData = {
-            ...eventData,
-            event_name: eventData.event_name || registrationData.event_name || `Event ${eventId}`,
-            event_id: eventId,
-            team_size_min: eventData.team_size_min || 2,
-            team_size_max: eventData.team_size_max || 5
-          };
-        } catch (eventError) {
-          console.error('Error fetching event details:', eventError);
-          // Fallback to minimal event data if full details fetch fails
-          eventData = {
-            event_name: registrationData.event_name || `Event ${eventId}`,
-            event_id: eventId,
-            team_size_min: 2,
-            team_size_max: 5,
-            status: 'upcoming', // Default assumption
-            sub_status: 'registration_open' // Default assumption for fallback
-          };
-        }
-        
-        // Create team info object from registration data
-        const teamData = {
-          team_name: registrationData.team_name,
-          team_id: registrationData.team_registration_id || registrationData.registration_id,
-          participant_count: 1 + (registrationData.team_members?.length || 0), // Leader + members
-          departments_count: 1, // Can be calculated from team members if needed
-          registration_date: registrationData.registration_datetime ? 
-            new Date(registrationData.registration_datetime).toLocaleDateString() : new Date().toLocaleDateString(),
-          team_leader: {
-            name: registrationData.full_name,
-            enrollment: registrationData.enrollment_no,
-            email: registrationData.email,
-            mobile: registrationData.mobile_no,
-            department: registrationData.department,
-            semester: registrationData.semester,
-            year: Math.ceil(parseInt(registrationData.semester || '1') / 2).toString(),
-            // TODO: Fetch actual participation status from API
-            attendance: { marked: false, attendance_id: null },
-            feedback: { submitted: false, feedback_id: null },
-            certificate: { earned: false, certificate_id: null }
-          },
-          participants: registrationData.team_members?.map((member, index) => ({
-            id: `p${index + 1}`,
-            name: member.name || member.full_name,
-            enrollment: member.enrollment_no,
-            email: member.email,
-            mobile: member.mobile_no,
-            department: member.department,
-            semester: member.semester,
-            year: Math.ceil(parseInt(member.semester || '1') / 2).toString(),
-            // TODO: Fetch actual participation status from API
-            attendance: { marked: false, attendance_id: null },
-            feedback: { submitted: false, feedback_id: null },
-            certificate: { earned: false, certificate_id: null }
-          })) || []
-        };
-        
-        // TODO: Fetch actual team participation status from dedicated API
-        const participationStatus = {
-          event_status: eventData.status,
-          attendance_open: eventData.status === 'ongoing',
-          feedback_open: eventData.status === 'ongoing' || eventData.status === 'completed',
-          certificates_available: eventData.status === 'completed',
-          team_attendance_summary: {
-            total_members: teamData.participant_count,
-            attended: 0,
-            pending: teamData.participant_count,
-            attendance_rate: 0
-          },
-          team_feedback_summary: {
-            total_members: teamData.participant_count,
-            submitted: 0,
-            pending: teamData.participant_count,
-            feedback_rate: 0
-          },
-          team_certificate_summary: {
-            total_members: teamData.participant_count,
-            earned: 0,
-            pending: teamData.participant_count,
-            certificate_rate: 0
-          }
-        };
-        
+
+        // Process team data from new collection structure
+        const teamData = processTeamRegistration(registration, eventData);
+
+        setTeamRegistration(teamData);
         setEvent(eventData);
-        setTeamInfo(teamData);
-        setTeamParticipationStatus(participationStatus);
+        setLastUpdated(new Date());
+
+        // Fetch real-time participation status if event is active
+        if (eventData.status === 'ongoing' || eventData.status === 'completed') {
+          await fetchParticipationStatus(registration.registration_id);
+        }
+
+      } else if (response.data.success && !response.data.registered) {
+        setError('You are not registered for team events in this event.');
       } else {
-        setError('Failed to load team details or not registered for team events');
+        setError(response.data.message || 'Failed to load team registration data.');
       }
     } catch (error) {
       console.error('Team fetch error:', error);
@@ -163,8 +91,89 @@ const TeamManagement = () => {
     } finally {
       setIsLoading(false);
     }
+  }, [eventId]);
+
+  // Process team registration from student_registrations collection
+  const processTeamRegistration = (registration, eventData) => {
+    const teamMembers = registration.team_members || [];
+    const teamLeader = teamMembers.find(member => member.is_team_leader) || teamMembers[0];
+    const otherMembers = teamMembers.filter(member => !member.is_team_leader);
+
+    return {
+      registration_id: registration.registration_id,
+      team_name: registration.team?.team_name || registration.team_name || 'Unnamed Team',
+      team_size: teamMembers.length,
+      max_size: eventData.team_size_max || 5,
+      min_size: eventData.team_size_min || 2,
+      status: registration.registration?.status || 'active',
+      registered_at: registration.registration?.registered_at || registration.created_at,
+
+      // Team leader from team_members array with is_team_leader: true
+      team_leader: teamLeader ? {
+        enrollment_no: teamLeader.student?.enrollment_no || teamLeader.enrollment_no,
+        name: teamLeader.student?.name || teamLeader.name || teamLeader.full_name,
+        email: teamLeader.student?.email || teamLeader.email,
+        phone: teamLeader.student?.phone || teamLeader.phone || teamLeader.mobile_no,
+        department: teamLeader.student?.department || teamLeader.department,
+        semester: teamLeader.student?.semester || teamLeader.semester,
+        // Participation tracking from registration document
+        attendance: teamLeader.attendance || { marked: false, sessions: [] },
+        feedback: teamLeader.feedback || { submitted: false },
+        certificate: teamLeader.certificate || { eligible: false, issued: false }
+      } : null,
+
+      // Other team members
+      members: otherMembers.map((member, index) => ({
+        id: member.registration_id || `member_${index}`,
+        enrollment_no: member.student?.enrollment_no || member.enrollment_no,
+        name: member.student?.name || member.name || member.full_name,
+        email: member.student?.email || member.email,
+        phone: member.student?.phone || member.phone || member.mobile_no,
+        department: member.student?.department || member.department,
+        semester: member.student?.semester || member.semester,
+        // Participation tracking from registration document
+        attendance: member.attendance || { marked: false, sessions: [] },
+        feedback: member.feedback || { submitted: false },
+        certificate: member.certificate || { eligible: false, issued: false }
+      })),
+
+      // Event context
+      event: {
+        event_id: eventData.event_id,
+        event_name: eventData.event_name,
+        status: eventData.status,
+        sub_status: eventData.sub_status,
+        start_datetime: eventData.start_datetime,
+        end_datetime: eventData.end_datetime
+      }
+    };
   };
 
+  // Fetch real-time participation status using event lifecycle APIs
+  const fetchParticipationStatus = async (registrationId) => {
+    try {
+      // This would be a new API endpoint for getting participation status
+      // For now, we'll simulate the data structure
+      const status = {
+        attendance_available: event?.status === 'ongoing',
+        feedback_available: ['ongoing', 'completed'].includes(event?.status),
+        certificates_available: event?.status === 'completed',
+
+        team_summary: {
+          total_members: teamRegistration?.team_size || 0,
+          attendance_marked: 0,
+          feedback_submitted: 0,
+          certificates_issued: 0
+        }
+      };
+
+      setTeamStatus(status);
+    } catch (error) {
+      console.error('Failed to fetch participation status:', error);
+    }
+  };
+
+  // Optimized student validation for new collections
   const validateParticipant = async (enrollment) => {
     if (!enrollment.trim()) {
       setEnrollmentError('Enrollment number is required');
@@ -177,13 +186,13 @@ const TeamManagement = () => {
       return;
     }
 
-    // Check for duplicates
-    const existingEnrollments = [
-      teamInfo?.team_leader?.enrollment,
-      ...(teamInfo?.participants?.map(p => p.enrollment) || [])
+    // Check for duplicates in current team
+    const allMembers = [
+      teamRegistration?.team_leader?.enrollment_no,
+      ...(teamRegistration?.members?.map(m => m.enrollment_no) || [])
     ].filter(Boolean);
 
-    if (existingEnrollments.includes(enrollment)) {
+    if (allMembers.includes(enrollment)) {
       setEnrollmentError('This student is already in the team');
       return;
     }
@@ -191,15 +200,21 @@ const TeamManagement = () => {
     try {
       setValidatingStudent(true);
       setEnrollmentError('');
-      
-      const response = await clientAPI.validateParticipant(enrollment, eventId, teamInfo?.team_id);
-      
-      if (response.data.success) {
-        // The API returns student_data, not student
-        const studentData = response.data.student_data || response.data.student;
-        setStudentDetails(studentData);
-        setShowAddModal(false);
-        setShowConfirmModal(true);
+
+      // Use lookup API to validate student
+      const response = await clientAPI.lookupStudent(enrollment);
+
+      if (response.data.success && response.data.found) {
+        // Check eligibility for this specific event
+        const eligibilityResponse = await clientAPI.checkStudentEligibility(enrollment, eventId);
+
+        if (eligibilityResponse.data.success && eligibilityResponse.data.eligible) {
+          setValidatedStudent(response.data.student_data);
+          setShowAddModal(false);
+          setShowConfirmModal(true);
+        } else {
+          setEnrollmentError(eligibilityResponse.data.message || 'Student is not eligible for this event');
+        }
       } else {
         setEnrollmentError(response.data.message || 'Student not found');
       }
@@ -211,54 +226,67 @@ const TeamManagement = () => {
     }
   };
 
+  // Add participant to team using new registration API
   const addParticipant = async () => {
+    if (!validatedStudent) return;
+
     try {
-      const response = await clientAPI.addTeamParticipant(eventId, teamInfo?.team_id, studentDetails.enrollment_no);
-      
+      // Use new team management API
+      const response = await clientAPI.addTeamParticipant(
+        eventId,
+        teamRegistration.registration_id,
+        validatedStudent.enrollment_no
+      );
+
       if (response.data.success) {
-        showNotification('Participant added successfully!', 'success');
-        fetchTeamData(); // Refresh team data
+        showNotification('Team member added successfully!', 'success');
+        await fetchTeamData(); // Refresh data
         setShowConfirmModal(false);
         setParticipantEnrollment('');
-        setStudentDetails(null);
+        setValidatedStudent(null);
       } else {
-        setError(response.data.message || 'Failed to add participant');
+        setError(response.data.message || 'Failed to add team member');
       }
     } catch (error) {
       console.error('Add participant error:', error);
-      setError('Failed to add participant. Please try again.');
+      setError('Failed to add team member. Please try again.');
     }
   };
 
+  // Remove participant using new registration API
   const removeParticipant = async () => {
     if (!removeTarget) return;
 
     try {
-      const response = await clientAPI.removeTeamParticipant(eventId, teamInfo?.team_id, removeTarget.enrollment);
-      
+      const response = await clientAPI.removeTeamParticipant(
+        eventId,
+        teamRegistration.registration_id,
+        removeTarget.enrollment_no
+      );
+
       if (response.data.success) {
-        showNotification('Participant removed successfully!', 'success');
-        fetchTeamData(); // Refresh team data
+        showNotification('Team member removed successfully!', 'success');
+        await fetchTeamData(); // Refresh data
         setShowRemoveModal(false);
         setRemoveTarget(null);
       } else {
-        setError(response.data.message || 'Failed to remove participant');
+        setError(response.data.message || 'Failed to remove team member');
       }
     } catch (error) {
       console.error('Remove participant error:', error);
-      setError('Failed to remove participant. Please try again.');
+      setError('Failed to remove team member. Please try again.');
     }
   };
 
+  // Cancel entire team registration
   const cancelRegistration = async () => {
     try {
       const response = await clientAPI.cancelRegistration(eventId);
-      
+
       if (response.data.success) {
-        showNotification('Registration cancelled successfully!', 'success');
+        showNotification('Team registration cancelled successfully!', 'success');
         setShowCancelModal(false);
-        
-        // Navigate back to dashboard after showing success message
+
         setTimeout(() => {
           navigate('/client/dashboard');
         }, 1500);
@@ -273,36 +301,56 @@ const TeamManagement = () => {
     }
   };
 
+  // Export functionality optimized for new data structure
   const exportTeamData = (format) => {
-    if (!teamInfo) return;
+    if (!teamRegistration) return;
 
     try {
-      const teamData = {
-        teamName: teamInfo.team_name,
+      const exportData = {
+        teamName: teamRegistration.team_name,
         eventName: event?.event_name,
-        teamLeader: teamInfo.team_leader,
-        members: teamInfo.participants || [],
-        totalMembers: teamInfo.participant_count,
-        registrationDate: teamInfo.registration_date
+        registrationId: teamRegistration.registration_id,
+        teamSize: teamRegistration.team_size,
+        maxSize: teamRegistration.max_size,
+        registrationDate: new Date(teamRegistration.registered_at).toLocaleDateString(),
+
+        teamLeader: teamRegistration.team_leader,
+        members: teamRegistration.members,
+
+        // Participation summary
+        participationSummary: {
+          attendance: {
+            marked: (teamRegistration.members || []).filter(m => m.attendance?.marked).length +
+              (teamRegistration.team_leader?.attendance?.marked ? 1 : 0),
+            total: teamRegistration.team_size
+          },
+          feedback: {
+            submitted: (teamRegistration.members || []).filter(m => m.feedback?.submitted).length +
+              (teamRegistration.team_leader?.feedback?.submitted ? 1 : 0),
+            total: teamRegistration.team_size
+          },
+          certificates: {
+            issued: (teamRegistration.members || []).filter(m => m.certificate?.issued).length +
+              (teamRegistration.team_leader?.certificate?.issued ? 1 : 0),
+            total: teamRegistration.team_size
+          }
+        }
       };
 
       switch (format) {
         case 'csv':
-          exportToCSV(teamData);
+          exportToCSV(exportData);
           break;
         case 'json':
-          exportToJSON(teamData);
+          exportToJSON(exportData);
           break;
         case 'pdf':
-          exportToPDF(teamData);
-          break;
-        case 'print':
-          printTeamData(teamData);
+          exportToPDF(exportData);
           break;
         default:
           showNotification('Export format not supported', 'error');
       }
-      
+
       setShowExportDropdown(false);
     } catch (error) {
       console.error('Export failed:', error);
@@ -310,33 +358,37 @@ const TeamManagement = () => {
     }
   };
 
-  const exportToCSV = (teamData) => {
-    const headers = ['Name', 'Enrollment', 'Email', 'Mobile', 'Department', 'Year', 'Semester', 'Role'];
+  const exportToCSV = (data) => {
+    const headers = ['Name', 'Enrollment', 'Email', 'Phone', 'Department', 'Role', 'Attendance', 'Feedback', 'Certificate'];
     const rows = [];
 
     // Add team leader
-    rows.push([
-      teamData.teamLeader.name,
-      teamData.teamLeader.enrollment,
-      teamData.teamLeader.email,
-      teamData.teamLeader.mobile,
-      teamData.teamLeader.department,
-      teamData.teamLeader.year,
-      teamData.teamLeader.semester,
-      'Team Leader'
-    ]);
+    if (data.teamLeader) {
+      rows.push([
+        data.teamLeader.name,
+        data.teamLeader.enrollment_no,
+        data.teamLeader.email,
+        data.teamLeader.phone,
+        data.teamLeader.department,
+        'Team Leader',
+        data.teamLeader.attendance?.marked ? 'Marked' : 'Pending',
+        data.teamLeader.feedback?.submitted ? 'Submitted' : 'Pending',
+        data.teamLeader.certificate?.issued ? 'Issued' : 'Pending'
+      ]);
+    }
 
     // Add team members
-    teamData.members.forEach(member => {
+    data.members.forEach(member => {
       rows.push([
         member.name,
-        member.enrollment,
+        member.enrollment_no,
         member.email,
-        member.mobile,
+        member.phone,
         member.department,
-        member.year,
-        member.semester,
-        'Member'
+        'Member',
+        member.attendance?.marked ? 'Marked' : 'Pending',
+        member.feedback?.submitted ? 'Submitted' : 'Pending',
+        member.certificate?.issued ? 'Issued' : 'Pending'
       ]);
     });
 
@@ -349,7 +401,7 @@ const TeamManagement = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${teamData.teamName.replace(/[^a-zA-Z0-9]/g, '_')}_Team_Data.csv`);
+    link.setAttribute('download', `${data.teamName.replace(/[^a-zA-Z0-9]/g, '_')}_Team_Data.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -359,24 +411,18 @@ const TeamManagement = () => {
     showNotification('CSV exported successfully!', 'success');
   };
 
-  const exportToJSON = (teamData) => {
+  const exportToJSON = (data) => {
     const jsonData = {
-      team: teamData.teamName,
-      event: teamData.eventName,
-      leader: teamData.teamLeader,
-      members: teamData.members,
-      statistics: {
-        totalMembers: teamData.totalMembers,
-        registrationDate: teamData.registrationDate
-      },
-      exportedAt: new Date().toISOString()
+      ...data,
+      exportedAt: new Date().toISOString(),
+      exportedBy: user?.enrollment_no || user?.username
     };
 
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${teamData.teamName.replace(/[^a-zA-Z0-9]/g, '_')}_Team_Data.json`);
+    link.setAttribute('download', `${data.teamName.replace(/[^a-zA-Z0-9]/g, '_')}_Team_Data.json`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -386,34 +432,66 @@ const TeamManagement = () => {
     showNotification('JSON exported successfully!', 'success');
   };
 
-  const exportToPDF = (teamData) => {
+  const exportToPDF = (data) => {
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Team Data - ${teamData.teamName}</title>
+        <title>Team Registration Report - ${data.teamName}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .team-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+          body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .team-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+          .participation-summary { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
           .members-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          .members-table th, .members-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          .members-table th { background-color: #f2f2f2; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+          .members-table th, .members-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+          .members-table th { background-color: #f2f2f2; font-weight: bold; }
+          .members-table tr:nth-child(even) { background-color: #f9f9f9; }
+          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px; }
+          .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+          .status-marked { background: #4caf50; color: white; }
+          .status-pending { background: #ff9800; color: white; }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>${teamData.teamName}</h1>
-          <h2>${teamData.eventName}</h2>
+          <h1>${data.teamName}</h1>
+          <h2>${data.eventName}</h2>
+          <p>Team Registration Report</p>
         </div>
         
         <div class="team-info">
           <h3>Team Information</h3>
-          <p><strong>Team Name:</strong> ${teamData.teamName}</p>
-          <p><strong>Event:</strong> ${teamData.eventName}</p>
-          <p><strong>Total Members:</strong> ${teamData.totalMembers}</p>
-          <p><strong>Registration Date:</strong> ${teamData.registrationDate}</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <p><strong>Team Name:</strong> ${data.teamName}</p>
+              <p><strong>Event:</strong> ${data.eventName}</p>
+              <p><strong>Registration ID:</strong> ${data.registrationId}</p>
+            </div>
+            <div>
+              <p><strong>Team Size:</strong> ${data.teamSize}/${data.maxSize}</p>
+              <p><strong>Registration Date:</strong> ${data.registrationDate}</p>
+              <p><strong>Status:</strong> Active</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="participation-summary">
+          <h3>Participation Summary</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
+            <div>
+              <strong>Attendance</strong><br>
+              ${data.participationSummary.attendance.marked}/${data.participationSummary.attendance.total} marked
+            </div>
+            <div>
+              <strong>Feedback</strong><br>
+              ${data.participationSummary.feedback.submitted}/${data.participationSummary.feedback.total} submitted
+            </div>
+            <div>
+              <strong>Certificates</strong><br>
+              ${data.participationSummary.certificates.issued}/${data.participationSummary.certificates.total} issued
+            </div>
+          </div>
         </div>
         
         <h3>Team Members</h3>
@@ -423,35 +501,43 @@ const TeamManagement = () => {
               <th>Name</th>
               <th>Enrollment</th>
               <th>Email</th>
-              <th>Mobile</th>
               <th>Department</th>
               <th>Role</th>
+              <th>Attendance</th>
+              <th>Feedback</th>
+              <th>Certificate</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>${teamData.teamLeader.name}</td>
-              <td>${teamData.teamLeader.enrollment}</td>
-              <td>${teamData.teamLeader.email}</td>
-              <td>${teamData.teamLeader.mobile}</td>
-              <td>${teamData.teamLeader.department}</td>
-              <td><strong>Team Leader</strong></td>
-            </tr>
-            ${teamData.members.map(member => `
+            ${data.teamLeader ? `
+              <tr>
+                <td>${data.teamLeader.name}</td>
+                <td>${data.teamLeader.enrollment_no}</td>
+                <td>${data.teamLeader.email}</td>
+                <td>${data.teamLeader.department}</td>
+                <td><strong>Team Leader</strong></td>
+                <td><span class="status-badge ${data.teamLeader.attendance?.marked ? 'status-marked' : 'status-pending'}">${data.teamLeader.attendance?.marked ? 'Marked' : 'Pending'}</span></td>
+                <td><span class="status-badge ${data.teamLeader.feedback?.submitted ? 'status-marked' : 'status-pending'}">${data.teamLeader.feedback?.submitted ? 'Submitted' : 'Pending'}</span></td>
+                <td><span class="status-badge ${data.teamLeader.certificate?.issued ? 'status-marked' : 'status-pending'}">${data.teamLeader.certificate?.issued ? 'Issued' : 'Pending'}</span></td>
+              </tr>
+            ` : ''}
+            ${data.members.map(member => `
               <tr>
                 <td>${member.name}</td>
-                <td>${member.enrollment}</td>
+                <td>${member.enrollment_no}</td>
                 <td>${member.email}</td>
-                <td>${member.mobile}</td>
                 <td>${member.department}</td>
                 <td>Member</td>
+                <td><span class="status-badge ${member.attendance?.marked ? 'status-marked' : 'status-pending'}">${member.attendance?.marked ? 'Marked' : 'Pending'}</span></td>
+                <td><span class="status-badge ${member.feedback?.submitted ? 'status-marked' : 'status-pending'}">${member.feedback?.submitted ? 'Submitted' : 'Pending'}</span></td>
+                <td><span class="status-badge ${member.certificate?.issued ? 'status-marked' : 'status-pending'}">${member.certificate?.issued ? 'Issued' : 'Pending'}</span></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
         
         <div class="footer">
-          <p>Generated on ${new Date().toLocaleString()}</p>
+          <p>Generated on ${new Date().toLocaleString()} | CampusConnect Event Management System</p>
         </div>
       </body>
       </html>
@@ -469,10 +555,7 @@ const TeamManagement = () => {
     showNotification('PDF export opened in new window. Use your browser\'s print function to save as PDF.', 'success');
   };
 
-  const printTeamData = (teamData) => {
-    exportToPDF(teamData); // Same as PDF export
-  };
-
+  // Utility functions
   const showNotification = (message, type = 'info') => {
     if (type === 'error') {
       setError(message);
@@ -480,7 +563,6 @@ const TeamManagement = () => {
       setSuccess(message);
     }
 
-    // Clear after 5 seconds
     setTimeout(() => {
       setError('');
       setSuccess('');
@@ -491,12 +573,12 @@ const TeamManagement = () => {
     setShowAddModal(false);
     setParticipantEnrollment('');
     setEnrollmentError('');
-    setStudentDetails(null);
+    setValidatedStudent(null);
   };
 
   const handleConfirmModalClose = () => {
     setShowConfirmModal(false);
-    setStudentDetails(null);
+    setValidatedStudent(null);
     setShowAddModal(true);
   };
 
@@ -520,57 +602,141 @@ const TeamManagement = () => {
     validateParticipant(participantEnrollment);
   };
 
+  const refreshTeamData = async () => {
+    setRefreshing(true);
+    await fetchTeamData();
+    setRefreshing(false);
+  };
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error && !teamInfo) {
-    return (
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
-            </div>
-            <h1 className="text-xl font-bold text-red-900 mb-2">Error Loading Team</h1>
-            <p className="text-red-700 mb-4">{error}</p>
-            <button 
-              onClick={() => navigate('/client/dashboard')}
-              className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Return to Dashboard
-            </button>
+      <Layout>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <LoadingSpinner />
+            <p className="mt-4 text-gray-600">Loading team registration...</p>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
-  if (!teamInfo) return null;
+  // Error state
+  if (error && !teamRegistration) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+              </div>
+              <h1 className="text-xl font-bold text-red-900 mb-2">Team Registration Not Found</h1>
+              <p className="text-red-700 mb-4">{error}</p>
+              <div className="space-x-4">
+                <button
+                  onClick={() => navigate('/client/dashboard')}
+                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Return to Dashboard
+                </button>
+                <button
+                  onClick={fetchTeamData}
+                  className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
-  const canAddMembers = teamInfo.participant_count < (event?.team_size_max || 5);
-  const maxMembers = event?.team_size_max || 5;
-  const availableSlots = maxMembers - teamInfo.participant_count;
+  if (!teamRegistration) return null;
+
+  const canAddMembers = teamRegistration.team_size < teamRegistration.max_size;
+  const availableSlots = teamRegistration.max_size - teamRegistration.team_size;
+  const isRegistrationOpen = event?.status === 'upcoming' &&
+    (event?.sub_status === 'registration_open' ||
+      event?.sub_status === 'registration_not_started');
+
+  // Calculate participation statistics
+  const allTeamMembers = [teamRegistration.team_leader, ...teamRegistration.members].filter(Boolean);
+  const attendanceCount = allTeamMembers.filter(member => member.attendance?.marked).length;
+  const feedbackCount = allTeamMembers.filter(member => member.feedback?.submitted).length;
+  const certificateCount = allTeamMembers.filter(member => member.certificate?.issued).length;
 
   return (
-    <ClientLayout>
+    <Layout>
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          
-          {/* Team Header */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{teamInfo.team_name}</h1>
-                <p className="text-gray-600">Team Management for {event?.event_name}</p>
+        <div className="max-w-6xl mx-auto px-4 py-6">
+
+          {/* Enhanced Team Header with Real-time Status */}
+          <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <i className="fas fa-users text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{teamRegistration.team_name}</h1>
+                  <p className="text-gray-600">{event?.event_name}</p>
+                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                    <span>Registration ID: <code className="font-mono">{teamRegistration.registration_id}</code></span>
+                    <span>•</span>
+                    <span>Registered: {new Date(teamRegistration.registered_at).toLocaleDateString()}</span>
+                    {lastUpdated && (
+                      <>
+                        <span>•</span>
+                        <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-gray-500">Team ID</div>
-                <div className="font-mono text-lg font-semibold">{teamInfo.team_id}</div>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={refreshTeamData}
+                  disabled={refreshing}
+                  className="p-2 text-gray-500 hover:text-blue-600 transition-colors"
+                  title="Refresh team data"
+                >
+                  <i className={`fas fa-sync-alt ${refreshing ? 'animate-spin' : ''}`}></i>
+                </button>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${teamRegistration.status === 'active'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+                  }`}>
+                  {teamRegistration.status === 'active' ? 'Active' : 'Inactive'}
+                </div>
+              </div>
+            </div>
+
+            {/* Event Status Indicator */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <i className="fas fa-calendar-alt text-blue-600"></i>
+                <div>
+                  <div className="font-medium text-gray-900">Event Status</div>
+                  <div className="text-sm text-gray-600 capitalize">{event?.status?.replace('_', ' ')}</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-6 text-sm">
+                <div className={`flex items-center space-x-2 ${teamStatus?.attendance_available ? 'text-green-600' : 'text-gray-400'}`}>
+                  <i className="fas fa-check-circle"></i>
+                  <span>Attendance {teamStatus?.attendance_available ? 'Open' : 'Closed'}</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${teamStatus?.feedback_available ? 'text-purple-600' : 'text-gray-400'}`}>
+                  <i className="fas fa-comment"></i>
+                  <span>Feedback {teamStatus?.feedback_available ? 'Open' : 'Closed'}</span>
+                </div>
+                <div className={`flex items-center space-x-2 ${teamStatus?.certificates_available ? 'text-orange-600' : 'text-gray-400'}`}>
+                  <i className="fas fa-certificate"></i>
+                  <span>Certificates {teamStatus?.certificates_available ? 'Available' : 'Pending'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -581,6 +747,12 @@ const TeamManagement = () => {
               <div className="flex items-center">
                 <i className="fas fa-exclamation-triangle text-red-600 mr-3"></i>
                 <span className="text-red-800">{error}</span>
+                <button
+                  onClick={() => setError('')}
+                  className="ml-auto text-red-400 hover:text-red-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
               </div>
             </div>
           )}
@@ -590,75 +762,74 @@ const TeamManagement = () => {
               <div className="flex items-center">
                 <i className="fas fa-check-circle text-green-600 mr-3"></i>
                 <span className="text-green-800">{success}</span>
+                <button
+                  onClick={() => setSuccess('')}
+                  className="ml-auto text-green-400 hover:text-green-600"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
               </div>
             </div>
           )}
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-5 gap-4 mb-6">
+          {/* Enhanced Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-green-600">{teamInfo.participant_count}</div>
-              <div className="text-xs text-gray-600">Current</div>
+              <div className="text-2xl font-bold text-blue-600">{teamRegistration.team_size}</div>
+              <div className="text-xs text-gray-600">Current Size</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-blue-600">{availableSlots}</div>
-              <div className="text-xs text-gray-600">Available</div>
+              <div className="text-2xl font-bold text-green-600">{availableSlots}</div>
+              <div className="text-xs text-gray-600">Available Slots</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-emerald-600">
-                {teamParticipationStatus ? teamParticipationStatus.team_attendance_summary.attended : '-'}
-              </div>
-              <div className="text-xs text-gray-600">Attended</div>
+              <div className="text-2xl font-bold text-emerald-600">{attendanceCount}</div>
+              <div className="text-xs text-gray-600">Attendance Marked</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-purple-600">
-                {teamParticipationStatus ? teamParticipationStatus.team_feedback_summary.submitted : '-'}
-              </div>
-              <div className="text-xs text-gray-600">Feedback</div>
+              <div className="text-2xl font-bold text-purple-600">{feedbackCount}</div>
+              <div className="text-xs text-gray-600">Feedback Submitted</div>
             </div>
             <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-xl font-bold text-orange-600">
-                {teamParticipationStatus ? teamParticipationStatus.team_certificate_summary.earned : '-'}
-              </div>
-              <div className="text-xs text-gray-600">Certificates</div>
+              <div className="text-2xl font-bold text-orange-600">{certificateCount}</div>
+              <div className="text-xs text-gray-600">Certificates Issued</div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-4 mb-6">
-            {canAddMembers ? (
-              <button 
+          {/* Action Buttons - Conditional based on event status */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            {canAddMembers && isRegistrationOpen ? (
+              <button
                 onClick={() => setShowAddModal(true)}
-                className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="flex-1 min-w-[200px] bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
               >
                 <i className="fas fa-user-plus mr-2"></i>
-                Add Member
+                Add Member ({availableSlots} slots left)
               </button>
             ) : (
-              <div className="flex-1 bg-gray-200 text-gray-500 px-6 py-3 rounded-lg font-medium text-center">
+              <div className="flex-1 min-w-[200px] bg-gray-200 text-gray-500 px-6 py-3 rounded-lg font-medium text-center">
                 <i className="fas fa-users mr-2"></i>
-                Team Full ({maxMembers}/{maxMembers})
+                {canAddMembers ? 'Registration Closed' : `Team Full (${teamRegistration.team_size}/${teamRegistration.max_size})`}
               </div>
             )}
 
-            <button 
+            <button
               onClick={() => setShowTeamStatusModal(true)}
               className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
               <i className="fas fa-chart-line mr-2"></i>
-              Team Status
+              Detailed Status
             </button>
 
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 <i className="fas fa-download mr-2"></i>
                 Export
               </button>
-              
-              {/* Export Options Dropdown */}
+
               {showExportDropdown && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
                   <div className="p-2">
@@ -683,21 +854,13 @@ const TeamManagement = () => {
                       <i className="fas fa-file-pdf text-red-600 mr-3"></i>
                       Export as PDF
                     </button>
-                    <button
-                      onClick={() => exportTeamData('print')}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md flex items-center"
-                    >
-                      <i className="fas fa-print text-purple-600 mr-3"></i>
-                      Print Team List
-                    </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Cancel Registration Button - Only show when registration is open */}
-            {event?.status === 'upcoming' && event?.sub_status === 'registration_open' && (
-              <button 
+            {isRegistrationOpen && (
+              <button
                 onClick={() => setShowCancelModal(true)}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
@@ -707,253 +870,247 @@ const TeamManagement = () => {
             )}
           </div>
 
-          {/* Team Members */}
+          {/* Team Members List - Redesigned for event lifecycle */}
           <div className="space-y-4">
             {/* Team Leader */}
-            <div className="bg-white rounded-lg border p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i className="fas fa-crown text-blue-600"></i>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{teamInfo.team_leader.name}</h3>
-                    <p className="text-gray-600">{teamInfo.team_leader.enrollment} • Team Leader</p>
-                    <div className="text-xs text-gray-500">{teamInfo.team_leader.department}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-600 mb-2">
-                    <div>{teamInfo.team_leader.email}</div>
-                    <div>{teamInfo.team_leader.mobile}</div>
-                  </div>
-                  {/* Participation Status Icons */}
-                  <div className="flex items-center space-x-2">
-                    {/* Attendance Status */}
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                      teamInfo.team_leader.attendance?.marked 
-                        ? 'bg-green-100 text-green-600' 
-                        : event?.status === 'ongoing' 
-                        ? 'bg-orange-100 text-orange-600'
-                        : 'bg-gray-100 text-gray-400'
-                    }`} title={`Attendance: ${teamInfo.team_leader.attendance?.marked ? 'Marked' : 'Pending'}`}>
-                      <i className="fas fa-check text-xs"></i>
+            {teamRegistration.team_leader && (
+              <div className="bg-white rounded-lg border-l-4 border-l-blue-500 p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-crown text-blue-600"></i>
                     </div>
-                    {/* Feedback Status */}
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                      teamInfo.team_leader.feedback?.submitted 
-                        ? 'bg-purple-100 text-purple-600' 
-                        : (event?.status === 'ongoing' || event?.status === 'completed')
-                        ? 'bg-orange-100 text-orange-600'
-                        : 'bg-gray-100 text-gray-400'
-                    }`} title={`Feedback: ${teamInfo.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
-                      <i className="fas fa-comment text-xs"></i>
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900">{teamRegistration.team_leader.name}</h3>
+                      <p className="text-gray-600">{teamRegistration.team_leader.enrollment_no} • Team Leader</p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span>{teamRegistration.team_leader.department}</span>
+                        <span>•</span>
+                        <span>Sem {teamRegistration.team_leader.semester}</span>
+                      </div>
                     </div>
-                    {/* Certificate Status */}
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                      teamInfo.team_leader.certificate?.earned 
-                        ? 'bg-orange-100 text-orange-600' 
-                        : event?.status === 'completed'
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <div className="text-right text-sm text-gray-600">
+                      <div>{teamRegistration.team_leader.email}</div>
+                      <div>{teamRegistration.team_leader.phone}</div>
+                    </div>
+                    {/* Participation Status Indicators */}
+                    <div className="flex items-center space-x-2">
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.attendance?.marked
+                        ? 'bg-green-100 text-green-600'
+                        : teamStatus?.attendance_available
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                        }`} title={`Attendance: ${teamRegistration.team_leader.attendance?.marked ? 'Marked' : 'Pending'}`}>
+                        <i className="fas fa-check text-xs"></i>
+                      </div>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.feedback?.submitted
+                        ? 'bg-purple-100 text-purple-600'
+                        : teamStatus?.feedback_available
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                        }`} title={`Feedback: ${teamRegistration.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
+                        <i className="fas fa-comment text-xs"></i>
+                      </div>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.certificate?.issued
                         ? 'bg-orange-100 text-orange-600'
-                        : 'bg-gray-100 text-gray-400'
-                    }`} title={`Certificate: ${teamInfo.team_leader.certificate?.earned ? 'Available' : 'Pending'}`}>
-                      <i className="fas fa-certificate text-xs"></i>
+                        : teamStatus?.certificates_available
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-gray-100 text-gray-400'
+                        }`} title={`Certificate: ${teamRegistration.team_leader.certificate?.issued ? 'Available' : 'Pending'}`}>
+                        <i className="fas fa-certificate text-xs"></i>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Team Members */}
-            {teamInfo.participants && teamInfo.participants.length > 0 && teamInfo.participants.map((participant, index) => (
-              <div key={participant.id || index} className="bg-white rounded-lg border p-4">
+            {teamRegistration.members && teamRegistration.members.length > 0 && teamRegistration.members.map((member, index) => (
+              <div key={member.id || index} className="bg-white rounded-lg border p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                       <i className="fas fa-user text-gray-600"></i>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-lg">{participant.name}</h3>
-                      <p className="text-gray-600">{participant.enrollment} • Member</p>
-                      <div className="text-xs text-gray-500">{participant.department}</div>
+                      <h3 className="font-semibold text-lg text-gray-900">{member.name}</h3>
+                      <p className="text-gray-600">{member.enrollment_no} • Member</p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <span>{member.department}</span>
+                        <span>•</span>
+                        <span>Sem {member.semester}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-6">
                     <div className="text-right text-sm text-gray-600">
-                      <div>{participant.email}</div>
-                      <div>{participant.mobile}</div>
+                      <div>{member.email}</div>
+                      <div>{member.phone}</div>
                     </div>
-                    {/* Participation Status Icons */}
+                    {/* Participation Status Indicators */}
                     <div className="flex items-center space-x-2">
-                      {/* Attendance Status */}
-                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                        participant.attendance?.marked 
-                          ? 'bg-green-100 text-green-600' 
-                          : event?.status === 'ongoing' 
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.attendance?.marked
+                        ? 'bg-green-100 text-green-600'
+                        : teamStatus?.attendance_available
                           ? 'bg-orange-100 text-orange-600'
                           : 'bg-gray-100 text-gray-400'
-                      }`} title={`Attendance: ${participant.attendance?.marked ? 'Marked' : 'Pending'}`}>
+                        }`} title={`Attendance: ${member.attendance?.marked ? 'Marked' : 'Pending'}`}>
                         <i className="fas fa-check text-xs"></i>
                       </div>
-                      {/* Feedback Status */}
-                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                        participant.feedback?.submitted 
-                          ? 'bg-purple-100 text-purple-600' 
-                          : (event?.status === 'ongoing' || event?.status === 'completed')
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.feedback?.submitted
+                        ? 'bg-purple-100 text-purple-600'
+                        : teamStatus?.feedback_available
                           ? 'bg-orange-100 text-orange-600'
                           : 'bg-gray-100 text-gray-400'
-                      }`} title={`Feedback: ${participant.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
+                        }`} title={`Feedback: ${member.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
                         <i className="fas fa-comment text-xs"></i>
                       </div>
-                      {/* Certificate Status */}
-                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
-                        participant.certificate?.earned 
-                          ? 'bg-orange-100 text-orange-600' 
-                          : event?.status === 'completed'
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.certificate?.issued
+                        ? 'bg-orange-100 text-orange-600'
+                        : teamStatus?.certificates_available
                           ? 'bg-orange-100 text-orange-600'
                           : 'bg-gray-100 text-gray-400'
-                      }`} title={`Certificate: ${participant.certificate?.earned ? 'Available' : 'Pending'}`}>
+                        }`} title={`Certificate: ${member.certificate?.issued ? 'Available' : 'Pending'}`}>
                         <i className="fas fa-certificate text-xs"></i>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setRemoveTarget(participant);
-                        setShowRemoveModal(true);
-                      }}
-                      className="text-red-600 hover:text-red-800 p-2"
-                      title="Remove member"
-                    >
-                      <i className="fas fa-trash"></i>
-                    </button>
+                    {isRegistrationOpen && (
+                      <button
+                        onClick={() => {
+                          setRemoveTarget(member);
+                          setShowRemoveModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Remove member"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
 
-            {/* Add Member Prompt */}
-            {teamInfo.participant_count <= 1 && (
-              <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <i className="fas fa-users text-gray-400 text-2xl"></i>
+            {/* Add Member Prompt - Only show if team needs more members and registration is open */}
+            {teamRegistration.team_size < teamRegistration.min_size && isRegistrationOpen && (
+              <div className="bg-orange-50 border-2 border-dashed border-orange-300 rounded-lg p-8 text-center">
+                <div className="w-16 h-16 bg-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i className="fas fa-exclamation-triangle text-orange-600 text-2xl"></i>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Add Team Members</h3>
-                <p className="text-gray-600 mb-4">Your team needs more members to participate.</p>
-                <button 
+                <h3 className="text-lg font-medium text-orange-900 mb-2">Team Size Requirements</h3>
+                <p className="text-orange-700 mb-4">
+                  Your team needs at least {teamRegistration.min_size} members to participate.
+                  Add {teamRegistration.min_size - teamRegistration.team_size} more member(s).
+                </p>
+                <button
                   onClick={() => setShowAddModal(true)}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
                   <i className="fas fa-user-plus mr-2"></i>
-                  Add First Member
+                  Add Required Members
                 </button>
               </div>
             )}
+
+            {/* Add Member Prompt - Regular case */}
+            {teamRegistration.team_size >= teamRegistration.min_size &&
+              teamRegistration.team_size < teamRegistration.max_size &&
+              isRegistrationOpen && (
+                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-users text-gray-400 text-2xl"></i>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Add More Team Members</h3>
+                  <p className="text-gray-600 mb-4">
+                    You can add up to {availableSlots} more member(s) to your team.
+                  </p>
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    <i className="fas fa-user-plus mr-2"></i>
+                    Add Team Member
+                  </button>
+                </div>
+              )}
           </div>
 
-          {/* Team Requirements */}
-          <div className="mt-8 bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Requirements</h3>
-            <div className="grid grid-cols-3 gap-6 text-sm">
-              <div>
-                <div className="font-medium text-gray-900 mb-2">Team Size</div>
-                <div className="text-gray-600">
-                  Minimum: {event?.team_size_min || 2} members<br />
-                  Maximum: {event?.team_size_max || 5} members
+          {/* Team Information Cards */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Team Requirements */}
+            <div className="bg-white rounded-lg border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <i className="fas fa-info-circle text-blue-600 mr-2"></i>
+                Team Requirements
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Team Size</span>
+                  <span className="font-medium">
+                    {teamRegistration.min_size} - {teamRegistration.max_size} members
+                  </span>
                 </div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 mb-2">Current Status</div>
-                <div className="text-gray-600">
-                  {teamInfo.participant_count} of {event?.team_size_max || 5} members<br />
-                  {canAddMembers ? `${availableSlots} slots available` : 'Team is full'}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Current Size</span>
+                  <span className={`font-medium ${teamRegistration.team_size >= teamRegistration.min_size ? 'text-green-600' : 'text-orange-600'
+                    }`}>
+                    {teamRegistration.team_size} members
+                  </span>
                 </div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 mb-2">Departments</div>
-                <div className="text-gray-600">
-                  {teamInfo.departments_count || 1} different departments<br />
-                  Cross-departmental teams encouraged
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${teamRegistration.team_size >= teamRegistration.min_size
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-orange-100 text-orange-800'
+                    }`}>
+                    {teamRegistration.team_size >= teamRegistration.min_size ? 'Requirements Met' : 'Needs More Members'}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${teamRegistration.team_size >= teamRegistration.min_size ? 'bg-green-500' : 'bg-orange-500'
+                      }`}
+                    style={{ width: `${Math.min((teamRegistration.team_size / teamRegistration.max_size) * 100, 100)}%` }}
+                  ></div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Participation Status Indicators */}
-          <div className="mt-8 bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Participation Status Guide</h3>
-            <div className="grid grid-cols-3 gap-6 text-sm">
-              <div>
-                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="fas fa-check text-green-600"></i>
-                  Attendance Indicators
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                      <i className="fas fa-check text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Attendance marked</span>
+            {/* Participation Guide */}
+            <div className="bg-white rounded-lg border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <i className="fas fa-map text-green-600 mr-2"></i>
+                Participation Guide
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i className="fas fa-check text-xs"></i>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
-                      <i className="fas fa-check text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Available to mark</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
-                      <i className="fas fa-check text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Not yet available</span>
+                  <div>
+                    <span className="font-medium text-gray-900">Attendance Marking</span>
+                    <p className="text-gray-600">Individual attendance tracking for each team member</p>
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="fas fa-comment text-purple-600"></i>
-                  Feedback Indicators
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center">
-                      <i className="fas fa-comment text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Feedback submitted</span>
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i className="fas fa-comment text-xs"></i>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
-                      <i className="fas fa-comment text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Feedback available</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
-                      <i className="fas fa-comment text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Not yet available</span>
+                  <div>
+                    <span className="font-medium text-gray-900">Feedback Submission</span>
+                    <p className="text-gray-600">Each member submits individual feedback</p>
                   </div>
                 </div>
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <i className="fas fa-certificate text-orange-600"></i>
-                  Certificate Indicators
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
-                      <i className="fas fa-certificate text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Certificate available</span>
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i className="fas fa-certificate text-xs"></i>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
-                      <i className="fas fa-certificate text-xs"></i>
-                    </div>
-                    <span className="text-gray-600">Processing/Pending</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    Note: Certificates require attendance completion
+                  <div>
+                    <span className="font-medium text-gray-900">Certificate Generation</span>
+                    <p className="text-gray-600">Individual certificates based on participation</p>
                   </div>
                 </div>
               </div>
@@ -969,7 +1126,7 @@ const TeamManagement = () => {
             <div className="bg-cyan-500 px-6 py-4 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">Add Team Member</h3>
-                <button 
+                <button
                   onClick={handleAddModalClose}
                   className="text-white hover:text-gray-200"
                 >
@@ -977,7 +1134,7 @@ const TeamManagement = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <form onSubmit={handleValidateSubmit} className="space-y-4">
                 <div>
@@ -1002,15 +1159,15 @@ const TeamManagement = () => {
                 </div>
               </form>
             </div>
-            
+
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
-              <button 
+              <button
                 onClick={handleAddModalClose}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleValidateSubmit}
                 disabled={validatingStudent}
                 className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
@@ -1029,7 +1186,7 @@ const TeamManagement = () => {
             <div className="bg-green-500 px-6 py-4 rounded-t-lg">
               <h3 className="text-lg font-semibold text-white">Confirm Team Member</h3>
             </div>
-            
+
             <div className="p-6">
               <div className="mb-6">
                 <h4 className="text-lg font-semibold mb-4">Student Details</h4>
@@ -1057,15 +1214,15 @@ const TeamManagement = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
-              <button 
+              <button
                 onClick={handleConfirmModalClose}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={addParticipant}
                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
               >
@@ -1083,7 +1240,7 @@ const TeamManagement = () => {
             <div className="bg-red-500 px-6 py-4 rounded-t-lg">
               <h3 className="text-lg font-semibold text-white">Remove Team Member</h3>
             </div>
-            
+
             <div className="p-6">
               <div className="flex items-center space-x-4 mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -1096,20 +1253,20 @@ const TeamManagement = () => {
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-700">
-                  Are you sure you want to remove this member from your team? 
+                  Are you sure you want to remove this member from your team?
                   This action cannot be undone.
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
-              <button 
+              <button
                 onClick={handleRemoveModalClose}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={removeParticipant}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
               >
@@ -1127,7 +1284,7 @@ const TeamManagement = () => {
             <div className="bg-red-500 px-6 py-4 rounded-t-lg">
               <h3 className="text-lg font-semibold text-white">Cancel Registration</h3>
             </div>
-            
+
             <div className="p-6">
               <div className="flex items-center space-x-4 mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -1158,15 +1315,15 @@ const TeamManagement = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end space-x-3">
-              <button 
+              <button
                 onClick={handleCancelModalClose}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Keep Registration
               </button>
-              <button 
+              <button
                 onClick={cancelRegistration}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
               >
@@ -1211,7 +1368,7 @@ const TeamManagement = () => {
                     <i className="fas fa-users text-purple-600"></i>
                     Team Overview
                   </h4>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     {/* Attendance Summary */}
                     <div className="bg-white rounded-xl p-4 border border-slate-200">
@@ -1226,8 +1383,8 @@ const TeamManagement = () => {
                         {teamParticipationStatus.team_attendance_summary.attendance_rate.toFixed(1)}% attendance rate
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                        <div
+                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${teamParticipationStatus.team_attendance_summary.attendance_rate}%` }}
                         ></div>
                       </div>
@@ -1246,8 +1403,8 @@ const TeamManagement = () => {
                         {teamParticipationStatus.team_feedback_summary.feedback_rate.toFixed(1)}% feedback rate
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div 
-                          className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
+                        <div
+                          className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${teamParticipationStatus.team_feedback_summary.feedback_rate}%` }}
                         ></div>
                       </div>
@@ -1266,8 +1423,8 @@ const TeamManagement = () => {
                         {teamParticipationStatus.team_certificate_summary.certificate_rate.toFixed(1)}% certificate rate
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div 
-                          className="bg-orange-500 h-2 rounded-full transition-all duration-300" 
+                        <div
+                          className="bg-orange-500 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${teamParticipationStatus.team_certificate_summary.certificate_rate}%` }}
                         ></div>
                       </div>
@@ -1300,27 +1457,23 @@ const TeamManagement = () => {
                           Leader
                         </span>
                       </div>
-                      
+
                       <div className="grid grid-cols-3 gap-3">
                         {/* Attendance Status */}
-                        <div className={`p-3 rounded-lg border ${
-                          teamInfo.team_leader.attendance?.marked 
-                            ? 'bg-green-50 border-green-200' 
-                            : 'bg-orange-50 border-orange-200'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <i className={`fas fa-check text-xs ${
-                              teamInfo.team_leader.attendance?.marked ? 'text-green-600' : 'text-orange-600'
-                            }`}></i>
-                            <span className={`text-xs font-medium ${
-                              teamInfo.team_leader.attendance?.marked ? 'text-green-800' : 'text-orange-800'
-                            }`}>Attendance</span>
-                          </div>
-                          <div className={`text-xs ${
-                            teamInfo.team_leader.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                        <div className={`p-3 rounded-lg border ${teamInfo.team_leader.attendance?.marked
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-orange-50 border-orange-200'
                           }`}>
-                            {teamInfo.team_leader.attendance?.marked 
-                              ? `✓ Marked (${teamInfo.team_leader.attendance.type || 'physical'})` 
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-check text-xs ${teamInfo.team_leader.attendance?.marked ? 'text-green-600' : 'text-orange-600'
+                              }`}></i>
+                            <span className={`text-xs font-medium ${teamInfo.team_leader.attendance?.marked ? 'text-green-800' : 'text-orange-800'
+                              }`}>Attendance</span>
+                          </div>
+                          <div className={`text-xs ${teamInfo.team_leader.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                            }`}>
+                            {teamInfo.team_leader.attendance?.marked
+                              ? `✓ Marked (${teamInfo.team_leader.attendance.type || 'physical'})`
                               : 'Pending'}
                           </div>
                           {teamInfo.team_leader.attendance?.attendance_id && (
@@ -1331,22 +1484,18 @@ const TeamManagement = () => {
                         </div>
 
                         {/* Feedback Status */}
-                        <div className={`p-3 rounded-lg border ${
-                          teamInfo.team_leader.feedback?.submitted 
-                            ? 'bg-purple-50 border-purple-200' 
-                            : 'bg-orange-50 border-orange-200'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <i className={`fas fa-comment text-xs ${
-                              teamInfo.team_leader.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
-                            }`}></i>
-                            <span className={`text-xs font-medium ${
-                              teamInfo.team_leader.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
-                            }`}>Feedback</span>
-                          </div>
-                          <div className={`text-xs ${
-                            teamInfo.team_leader.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                        <div className={`p-3 rounded-lg border ${teamInfo.team_leader.feedback?.submitted
+                          ? 'bg-purple-50 border-purple-200'
+                          : 'bg-orange-50 border-orange-200'
                           }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-comment text-xs ${teamInfo.team_leader.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
+                              }`}></i>
+                            <span className={`text-xs font-medium ${teamInfo.team_leader.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
+                              }`}>Feedback</span>
+                          </div>
+                          <div className={`text-xs ${teamInfo.team_leader.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                            }`}>
                             {teamInfo.team_leader.feedback?.submitted ? '✓ Submitted' : 'Pending'}
                           </div>
                           {teamInfo.team_leader.feedback?.feedback_id && (
@@ -1357,22 +1506,18 @@ const TeamManagement = () => {
                         </div>
 
                         {/* Certificate Status */}
-                        <div className={`p-3 rounded-lg border ${
-                          teamInfo.team_leader.certificate?.earned 
-                            ? 'bg-orange-50 border-orange-200' 
-                            : 'bg-gray-50 border-gray-200'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <i className={`fas fa-certificate text-xs ${
-                              teamInfo.team_leader.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
-                            }`}></i>
-                            <span className={`text-xs font-medium ${
-                              teamInfo.team_leader.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
-                            }`}>Certificate</span>
-                          </div>
-                          <div className={`text-xs ${
-                            teamInfo.team_leader.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                        <div className={`p-3 rounded-lg border ${teamInfo.team_leader.certificate?.earned
+                          ? 'bg-orange-50 border-orange-200'
+                          : 'bg-gray-50 border-gray-200'
                           }`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <i className={`fas fa-certificate text-xs ${teamInfo.team_leader.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
+                              }`}></i>
+                            <span className={`text-xs font-medium ${teamInfo.team_leader.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
+                              }`}>Certificate</span>
+                          </div>
+                          <div className={`text-xs ${teamInfo.team_leader.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                            }`}>
                             {teamInfo.team_leader.certificate?.earned ? '✓ Available' : 'Pending'}
                           </div>
                           {teamInfo.team_leader.certificate?.certificate_id && (
@@ -1402,27 +1547,23 @@ const TeamManagement = () => {
                             Member
                           </span>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-3">
                           {/* Attendance Status */}
-                          <div className={`p-3 rounded-lg border ${
-                            participant.attendance?.marked 
-                              ? 'bg-green-50 border-green-200' 
-                              : 'bg-orange-50 border-orange-200'
-                          }`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <i className={`fas fa-check text-xs ${
-                                participant.attendance?.marked ? 'text-green-600' : 'text-orange-600'
-                              }`}></i>
-                              <span className={`text-xs font-medium ${
-                                participant.attendance?.marked ? 'text-green-800' : 'text-orange-800'
-                              }`}>Attendance</span>
-                            </div>
-                            <div className={`text-xs ${
-                              participant.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                          <div className={`p-3 rounded-lg border ${participant.attendance?.marked
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-orange-50 border-orange-200'
                             }`}>
-                              {participant.attendance?.marked 
-                                ? `✓ Marked (${participant.attendance.type || 'physical'})` 
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-check text-xs ${participant.attendance?.marked ? 'text-green-600' : 'text-orange-600'
+                                }`}></i>
+                              <span className={`text-xs font-medium ${participant.attendance?.marked ? 'text-green-800' : 'text-orange-800'
+                                }`}>Attendance</span>
+                            </div>
+                            <div className={`text-xs ${participant.attendance?.marked ? 'text-green-700' : 'text-orange-700'
+                              }`}>
+                              {participant.attendance?.marked
+                                ? `✓ Marked (${participant.attendance.type || 'physical'})`
                                 : 'Pending'}
                             </div>
                             {participant.attendance?.attendance_id && (
@@ -1433,22 +1574,18 @@ const TeamManagement = () => {
                           </div>
 
                           {/* Feedback Status */}
-                          <div className={`p-3 rounded-lg border ${
-                            participant.feedback?.submitted 
-                              ? 'bg-purple-50 border-purple-200' 
-                              : 'bg-orange-50 border-orange-200'
-                          }`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <i className={`fas fa-comment text-xs ${
-                                participant.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
-                              }`}></i>
-                              <span className={`text-xs font-medium ${
-                                participant.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
-                              }`}>Feedback</span>
-                            </div>
-                            <div className={`text-xs ${
-                              participant.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                          <div className={`p-3 rounded-lg border ${participant.feedback?.submitted
+                            ? 'bg-purple-50 border-purple-200'
+                            : 'bg-orange-50 border-orange-200'
                             }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-comment text-xs ${participant.feedback?.submitted ? 'text-purple-600' : 'text-orange-600'
+                                }`}></i>
+                              <span className={`text-xs font-medium ${participant.feedback?.submitted ? 'text-purple-800' : 'text-orange-800'
+                                }`}>Feedback</span>
+                            </div>
+                            <div className={`text-xs ${participant.feedback?.submitted ? 'text-purple-700' : 'text-orange-700'
+                              }`}>
                               {participant.feedback?.submitted ? '✓ Submitted' : 'Pending'}
                             </div>
                             {participant.feedback?.feedback_id && (
@@ -1459,22 +1596,18 @@ const TeamManagement = () => {
                           </div>
 
                           {/* Certificate Status */}
-                          <div className={`p-3 rounded-lg border ${
-                            participant.certificate?.earned 
-                              ? 'bg-orange-50 border-orange-200' 
-                              : 'bg-gray-50 border-gray-200'
-                          }`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <i className={`fas fa-certificate text-xs ${
-                                participant.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
-                              }`}></i>
-                              <span className={`text-xs font-medium ${
-                                participant.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
-                              }`}>Certificate</span>
-                            </div>
-                            <div className={`text-xs ${
-                              participant.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                          <div className={`p-3 rounded-lg border ${participant.certificate?.earned
+                            ? 'bg-orange-50 border-orange-200'
+                            : 'bg-gray-50 border-gray-200'
                             }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <i className={`fas fa-certificate text-xs ${participant.certificate?.earned ? 'text-orange-600' : 'text-gray-600'
+                                }`}></i>
+                              <span className={`text-xs font-medium ${participant.certificate?.earned ? 'text-orange-800' : 'text-gray-800'
+                                }`}>Certificate</span>
+                            </div>
+                            <div className={`text-xs ${participant.certificate?.earned ? 'text-orange-700' : 'text-gray-700'
+                              }`}>
                               {participant.certificate?.earned ? '✓ Available' : 'Pending'}
                             </div>
                             {participant.certificate?.certificate_id && (
@@ -1495,7 +1628,7 @@ const TeamManagement = () => {
                     <i className="fas fa-info-circle text-blue-600"></i>
                     Status Legend
                   </h4>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 border border-slate-200">
                       <h5 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
@@ -1538,30 +1671,388 @@ const TeamManagement = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-4 pt-4 border-t border-slate-200">
-                  <button
-                    onClick={() => setShowTeamStatusModal(false)}
-                    className="flex-1 px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
-                  >
-                    Close
-                  </button>
-                </div>
               </div>
             </div>
+
+            {/* Enhanced Modals for event lifecycle */}
+
+            {/* Add Member Modal */}
+            {showAddModal && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Team Member</h3>
+
+                  <form onSubmit={handleValidateSubmit}>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Student Enrollment Number
+                      </label>
+                      <input
+                        type="text"
+                        value={participantEnrollment}
+                        onChange={handleEnrollmentChange}
+                        placeholder="Enter enrollment number"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        maxLength="20"
+                        required
+                      />
+                      {enrollmentError && (
+                        <p className="text-red-600 text-sm mt-1">{enrollmentError}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={!participantEnrollment.trim() || isValidating}
+                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        {isValidating ? 'Validating...' : 'Validate'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddModalClose}
+                        className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Confirm Add Modal */}
+            {showConfirmModal && studentDetails && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Team Member</h3>
+
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="font-medium text-gray-700">Name</div>
+                        <div className="text-gray-900">{studentDetails.name}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-700">Enrollment</div>
+                        <div className="text-gray-900">{studentDetails.enrollment_no}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-700">Department</div>
+                        <div className="text-gray-900">{studentDetails.department}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-700">Year/Semester</div>
+                        <div className="text-gray-900">{studentDetails.year}/{studentDetails.semester}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-700">Email</div>
+                        <div className="text-gray-900">{studentDetails.email}</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-700">Phone</div>
+                        <div className="text-gray-900">{studentDetails.phone}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={confirmAddMember}
+                      disabled={isAdding}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {isAdding ? 'Adding...' : 'Confirm & Add'}
+                    </button>
+                    <button
+                      onClick={handleConfirmModalClose}
+                      disabled={isAdding}
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Remove Member Modal */}
+            {showRemoveModal && removeTarget && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Remove Team Member</h3>
+                  <p className="text-gray-600 mb-6">
+                    Are you sure you want to remove <strong>{removeTarget.name}</strong> from the team?
+                    This action cannot be undone.
+                  </p>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={confirmRemoveMember}
+                      disabled={isRemoving}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {isRemoving ? 'Removing...' : 'Remove'}
+                    </button>
+                    <button
+                      onClick={handleRemoveModalClose}
+                      disabled={isRemoving}
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Cancel Registration Modal */}
+            {showCancelModal && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <div className="text-center">
+                    <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Team Registration</h3>
+                    <p className="text-gray-600 mb-6">
+                      Are you sure you want to cancel your team registration for this event?
+                      This will remove all team members and cannot be undone.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={cancelRegistration}
+                      disabled={isCancelling}
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {isCancelling ? 'Cancelling...' : 'Yes, Cancel Registration'}
+                    </button>
+                    <button
+                      onClick={handleCancelModalClose}
+                      disabled={isCancelling}
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Keep Registration
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Team Status Modal - Enhanced for event lifecycle */}
+            {showTeamStatusModal && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">Detailed Team Status</h3>
+                    <button
+                      onClick={() => setShowTeamStatusModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <i className="fas fa-times text-xl"></i>
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Team Overview */}
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-3">Team Overview</h4>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="text-blue-700 font-medium">Members</div>
+                          <div className="text-blue-900">{teamRegistration.team_size}</div>
+                        </div>
+                        <div>
+                          <div className="text-blue-700 font-medium">Overall Progress</div>
+                          <div className="text-blue-900">
+                            {Math.round(((attendanceCount + feedbackCount + certificateCount) / (teamRegistration.team_size * 3)) * 100)}%
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-blue-700 font-medium">Status</div>
+                          <div className="text-blue-900 capitalize">{teamRegistration.status}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Attendance Summary */}
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-green-900 mb-3">Attendance Summary</h4>
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-green-700 font-medium">Attended</div>
+                          <div className="text-green-900">{attendanceCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-green-700 font-medium">Pending</div>
+                          <div className="text-green-900">{teamRegistration.team_size - attendanceCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-green-700 font-medium">Rate</div>
+                          <div className="text-green-900">{Math.round((attendanceCount / teamRegistration.team_size) * 100)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-green-700 font-medium">Status</div>
+                          <div className="text-green-900">
+                            {teamStatus?.attendance_available ? 'Available' : 'Closed'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feedback Summary */}
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-purple-900 mb-3">Feedback Summary</h4>
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-purple-700 font-medium">Submitted</div>
+                          <div className="text-purple-900">{feedbackCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-purple-700 font-medium">Pending</div>
+                          <div className="text-purple-900">{teamRegistration.team_size - feedbackCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-purple-700 font-medium">Rate</div>
+                          <div className="text-purple-900">{Math.round((feedbackCount / teamRegistration.team_size) * 100)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-purple-700 font-medium">Status</div>
+                          <div className="text-purple-900">
+                            {teamStatus?.feedback_available ? 'Available' : 'Closed'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Certificate Summary */}
+                    <div className="bg-orange-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-orange-900 mb-3">Certificate Summary</h4>
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-orange-700 font-medium">Issued</div>
+                          <div className="text-orange-900">{certificateCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-orange-700 font-medium">Pending</div>
+                          <div className="text-orange-900">{teamRegistration.team_size - certificateCount}</div>
+                        </div>
+                        <div>
+                          <div className="text-orange-700 font-medium">Rate</div>
+                          <div className="text-orange-900">{Math.round((certificateCount / teamRegistration.team_size) * 100)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-orange-700 font-medium">Status</div>
+                          <div className="text-orange-900">
+                            {teamStatus?.certificates_available ? 'Available' : 'Processing'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Member Status */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Individual Member Status</h4>
+                      <div className="space-y-3">
+                        {/* Team Leader */}
+                        {teamRegistration.team_leader && (
+                          <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-l-blue-500">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <div className="font-medium text-gray-900 flex items-center">
+                                  <i className="fas fa-crown text-blue-600 mr-2"></i>
+                                  {teamRegistration.team_leader.name}
+                                </div>
+                                <div className="text-sm text-gray-600">{teamRegistration.team_leader.enrollment_no}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {Math.round(((teamRegistration.team_leader.attendance?.marked ? 1 : 0) +
+                                    (teamRegistration.team_leader.feedback?.submitted ? 1 : 0) +
+                                    (teamRegistration.team_leader.certificate?.issued ? 1 : 0)) / 3 * 100)}% Complete
+                                </div>
+                                <div className="text-xs text-gray-500">Team Leader</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-xs">
+                              <div className={`text-center p-2 rounded ${teamRegistration.team_leader.attendance?.marked ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Attendance</div>
+                                <div className="font-medium">{teamRegistration.team_leader.attendance?.marked ? 'Marked' : 'Pending'}</div>
+                              </div>
+                              <div className={`text-center p-2 rounded ${teamRegistration.team_leader.feedback?.submitted ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Feedback</div>
+                                <div className="font-medium">{teamRegistration.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}</div>
+                              </div>
+                              <div className={`text-center p-2 rounded ${teamRegistration.team_leader.certificate?.issued ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Certificate</div>
+                                <div className="font-medium">{teamRegistration.team_leader.certificate?.issued ? 'Issued' : 'Pending'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Team Members */}
+                        {teamRegistration.members && teamRegistration.members.map((member, index) => (
+                          <div key={member.id || index} className="bg-gray-50 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <div className="font-medium text-gray-900">{member.name}</div>
+                                <div className="text-sm text-gray-600">{member.enrollment_no}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {Math.round(((member.attendance?.marked ? 1 : 0) +
+                                    (member.feedback?.submitted ? 1 : 0) +
+                                    (member.certificate?.issued ? 1 : 0)) / 3 * 100)}% Complete
+                                </div>
+                                <div className="text-xs text-gray-500">Member</div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-xs">
+                              <div className={`text-center p-2 rounded ${member.attendance?.marked ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Attendance</div>
+                                <div className="font-medium">{member.attendance?.marked ? 'Marked' : 'Pending'}</div>
+                              </div>
+                              <div className={`text-center p-2 rounded ${member.feedback?.submitted ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Feedback</div>
+                                <div className="font-medium">{member.feedback?.submitted ? 'Submitted' : 'Pending'}</div>
+                              </div>
+                              <div className={`text-center p-2 rounded ${member.certificate?.issued ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div>Certificate</div>
+                                <div className="font-medium">{member.certificate?.issued ? 'Issued' : 'Pending'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Click outside to close dropdowns */}
+            {showExportDropdown && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowExportDropdown(false)}
+              ></div>
+            )}
           </div>
         </div>
       )}
-
-      {/* Click outside to close dropdowns */}
-      {showExportDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowExportDropdown(false)}
-        ></div>
-      )}
-    </ClientLayout>
+    </Layout>
   );
 };
+
 
 export default TeamManagement;
