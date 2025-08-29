@@ -14,6 +14,7 @@ COLLECTION: student_registrations (single source of truth)
 
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from database.operations import DatabaseOperations
 from models.registration import CreateRegistrationRequest, RegistrationResponse
 # REMOVED: core.id_generator import - now using frontend-generated IDs
@@ -223,9 +224,9 @@ class EventRegistrationService:
                         "enrollment_no": student_data["enrollment_no"],
                         "name": student_data.get("full_name", student_data.get("name", "")),
                         "email": student_data.get("email", ""),
-                        "phone": student_data.get("phone"),
+                        "phone": student_data.get("mobile_no"),
                         "department": student_data.get("department"),
-                        "year": student_data.get("year")
+                        "semester": student_data.get("semester")
                     },
                     "is_team_leader": enrollment_no == team_leader_enrollment,
                     "attendance": self._create_attendance_structure(
@@ -268,8 +269,8 @@ class EventRegistrationService:
                 },
                 "team_members": team_registration_details,
                 "additional_data": team_data.get("additional_data", {}),
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "created_at": datetime.now(ZoneInfo("Asia/Kolkata")),
+                "updated_at": datetime.now(ZoneInfo("Asia/Kolkata"))
             }
             
             # Insert single team registration document

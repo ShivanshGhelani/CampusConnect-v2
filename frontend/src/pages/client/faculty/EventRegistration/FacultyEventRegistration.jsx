@@ -111,25 +111,11 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       try {
         const response = await clientAPI.getEventDetails(eventId);
 
-        console.log('=== FACULTY API RESPONSE DEBUGGING ===');
-        console.log('Full API response:', response);
-        console.log('Response.data structure:', response.data);
 
         // Correctly access the event data from the API response
         const eventData = response.data.success ? response.data.event : response.data;
 
-        console.log('=== FACULTY EVENT DATA DEBUGGING ===');
-        console.log('Extracted eventData:', eventData);
-        console.log('Event name fields:', {
-          event_name: eventData?.event_name,
-          title: eventData?.title,
-          name: eventData?.name
-        });
-        console.log('Registration mode:', eventData?.registration_mode);
-        console.log('Team settings:', {
-          team_size_min: eventData?.team_size_min,
-          team_size_max: eventData?.team_size_max
-        });
+
 
         if (!eventData) {
           throw new Error('Event data not found in response');
@@ -141,12 +127,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';
 
-        console.log('=== FACULTY REGISTRATION TYPE DEBUGGING ===');
-        console.log('URL pathname:', location.pathname);
-        console.log('isTeamRoute (URL contains /register-team):', isTeamRoute);
-        console.log('forceTeamMode prop:', forceTeamMode);
-        console.log('eventData.registration_mode:', eventData.registration_mode);
-        console.log('Final shouldUseTeamMode:', shouldUseTeamMode);
+
 
         setIsTeamRegistration(shouldUseTeamMode);
         setTeamSizeMin(eventData.team_size_min || 2);
@@ -174,8 +155,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   // Separate useEffect for user data initialization (FIXES AUTO-FETCH ISSUE)
   useEffect(() => {
     if (user) {
-      console.log('=== FACULTY USER DATA INITIALIZATION ===');
-      console.log('User object received:', user);
+
 
       // Utility function to resolve contact number from various field names
       const resolveContactNumber = (userData) => {
@@ -194,7 +174,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         const sessionData = sessionStorage.getItem('complete_profile');
         if (sessionData) {
           sessionProfile = JSON.parse(sessionData);
-          console.log('✅ Found session storage profile data');
         }
       } catch (e) {
         console.warn('Could not parse session profile data');
@@ -202,12 +181,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
 
       const sourceData = sessionProfile || user;
       const contactNumber = resolveContactNumber(sourceData);
-
-      console.log('Contact number resolution:', {
-        fromSession: sessionProfile?.contact_no || sessionProfile?.phone_number,
-        fromUser: user?.contact_no || user?.phone_number,
-        resolved: contactNumber
-      });
 
       const newFormData = {
         ...formData,
@@ -219,7 +192,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         // REMOVED: designation field (not needed per user request)
       };
 
-      console.log('Setting faculty form data with resolved data:', newFormData);
       setFormData(newFormData);
     }
   }, [user, user?.contact_no, user?.phone_number, user?.full_name, user?.email]);

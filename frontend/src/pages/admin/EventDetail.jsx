@@ -96,7 +96,7 @@ function EventDetail() {
       if (exportDropdownSticky && exportDropdownOpen) {
         // Find the dropdown container by ID
         const dropdownContainer = document.getElementById('export-dropdown-container');
-        
+
         // If click is outside the dropdown container, close it
         if (dropdownContainer && !dropdownContainer.contains(event.target)) {
           setExportDropdownOpen(false);
@@ -255,7 +255,7 @@ function EventDetail() {
       }
 
       if (recentRegsResponse.data.success) {
-        // Handle different possible data structures
+        // Handle new unified API response structure for recent registrations
         let registrations = [];
         if (recentRegsResponse.data.registrations) {
           registrations = Array.isArray(recentRegsResponse.data.registrations)
@@ -265,7 +265,77 @@ function EventDetail() {
           registrations = recentRegsResponse.data.data;
         }
 
-        setRecentRegistrations(registrations);
+        // Transform registrations to match expected frontend structure
+        const transformedRecentRegistrations = registrations.map(reg => {
+          if (reg.registration_type === 'individual') {
+            if (reg.user_type === 'faculty') {
+              // Faculty individual registration
+              return {
+                full_name: reg.faculty_data?.full_name || reg.full_name,
+                name: reg.faculty_data?.full_name || reg.full_name,
+                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
+                email: reg.faculty_data?.email || reg.email,
+                department: reg.faculty_data?.department || reg.department,
+                designation: reg.faculty_data?.designation || reg.designation,
+                registration_date: reg.registration_date,
+                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
+                registration_type: 'individual',
+                user_type: 'faculty',
+
+              };
+            } else {
+              // Student individual registration
+              return {
+                full_name: reg.student_data?.full_name || reg.full_name,
+                name: reg.student_data?.full_name || reg.full_name,
+                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
+                email: reg.student_data?.email || reg.email,
+                department: reg.student_data?.department || reg.department,
+                semester: reg.student_data?.semester || reg.semester,
+                registration_date: reg.registration_date,
+                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
+                registration_type: 'individual',
+                user_type: 'student'
+              };
+            }
+          } else if (reg.registration_type === 'team') {
+            // For team registrations in recent list
+            // Use team_members directly from backend (already includes leader at index 0)
+            const teamMembers = [];
+            const isStudentTeam = reg.user_type !== 'faculty';
+
+            // Use team_members array directly (backend already has leader at index 0)
+            if (reg.team_members && Array.isArray(reg.team_members)) {
+              reg.team_members.forEach(member => {
+                teamMembers.push({
+                  full_name: member.full_name,
+                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
+                  employee_id: !isStudentTeam ? member.employee_id : null,
+                  email: member.email,
+                  department: member.department,
+                  semester: isStudentTeam ? member.semester : null,
+                  designation: !isStudentTeam ? member.designation : null
+                });
+              });
+            }
+
+            return {
+              team_name: reg.team_name,
+              name: teamMembers.length > 0 ? teamMembers[0].full_name : 'Team Leader',
+              registration_date: reg.registration_date,
+              member_count: teamMembers.length,
+              team_members: teamMembers,
+              registration_type: 'team',
+              user_type: reg.user_type || 'student',
+              team_count: reg.team_count || 0,
+              participant_count: reg.participant_count || 0
+            };
+          }
+
+          return reg; // fallback for unknown types
+        });
+
+        setRecentRegistrations(transformedRecentRegistrations);
       } else {
         setRecentRegistrations([]);
       }
@@ -285,24 +355,24 @@ function EventDetail() {
         throw new Error('Failed to load template');
       }
       const htmlContent = await response.text();
-      
+
       // Create a blob URL from the HTML content so it renders properly
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const blobUrl = URL.createObjectURL(blob);
-      
-      setCurrentCertificateTemplate({ 
-        url: blobUrl, 
-        type: templateType, 
-        originalUrl: templateUrl 
+
+      setCurrentCertificateTemplate({
+        url: blobUrl,
+        type: templateType,
+        originalUrl: templateUrl
       });
       setCertificateModalOpen(true);
     } catch (error) {
       console.error('Failed to load certificate template:', error);
       // Fallback to original URL if fetch fails
-      setCurrentCertificateTemplate({ 
-        url: templateUrl, 
-        type: templateType, 
-        originalUrl: templateUrl 
+      setCurrentCertificateTemplate({
+        url: templateUrl,
+        type: templateType,
+        originalUrl: templateUrl
       });
       setCertificateModalOpen(true);
     }
@@ -338,12 +408,87 @@ function EventDetail() {
       const response = await adminAPI.getEventRegistrations(eventId);
 
       if (response.data.success) {
+        // Handle new unified API response structure
         const registrations = response.data.registrations || [];
-        setAllRegistrations(registrations);
+
+        // Transform registrations to match expected frontend structure
+        const transformedRegistrations = registrations.map(reg => {
+          if (reg.registration_type === 'individual') {
+            if (reg.user_type === 'faculty') {
+              // Faculty individual registration
+              return {
+                full_name: reg.faculty_data?.full_name || reg.full_name,
+                name: reg.faculty_data?.full_name || reg.full_name,
+                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
+                email: reg.faculty_data?.email || reg.email,
+                department: reg.faculty_data?.department || reg.department,
+                designation: reg.faculty_data?.designation || reg.designation,
+                registration_date: reg.registration_date,
+                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
+                phone: reg.faculty_data?.mobile_no || reg.mobile_no,
+                registration_id: reg.registration_id,
+                registration_type: 'individual',
+                user_type: 'faculty'
+              };
+            } else {
+              // Student individual registration
+              return {
+                full_name: reg.student_data?.full_name || reg.full_name,
+                name: reg.student_data?.full_name || reg.full_name,
+                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
+                email: reg.student_data?.email || reg.email,
+                department: reg.student_data?.department || reg.department,
+                semester: reg.student_data?.semester || reg.semester,
+                registration_date: reg.registration_date,
+                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
+                phone: reg.student_data?.mobile_no || reg.mobile_no,
+                registration_id: reg.registration_id,
+                registration_type: 'individual',
+                user_type: 'student'
+              };
+            }
+          } else if (reg.registration_type === 'team') {
+            // For team registrations, use team_members directly from backend
+            // Backend already has leader at index 0 with is_team_leader: true
+            const teamMembers = [];
+            const isStudentTeam = reg.user_type !== 'faculty';
+
+            // Use team_members array directly (backend already has leader at index 0)
+            if (reg.team_members && Array.isArray(reg.team_members)) {
+              reg.team_members.forEach(member => {
+                teamMembers.push({
+                  full_name: member.full_name,
+                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
+                  employee_id: !isStudentTeam ? member.employee_id : null,
+                  email: member.email,
+                  department: member.department,
+                  semester: isStudentTeam ? member.semester : null,
+                  designation: !isStudentTeam ? member.designation : null,
+                  registration_type: member.is_team_leader ? 'team_leader' : 'team_member'
+                });
+              });
+            }
+
+            return {
+              team_name: reg.team_name,
+              registration_date: reg.registration_date,
+              registration_id: reg.registration_id,
+              member_count: teamMembers.length,
+              team_members: teamMembers,  // Use team_members consistently
+              registration_type: 'team',
+              user_type: reg.user_type || 'student'
+            };
+          }
+
+          return reg; // fallback
+        });
+
+        setAllRegistrations(transformedRegistrations);
       } else {
         setAllRegistrations([]);
       }
     } catch (error) {
+      console.error('Error fetching registrations:', error);
       setAllRegistrations([]);
     } finally {
       setModalLoading(false);
@@ -366,20 +511,8 @@ function EventDetail() {
           const hasVirtual = reg.virtual_attendance_id;
           const hasPhysical = reg.physical_attendance_id;
           const isPresent = reg.final_attendance_status === 'present';
-
-          console.log('Registration:', reg.student_data?.full_name, {
-            hasVirtual,
-            hasPhysical,
-            isPresent,
-            finalStatus: reg.final_attendance_status
-          });
-
           return isPresent || (hasVirtual && hasPhysical);
         });
-
-        console.log('Present students after filtering:', presentStudents); // Debug log
-        console.log('Number of present students:', presentStudents.length); // Debug log
-
         setAttendeesList(presentStudents);
       } else {
         console.error('API response not successful:', response.data);
@@ -483,7 +616,6 @@ function EventDetail() {
         newWindow.print();
       };
     } catch (error) {
-      console.error('Error generating HTML for print:', error);
       alert('Error generating PDF. Please try again.');
     }
   };
@@ -666,8 +798,8 @@ function EventDetail() {
               <div className="hidden lg:flex gap-3">
                 {canEdit && (
                   <ActionButton
-                    onClick={() => navigate(`/admin/events/${eventId}/edit`, { 
-                      state: { eventData: event } 
+                    onClick={() => navigate(`/admin/events/${eventId}/edit`, {
+                      state: { eventData: event }
                     })}
                     variant="secondary"
                     icon={Edit3}
@@ -675,7 +807,7 @@ function EventDetail() {
                     Edit Event
                   </ActionButton>
                 )}
-                <div 
+                <div
                   className="relative"
                   id="export-dropdown-container"
                   onMouseEnter={() => {
@@ -709,91 +841,86 @@ function EventDetail() {
                       {/* Invisible bridge to prevent hover gap issues */}
                       <div className="h-2 w-full"></div>
                       <div className="bg-white border border-gray-200 rounded-lg shadow-lg">
-                      <div className="py-1">
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            navigate(`/admin/events/${eventId}/export`);
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <Download className="w-4 h-4 mr-3" />
-                          Custom Export
-                        </div>
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            handleHTMLPrint();
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <FileDown className="w-4 h-4 mr-3" />
-                          Event Details
-                        </div>
-                        
-                        {/* Divider */}
-                        <div className="border-t border-gray-200 my-1"></div>
-                        
-                        {/* Additional Report Options */}
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            console.log('Budget Report clicked');
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <CreditCard className="w-4 h-4 mr-3" />
-                          Budget Report
-                        </div>
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            console.log('Sign Sheet clicked');
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <FileText className="w-4 h-4 mr-3" />
-                          Sign Sheet
-                        </div>
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            console.log('Attendance Report clicked');
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <UserCheck className="w-4 h-4 mr-3" />
-                          Attendance Report
-                        </div>
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            console.log('Feedback Report clicked');
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <Users className="w-4 h-4 mr-3" />
-                          Feedback Report
-                        </div>
-                        <div
-                          className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            console.log('Event Report clicked');
-                            setExportDropdownOpen(false);
-                            setExportDropdownSticky(false);
-                          }}
-                        >
-                          <FileText className="w-4 h-4 mr-3" />
-                          Event Report
+                        <div className="py-1">
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              navigate(`/admin/events/${eventId}/export`);
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-3" />
+                            Custom Export
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              handleHTMLPrint();
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <FileDown className="w-4 h-4 mr-3" />
+                            Event Details
+                          </div>
+
+                          {/* Divider */}
+                          <div className="border-t border-gray-200 my-1"></div>
+
+                          {/* Additional Report Options */}
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <CreditCard className="w-4 h-4 mr-3" />
+                            Budget Report
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <FileText className="w-4 h-4 mr-3" />
+                            Sign Sheet
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <UserCheck className="w-4 h-4 mr-3" />
+                            Attendance Report
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <Users className="w-4 h-4 mr-3" />
+                            Feedback Report
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setExportDropdownOpen(false);
+                              setExportDropdownSticky(false);
+                            }}
+                          >
+                            <FileText className="w-4 h-4 mr-3" />
+                            Event Report
+                          </div>
                         </div>
                       </div>
-                    </div>
                     </div>
                   )}
                 </div>
@@ -822,8 +949,8 @@ function EventDetail() {
                   {canEdit && (
                     <DropdownItem
                       onClick={() => {
-                        navigate(`/admin/events/${eventId}/edit`, { 
-                          state: { eventData: event } 
+                        navigate(`/admin/events/${eventId}/edit`, {
+                          state: { eventData: event }
                         });
                         setShowMoreActions(false);
                       }}
@@ -851,7 +978,7 @@ function EventDetail() {
           </div>
 
           {/* Statistics Cards */}
-          {eventStats && (
+          {eventStats && recentRegistrations && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="bg-white rounded-lg stats-card border-l-4 border-blue-500 p-6 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
@@ -863,11 +990,19 @@ function EventDetail() {
                     </div>
                     <div className="ml-4">
                       <p className="text-gray-500 text-sm font-medium">Total Registrations</p>
-                      <p className="text-2xl font-bold text-gray-800">{eventStats.registrations_count || 0}</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        {eventStats.is_team_based ?
+                          `Teams: ${recentRegistrations.length || 0}` :
+                          `Registrations: ${recentRegistrations.length || 0}`
+                        }
+                      </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {eventStats.is_team_based ?
-                          `Teams: ${eventStats.total_team_registrations || 0} • Participants: ${eventStats.total_participants || 0}` :
-                          `Individual Registrations: ${eventStats.total_individual_registrations || 0}`
+                          `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (recentRegistrations[0].user_type === 'student' ?
+                          `Students Registered`
+                          :
+                          `Participants Registered`
+                        )
                         }
                       </p>
                     </div>
@@ -1048,7 +1183,6 @@ function EventDetail() {
 
             {/* Registration List */}
             <div className="space-y-3">
-              {console.log('Rendering registrations, count:', recentRegistrations.length, 'data:', recentRegistrations)}
               {recentRegistrations && recentRegistrations.length > 0 ? (
                 eventStats?.is_team_based ? (
                   // Team Registrations - compact, clear cards
@@ -1059,8 +1193,16 @@ function EventDetail() {
                           <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                             <i className="fas fa-users text-gray-600"></i>
                             <span className="truncate max-w-[36rem]">{reg.team_name || 'Unnamed Team'}</span>
+                            {reg.user_type === 'faculty' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                Faculty Team
+                              </span>
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">Leader: <span className="font-medium text-gray-700">{reg.name || 'N/A'}</span> • {reg.member_count} members</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Leader: <span className="font-medium text-gray-700">{reg.name || 'N/A'}</span> • {reg.member_count} members
+                            {reg.user_type === 'faculty' ? ' (Faculty)' : ''}
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -1076,17 +1218,52 @@ function EventDetail() {
 
                       {expandedTeams.has(`recent-${index}`) && reg.team_members && (
                         <div className="border-t px-3 py-2 bg-gray-50">
-                          <div className="text-xs text-gray-600 mb-2">Team Members</div>
-                          <div className="space-y-2">
+                          <div className="text-xs text-gray-600 mb-3 font-medium">Team Members ({reg.member_count})</div>
+                          <div className="space-y-3">
                             {reg.team_members.map((member, memberIndex) => (
-                              <div key={memberIndex} className="flex items-center justify-between text-sm text-gray-700 py-2">
-                                <div className="min-w-0 pr-3">
-                                  <div className="font-medium truncate">{member.full_name}</div>
-                                  <div className="text-xs text-gray-500 truncate">{member.department} • {member.enrollment_no}</div>
-                                </div>
-                                <div className="text-right text-xs text-gray-500">
-                                  <div>{formatOrdinalNumber(member.semester)}</div>
-                                  <div className="truncate mt-1">{(member.email || '').trim()}</div>
+                              <div key={memberIndex} className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <div className="font-medium text-gray-900 truncate">{member.full_name}</div>
+                                      {memberIndex === 0 && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                          Team Leader
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="text-xs text-gray-600 flex items-center gap-3">
+                                        <span className="flex items-center gap-1">
+                                          <i className="fas fa-id-card text-gray-400"></i>
+                                          {reg.user_type === 'student' ? member.enrollment_no : member.employee_id}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                          <i className="fas fa-building text-gray-400"></i>
+                                          {member.department}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-gray-600 flex items-center gap-3">
+                                        <span className="flex items-center gap-1">
+                                          <i className="fas fa-envelope text-gray-400"></i>
+                                          {(member.email || '').trim()}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                          {reg.user_type === 'student' ? (
+                                            <>
+                                              <i className="fas fa-layer-group text-gray-400"></i>
+                                              {formatOrdinalNumber(member.semester)}
+                                            </>
+                                          ) : (
+                                            <>
+                                              <i className="fas fa-briefcase text-gray-400"></i>
+                                              {member.designation || 'Faculty'}
+                                            </>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -1098,23 +1275,50 @@ function EventDetail() {
                 ) : (
                   // Individual registrations - clean table-like list
                   <div className="border rounded-md bg-white overflow-hidden">
-                    <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-100 text-xs text-gray-700 font-medium">
-                      <div className="col-span-3">Name</div>
-                      <div className="col-span-2">Enrollment</div>
-                      <div className="col-span-3">Department</div>
-                      <div className="col-span-1 text-center">Sem</div>
-                      <div className="col-span-2">Email</div>
-                      <div className="col-span-1 text-right">Date</div>
+                    <div className="grid grid-cols-7 gap-2 px-3 py-2 bg-gray-100 text-xs text-gray-700 font-medium">
+                      <div className="col-span-1">Name</div>
+                      <div className="col-span-1">ID/Enrollment</div>
+                      <div className="col-span-1">Department</div>
+                      <div className="col-span-1">Sem/Type</div>
+                      <div className="col-span-2">Contact</div>
+                      <div className="col-span-1">Registrations Date</div>
                     </div>
                     <div>
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 px-3 py-3 items-center hover:bg-gray-50 text-sm text-gray-800 border-b last:border-0">
-                          <div className="col-span-3 truncate">{reg.full_name || reg.name || 'N/A'}</div>
-                          <div className="col-span-2 font-mono truncate">{reg.enrollment_no || 'N/A'}</div>
-                          <div className="col-span-3 truncate">{reg.department || 'N/A'}</div>
-                          <div className="col-span-1 text-center text-xs">{formatOrdinalNumber(reg.semester) || 'N/A'}</div>
-                          <div className="col-span-2 truncate">{(reg.email || 'N/A').trim()}</div>
-                          <div className="col-span-1 text-right text-xs text-gray-500">{formatCompactDateTime(reg.registration_date) || 'N/A'}</div>
+                        <div key={index} className="grid grid-cols-7 gap-2 px-3 py-3 items-center hover:bg-gray-50 text-sm text-gray-800 border-b last:border-0">
+                          <div className="col-span-1 truncate flex items-center gap-2">
+                            {reg.full_name || reg.name || 'N/A'}
+
+                          </div>
+                          <div className="col-span-1 font-mono truncate">
+                            {reg.user_type === 'faculty' ? (reg.employee_id || 'N/A') : (reg.enrollment_no || 'N/A')}
+                          </div>
+                          <div className="col-span-1">{reg.department || 'N/A'}</div>
+                          <div className="col-span-1 text-xs">
+                            {reg.user_type === 'faculty'
+                              ? (reg.designation || 'Faculty')
+                              : formatOrdinalNumber(reg.semester) || 'N/A'
+                            }
+                          </div>
+                          <div className="col-span-2 truncate flex flex-col gap-2">
+                            <span className='flex flex-row gap-2.5'>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                              </svg>
+
+                              {(reg.email || 'N/A').trim()}
+                            </span>
+                            <span className='flex flex-row gap-2.5'>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                              </svg>
+
+                              {
+                                (reg.mobile_no) || (reg.contact_no)
+                              }
+                            </span>
+                          </div>
+                          <div className="col-span-1 text-xs text-gray-500">{formatCompactDateTime(reg.registration_date) || 'N/A'}</div>
                         </div>
                       ))}
                     </div>
@@ -1258,7 +1462,7 @@ function EventDetail() {
                     )}
                   </div>
                 </InfoCard>
-                
+
                 {/* Contacts */}
                 <InfoCard icon={Phone} title="Contact Information">
                   <div className="space-y-3">
@@ -1325,7 +1529,7 @@ function EventDetail() {
                     <InfoRow label="Mode" value={event.mode?.charAt(0).toUpperCase() + event.mode?.slice(1)} />
                     <InfoRow label="Venue" className='text-wrap' value={event.venue} />
                   </div>
-                </InfoCard> 
+                </InfoCard>
 
                 {/* Student Eligibility Criteria - For student events only */}
                 {event.target_audience === 'student' && (event.student_department?.length > 0 || event.student_semester?.length > 0) && (
@@ -1823,53 +2027,92 @@ function EventDetail() {
                       </div>
                     ) : filteredRegistrations.length > 0 ? (
                       eventStats?.is_team_based ? (
-                        // Team Registrations in Modal
-                        <div className="space-y-4">
+                        // Team Registrations in Modal - Compact design like Latest Registrations
+                        <div className="space-y-3">
                           {filteredRegistrations.map((team, index) => (
-                            <div key={index} className="bg-white border border-blue-200 rounded-lg shadow-sm overflow-hidden">
-                              <div className="grid grid-cols-5 gap-4 p-4 bg-blue-50 border-b border-blue-100">
-                                <div className="col-span-1">
-                                  <div className="font-medium text-blue-900 flex items-center gap-2">
-                                    <i className="fas fa-users text-blue-500"></i>{team.team_name}
+                            <div key={index} className="border rounded-md bg-white shadow-sm">
+                              <div className="flex items-center justify-between p-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                    <i className="fas fa-users text-gray-600"></i>
+                                    <span className="truncate max-w-[24rem]">{team.team_name || 'Unnamed Team'}</span>
+                                    {team.user_type === 'faculty' && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        Faculty Team
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="text-sm text-blue-700">{team.member_count} members</div>
-                                </div>
-                                <div className="col-span-2">
-                                  <div className="font-medium text-gray-900">
-                                    {team.members?.find(m => m.registration_type === 'team_leader')?.full_name || 'N/A'}
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Leader: <span className="font-medium text-gray-700">{team.team_members?.[0]?.full_name || team.name || 'N/A'}</span> • {team.member_count} members
+                                    {team.user_type === 'faculty' ? ' (Faculty)' : ''}
                                   </div>
-                                  <div className="text-sm text-gray-600">Team Leader</div>
                                 </div>
-                                <div className="col-span-1 text-gray-700">
-                                  {formatDateTime(team.registration_date)}
-                                </div>
-                                <div className="col-span-1 text-right">
+
+                                <div className="flex items-center gap-3">
+                                  <div className="text-xs text-gray-500">{formatCompactDateTime(team.registration_date)}</div>
                                   <button
                                     onClick={() => toggleTeamExpansion(`modal-${index}`)}
-                                    className="px-3 py-1 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                    className="text-sm text-blue-600 hover:bg-blue-50 px-2 py-1 rounded"
                                   >
                                     <i className={`fas ${expandedTeams.has(`modal-${index}`) ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
-                                    <span className="ml-1">{expandedTeams.has(`modal-${index}`) ? 'Hide' : 'Show'} Details</span>
                                   </button>
                                 </div>
                               </div>
 
-                              {expandedTeams.has(`modal-${index}`) && team.members && (
-                                <div className="p-4 bg-gray-50">
-                                  <div className="text-sm font-medium text-gray-700 mb-3">Team Members:</div>
-                                  <div className="space-y-3">
-                                    {team.members.map((member, memberIndex) => (
-                                      <div key={memberIndex} className="grid grid-cols-6 gap-3 border-b border-gray-100 pb-2 last:border-0">
-                                        <div className="col-span-2 font-medium text-gray-900">
-                                          {member.full_name}
-                                          {member.registration_type === 'team_leader' && (
-                                            <span className="ml-1 text-xs bg-blue-100 text-blue-800 py-0.5 px-1.5 rounded-full">Leader</span>
-                                          )}
+                              {expandedTeams.has(`modal-${index}`) && team.team_members && (
+                                <div className="border-t px-3 py-2 bg-gray-50">
+                                  <div className="text-xs text-gray-600 mb-3 font-medium">Team Members ({team.member_count})</div>
+                                  <div className="space-y-2">
+                                    {team.team_members.map((member, memberIndex) => (
+                                      <div key={memberIndex} className="bg-white rounded-lg p-3 border border-gray-200">
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <div className="font-medium text-gray-900 truncate">{member.full_name}</div>
+                                              {memberIndex === 0 && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                  Team Leader
+                                                </span>
+                                              )}
+                                              {team.user_type === 'faculty' && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                                  Faculty
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="space-y-1">
+                                              <div className="text-xs text-gray-600 flex items-center gap-3">
+                                                <span className="flex items-center gap-1">
+                                                  <i className="fas fa-id-card text-gray-400"></i>
+                                                  {team.user_type === 'faculty' ? member.employee_id : member.enrollment_no}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                  <i className="fas fa-building text-gray-400"></i>
+                                                  {member.department}
+                                                </span>
+                                              </div>
+                                              <div className="text-xs text-gray-600 flex items-center gap-3">
+                                                <span className="flex items-center gap-1">
+                                                  <i className="fas fa-envelope text-gray-400"></i>
+                                                  {(member.email || '').trim()}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                  {team.user_type === 'faculty' ? (
+                                                    <>
+                                                      <i className="fas fa-briefcase text-gray-400"></i>
+                                                      {member.designation || 'Faculty'}
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <i className="fas fa-layer-group text-gray-400"></i>
+                                                      {formatOrdinalNumber(member.semester)}
+                                                    </>
+                                                  )}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
-                                        <div className="col-span-1 text-gray-700">{member.enrollment_no}</div>
-                                        <div className="col-span-1 text-gray-700">{member.department}</div>
-                                        <div className="col-span-1 text-gray-700">{formatOrdinalNumber(member.semester)}</div>
-                                        <div className="col-span-1 text-gray-700 truncate" title={member.email}>{member.email}</div>
                                       </div>
                                     ))}
                                   </div>
@@ -1884,14 +2127,14 @@ function EventDetail() {
                           <table className="w-full table-fixed border-collapse">
                             <thead className="bg-gray-50">
                               <tr>
-                                <th className="w-[20%] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                <th className="w-[15%] px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
                                   <div className="flex items-center gap-2">
                                     <i className="fas fa-user text-xs"></i>Name
                                   </div>
                                 </th>
-                                <th className="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                <th className="w-[12%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
                                   <div className="flex items-center gap-2">
-                                    <i className="fas fa-id-card text-xs"></i>Enrollment
+                                    <i className="fas fa-id-card text-xs"></i>ID
                                   </div>
                                 </th>
                                 <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
@@ -1899,18 +2142,18 @@ function EventDetail() {
                                     <i className="fas fa-building text-xs"></i>Department
                                   </div>
                                 </th>
-                                <th className="w-[15%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                                  <div className="flex items-center  gap-1">
-                                    <i className="fas fa-layer-group text-xs"></i>Semester
+                                <th className="w-[14%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                  <div className="flex items-center gap-1">
+                                    <i className="fas fa-layer-group text-xs"></i>Info
                                   </div>
                                 </th>
-                                <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                                <th className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
                                   <div className="flex items-center gap-2">
-                                    <i className="fas fa-envelope text-xs"></i>Email
+                                    <i className="fas fa-envelope text-xs"></i>Contact
                                   </div>
                                 </th>
-                                <th className="w-[18%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  <div className="flex items-center  gap-1">
+                                <th className="w-[15%] px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <div className="flex items-center gap-1">
                                     <i className="fas fa-calendar text-xs"></i>Date
                                   </div>
                                 </th>
@@ -1919,14 +2162,15 @@ function EventDetail() {
                             <tbody className="bg-white divide-y divide-gray-200">
                               {filteredRegistrations.map((reg, index) => (
                                 <tr key={index} className="hover:bg-gray-50">
-                                  <td className="w-[20%] px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-100">
+                                  <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal" title={reg.full_name || reg.name}>
                                       {reg.full_name || reg.name}
+
                                     </div>
                                   </td>
                                   <td className="w-[15%] px-3 py-3 text-sm text-gray-700 font-mono border-r border-gray-100">
-                                    <div className="break-words leading-tight whitespace-normal" title={reg.enrollment_no}>
-                                      {reg.enrollment_no}
+                                    <div className="break-words leading-tight whitespace-normal" title={reg.user_type === 'faculty' ? reg.employee_id : reg.enrollment_no}>
+                                      {reg.user_type === 'faculty' ? reg.employee_id : reg.enrollment_no}
                                     </div>
                                   </td>
                                   <td className="w-[18%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
@@ -1934,14 +2178,18 @@ function EventDetail() {
                                       {reg.department}
                                     </div>
                                   </td>
-                                  <td className="w-[8%] px-2 py-3 text-xs text-gray-700  font-medium border-r border-gray-100">
+                                  <td className="w-[8%] px-2 py-3 text-xs text-gray-700 font-medium border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal">
-                                      {formatOrdinalNumber(reg.semester)}
+                                      {reg.user_type === 'faculty' ? reg.designation : formatOrdinalNumber(reg.semester)}
                                     </div>
                                   </td>
                                   <td className="w-[28%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
-                                    <div className="break-words leading-tight whitespace-normal" title={reg.email}>
+                                    <div className="break-words leading-tight whitespace-normal flex flex-col gap-2" title={reg.email}>
                                       {(reg.email || '').trim()}
+                                      <span className="text-xs text-gray-500 font-mono" title={reg.mobile_no}>
+                                        {reg.mobile_no}
+                                      </span>
+
                                     </div>
                                   </td>
                                   <td className="w-[11%] px-2 py-3 text-xs text-gray-700">
@@ -2329,7 +2577,7 @@ function EventDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-                
+
                 {/* Poster Image */}
                 <img
                   src={event?.event_poster_url}
@@ -2365,7 +2613,7 @@ function EventDetail() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              
+
               {/* Floating Actions */}
               <div className="fixed top-4 left-4 z-[100000] flex gap-2">
                 <a
@@ -2383,7 +2631,7 @@ function EventDetail() {
                   {currentCertificateTemplate.type}
                 </div>
               </div>
-                
+
               {/* Full Screen Template Content */}
               <iframe
                 src={currentCertificateTemplate.url}
