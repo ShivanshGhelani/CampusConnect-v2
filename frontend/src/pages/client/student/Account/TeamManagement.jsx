@@ -745,24 +745,25 @@ const TeamManagement = () => {
           const tasksMap = {};
           const allTasks = tasksResponse.data.tasks || [];
           
+          console.log('TeamManagement: Loaded tasks from API:', allTasks);
+          
           allTasks.forEach(task => {
+            console.log('TeamManagement: Processing task:', task.task_id, task);
+            
             task.assigned_to.forEach(enrollment => {
               if (!tasksMap[enrollment]) {
                 tasksMap[enrollment] = [];
               }
               tasksMap[enrollment].push({
-                id: task.task_id,
-                title: task.title,
-                description: task.description,
-                priority: task.priority,
-                category: task.category,
-                deadline: task.deadline,
-                status: task.status || 'pending',
-                created_at: task.created_at
+                ...task, // Keep all original task fields
+                id: task.task_id, // Keep backward compatibility
+                status: task.status || 'pending' // Ensure status exists
               });
             });
           });
           setMemberTasks(tasksMap);
+          
+          console.log('TeamManagement: Final tasks map:', tasksMap);
         } else {
           // Use data from teamRegistration as fallback
           if (teamRegistration.tasks) {
@@ -865,10 +866,19 @@ const TeamManagement = () => {
   const submitTaskReview = async () => {
     if (!reviewingTask) return;
 
+    console.log('TeamManagement: Reviewing task object:', reviewingTask);
+    const taskId = reviewingTask.task_id || reviewingTask.id;
+    console.log('TeamManagement: Task ID for review:', taskId);
+
+    if (!taskId) {
+      showNotification('Error: Task ID is missing. Cannot submit review.', 'error');
+      return;
+    }
+
     setReviewLoading(true);
     
     try {
-      const response = await clientAPI.reviewTask(eventId, reviewingTask.task_id, {
+      const response = await clientAPI.reviewTask(eventId, taskId, {
         review_status: reviewStatus,
         review_notes: reviewNotes
       });
@@ -890,10 +900,17 @@ const TeamManagement = () => {
 
   // Quick approve function for direct approval
   const quickApproveTask = async (task, status = 'approved', notes = 'Quick approval') => {
+    const taskId = task.task_id || task.id;
+    
+    if (!taskId) {
+      showNotification('Error: Task ID is missing. Cannot review task.', 'error');
+      return;
+    }
+
     setReviewLoading(true);
     
     try {
-      const response = await clientAPI.reviewTask(eventId, task.task_id, {
+      const response = await clientAPI.reviewTask(eventId, taskId, {
         review_status: status,
         review_notes: notes
       });
@@ -3149,6 +3166,12 @@ const TeamManagement = () => {
                 <div>
                   <h3 className="text-xl font-bold">Review Task Submission</h3>
                   <p className="text-purple-100 mt-1">{reviewingTask.title}</p>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-purple-200">
+                    <span>Status: {reviewingTask.status}</span>
+                    {reviewingTask.submitted_at && (
+                      <span>Submitted: {new Date(reviewingTask.submitted_at).toLocaleDateString()}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={closeTaskReviewModal}
@@ -3171,88 +3194,128 @@ const TeamManagement = () => {
                 <p className="text-gray-700"><strong>Assigned To:</strong> {reviewingTask.assigned_to?.join(', ')}</p>
               </div>
               
-              {/* Submission Details */}
-              {reviewingTask.submission_link && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-blue-800 mb-2">Submitted Work:</h4>
-                  <a
-                    href={reviewingTask.submission_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2 mb-2"
-                  >
-                    <i className="fas fa-external-link-alt"></i>
-                    {reviewingTask.submission_link}
-                  </a>
-                  {reviewingTask.submission_notes && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-blue-700">Submission Notes:</p>
-                      <p className="text-sm text-blue-600">{reviewingTask.submission_notes}</p>
+              {/* Submission Details - Enhanced Display */}
+              {reviewingTask.status === 'submitted' && (
+                <div className="mb-6">
+                  {reviewingTask.submission_link ? (
+                    <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fas fa-check-circle text-green-600"></i>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-green-800 mb-2">📎 Submitted Work</h4>
+                          <div className="space-y-2">
+                            <a
+                              href={reviewingTask.submission_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-colors"
+                            >
+                              <i className="fas fa-external-link-alt"></i>
+                              <span className="font-medium">View Submission</span>
+                            </a>
+                            <p className="text-sm text-green-600 break-all">{reviewingTask.submission_link}</p>
+                          </div>
+                          
+                          {reviewingTask.submission_notes && (
+                            <div className="mt-3 p-3 bg-white rounded-lg border border-green-200">
+                              <p className="text-sm font-medium text-green-700 mb-1">📝 Submission Notes:</p>
+                              <p className="text-sm text-green-600">{reviewingTask.submission_notes}</p>
+                            </div>
+                          )}
+                          
+                          <div className="mt-2 flex items-center gap-4 text-xs text-green-500">
+                            {reviewingTask.submitted_by && (
+                              <span>👤 Submitted by: {reviewingTask.submitted_by}</span>
+                            )}
+                            {reviewingTask.submitted_at && (
+                              <span>🕒 {new Date(reviewingTask.submitted_at).toLocaleString()}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  {reviewingTask.submitted_at && (
-                    <p className="text-xs text-blue-500 mt-2">
-                      Submitted: {new Date(reviewingTask.submitted_at).toLocaleString()}
-                    </p>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+                      <div className="flex items-center gap-3">
+                        <i className="fas fa-exclamation-triangle text-yellow-600"></i>
+                        <div>
+                          <h4 className="font-semibold text-yellow-800">⚠️ No Submission Link Found</h4>
+                          <p className="text-sm text-yellow-600">This task is marked as submitted but no submission link was provided.</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
               
-              {/* Review Form */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Review Decision <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={reviewStatus}
-                    onChange={(e) => setReviewStatus(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="approved">✅ Approved - Task Complete</option>
-                    <option value="needs_revision">🔄 Needs Revision</option>
-                    <option value="rejected">❌ Rejected - Start Over</option>
-                  </select>
-                </div>
+              {/* Review Form - Only show for submitted tasks */}
+              {reviewingTask.status === 'submitted' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Review Decision <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={reviewStatus}
+                      onChange={(e) => setReviewStatus(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="approved">✅ Approved - Task Complete</option>
+                      <option value="needs_revision">🔄 Needs Revision</option>
+                      <option value="rejected">❌ Rejected - Start Over</option>
+                    </select>
+                  </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Review Notes
-                  </label>
-                  <textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Provide feedback on the submitted work..."
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Review Notes
+                    </label>
+                    <textarea
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      placeholder="Provide feedback on the submitted work..."
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-600 text-center">
+                    This task has not been submitted yet and cannot be reviewed.
+                  </p>
+                </div>
+              )}
               
+              {/* Action Buttons */}
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={closeTaskReviewModal}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                 >
-                  Cancel
+                  {reviewingTask.status === 'submitted' ? 'Cancel' : 'Close'}
                 </button>
-                <button
-                  onClick={submitTaskReview}
-                  disabled={reviewLoading}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                >
-                  {reviewLoading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      Reviewing...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-check"></i>
-                      Submit Review
-                    </>
-                  )}
-                </button>
+                {reviewingTask.status === 'submitted' && (
+                  <button
+                    onClick={submitTaskReview}
+                    disabled={reviewLoading}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    {reviewLoading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        Reviewing...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-check"></i>
+                        Submit Review
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
