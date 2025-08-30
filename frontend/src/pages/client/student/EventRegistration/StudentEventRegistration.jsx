@@ -412,9 +412,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       
       // Only proceed with API validation if no duplicate
       if (!duplicateError) {
-        setTimeout(() => {
-          validateParticipantEnrollment(participantId, value.trim());
-        }, 500);
+        debouncedValidateParticipantEnrollment(participantId, value.trim());
       }
     } else {
       // For non-enrollment fields, just update normally
@@ -641,6 +639,33 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       }));
     }
   };
+
+  // Debouncing refs for validation
+  const validationTimeouts = useRef({});
+
+  // Debounced validation function to prevent excessive API calls
+  const debouncedValidateParticipantEnrollment = useCallback((participantId, enrollmentNo, delay = 2000) => {
+    // Clear existing timeout for this participant
+    if (validationTimeouts.current[participantId]) {
+      clearTimeout(validationTimeouts.current[participantId]);
+    }
+
+    // Set new timeout
+    validationTimeouts.current[participantId] = setTimeout(() => {
+      validateParticipantEnrollment(participantId, enrollmentNo);
+      // Clean up the timeout reference
+      delete validationTimeouts.current[participantId];
+    }, delay);
+  }, []);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(validationTimeouts.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
 
   // Add participant
   const addParticipant = () => {
@@ -1080,7 +1105,6 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                             <span className="ml-2 text-sm font-normal text-gray-600">
                               {participant.isValidating && <span className="text-blue-600">(Validating...)</span>}
                               {participant.isValid && !participant.validationError && <span className="text-green-600">(✓ Valid)</span>}
-
                             </span>
                           </h3>
                           
@@ -1098,6 +1122,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                                 }}
                                 onBlur={(e) => {
                                   if (e.target.value.trim()) {
+                                    // Cancel any pending debounced validation
+                                    if (validationTimeouts.current[participant.id]) {
+                                      clearTimeout(validationTimeouts.current[participant.id]);
+                                      delete validationTimeouts.current[participant.id];
+                                    }
+                                    // Immediately validate on blur
                                     validateParticipantEnrollment(participant.id, e.target.value.trim());
                                   }
                                 }}

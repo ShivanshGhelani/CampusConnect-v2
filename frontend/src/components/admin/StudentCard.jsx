@@ -115,8 +115,8 @@ function StudentCard({ student, isOpen, onClose }) {
               </div>
             </div>
 
-              {/* Contact Information & Details Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <svg className="w-5 h-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -130,7 +130,9 @@ function StudentCard({ student, isOpen, onClose }) {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500">Email Address</p>
-                        <p className="text-sm font-semibold text-gray-900 break-all">{studentDetails.email || 'N/A'}</p>
+                        <button  
+                        onClick={() => window.open(`mailto:${studentDetails.email}`)}
+                        className="cursor-pointer text-sm font-semibold text-gray-900 break-all">{studentDetails.email || 'N/A'}</button>
                       </div>
                     </div>
                     {/* Phone */}
@@ -166,19 +168,38 @@ function StudentCard({ student, isOpen, onClose }) {
                   </div>
                 </div>
 
-                {/* Quick Actions */}
+                {/* Statistics */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <svg className="w-5 h-5 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    Quick Actions
+                    <i className="fas fa-chart-bar mr-2 text-green-600"></i>
+                    Participation Statistics
                   </h4>
-                  <div className="space-y-3">
-                    <button 
-                    onClick={() => window.location.href = `mailto:${studentDetails.email}`}
-                    className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                      Send Email
-                    </button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {studentDetails.statistics?.total_registrations || 
+                         (studentDetails.event_participations ? Object.keys(studentDetails.event_participations).length : 0)}
+                      </div>
+                      <div className="text-sm text-gray-500">Events Registered</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {studentDetails.statistics?.total_attendances || 0}
+                      </div>
+                      <div className="text-sm text-gray-500">Events Attended</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {studentDetails.statistics?.total_certificates || 0}
+                      </div>
+                      <div className="text-sm text-gray-500">Certificates Earned</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {studentDetails.statistics?.total_feedbacks || 0}
+                      </div>
+                      <div className="text-sm text-gray-500">Feedbacks Given</div>
+                    </div>
                   </div>
                 </div>
               </div>
