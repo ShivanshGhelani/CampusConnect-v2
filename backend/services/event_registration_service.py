@@ -13,7 +13,7 @@ COLLECTION: student_registrations (single source of truth)
 """
 
 from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from database.operations import DatabaseOperations
 from models.registration import CreateRegistrationRequest, RegistrationResponse
@@ -32,6 +32,7 @@ class EventRegistrationService:
         self.collection = "student_registrations"
         self.events_collection = "events"
         self.students_collection = "students"
+        self.invitations_collection = "team_invitations"
     
     async def register_individual(
         self, 
@@ -123,10 +124,8 @@ class EventRegistrationService:
                             "registration_stats.individual_count": 1,
                             "registration_stats.total_participants": 1
                         },
-                        "$addToSet": {
-                            "registered_students": enrollment_no
-                        },
                         "$set": {
+                            f"registered_students.{registration_id}": enrollment_no,
                             "registration_stats.last_updated": datetime.utcnow()
                         }
                     }
@@ -177,24 +176,56 @@ class EventRegistrationService:
             
             logger.info(f"Team registration: {team_name} -> {event_id} ({len(team_members)} members)")
             
-            # Validate team members
+            # Validate team composition
             if not team_members or team_leader_enrollment not in team_members:
                 return RegistrationResponse(
                     success=False,
-                    message="Invalid team composition"
+                    message="Invalid team composition: team leader must be included in team members"
                 )
             
-            # Check if any member is already registered
+            # Get event data first to check multiple team registration policy
+            _, event_data = await self._get_student_and_event_data(team_leader_enrollment, event_id)
+            if not event_data:
+                return RegistrationResponse(success=False, message="Event not found")
+            
+            # Check if multiple team registrations are allowed
+            allow_multiple_teams = event_data.get("allow_multiple_team_registrations", False)
+            
+            # Track which members are already registered vs new members
+            already_registered_members = []
+            new_members = []
+            
+            # Check registration status for each member
             for enrollment_no in team_members:
                 existing = await self._check_existing_registration(enrollment_no, event_id)
                 if existing:
-                    return RegistrationResponse(
-                        success=False,
-                        message=f"Student {enrollment_no} already registered for this event"
-                    )
+                    # Check if this student can join multiple teams
+                    reg_type = "individual"
+                    if existing.get("registration_type") == "team" or existing.get("registration", {}).get("type") == "team":
+                        if existing.get("team", {}).get("team_leader") == enrollment_no:
+                            reg_type = "team leader"
+                        else:
+                            reg_type = "team member"
+                    
+                    # Block registration based on multiple team policy
+                    if reg_type == "individual" or reg_type == "team leader":
+                        return RegistrationResponse(
+                            success=False,
+                            message=f"Student {enrollment_no} already registered as {reg_type} and cannot join multiple teams"
+                        )
+                    elif reg_type == "team member" and not allow_multiple_teams:
+                        return RegistrationResponse(
+                            success=False,
+                            message=f"Student {enrollment_no} already registered as team member. Multiple team registrations not allowed for this event."
+                        )
+                    else:
+                        # Team member + multiple teams allowed
+                        already_registered_members.append(enrollment_no)
+                        logger.info(f"Student {enrollment_no} already registered but can join multiple teams")
+                else:
+                    new_members.append(enrollment_no)
             
-            # Get event data
-            _, event_data = await self._get_student_and_event_data(team_leader_enrollment, event_id)
+            logger.info(f"Team composition: {len(new_members)} new members, {len(already_registered_members)} already registered members")
             if not event_data:
                 return RegistrationResponse(success=False, message="Event not found")
             
@@ -278,45 +309,56 @@ class EventRegistrationService:
             
             logger.info(f"Team registration successful: {team_name} ({len(team_registration_details)} members)")
             
-            # Update all team members' student documents
+            # Update all team members' student documents - only for new members
             for member_detail in team_registration_details:
                 enrollment = member_detail["student"]["enrollment_no"]
-                await DatabaseOperations.update_one(
-                    "students",
-                    {"enrollment_no": enrollment},
-                    {
-                        "$addToSet": {
-                            "event_participations": {
-                                "event_id": event_id,
-                                "event_name": event_data["event_name"],
-                                "registration_id": member_detail["registration_id"],
-                                "team_registration_id": team_registration_id,
-                                "registration_type": "team",
-                                "team_name": team_name,
-                                "is_team_leader": member_detail["is_team_leader"],
-                                "registration_date": datetime.utcnow(),
-                                "status": "registered"
+                # Only update if this is a new registration for this student-event pair
+                if enrollment in new_members:
+                    await DatabaseOperations.update_one(
+                        "students",
+                        {"enrollment_no": enrollment},
+                        {
+                            "$addToSet": {
+                                "event_participations": {
+                                    "event_id": event_id,
+                                    "event_name": event_data["event_name"],
+                                    "registration_id": member_detail["registration_id"],
+                                    "team_registration_id": team_registration_id,
+                                    "registration_type": "team",
+                                    "team_name": team_name,
+                                    "is_team_leader": member_detail["is_team_leader"],
+                                    "registration_date": datetime.utcnow(),
+                                    "status": "registered"
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                else:
+                    logger.info(f"Skipped updating student document for {enrollment} - already registered for this event")
             
-            # Update event document - increment team registration stats
+            # Update event document with new storage format for registered_students
+            # Create the registration mapping {registration_id: enrollment_no}
+            new_registrations = {}
+            for member_detail in team_registration_details:
+                if member_detail["student"]["enrollment_no"] in new_members:
+                    new_registrations[member_detail["registration_id"]] = member_detail["student"]["enrollment_no"]
+            
+            # Update event document - increment team registration stats and add new registrations
+            update_query = {
+                "$inc": {
+                    "registration_stats.team_count": 1,
+                    "registration_stats.total_participants": len(new_members)  # Only count new members
+                },
+                "$set": {
+                    "registration_stats.last_updated": datetime.utcnow(),
+                    **{f"registered_students.{reg_id}": enrollment for reg_id, enrollment in new_registrations.items()}
+                }
+            }
+            
             await DatabaseOperations.update_one(
                 "events",
                 {"event_id": event_id},
-                {
-                    "$inc": {
-                        "registration_stats.team_count": 1,
-                        "registration_stats.total_participants": len(team_members)
-                    },
-                    "$addToSet": {
-                        "registered_students": {"$each": team_members}
-                    },
-                    "$set": {
-                        "registration_stats.last_updated": datetime.utcnow()
-                    }
-                }
+                update_query
             )
             
             logger.info(f"Updated student and event documents for team registration: {team_name}")
@@ -339,68 +381,424 @@ class EventRegistrationService:
                 success=False,
                 message=f"Team registration failed: {str(e)}"
             )
+    
+    async def add_team_member(
+        self,
+        event_id: str,
+        team_registration_id: str,
+        new_member_enrollment: str,
+        requester_enrollment: str
+    ) -> Dict[str, Any]:
+        """Add a new member to an existing team registration."""
+        try:
+            logger.info(f"Adding team member: {new_member_enrollment} to team {team_registration_id}")
             
-            logger.info(f"Team registration successful: {team_name} ({len(team_registration_ids)} members)")
+            # Get team registration
+            team_reg = await DatabaseOperations.find_one(
+                self.collection,
+                {"registration_id": team_registration_id, "registration_type": "team"}
+            )
             
-            # Update all team members' student documents
-            all_team_enrollments = team_members  # team_members already includes the leader
+            if not team_reg:
+                return {"success": False, "message": "Team registration not found"}
             
-            for enrollment in all_team_enrollments:
-                await DatabaseOperations.update_one(
-                    "students",
-                    {"enrollment_no": enrollment},
-                    {
-                        "$addToSet": {
-                            "event_participations": {
-                                "event_id": event_id,
-                                "event_name": event_data["event_name"],
-                                "registration_id": f"TEAM_{team_name}_{event_id}",
-                                "registration_type": "team",
-                                "team_name": team_name,
-                                "registration_date": datetime.utcnow(),
-                                "status": "registered"
-                            }
+            # Check if requester is team leader
+            if team_reg["team"]["team_leader"] != requester_enrollment:
+                return {"success": False, "message": "Only team leader can add members"}
+            
+            # Check if new member already in team
+            existing_member = any(
+                member["student"]["enrollment_no"] == new_member_enrollment 
+                for member in team_reg["team_members"]
+            )
+            if existing_member:
+                return {"success": False, "message": "Student already in team"}
+            
+            # Check if student exists and get data
+            student_data = await DatabaseOperations.find_one(
+                self.students_collection,
+                {"enrollment_no": new_member_enrollment}
+            )
+            
+            if not student_data:
+                return {"success": False, "message": "Student not found"}
+            
+            # Check if student already registered for this event
+            existing_reg = await self._check_existing_registration(new_member_enrollment, event_id)
+            if existing_reg:
+                # Get event data to check if multiple team registrations are allowed
+                event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+                allow_multiple = event_data.get("allow_multiple_team_registrations", False)
+                
+                if not allow_multiple:
+                    return {"success": False, "message": "Student already registered for this event"}
+                
+                # If multiple teams allowed, check if student is a team leader
+                if existing_reg.get("registration_type") == "team":
+                    # Check if student is team leader in existing registration
+                    if existing_reg["team"]["team_leader"] == new_member_enrollment:
+                        return {"success": False, "message": "Team leader cannot join multiple teams"}
+                    # Student is just a team member, allow adding to another team if multiple allowed
+                else:
+                    # Individual registration exists
+                    return {"success": False, "message": "Student has individual registration for this event"}
+            
+            # Get event data for attendance strategy
+            event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            attendance_strategy = await self._get_event_attendance_strategy(event_data)
+            
+            # Generate registration ID for new member
+            import random
+            import string
+            member_reg_id = "REG" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            # Create new member document
+            new_member = {
+                "registration_id": member_reg_id,
+                "student": {
+                    "enrollment_no": student_data["enrollment_no"],
+                    "name": student_data.get("full_name", student_data.get("name", "")),
+                    "email": student_data.get("email", ""),
+                    "phone": student_data.get("mobile_no", student_data.get("phone", "")),
+                    "department": student_data.get("department", ""),
+                    "semester": student_data.get("semester", "")
+                },
+                "is_team_leader": False,
+                "attendance": self._create_attendance_structure(attendance_strategy, event_data),
+                "feedback": {
+                    "submitted": False,
+                    "rating": None,
+                    "comments": None,
+                    "submitted_at": None
+                },
+                "certificate": {
+                    "eligible": False,
+                    "issued": False,
+                    "certificate_id": None,
+                    "issued_at": None
+                }
+            }
+            
+            # Update team registration document
+            await DatabaseOperations.update_one(
+                self.collection,
+                {"registration_id": team_registration_id},
+                {
+                    "$push": {"team_members": new_member},
+                    "$inc": {"team.team_size": 1},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            # Update student's event_participations
+            await DatabaseOperations.update_one(
+                self.students_collection,
+                {"enrollment_no": new_member_enrollment},
+                {
+                    "$addToSet": {
+                        "event_participations": {
+                            "event_id": event_id,
+                            "event_name": event_data["event_name"],
+                            "registration_id": member_reg_id,
+                            "team_registration_id": team_registration_id,
+                            "registration_type": "team",
+                            "team_name": team_reg["team"]["team_name"],
+                            "is_team_leader": False,
+                            "registration_date": datetime.utcnow(),
+                            "status": "registered"
                         }
                     }
-                )
+                }
+            )
             
-            # Update event document - increment team registration stats
+            # Update event's registered_students with new format
             await DatabaseOperations.update_one(
-                "events",
+                self.events_collection,
                 {"event_id": event_id},
                 {
-                    "$inc": {
-                        "registration_stats.team_count": 1,
-                        "registration_stats.total_participants": len(all_team_enrollments)
+                    "$set": {f"registered_students.{member_reg_id}": new_member_enrollment},
+                    "$inc": {"registration_stats.total_participants": 1}
+                }
+            )
+            
+            logger.info(f"✅ Team member added successfully: {new_member_enrollment}")
+            return {
+                "success": True,
+                "message": "Team member added successfully",
+                "member_data": new_member["student"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to add team member: {str(e)}")
+            return {"success": False, "message": f"Failed to add team member: {str(e)}"}
+    
+    async def remove_team_member(
+        self,
+        event_id: str,
+        team_registration_id: str,
+        remove_member_enrollment: str,
+        requester_enrollment: str
+    ) -> Dict[str, Any]:
+        """Remove a member from an existing team registration."""
+        try:
+            logger.info(f"Removing team member: {remove_member_enrollment} from team {team_registration_id}")
+            
+            # Get team registration
+            team_reg = await DatabaseOperations.find_one(
+                self.collection,
+                {"registration_id": team_registration_id, "registration_type": "team"}
+            )
+            
+            if not team_reg:
+                return {"success": False, "message": "Team registration not found"}
+            
+            # Check if requester is team leader
+            if team_reg["team"]["team_leader"] != requester_enrollment:
+                return {"success": False, "message": "Only team leader can remove members"}
+            
+            # Cannot remove team leader
+            if remove_member_enrollment == team_reg["team"]["team_leader"]:
+                return {"success": False, "message": "Cannot remove team leader"}
+            
+            # Check if member exists in team and get their registration_id
+            member_to_remove = None
+            for member in team_reg["team_members"]:
+                if member["student"]["enrollment_no"] == remove_member_enrollment:
+                    member_to_remove = member
+                    break
+                    
+            if not member_to_remove:
+                return {"success": False, "message": "Member not found in team"}
+            
+            # Get event details to check minimum team size
+            event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+            if not event:
+                return {"success": False, "message": "Event not found"}
+            
+            # Check minimum team size requirement
+            min_team_size = event.get("team_size_min", 2)
+            current_team_size = team_reg["team"]["team_size"]
+            
+            if current_team_size <= min_team_size:
+                return {
+                    "success": False, 
+                    "message": f"Cannot remove member! Minimum team size required is {min_team_size} members."
+                }
+            
+            # Remove member from team registration document
+            await DatabaseOperations.update_one(
+                self.collection,
+                {"registration_id": team_registration_id},
+                {
+                    "$pull": {
+                        "team_members": {
+                            "student.enrollment_no": remove_member_enrollment
+                        }
                     },
-                    "$addToSet": {
-                        "registered_students": {"$each": all_team_enrollments}
-                    },
-                    "$set": {
-                        "registration_stats.last_updated": datetime.utcnow()
+                    "$inc": {"team.team_size": -1},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            # Remove from student's event_participations
+            await DatabaseOperations.update_one(
+                self.students_collection,
+                {"enrollment_no": remove_member_enrollment},
+                {
+                    "$pull": {
+                        "event_participations": {
+                            "event_id": event_id,
+                            "team_registration_id": team_registration_id
+                        }
                     }
                 }
             )
             
-            logger.info(f"Updated student and event documents for team registration: {team_name}")
-            
-            return RegistrationResponse(
-                success=True,
-                message=f"Team registration successful ({len(team_registration_ids)} members)",
-                registration_id=f"TEAM_{team_name}_{event_id}",
-                data={
-                    "team_name": team_name,
-                    "team_registrations": team_registration_ids,
-                    "event_name": event_data["event_name"]
+            # Remove from event's registered_students using registration_id
+            member_registration_id = member_to_remove["registration_id"]
+            await DatabaseOperations.update_one(
+                self.events_collection,
+                {"event_id": event_id},
+                {
+                    "$unset": {f"registered_students.{member_registration_id}": ""},
+                    "$inc": {"registration_stats.total_participants": -1}
                 }
             )
             
+            logger.info(f"✅ Team member removed successfully: {remove_member_enrollment}")
+            return {
+                "success": True,
+                "message": "Team member removed successfully"
+            }
+            
         except Exception as e:
-            logger.error(f"Team registration error: {e}")
-            return RegistrationResponse(
-                success=False,
-                message=f"Team registration failed: {str(e)}"
+            logger.error(f"Failed to remove team member: {str(e)}")
+            return {"success": False, "message": f"Failed to remove team member: {str(e)}"}
+    
+    async def send_team_invitation(
+        self,
+        event_id: str,
+        team_registration_id: str,
+        invitee_enrollment: str,
+        inviter_enrollment: str
+    ) -> Dict[str, Any]:
+        """Send team invitation to a student."""
+        try:
+            logger.info(f"Sending team invitation to {invitee_enrollment} from {inviter_enrollment}")
+            
+            # Get team registration
+            team_reg = await DatabaseOperations.find_one(
+                self.collection,
+                {"registration_id": team_registration_id, "registration_type": "team"}
             )
+            
+            if not team_reg:
+                return {"success": False, "message": "Team registration not found"}
+            
+            # Check if inviter is team leader
+            if team_reg["team"]["team_leader"] != inviter_enrollment:
+                return {"success": False, "message": "Only team leader can send invitations"}
+            
+            # Check if invitation already exists
+            existing_invitation = await DatabaseOperations.find_one(
+                self.invitations_collection,
+                {
+                    "event_id": event_id,
+                    "team_registration_id": team_registration_id,
+                    "invitee_enrollment": invitee_enrollment,
+                    "status": "pending"
+                }
+            )
+            
+            if existing_invitation:
+                return {"success": False, "message": "Invitation already sent to this student"}
+            
+            # Create invitation document
+            invitation_id = f"INV_{event_id}_{team_registration_id}_{invitee_enrollment}_{int(datetime.utcnow().timestamp())}"
+            
+            invitation_doc = {
+                "invitation_id": invitation_id,
+                "event_id": event_id,
+                "team_registration_id": team_registration_id,
+                "team_name": team_reg["team"]["team_name"],
+                "inviter_enrollment": inviter_enrollment,
+                "inviter_name": team_reg["team"]["team_leader_name"],
+                "invitee_enrollment": invitee_enrollment,
+                "status": "pending",  # pending, accepted, declined
+                "created_at": datetime.utcnow(),
+                "expires_at": datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=7),  # 7 days to respond
+                "event_name": team_reg["event"]["event_name"]
+            }
+            
+            # Insert invitation
+            await DatabaseOperations.insert_one(self.invitations_collection, invitation_doc)
+            
+            logger.info(f"Team invitation sent successfully: {invitation_id}")
+            return {
+                "success": True,
+                "message": "Team invitation sent successfully",
+                "invitation_id": invitation_id
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to send team invitation: {str(e)}")
+            return {"success": False, "message": f"Failed to send invitation: {str(e)}"}
+    
+    async def respond_to_team_invitation(
+        self,
+        invitation_id: str,
+        response: str,  # "accept" or "decline"
+        student_enrollment: str
+    ) -> Dict[str, Any]:
+        """Respond to a team invitation."""
+        try:
+            logger.info(f"Processing invitation response: {invitation_id} - {response}")
+            
+            # Get invitation
+            invitation = await DatabaseOperations.find_one(
+                self.invitations_collection,
+                {"invitation_id": invitation_id}
+            )
+            
+            if not invitation:
+                return {"success": False, "message": "Invitation not found"}
+            
+            # Check if student is the intended invitee
+            if invitation["invitee_enrollment"] != student_enrollment:
+                return {"success": False, "message": "Not authorized to respond to this invitation"}
+            
+            # Check if invitation is still pending
+            if invitation["status"] != "pending":
+                return {"success": False, "message": f"Invitation already {invitation['status']}"}
+            
+            # Check if invitation has expired
+            if datetime.utcnow() > invitation["expires_at"]:
+                await DatabaseOperations.update_one(
+                    self.invitations_collection,
+                    {"invitation_id": invitation_id},
+                    {"$set": {"status": "expired", "responded_at": datetime.utcnow()}}
+                )
+                return {"success": False, "message": "Invitation has expired"}
+            
+            if response == "accept":
+                # Add student to team using existing add_team_member logic
+                result = await self.add_team_member(
+                    invitation["event_id"],
+                    invitation["team_registration_id"],
+                    student_enrollment,
+                    invitation["inviter_enrollment"]
+                )
+                
+                if result["success"]:
+                    # Mark invitation as accepted
+                    await DatabaseOperations.update_one(
+                        self.invitations_collection,
+                        {"invitation_id": invitation_id},
+                        {"$set": {"status": "accepted", "responded_at": datetime.utcnow()}}
+                    )
+                    return {"success": True, "message": "Invitation accepted and joined team successfully"}
+                else:
+                    return result
+                    
+            elif response == "decline":
+                # Mark invitation as declined
+                await DatabaseOperations.update_one(
+                    self.invitations_collection,
+                    {"invitation_id": invitation_id},
+                    {"$set": {"status": "declined", "responded_at": datetime.utcnow()}}
+                )
+                return {"success": True, "message": "Invitation declined"}
+            
+            else:
+                return {"success": False, "message": "Invalid response. Use 'accept' or 'decline'"}
+                
+        except Exception as e:
+            logger.error(f"Failed to respond to invitation: {str(e)}")
+            return {"success": False, "message": f"Failed to respond to invitation: {str(e)}"}
+    
+    async def get_student_invitations(
+        self,
+        student_enrollment: str,
+        status: str = "pending"
+    ) -> Dict[str, Any]:
+        """Get all invitations for a student."""
+        try:
+            invitations = await DatabaseOperations.find_many(
+                self.invitations_collection,
+                {
+                    "invitee_enrollment": student_enrollment,
+                    "status": status
+                }
+            )
+            
+            return {
+                "success": True,
+                "invitations": invitations
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get student invitations: {str(e)}")
+            return {"success": False, "message": f"Failed to get invitations: {str(e)}"}
     
     async def cancel_registration(
         self,
@@ -528,8 +926,8 @@ class EventRegistrationService:
                         "registration_stats.individual_count": -1,
                         "registration_stats.total_participants": -1
                     },
-                    "$pull": {
-                        "registered_students": enrollment_no
+                    "$unset": {
+                        f"registered_students.{registration_id}": ""
                     },
                     "$set": {
                         "registration_stats.last_updated": datetime.utcnow()
@@ -580,13 +978,19 @@ class EventRegistrationService:
                     "message": "Failed to delete team registration document"
                 }
             
-            # 2. Remove from ALL team members' event_participations
+            # 2. Remove from ALL team members' event_participations and collect registration IDs
             member_enrollments = []
+            member_registration_ids = []
             for member in team_members:
                 enrollment = member.get("student", {}).get("enrollment_no")
+                registration_id = member.get("registration_id")
+                
                 if enrollment:
                     member_enrollments.append(enrollment)
+                if registration_id:
+                    member_registration_ids.append(registration_id)
                     
+                if enrollment:
                     # Remove from each student's event_participations
                     await DatabaseOperations.update_one(
                         "students",
@@ -600,7 +1004,11 @@ class EventRegistrationService:
                         }
                     )
             
-            # 3. Update event document - remove all team members and decrement stats
+            # 3. Update event document - remove all team member registrations and decrement stats
+            unset_operations = {}
+            for reg_id in member_registration_ids:
+                unset_operations[f"registered_students.{reg_id}"] = ""
+                
             await DatabaseOperations.update_one(
                 "events",
                 {"event_id": event_id},
@@ -609,9 +1017,7 @@ class EventRegistrationService:
                         "registration_stats.team_count": -1,
                         "registration_stats.total_participants": -len(member_enrollments)
                     },
-                    "$pullAll": {
-                        "registered_students": member_enrollments
-                    },
+                    "$unset": unset_operations,
                     "$set": {
                         "registration_stats.last_updated": datetime.utcnow()
                     }

@@ -70,6 +70,27 @@ export const clientAPI = {
   
   // Team management (using new participation system)
   getTeamDetails: (eventId) => api.get(`/api/v1/client/registration/event/${eventId}/status`),
+  
+  // Updated team member management methods
+  addTeamMember: (eventId, teamRegistrationId, newMemberEnrollment) => api.post('/api/v1/client/registration/register', {
+    event_id: eventId,
+    action: 'add_member',
+    team_data: {
+      team_registration_id: teamRegistrationId,
+      new_member_enrollment: newMemberEnrollment
+    }
+  }),
+  
+  removeTeamMember: (eventId, teamRegistrationId, removeMemberEnrollment) => api.post('/api/v1/client/registration/register', {
+    event_id: eventId,
+    action: 'remove_member',
+    team_data: {
+      team_registration_id: teamRegistrationId,
+      remove_member_enrollment: removeMemberEnrollment
+    }
+  }),
+  
+  // Legacy methods for backward compatibility
   addTeamParticipant: (eventId, teamData) => api.post('/api/v1/client/registration/register', {
     event_id: eventId,
     registration_type: 'team',
@@ -79,6 +100,24 @@ export const clientAPI = {
     event_id: eventId,
     registration_type: 'team',
     team_info: { ...teamData, action: 'remove_member' }
+  }),
+  
+  // Team invitation methods
+  sendTeamInvitation: (eventId, teamRegistrationId, inviteeEnrollment) => api.post('/api/v1/client/registration/register', {
+    event_id: eventId,
+    action: 'send_invitation',
+    team_data: {
+      team_registration_id: teamRegistrationId,
+      invitee_enrollment: inviteeEnrollment
+    }
+  }),
+  
+  getMyInvitations: (status = 'pending') => api.get('/api/v1/client/registration/invitations', {
+    params: { status }
+  }),
+  
+  respondToInvitation: (invitationId, response) => api.post(`/api/v1/client/registration/invitations/${invitationId}/respond`, {
+    response: response  // "accept" or "decline"
   }),
   
   // Attendance - Updated endpoints

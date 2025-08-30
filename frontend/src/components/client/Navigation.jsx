@@ -286,6 +286,22 @@ function ClientNavigation() {
                           </div>
                         </Link>
 
+                        {/* Team Invitations - Student Only */}
+                        {userType === 'student' && (
+                          <Link
+                            to="/client/invitations"
+                            className="flex items-center pl-4 pr-8 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+                              <i className="fas fa-user-friends text-blue-600 text-sm"></i>
+                            </div>
+                            <div>
+                              <div className="font-medium">Team Invitations</div>
+                              <div className="text-xs text-gray-500 whitespace-nowrap">Join team requests</div>
+                            </div>
+                          </Link>
+                        )}
+
                         <Link
                           to="/client/certificates"
                           className="flex items-center pl-4 pr-8 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -414,7 +430,7 @@ function ClientNavigation() {
 
       {/* Proper Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-        <div className="grid grid-cols-5 h-16">
+        <div className={`${isAuthenticated && userType === 'student' ? 'grid-cols-6' : 'grid-cols-5'} grid h-16`}>
           {/* Upcoming Button */}
           <Link
             to={userType === 'faculty' ? '/faculty/events?filter=upcoming' : '/client/events?filter=upcoming'}
@@ -480,13 +496,26 @@ function ClientNavigation() {
 
           {/* Settings/Logout */}
           {isAuthenticated ? (
-            <button
-              onClick={handleLogout}
-              className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
-            >
-              <i className="fas fa-sign-out-alt text-lg mb-1"></i>
-              <span className="text-xs font-medium">Logout</span>
-            </button>
+            userType === 'student' ? (
+              <Link
+                to="/client/invitations"
+                className={`flex flex-col items-center justify-center ${location.pathname === '/client/invitations'
+                  ? 'text-blue-600'
+                  : 'text-gray-500'
+                  } transition-colors`}
+              >
+                <i className="fas fa-user-friends text-lg mb-1"></i>
+                <span className="text-xs font-medium">Teams</span>
+              </Link>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+              >
+                <i className="fas fa-sign-out-alt text-lg mb-1"></i>
+                <span className="text-xs font-medium">Logout</span>
+              </button>
+            )
           ) : (
             <Link
               to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
@@ -498,6 +527,17 @@ function ClientNavigation() {
               <i className="fas fa-calendar text-lg mb-1"></i>
               <span className="text-xs font-medium">Events</span>
             </Link>
+          )}
+
+          {/* Student Logout Button - Additional slot when student is logged in */}
+          {isAuthenticated && userType === 'student' && (
+            <button
+              onClick={handleLogout}
+              className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+            >
+              <i className="fas fa-sign-out-alt text-lg mb-1"></i>
+              <span className="text-xs font-medium">Logout</span>
+            </button>
           )}
         </div>
       </div>

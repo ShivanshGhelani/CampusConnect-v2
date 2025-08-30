@@ -37,6 +37,11 @@ const TeamManagement = () => {
   // Real-time status tracking
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  
+  // Loading states for team management actions
+  const [isAdding, setIsAdding] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -231,8 +236,8 @@ const TeamManagement = () => {
     if (!validatedStudent) return;
 
     try {
-      // Use new team management API
-      const response = await clientAPI.addTeamParticipant(
+      // Use new team member management API
+      const response = await clientAPI.addTeamMember(
         eventId,
         teamRegistration.registration_id,
         validatedStudent.enrollment_no
@@ -257,8 +262,16 @@ const TeamManagement = () => {
   const removeParticipant = async () => {
     if (!removeTarget) return;
 
+    // Check minimum team size requirement
+    if (teamRegistration.team_size <= teamRegistration.min_size) {
+      setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+      setShowRemoveModal(false);
+      setRemoveTarget(null);
+      return;
+    }
+
     try {
-      const response = await clientAPI.removeTeamParticipant(
+      const response = await clientAPI.removeTeamMember(
         eventId,
         teamRegistration.registration_id,
         removeTarget.enrollment_no
@@ -280,6 +293,7 @@ const TeamManagement = () => {
 
   // Cancel entire team registration
   const cancelRegistration = async () => {
+    setIsCancelling(true);
     try {
       const response = await clientAPI.cancelRegistration(eventId);
 
@@ -298,6 +312,8 @@ const TeamManagement = () => {
       console.error('Cancel registration error:', error);
       setError('Failed to cancel registration. Please try again.');
       setShowCancelModal(false);
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -608,6 +624,104 @@ const TeamManagement = () => {
     setRefreshing(false);
   };
 
+  // Confirm and add team member using new backend API
+  const confirmAddMember = async () => {
+    if (!validatedStudent || !teamRegistration?.registration_id) return;
+
+    setIsAdding(true);
+    try {
+      // Check if event allows multiple team registrations
+      const allowMultiple = event?.allow_multiple_team_registrations || false;
+      
+      if (allowMultiple) {
+        // Use invitation system for multiple team registration events
+        const response = await clientAPI.sendTeamInvitation(
+          eventId,
+          teamRegistration.registration_id,
+          validatedStudent.enrollment_no
+        );
+
+        if (response.data.success) {
+          showNotification('Team invitation sent successfully! The student will receive a notification.', 'success');
+          await fetchTeamData(); // Refresh data
+          setShowConfirmModal(false);
+          setShowAddModal(false);
+          setParticipantEnrollment('');
+          setValidatedStudent(null);
+        } else {
+          setError(response.data.message || 'Failed to send team invitation');
+          setShowConfirmModal(false);
+          setShowAddModal(true);
+        }
+      } else {
+        // Use direct add for single team registration events
+        const response = await clientAPI.addTeamMember(
+          eventId,
+          teamRegistration.registration_id,
+          validatedStudent.enrollment_no
+        );
+
+        if (response.data.success) {
+          showNotification('Team member added successfully!', 'success');
+          await fetchTeamData(); // Refresh data
+          setShowConfirmModal(false);
+          setShowAddModal(false);
+          setParticipantEnrollment('');
+          setValidatedStudent(null);
+        } else {
+          setError(response.data.message || 'Failed to add team member');
+          setShowConfirmModal(false);
+          setShowAddModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Add member error:', error);
+      setError('Failed to add team member. Please try again.');
+      setShowConfirmModal(false);
+      setShowAddModal(true);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Confirm and remove team member using new backend API
+  const confirmRemoveMember = async () => {
+    if (!removeTarget || !teamRegistration?.registration_id) return;
+
+    // Check minimum team size requirement
+    if (teamRegistration.team_size <= teamRegistration.min_size) {
+      setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+      setShowRemoveModal(false);
+      return;
+    }
+
+    setIsRemoving(true);
+    try {
+      // Use new team member management API
+      const response = await clientAPI.removeTeamMember(
+        eventId,
+        teamRegistration.registration_id,
+        removeTarget.enrollment_no
+      );
+
+      if (response.data.success) {
+        showNotification('Team member removed successfully!', 'success');
+        await fetchTeamData(); // Refresh data
+        setShowRemoveModal(false);
+        setRemoveTarget(null);
+      } else {
+        setError(response.data.message || 'Failed to remove team member');
+        setShowRemoveModal(false);
+      }
+    } catch (error) {
+      console.error('Remove member error:', error);
+      setError('Failed to remove team member. Please try again.');
+      setShowRemoveModal(false);
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -659,6 +773,7 @@ const TeamManagement = () => {
 
   const canAddMembers = teamRegistration.team_size < teamRegistration.max_size;
   const availableSlots = teamRegistration.max_size - teamRegistration.team_size;
+  const canRemoveMembers = teamRegistration.team_size > teamRegistration.min_size;
   const isRegistrationOpen = event?.status === 'upcoming' &&
     (event?.sub_status === 'registration_open' ||
       event?.sub_status === 'registration_not_started');
@@ -980,11 +1095,20 @@ const TeamManagement = () => {
                     {isRegistrationOpen && (
                       <button
                         onClick={() => {
+                          if (!canRemoveMembers) {
+                            setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+                            return;
+                          }
                           setRemoveTarget(member);
                           setShowRemoveModal(true);
                         }}
-                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                        title="Remove member"
+                        disabled={!canRemoveMembers}
+                        className={`p-2 rounded-lg transition-colors ${
+                          canRemoveMembers 
+                            ? 'text-red-600 hover:text-red-800 hover:bg-red-50' 
+                            : 'text-gray-400 cursor-not-allowed bg-gray-100'
+                        }`}
+                        title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
                       >
                         <i className="fas fa-trash"></i>
                       </button>
@@ -1180,7 +1304,7 @@ const TeamManagement = () => {
       )}
 
       {/* Confirmation Modal */}
-      {showConfirmModal && studentDetails && (
+      {showConfirmModal && validatedStudent && (
         <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
             <div className="bg-green-500 px-6 py-4 rounded-t-lg">
@@ -1193,23 +1317,23 @@ const TeamManagement = () => {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{studentDetails.full_name}</span>
+                    <span className="font-medium">{validatedStudent.full_name}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Enrollment:</span>
-                    <span className="font-mono">{studentDetails.enrollment_no}</span>
+                    <span className="font-mono">{validatedStudent.enrollment_no}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span>{studentDetails.email}</span>
+                    <span>{validatedStudent.email}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mobile:</span>
-                    <span>{studentDetails.mobile_no}</span>
+                    <span>{validatedStudent.mobile_no}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Department:</span>
-                    <span>{studentDetails.department}</span>
+                    <span>{validatedStudent.department}</span>
                   </div>
                 </div>
               </div>
@@ -1256,6 +1380,16 @@ const TeamManagement = () => {
                   Are you sure you want to remove this member from your team?
                   This action cannot be undone.
                 </p>
+                {!canRemoveMembers && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <i className="fas fa-exclamation-triangle text-red-600"></i>
+                      <p className="text-sm text-red-700 font-medium">
+                        Cannot remove member! Minimum team size required is {teamRegistration.min_size} members.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1268,7 +1402,13 @@ const TeamManagement = () => {
               </button>
               <button
                 onClick={removeParticipant}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                disabled={!canRemoveMembers}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  canRemoveMembers 
+                    ? 'bg-red-500 hover:bg-red-600 text-white' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
               >
                 Remove Member
               </button>
@@ -1723,7 +1863,7 @@ const TeamManagement = () => {
             )}
 
             {/* Confirm Add Modal */}
-            {showConfirmModal && studentDetails && (
+            {showConfirmModal && validatedStudent && (
               <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6 w-full max-w-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Team Member</h3>
@@ -1732,27 +1872,27 @@ const TeamManagement = () => {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="font-medium text-gray-700">Name</div>
-                        <div className="text-gray-900">{studentDetails.name}</div>
+                        <div className="text-gray-900">{validatedStudent.full_name}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Enrollment</div>
-                        <div className="text-gray-900">{studentDetails.enrollment_no}</div>
+                        <div className="text-gray-900">{validatedStudent.enrollment_no}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Department</div>
-                        <div className="text-gray-900">{studentDetails.department}</div>
+                        <div className="text-gray-900">{validatedStudent.department}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Year/Semester</div>
-                        <div className="text-gray-900">{studentDetails.year}/{studentDetails.semester}</div>
+                        <div className="text-gray-900">{validatedStudent.semester}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Email</div>
-                        <div className="text-gray-900">{studentDetails.email}</div>
+                        <div className="text-gray-900">{validatedStudent.email}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Phone</div>
-                        <div className="text-gray-900">{studentDetails.phone}</div>
+                        <div className="text-gray-900">{validatedStudent.mobile_no}</div>
                       </div>
                     </div>
                   </div>

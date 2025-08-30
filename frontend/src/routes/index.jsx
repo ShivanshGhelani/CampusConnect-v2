@@ -30,6 +30,7 @@ import AttendanceShowcase from '../pages/AttendanceShowcase'; // Attendance Comp
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
 import EditProfile from '../pages/client/student/Account/EditProfile';
 import TeamManagement from '../pages/client/student/Account/TeamManagement';
+import Invitations from '../pages/client/student/Account/Invitations';
 import RegistrationRouter from '../components/common/RegistrationRouter';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
 
@@ -174,6 +175,14 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="client/invitations"
+            element={
+              <ProtectedRoute userType="student">
+                <Invitations />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Faculty Routes */}
           <Route
@@ -245,6 +254,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute userType="student">
                 <TeamManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/invitations"
+            element={
+              <ProtectedRoute userType="student">
+                <Invitations />
               </ProtectedRoute>
             }
           />

@@ -551,7 +551,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         const registrationType = response.data.registration_type;
         
         // Check if student is already registered for this event
-        if (alreadyRegistered) {
+        if (alreadyRegistered && !isEligible) {
+          // Student is already registered and NOT eligible for multiple teams
           let registrationMessage = '';
           if (registrationType === 'team') {
             // Check if they're team leader or member
@@ -587,7 +588,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           return;
         }
         
-        // Student is not already registered, proceed with normal validation
+        // Student is either not already registered OR is eligible for multiple teams
+        // Proceed with normal validation
         setFormData(prev => ({
           ...prev,
           participants: prev.participants.map(p => 

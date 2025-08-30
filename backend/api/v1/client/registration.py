@@ -3,7 +3,7 @@ Client Registration API Routes
 Handles event registration for students and faculty via client interface
 """
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Dict, Any
 from pydantic import BaseModel
 from dependencies.auth import get_current_student, get_current_faculty, get_current_user
@@ -82,10 +82,81 @@ async def register_for_event(
             else:
                 raise HTTPException(status_code=400, detail="Invalid registration type")
                 
+        elif request.action == "add_member":
+            # Add team member functionality
+            if user_type == "student":
+                team_registration_id = request.team_data.get("team_registration_id")
+                new_member_enrollment = request.team_data.get("new_member_enrollment")
+                
+                if not team_registration_id or not new_member_enrollment:
+                    raise HTTPException(status_code=400, detail="Missing team_registration_id or new_member_enrollment")
+                
+                result = await event_registration_service.add_team_member(
+                    event_id=request.event_id,
+                    team_registration_id=team_registration_id,
+                    new_member_enrollment=new_member_enrollment,
+                    requester_enrollment=user_id
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Faculty team member management not yet implemented")
+                
+        elif request.action == "remove_member":
+            # Remove team member functionality
+            if user_type == "student":
+                team_registration_id = request.team_data.get("team_registration_id")
+                remove_member_enrollment = request.team_data.get("remove_member_enrollment")
+                
+                if not team_registration_id or not remove_member_enrollment:
+                    raise HTTPException(status_code=400, detail="Missing team_registration_id or remove_member_enrollment")
+                
+                result = await event_registration_service.remove_team_member(
+                    event_id=request.event_id,
+                    team_registration_id=team_registration_id,
+                    remove_member_enrollment=remove_member_enrollment,
+                    requester_enrollment=user_id
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Faculty team member management not yet implemented")
+                
+        elif request.action == "send_invitation":
+            # Send team invitation functionality
+            if user_type == "student":
+                team_registration_id = request.team_data.get("team_registration_id")
+                invitee_enrollment = request.team_data.get("invitee_enrollment")
+                
+                if not team_registration_id or not invitee_enrollment:
+                    raise HTTPException(status_code=400, detail="Missing team_registration_id or invitee_enrollment")
+                
+                result = await event_registration_service.send_team_invitation(
+                    event_id=request.event_id,
+                    team_registration_id=team_registration_id,
+                    invitee_enrollment=invitee_enrollment,
+                    inviter_enrollment=user_id
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Faculty team invitations not yet implemented")
+                
         else:
-            # For now, only basic registration is supported
-            # Team management features can be added later
-            raise HTTPException(status_code=400, detail=f"Action '{request.action}' not yet implemented")
+            raise HTTPException(status_code=400, detail=f"Action '{request.action}' not supported")
+        
+        # Convert service response to API response
+        if hasattr(result, 'success'):
+            # RegistrationResponse object from register operations
+            if result.success:
+                return {
+                    "success": True,
+                    "message": result.message,
+                    "registration_id": result.registration_id,
+                    "data": result.data
+                }
+            else:
+                raise HTTPException(status_code=400, detail=result.message)
+        else:
+            # Dict response (for team management add/remove operations)
+            if result.get("success"):
+                return result
+            else:
+                raise HTTPException(status_code=400, detail=result.get("message", "Operation failed"))
         
         return result
         
@@ -372,6 +443,9 @@ async def check_student_eligibility(
         )
         
         if existing_registration:
+            # Check if multiple team registrations are allowed
+            allow_multiple = event.get("allow_multiple_team_registrations", False)
+            
             # Student is already registered - determine registration type
             reg_type = "individual"
             if existing_registration.get("registration_type") == "team":
@@ -380,7 +454,19 @@ async def check_student_eligibility(
                 else:
                     reg_type = "team member"
             
-            eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+            # Handle different scenarios based on multiple team registration setting
+            if reg_type == "individual":
+                # Individual registration always blocks further registration
+                eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+            elif reg_type == "team leader":
+                # Team leaders cannot join multiple teams
+                eligibility_issues.append(f"Team leader cannot join multiple teams")
+            elif reg_type == "team member" and not allow_multiple:
+                # Team member and multiple teams not allowed
+                eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+            elif reg_type == "team member" and allow_multiple:
+                # Team member can join another team if multiple teams are allowed
+                pass  # No eligibility issue
         
         # Return eligibility result
         is_eligible = len(eligibility_issues) == 0
@@ -408,3 +494,58 @@ async def check_student_eligibility(
     except Exception as e:
         logger.error(f"Error checking student eligibility: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Eligibility check failed: {str(e)}")
+
+# Team invitation endpoints
+
+@router.get("/invitations")
+async def get_my_invitations(
+    status: str = Query("pending", description="Filter by invitation status"),
+    current_user=Depends(get_current_user)
+):
+    """Get team invitations for current student"""
+    try:
+        if not hasattr(current_user, 'enrollment_no'):
+            raise HTTPException(status_code=400, detail="Only students can receive team invitations")
+        
+        result = await event_registration_service.get_student_invitations(
+            student_enrollment=current_user.enrollment_no,
+            status=status
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting invitations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get invitations: {str(e)}")
+
+@router.post("/invitations/{invitation_id}/respond")
+async def respond_to_invitation(
+    invitation_id: str,
+    response_data: dict,
+    current_user=Depends(get_current_user)
+):
+    """Respond to a team invitation (accept or decline)"""
+    try:
+        if not hasattr(current_user, 'enrollment_no'):
+            raise HTTPException(status_code=400, detail="Only students can respond to team invitations")
+        
+        response = response_data.get("response")  # "accept" or "decline"
+        
+        if response not in ["accept", "decline"]:
+            raise HTTPException(status_code=400, detail="Response must be 'accept' or 'decline'")
+        
+        result = await event_registration_service.respond_to_team_invitation(
+            invitation_id=invitation_id,
+            response=response,
+            student_enrollment=current_user.enrollment_no
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error responding to invitation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to respond to invitation: {str(e)}")
