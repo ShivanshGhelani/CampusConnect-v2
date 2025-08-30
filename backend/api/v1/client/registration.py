@@ -549,3 +549,31 @@ async def respond_to_invitation(
     except Exception as e:
         logger.error(f"Error responding to invitation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to respond to invitation: {str(e)}")
+
+@router.get("/team/{team_registration_id}/details")
+async def get_team_details(
+    team_registration_id: str,
+    current_user=Depends(get_current_user)
+):
+    """Get team details by team registration ID"""
+    try:
+        # Check user type and route to appropriate service
+        if hasattr(current_user, 'enrollment_no'):
+            result = await event_registration_service.get_team_details_by_registration_id(
+                team_registration_id
+            )
+        elif hasattr(current_user, 'employee_id'):
+            # Faculty can also view team details
+            result = await event_registration_service.get_team_details_by_registration_id(
+                team_registration_id
+            )
+        else:
+            raise HTTPException(status_code=401, detail="User type not supported")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting team details: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get team details: {str(e)}")

@@ -191,9 +191,10 @@ class EventRegistrationService:
             # Check if multiple team registrations are allowed
             allow_multiple_teams = event_data.get("allow_multiple_team_registrations", False)
             
-            # Track which members are already registered vs new members
-            already_registered_members = []
+            # FIXED: Track members by category - new, eligible for invitation, and blocked
             new_members = []
+            invitation_required_members = []
+            blocked_members = []
             
             # Check registration status for each member
             for enrollment_no in team_members:
@@ -207,33 +208,48 @@ class EventRegistrationService:
                         else:
                             reg_type = "team member"
                     
-                    # Block registration based on multiple team policy
+                    # Handle different scenarios based on multiple team registration setting
                     if reg_type == "individual" or reg_type == "team leader":
-                        return RegistrationResponse(
-                            success=False,
-                            message=f"Student {enrollment_no} already registered as {reg_type} and cannot join multiple teams"
-                        )
+                        blocked_members.append((enrollment_no, f"already registered as {reg_type}"))
                     elif reg_type == "team member" and not allow_multiple_teams:
-                        return RegistrationResponse(
-                            success=False,
-                            message=f"Student {enrollment_no} already registered as team member. Multiple team registrations not allowed for this event."
-                        )
-                    else:
-                        # Team member + multiple teams allowed
-                        already_registered_members.append(enrollment_no)
-                        logger.info(f"Student {enrollment_no} already registered but can join multiple teams")
+                        blocked_members.append((enrollment_no, f"already registered as team member and multiple teams not allowed"))
+                    elif reg_type == "team member" and allow_multiple_teams:
+                        # FIXED: Send invitation instead of direct addition
+                        if enrollment_no != team_leader_enrollment:  # Leader doesn't need invitation to their own team
+                            invitation_required_members.append(enrollment_no)
+                            logger.info(f"Student {enrollment_no} already registered - will send invitation")
+                        else:
+                            blocked_members.append((enrollment_no, "team leader cannot be in multiple teams"))
                 else:
                     new_members.append(enrollment_no)
             
-            logger.info(f"Team composition: {len(new_members)} new members, {len(already_registered_members)} already registered members")
+            # Block registration if there are any blocked members
+            if blocked_members:
+                blocked_list = [f"{enrollment} ({reason})" for enrollment, reason in blocked_members]
+                return RegistrationResponse(
+                    success=False,
+                    message=f"Cannot register team. Following members are blocked: {'; '.join(blocked_list)}"
+                )
+            
+            logger.info(f"Team composition: {len(new_members)} new members, {len(invitation_required_members)} invitations to send")
             if not event_data:
                 return RegistrationResponse(success=False, message="Event not found")
             
-            # Generate individual registration IDs for each team member
+            # FIXED: Only register team with new members + team leader
+            # Members requiring invitations will be handled separately
+            actual_team_members = [m for m in team_members if m in new_members or m == team_leader_enrollment]
+            
+            if len(actual_team_members) < 1:
+                return RegistrationResponse(
+                    success=False,
+                    message="Cannot create team: all members require invitations"
+                )
+            
+            # FIXED: Generate registration details only for actual team members (new + leader)
             team_registration_details = []
             team_leader_reg_id = team_data.get("additional_data", {}).get("registration_id")
             
-            for enrollment_no in team_members:
+            for enrollment_no in actual_team_members:
                 # Get student data
                 student_data, _ = await self._get_student_and_event_data(enrollment_no, event_id)
                 if not student_data:
@@ -294,7 +310,7 @@ class EventRegistrationService:
                 "team": {
                     "team_name": team_name,
                     "team_leader": team_leader_enrollment,
-                    "team_size": len(team_members),
+                    "team_size": len(actual_team_members),  # FIXED: Use actual team size
                     "registered_at": datetime.utcnow(),
                     "status": "confirmed"
                 },
@@ -309,39 +325,33 @@ class EventRegistrationService:
             
             logger.info(f"Team registration successful: {team_name} ({len(team_registration_details)} members)")
             
-            # Update all team members' student documents - only for new members
+            # FIXED: Update only new members' student documents
             for member_detail in team_registration_details:
                 enrollment = member_detail["student"]["enrollment_no"]
-                # Only update if this is a new registration for this student-event pair
-                if enrollment in new_members:
-                    await DatabaseOperations.update_one(
-                        "students",
-                        {"enrollment_no": enrollment},
-                        {
-                            "$addToSet": {
-                                "event_participations": {
-                                    "event_id": event_id,
-                                    "event_name": event_data["event_name"],
-                                    "registration_id": member_detail["registration_id"],
-                                    "team_registration_id": team_registration_id,
-                                    "registration_type": "team",
-                                    "team_name": team_name,
-                                    "is_team_leader": member_detail["is_team_leader"],
-                                    "registration_date": datetime.utcnow(),
-                                    "status": "registered"
-                                }
+                await DatabaseOperations.update_one(
+                    "students",
+                    {"enrollment_no": enrollment},
+                    {
+                        "$addToSet": {
+                            "event_participations": {
+                                "event_id": event_id,
+                                "event_name": event_data["event_name"],
+                                "registration_id": member_detail["registration_id"],
+                                "team_registration_id": team_registration_id,
+                                "registration_type": "team",
+                                "team_name": team_name,
+                                "is_team_leader": member_detail["is_team_leader"],
+                                "registration_date": datetime.utcnow(),
+                                "status": "registered"
                             }
                         }
-                    )
-                else:
-                    logger.info(f"Skipped updating student document for {enrollment} - already registered for this event")
+                    }
+                )
             
-            # Update event document with new storage format for registered_students
-            # Create the registration mapping {registration_id: enrollment_no}
+            # FIXED: Update event document - only add new registrations
             new_registrations = {}
             for member_detail in team_registration_details:
-                if member_detail["student"]["enrollment_no"] in new_members:
-                    new_registrations[member_detail["registration_id"]] = member_detail["student"]["enrollment_no"]
+                new_registrations[member_detail["registration_id"]] = member_detail["student"]["enrollment_no"]
             
             # Update event document - increment team registration stats and add new registrations
             update_query = {
@@ -361,17 +371,51 @@ class EventRegistrationService:
                 update_query
             )
             
+            # FIXED: Send invitations to already-registered members
+            invitations_sent = []
+            invitation_errors = []
+            
+            for invitee_enrollment in invitation_required_members:
+                try:
+                    invitation_result = await self.send_team_invitation(
+                        event_id=event_id,
+                        team_registration_id=team_registration_id,
+                        invitee_enrollment=invitee_enrollment,
+                        inviter_enrollment=team_leader_enrollment
+                    )
+                    
+                    if invitation_result.get("success"):
+                        invitations_sent.append(invitee_enrollment)
+                        logger.info(f"✅ Invitation sent to {invitee_enrollment}")
+                    else:
+                        invitation_errors.append(f"{invitee_enrollment}: {invitation_result.get('message', 'Unknown error')}")
+                        logger.error(f"❌ Failed to send invitation to {invitee_enrollment}: {invitation_result.get('message')}")
+                        
+                except Exception as e:
+                    invitation_errors.append(f"{invitee_enrollment}: {str(e)}")
+                    logger.error(f"❌ Exception sending invitation to {invitee_enrollment}: {e}")
+            
             logger.info(f"Updated student and event documents for team registration: {team_name}")
+            
+            # FIXED: Build comprehensive response with invitation status
+            response_message = f"Team registration successful with {len(team_registration_details)} members"
+            if invitations_sent:
+                response_message += f". Invitations sent to {len(invitations_sent)} already-registered students"
+            if invitation_errors:
+                response_message += f". Failed to send {len(invitation_errors)} invitations"
             
             return RegistrationResponse(
                 success=True,
-                message=f"Team registration successful ({len(team_registration_details)} members)",
+                message=response_message,
                 registration_id=team_registration_id,
                 data={
                     "team_name": team_name,
                     "team_registration_id": team_registration_id,
                     "team_members": team_registration_details,
-                    "team_leader": team_leader_enrollment
+                    "team_leader": team_leader_enrollment,
+                    "invitations_sent": invitations_sent,
+                    "invitation_errors": invitation_errors,
+                    "pending_invitations": len(invitations_sent)
                 }
             )
             
@@ -406,6 +450,23 @@ class EventRegistrationService:
             if team_reg["team"]["team_leader"] != requester_enrollment:
                 return {"success": False, "message": "Only team leader can add members"}
             
+            # Get event data for team size validation
+            event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            if not event_data:
+                return {"success": False, "message": "Event not found"}
+            
+            # Check team size limits
+            current_team_size = len(team_reg.get("team_members", []))
+            max_team_size = event_data.get("team_size_max", 10)  # Default to 10 if not specified
+            
+            logger.info(f"Add member team size check: current={current_team_size}, max={max_team_size}")
+            
+            if current_team_size >= max_team_size:
+                return {
+                    "success": False, 
+                    "message": f"Cannot add member. Team is already at maximum size ({current_team_size}/{max_team_size} members)"
+                }
+            
             # Check if new member already in team
             existing_member = any(
                 member["student"]["enrollment_no"] == new_member_enrollment 
@@ -423,25 +484,37 @@ class EventRegistrationService:
             if not student_data:
                 return {"success": False, "message": "Student not found"}
             
-            # Check if student already registered for this event
+            # FIXED: Check if student already registered for this event
             existing_reg = await self._check_existing_registration(new_member_enrollment, event_id)
             if existing_reg:
-                # Get event data to check if multiple team registrations are allowed
-                event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+                # Use event_data already fetched above for multiple team registrations check
                 allow_multiple = event_data.get("allow_multiple_team_registrations", False)
                 
                 if not allow_multiple:
-                    return {"success": False, "message": "Student already registered for this event"}
+                    return {"success": False, "message": "Student already registered for this event and multiple teams not allowed"}
                 
-                # If multiple teams allowed, check if student is a team leader
+                # Check registration type for multiple team eligibility
+                reg_type = "individual"
                 if existing_reg.get("registration_type") == "team":
-                    # Check if student is team leader in existing registration
                     if existing_reg["team"]["team_leader"] == new_member_enrollment:
-                        return {"success": False, "message": "Team leader cannot join multiple teams"}
-                    # Student is just a team member, allow adding to another team if multiple allowed
-                else:
-                    # Individual registration exists
-                    return {"success": False, "message": "Student has individual registration for this event"}
+                        reg_type = "team leader"
+                    else:
+                        reg_type = "team member"
+                
+                # Handle different scenarios
+                if reg_type == "individual":
+                    return {"success": False, "message": "Student has individual registration and cannot join teams"}
+                elif reg_type == "team leader":
+                    return {"success": False, "message": "Team leader cannot join multiple teams"}
+                elif reg_type == "team member" and allow_multiple:
+                    # FIXED: Send invitation instead of direct addition
+                    logger.info(f"Student {new_member_enrollment} already registered as team member - sending invitation")
+                    return await self.send_team_invitation(
+                        event_id=event_id,
+                        team_registration_id=team_registration_id,
+                        invitee_enrollment=new_member_enrollment,
+                        inviter_enrollment=requester_enrollment
+                    )
             
             # Get event data for attendance strategy
             event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
@@ -531,6 +604,148 @@ class EventRegistrationService:
         except Exception as e:
             logger.error(f"Failed to add team member: {str(e)}")
             return {"success": False, "message": f"Failed to add team member: {str(e)}"}
+    
+    async def _add_team_member_direct(
+        self,
+        event_id: str,
+        team_registration_id: str,
+        new_member_enrollment: str
+    ) -> Dict[str, Any]:
+        """Directly add a member to team (used for invitation acceptance)."""
+        try:
+            logger.info(f"Directly adding team member: {new_member_enrollment} to team {team_registration_id}")
+            
+            # Get team registration
+            team_reg = await DatabaseOperations.find_one(
+                self.collection,
+                {"registration_id": team_registration_id, "registration_type": "team"}
+            )
+            
+            if not team_reg:
+                return {"success": False, "message": "Team registration not found"}
+            
+            # Get event data for team size validation
+            event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            if not event_data:
+                return {"success": False, "message": "Event not found"}
+            
+            # Check team size limits
+            current_team_size = len(team_reg.get("team_members", []))
+            max_team_size = event_data.get("team_size_max", 10)  # Default to 10 if not specified
+            
+            logger.info(f"Direct add team size check: current={current_team_size}, max={max_team_size}")
+            
+            if current_team_size >= max_team_size:
+                return {
+                    "success": False, 
+                    "message": f"Cannot add member. Team is already at maximum size ({current_team_size}/{max_team_size} members)"
+                }
+            
+            # Check if new member already in team
+            existing_member = any(
+                member["student"]["enrollment_no"] == new_member_enrollment 
+                for member in team_reg["team_members"]
+            )
+            if existing_member:
+                return {"success": False, "message": "Student already in team"}
+            
+            # Check if student exists and get data
+            student_data = await DatabaseOperations.find_one(
+                self.students_collection,
+                {"enrollment_no": new_member_enrollment}
+            )
+            
+            if not student_data:
+                return {"success": False, "message": "Student not found"}
+            
+            # Get event data for attendance strategy
+            event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            attendance_strategy = await self._get_event_attendance_strategy(event_data)
+            
+            # Generate registration ID for new member
+            import random
+            import string
+            member_reg_id = "REG" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            
+            # Create new member document
+            new_member = {
+                "registration_id": member_reg_id,
+                "student": {
+                    "enrollment_no": student_data["enrollment_no"],
+                    "name": student_data.get("full_name", student_data.get("name", "")),
+                    "email": student_data.get("email", ""),
+                    "phone": student_data.get("mobile_no", student_data.get("phone", "")),
+                    "department": student_data.get("department", ""),
+                    "semester": student_data.get("semester", "")
+                },
+                "is_team_leader": False,
+                "attendance": self._create_attendance_structure(attendance_strategy, event_data),
+                "feedback": {
+                    "submitted": False,
+                    "rating": None,
+                    "comments": None,
+                    "submitted_at": None
+                },
+                "certificate": {
+                    "eligible": False,
+                    "issued": False,
+                    "certificate_id": None,
+                    "issued_at": None
+                }
+            }
+            
+            # Update team registration document
+            await DatabaseOperations.update_one(
+                self.collection,
+                {"registration_id": team_registration_id},
+                {
+                    "$push": {"team_members": new_member},
+                    "$inc": {"team.team_size": 1},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            # Update student's event_participations
+            await DatabaseOperations.update_one(
+                self.students_collection,
+                {"enrollment_no": new_member_enrollment},
+                {
+                    "$addToSet": {
+                        "event_participations": {
+                            "event_id": event_id,
+                            "event_name": event_data["event_name"],
+                            "registration_id": member_reg_id,
+                            "team_registration_id": team_registration_id,
+                            "registration_type": "team",
+                            "team_name": team_reg["team"]["team_name"],
+                            "is_team_leader": False,
+                            "registration_date": datetime.utcnow(),
+                            "status": "registered"
+                        }
+                    }
+                }
+            )
+            
+            # Update event's registered_students with new format
+            await DatabaseOperations.update_one(
+                self.events_collection,
+                {"event_id": event_id},
+                {
+                    "$set": {f"registered_students.{member_reg_id}": new_member_enrollment},
+                    "$inc": {"registration_stats.total_participants": 1}
+                }
+            )
+            
+            logger.info(f"✅ Team member added directly via invitation: {new_member_enrollment}")
+            return {
+                "success": True,
+                "message": "Successfully joined team via invitation",
+                "member_data": new_member["student"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to add team member directly: {str(e)}")
+            return {"success": False, "message": f"Failed to join team: {str(e)}"}
     
     async def remove_team_member(
         self,
@@ -659,6 +874,37 @@ class EventRegistrationService:
             if team_reg["team"]["team_leader"] != inviter_enrollment:
                 return {"success": False, "message": "Only team leader can send invitations"}
             
+            # Check team size limits before sending invitation
+            event = await DatabaseOperations.find_one(
+                self.events_collection,
+                {"event_id": event_id}
+            )
+            
+            if not event:
+                return {"success": False, "message": "Event not found"}
+            
+            current_team_size = len(team_reg.get("team_members", []))
+            max_team_size = event.get("team_size_max", 10)  # Default to 10 if not specified
+            
+            # Count pending invitations to avoid oversending
+            pending_invitations_count = await DatabaseOperations.count_documents(
+                self.invitations_collection,
+                {
+                    "team_registration_id": team_registration_id,
+                    "status": "pending"
+                }
+            )
+            
+            potential_team_size = current_team_size + pending_invitations_count + 1  # +1 for this new invitation
+            
+            logger.info(f"Team size check for invitation: current={current_team_size}, pending={pending_invitations_count}, potential={potential_team_size}, max={max_team_size}")
+            
+            if potential_team_size > max_team_size:
+                return {
+                    "success": False, 
+                    "message": f"Cannot send invitation. Team would exceed maximum size ({potential_team_size}/{max_team_size} with pending invitations)"
+                }
+            
             # Check if invitation already exists
             existing_invitation = await DatabaseOperations.find_one(
                 self.invitations_collection,
@@ -673,6 +919,13 @@ class EventRegistrationService:
             if existing_invitation:
                 return {"success": False, "message": "Invitation already sent to this student"}
             
+            # FIXED: Get team leader name from team members
+            team_leader_name = "Team Leader"  # Default
+            for member in team_reg.get("team_members", []):
+                if member.get("is_team_leader"):
+                    team_leader_name = member["student"]["name"]
+                    break
+            
             # Create invitation document
             invitation_id = f"INV_{event_id}_{team_registration_id}_{invitee_enrollment}_{int(datetime.utcnow().timestamp())}"
             
@@ -682,7 +935,7 @@ class EventRegistrationService:
                 "team_registration_id": team_registration_id,
                 "team_name": team_reg["team"]["team_name"],
                 "inviter_enrollment": inviter_enrollment,
-                "inviter_name": team_reg["team"]["team_leader_name"],
+                "inviter_name": team_leader_name,  # FIXED: Use extracted name
                 "invitee_enrollment": invitee_enrollment,
                 "status": "pending",  # pending, accepted, declined
                 "created_at": datetime.utcnow(),
@@ -741,12 +994,52 @@ class EventRegistrationService:
                 return {"success": False, "message": "Invitation has expired"}
             
             if response == "accept":
-                # Add student to team using existing add_team_member logic
-                result = await self.add_team_member(
+                # FIXED: Check team size limits before adding member
+                # Get current team registration to check size limits
+                team_registration = await DatabaseOperations.find_one(
+                    self.collection,
+                    {
+                        "registration_id": invitation["team_registration_id"],
+                        "registration_type": "team"
+                    }
+                )
+                
+                if not team_registration:
+                    return {"success": False, "message": "Team registration not found"}
+                
+                # Get event to check team size limits
+                event = await DatabaseOperations.find_one(
+                    self.events_collection,
+                    {"event_id": invitation["event_id"]}
+                )
+                
+                if not event:
+                    return {"success": False, "message": "Event not found"}
+                
+                # Check team size limits
+                current_team_size = len(team_registration.get("team_members", []))
+                max_team_size = event.get("team_size_max", 10)  # Default to 10 if not specified
+                
+                logger.info(f"Team size check: current={current_team_size}, max={max_team_size}")
+                
+                if current_team_size >= max_team_size:
+                    # Mark invitation as expired due to team being full
+                    await DatabaseOperations.update_one(
+                        self.invitations_collection,
+                        {"invitation_id": invitation_id},
+                        {"$set": {"status": "expired", "responded_at": datetime.utcnow(), "reason": "team_full"}}
+                    )
+                    return {
+                        "success": False, 
+                        "message": f"Cannot join team '{team_registration.get('team', {}).get('team_name', 'Unknown')}'. Team is already full ({current_team_size}/{max_team_size} members). The invitation has been automatically declined."
+                    }
+                
+                # FIXED: Directly add student to team without checking existing registration
+                # (since they already received an invitation, they're eligible)
+                result = await self._add_team_member_direct(
                     invitation["event_id"],
                     invitation["team_registration_id"],
-                    student_enrollment,
-                    invitation["inviter_enrollment"]
+                    student_enrollment
                 )
                 
                 if result["success"]:
@@ -791,9 +1084,29 @@ class EventRegistrationService:
                 }
             )
             
+            # FIXED: Serialize invitations to handle ObjectId and datetime fields
+            serialized_invitations = []
+            for invitation in invitations:
+                serialized_invitation = {
+                    "invitation_id": invitation.get("invitation_id"),
+                    "event_id": invitation.get("event_id"),
+                    "event_name": invitation.get("event_name"),
+                    "team_registration_id": invitation.get("team_registration_id"),
+                    "team_name": invitation.get("team_name"),
+                    "inviter_enrollment": invitation.get("inviter_enrollment"),
+                    "inviter_name": invitation.get("inviter_name"),
+                    "invitee_enrollment": invitation.get("invitee_enrollment"),
+                    "status": invitation.get("status"),
+                    "created_at": invitation.get("created_at").isoformat() if invitation.get("created_at") else None,
+                    "expires_at": invitation.get("expires_at").isoformat() if invitation.get("expires_at") else None,
+                    "responded_at": invitation.get("responded_at").isoformat() if invitation.get("responded_at") else None
+                }
+                serialized_invitations.append(serialized_invitation)
+            
             return {
                 "success": True,
-                "invitations": invitations
+                "invitations": serialized_invitations,
+                "count": len(serialized_invitations)
             }
             
         except Exception as e:
@@ -1155,6 +1468,58 @@ class EventRegistrationService:
             
         except Exception as e:
             logger.error(f"Error getting registration status: {e}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}"
+            }
+    
+    async def get_team_details_by_registration_id(
+        self,
+        team_registration_id: str
+    ) -> Dict[str, Any]:
+        """Get team details by team registration ID."""
+        try:
+            logger.info(f"Getting team details for registration ID: {team_registration_id}")
+            
+            # Find team registration
+            team_registration = await DatabaseOperations.find_one(
+                self.collection,
+                {
+                    "registration_id": team_registration_id,
+                    "registration_type": "team"
+                }
+            )
+            
+            if not team_registration:
+                return {
+                    "success": False,
+                    "message": "Team registration not found"
+                }
+            
+            # Convert ObjectIds to strings for JSON serialization
+            from core.json_encoder import CustomJSONEncoder
+            import json
+            
+            serialized_data = json.loads(json.dumps(team_registration, cls=CustomJSONEncoder))
+            
+            return {
+                "success": True,
+                "team": {
+                    "team_name": team_registration.get("team", {}).get("team_name", ""),
+                    "team_leader": team_registration.get("team", {}).get("team_leader", ""),
+                    "registration_id": team_registration.get("registration_id"),
+                    "event_name": team_registration.get("event", {}).get("event_name", ""),
+                    "event_id": team_registration.get("event", {}).get("event_id", ""),
+                    "status": team_registration.get("team", {}).get("status", ""),
+                    "registered_at": team_registration.get("team", {}).get("registered_at"),
+                    "members": team_registration.get("team_members", []),
+                    "total_members": len(team_registration.get("team_members", []))
+                },
+                "full_data": serialized_data
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting team details: {e}")
             return {
                 "success": False,
                 "message": f"Error: {str(e)}"

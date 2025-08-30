@@ -244,7 +244,14 @@ const TeamManagement = () => {
       );
 
       if (response.data.success) {
-        showNotification('Team member added successfully!', 'success');
+        // FIXED: Handle invitation vs direct addition
+        const message = response.data.message;
+        if (message.includes('invitation')) {
+          showNotification('Team invitation sent successfully! The student will receive an invitation to join your team.', 'info');
+        } else {
+          showNotification('Team member added successfully!', 'success');
+        }
+        
         await fetchTeamData(); // Refresh data
         setShowConfirmModal(false);
         setParticipantEnrollment('');

@@ -816,7 +816,20 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       
       console.log('Registration API response:', response);
       
-      setSuccess('Registration submitted successfully!');
+      // FIXED: Handle invitation information in team registration response
+      const hasInvitations = response.data.data?.pending_invitations > 0;
+      const invitationsSent = response.data.data?.invitations_sent || [];
+      const invitationErrors = response.data.data?.invitation_errors || [];
+      
+      let successMessage = 'Registration submitted successfully!';
+      if (hasInvitations) {
+        successMessage += ` Invitations sent to ${invitationsSent.length} already-registered students.`;
+        if (invitationErrors.length > 0) {
+          successMessage += ` Note: ${invitationErrors.length} invitations failed to send.`;
+        }
+      }
+      
+      setSuccess(successMessage);
       
       // Clean up session data
       if (formSession) {
@@ -841,7 +854,11 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             participant_count: (registrationData.team_members?.length || 0) + 1,
             leader_name: registrationData.full_name,
             leader_enrollment: registrationData.enrollment_no,
-            participants: registrationData.team_members || []
+            participants: registrationData.team_members || [],
+            // FIXED: Include invitation information
+            invitations_sent: invitationsSent,
+            invitation_errors: invitationErrors,
+            pending_invitations: hasInvitations
           } : null
         },
         event: event

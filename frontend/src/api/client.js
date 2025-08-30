@@ -120,6 +120,8 @@ export const clientAPI = {
     response: response  // "accept" or "decline"
   }),
   
+  getTeamDetailsByRegistrationId: (teamRegistrationId) => api.get(`/api/v1/client/registration/team/${teamRegistrationId}/details`),
+  
   // Attendance - Updated endpoints
   markAttendance: (eventId, attendanceData) => api.post('/api/v1/client/attendance/mark', { 
     event_id: eventId, 

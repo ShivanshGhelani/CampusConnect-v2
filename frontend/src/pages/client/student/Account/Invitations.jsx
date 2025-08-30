@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { clientAPI } from '../../../../api/client';
+import { useNavigate } from 'react-router-dom';
 import InvitationCard from '../../../../components/client/InvitationCard';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 
 const Invitations = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,29 +36,54 @@ const Invitations = () => {
     }
   };
 
-  const handleInvitationResponse = (invitation, response) => {
-    // Remove the responded invitation from the list
-    setInvitations(prev => prev.filter(inv => inv.invitation_id !== invitation.invitation_id));
-    
-    // Show success message
-    const message = response === 'accept' 
-      ? `Successfully joined team "${invitation.team_name}"!` 
-      : `Declined invitation to team "${invitation.team_name}"`;
-    
-    // You might want to show a toast notification here
-    console.log(message);
+  const handleInvitationResponse = (invitation, response, success = true, message = null) => {
+    if (success) {
+      // Remove the responded invitation from the list only if successful
+      setInvitations(prev => prev.filter(inv => inv.invitation_id !== invitation.invitation_id));
+      
+      // Show success message
+      const successMessage = response === 'accept' 
+        ? `Successfully joined team "${invitation.team_name}"!` 
+        : `Declined invitation to team "${invitation.team_name}"`;
+      
+      console.log(successMessage);
+      // You might want to show a toast notification here
+    } else {
+      // Don't remove invitation from list if it failed
+      // The error will be shown in the InvitationCard itself
+      console.log(`Failed to ${response} invitation: ${message}`);
+    }
+  };
+
+  const handleRefresh = () => {
+    // Refresh the page to check for updates
+    window.location.reload();
   };
 
   const handleViewTeam = (invitation) => {
-    // This could open a modal or navigate to a team details page
-    console.log('View team details for:', invitation);
-    // For now, just log - you can implement a modal or navigation
+    // Navigate to team details or event details with team focus
+    if (invitation.event_id) {
+      console.log('Navigating to team view for event:', invitation.event_id);
+      // Navigate to event details page
+      navigate(`/client/events/${invitation.event_id}`, { 
+        state: { 
+          focusTab: 'teams',
+          highlightTeam: invitation.team_registration_id 
+        } 
+      });
+    } else {
+      console.warn('No event ID found in invitation:', invitation);
+    }
   };
 
   const handleViewDetails = (invitation) => {
-    // This could open a modal or navigate to event details page
-    console.log('View event details for:', invitation);
-    // For now, just log - you can implement a modal or navigation
+    // Navigate to event details page
+    if (invitation.event_id) {
+      console.log('Navigating to event details for event:', invitation.event_id);
+      navigate(`/client/events/${invitation.event_id}`);
+    } else {
+      console.warn('No event ID found in invitation:', invitation);
+    }
   };
 
   if (loading) {
@@ -143,10 +170,11 @@ const Invitations = () => {
             <InvitationCard
               key={invitation.invitation_id}
               invitation={invitation}
-              onAccept={(inv) => handleInvitationResponse(inv, 'accept')}
-              onDecline={(inv) => handleInvitationResponse(inv, 'decline')}
+              onAccept={(inv, response, success, message) => handleInvitationResponse(inv, response, success, message)}
+              onDecline={(inv, response, success, message) => handleInvitationResponse(inv, response, success, message)}
               onViewTeam={handleViewTeam}
               onViewDetails={handleViewDetails}
+              onRefresh={handleRefresh}
             />
           ))}
         </div>
