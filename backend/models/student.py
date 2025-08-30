@@ -16,11 +16,18 @@ class EventParticipation(BaseModel):
     # Payment tracking for paid events
     payment_id: Optional[str] = Field(default=None, description="Payment ID for paid events")
     payment_status: Optional[str] = Field(default=None, description="Payment status: complete/pending (for paid events only)")
-      # Event participation metadata
+    
+    # Event participation metadata
     registration_date: datetime = Field(default_factory=datetime.utcnow, description="Date of registration")
     registration_type: str = Field(..., description="Type: 'individual' or 'team_member'")
     team_name: Optional[str] = Field(default=None, description="Team name if part of a team event")
     team_registration_id: Optional[str] = Field(default=None, description="Team registration ID for team events")
+    
+    # Team role assignment (NEW - for team management)
+    assigned_roles: List[str] = Field(default=[], description="List of roles assigned to this student in the team")
+    team_permissions: List[str] = Field(default=["view"], description="Permissions in the team")
+    role_assigned_by: Optional[str] = Field(default=None, description="Who assigned the role")
+    role_assigned_at: Optional[datetime] = Field(default=None, description="When the role was assigned")
 
 class StudentUpdate(BaseModel):
     """Model for updating student profile information"""

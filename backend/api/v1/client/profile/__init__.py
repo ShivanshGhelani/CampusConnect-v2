@@ -12,6 +12,9 @@ from models.faculty import Faculty, FacultyUpdate
 from database.operations import DatabaseOperations
 from typing import Union
 
+# Import team tools router
+from .team_tools import router as team_tools_router
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -1106,3 +1109,6 @@ async def get_team_info(
         logger.error(f"Error getting team info: {str(e)}")
         traceback.print_exc()
         return {"success": False, "message": f"Error retrieving team info: {str(e)}"}
+
+# Include team management tools
+router.include_router(team_tools_router, prefix="/team-tools", tags=["Team Management"])

@@ -122,6 +122,35 @@ export const clientAPI = {
   
   getTeamDetailsByRegistrationId: (teamRegistrationId) => api.get(`/api/v1/client/registration/team/${teamRegistrationId}/details`),
   
+  // ===== TEAM MANAGEMENT TOOLS API =====
+  
+  // Task Management
+  createTask: (eventId, taskData) => api.post(`/api/v1/client/profile/team-tools/create-task/${eventId}`, taskData),
+  
+  getTeamTasks: (eventId, status = null) => api.get(`/api/v1/client/profile/team-tools/tasks/${eventId}`, {
+    params: status ? { status } : {}
+  }),
+  
+  completeTask: (eventId, taskId, reviewData = {}) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/complete`, reviewData),
+  
+  // Role Assignment
+  assignRole: (eventId, roleData) => api.post(`/api/v1/client/profile/team-tools/assign-role/${eventId}`, roleData),
+  
+  getTeamRoles: (eventId) => api.get(`/api/v1/client/profile/team-tools/roles/${eventId}`),
+  
+  // Team Communication
+  postMessage: (eventId, messageData) => api.post(`/api/v1/client/profile/team-tools/post-message/${eventId}`, messageData),
+  
+  getTeamMessages: (eventId, limit = 50, skip = 0) => api.get(`/api/v1/client/profile/team-tools/messages/${eventId}`, {
+    params: { limit, skip }
+  }),
+  
+  // Report Generation
+  generateReport: (eventId, reportData) => api.post(`/api/v1/client/profile/team-tools/generate-report/${eventId}`, reportData),
+  
+  // Team Overview
+  getTeamOverview: (eventId) => api.get(`/api/v1/client/profile/team-tools/team-overview/${eventId}`),
+  
   // Attendance - Updated endpoints
   markAttendance: (eventId, attendanceData) => api.post('/api/v1/client/attendance/mark', { 
     event_id: eventId, 

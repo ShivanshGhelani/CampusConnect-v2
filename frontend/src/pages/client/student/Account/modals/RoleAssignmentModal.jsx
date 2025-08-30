@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const RoleAssignmentModal = ({ eventId, teamId, teamMembers, onClose, onSuccess }) => {
+const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuccess }) => {
   const [selectedMember, setSelectedMember] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [customRoleName, setCustomRoleName] = useState('');
@@ -27,10 +27,15 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers, onClose, onSuccess 
   ];
 
   // Filter members based on search term
-  const filteredMembers = teamMembers.filter(member =>
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMembers = teamMembers.filter(member => {
+    if (!member || !member.name || !member.enrollment_no) return false;
+    
+    const memberName = (member.name || '').toLowerCase();
+    const memberEnrollment = (member.enrollment_no || '').toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
+    
+    return memberName.includes(searchLower) || memberEnrollment.includes(searchLower);
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -110,7 +115,7 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers, onClose, onSuccess 
   const selectedRoleData = predefinedRoles.find(role => role.value === selectedRole);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">

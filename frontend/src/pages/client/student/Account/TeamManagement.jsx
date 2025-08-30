@@ -5,6 +5,12 @@ import { clientAPI } from '../../../../api/client';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import Layout from '../../../../components/client/Layout.jsx';
 
+// Import modal components for enhanced team management
+import TaskManagementModal from './modals/TaskManagementModal';
+import RoleAssignmentModal from './modals/RoleAssignmentModal';
+import TeamCommunicationModal from './modals/TeamCommunicationModal';
+import ReportGenerationModal from './modals/ReportGenerationModal';
+
 const TeamManagement = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -19,13 +25,20 @@ const TeamManagement = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Modal states - simplified
+  // Modal states - enhanced with team management features
   const [showAddModal, setShowAddModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showTeamStatusModal, setShowTeamStatusModal] = useState(false);
+  
+  // Enhanced team management modals
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showTeamManagementDropdown, setShowTeamManagementDropdown] = useState(false);
 
   // Form states - optimized for event lifecycle
   const [participantEnrollment, setParticipantEnrollment] = useState('');
@@ -631,6 +644,74 @@ const TeamManagement = () => {
     setRefreshing(false);
   };
 
+  // Enhanced team management functions
+  const handleTaskModalSuccess = () => {
+    setShowTaskModal(false);
+    showNotification('Task created successfully!', 'success');
+    fetchTeamData(); // Refresh to get updated tasks
+  };
+
+  const handleRoleModalSuccess = () => {
+    setShowRoleModal(false);
+    showNotification('Role assigned successfully!', 'success');
+    fetchTeamData(); // Refresh to get updated roles
+  };
+
+  const handleCommunicationModalSuccess = () => {
+    setShowCommunicationModal(false);
+    showNotification('Message sent successfully!', 'success');
+    fetchTeamData(); // Refresh to get updated communication log
+  };
+
+  const handleReportModalSuccess = () => {
+    setShowReportModal(false);
+    showNotification('Report generated successfully!', 'success');
+  };
+
+  // Team management permissions helper
+  const isTeamLeader = () => {
+    if (!user || !teamRegistration) return false;
+    return teamRegistration.team_leader?.enrollment_no === user.enrollment_no;
+  };
+
+  // Prepare team members data for modals
+  const getTeamMembersForModal = () => {
+    if (!teamRegistration) return [];
+    
+    const allMembers = [];
+    
+    // Add team leader
+    if (teamRegistration.team_leader) {
+      const leader = teamRegistration.team_leader;
+      allMembers.push({
+        enrollment_no: leader.enrollment_no || '',
+        name: leader.full_name || leader.name || 'Team Leader',
+        role: 'Team Leader',
+        isLeader: true
+      });
+    }
+    
+    // Add other members
+    if (teamRegistration.members && Array.isArray(teamRegistration.members) && teamRegistration.members.length > 0) {
+      teamRegistration.members.forEach((member, index) => {
+        if (member && (member.enrollment_no || member.full_name || member.name)) {
+          allMembers.push({
+            enrollment_no: member.enrollment_no || `member_${index}`,
+            name: member.full_name || member.name || `Member ${index + 1}`,
+            role: member.role || 'Member',
+            isLeader: false
+          });
+        }
+      });
+    }
+    
+    // Debug log to see what data we're working with
+    console.log('Team members for modal:', allMembers);
+    console.log('Original team registration:', teamRegistration);
+    
+    return allMembers;
+  };
+
   // Confirm and add team member using new backend API
   const confirmAddMember = async () => {
     if (!validatedStudent || !teamRegistration?.registration_id) return;
@@ -991,6 +1072,177 @@ const TeamManagement = () => {
               </button>
             )}
           </div>
+
+          {/* Enhanced Team Management Buttons - Only for Team Leaders */}
+          {isTeamLeader() && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                    <i className="fas fa-crown text-yellow-500"></i>
+                    Team Leader Actions
+                  </h3>
+                  <p className="text-sm text-blue-700">Manage your team with advanced tools</p>
+                </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowTeamManagementDropdown(!showTeamManagementDropdown)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                  >
+                    <i className="fas fa-cog"></i>
+                    Team Tools
+                    <i className={`fas fa-chevron-${showTeamManagementDropdown ? 'up' : 'down'} ml-1`}></i>
+                  </button>
+
+                  {showTeamManagementDropdown && (
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
+                      <div className="py-2">
+                        <button
+                          onClick={() => {
+                            if (teamRegistration) {
+                              setShowTaskModal(true);
+                              setShowTeamManagementDropdown(false);
+                            } else {
+                              showNotification('Team data not loaded yet', 'error');
+                              setShowTeamManagementDropdown(false);
+                            }
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100"
+                        >
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-tasks text-blue-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Assign Tasks</p>
+                            <p className="text-xs text-gray-600">Create and assign tasks to members</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (teamRegistration) {
+                              setShowRoleModal(true);
+                              setShowTeamManagementDropdown(false);
+                            } else {
+                              showNotification('Team data not loaded yet', 'error');
+                              setShowTeamManagementDropdown(false);
+                            }
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-100"
+                        >
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-user-tag text-purple-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Assign Roles</p>
+                            <p className="text-xs text-gray-600">Define member roles and responsibilities</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (teamRegistration) {
+                              setShowCommunicationModal(true);
+                              setShowTeamManagementDropdown(false);
+                            } else {
+                              showNotification('Team data not loaded yet', 'error');
+                              setShowTeamManagementDropdown(false);
+                            }
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center gap-3 border-b border-gray-100"
+                        >
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-comments text-green-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Team Message</p>
+                            <p className="text-xs text-gray-600">Send messages to team members</p>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (teamRegistration) {
+                              setShowReportModal(true);
+                              setShowTeamManagementDropdown(false);
+                            } else {
+                              showNotification('Team data not loaded yet', 'error');
+                              setShowTeamManagementDropdown(false);
+                            }
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-indigo-50 flex items-center gap-3"
+                        >
+                          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-chart-pie text-indigo-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Generate Report</p>
+                            <p className="text-xs text-gray-600">Create detailed team reports</p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Action Buttons */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button
+                  onClick={() => {
+                    if (teamRegistration) {
+                      setShowTaskModal(true);
+                    } else {
+                      showNotification('Team data not loaded yet', 'error');
+                    }
+                  }}
+                  className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <i className="fas fa-tasks"></i>
+                  Tasks
+                </button>
+                <button
+                  onClick={() => {
+                    if (teamRegistration) {
+                      setShowRoleModal(true);
+                    } else {
+                      showNotification('Team data not loaded yet', 'error');
+                    }
+                  }}
+                  className="bg-purple-100 hover:bg-purple-200 text-purple-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <i className="fas fa-user-tag"></i>
+                  Roles
+                </button>
+                <button
+                  onClick={() => {
+                    if (teamRegistration) {
+                      setShowCommunicationModal(true);
+                    } else {
+                      showNotification('Team data not loaded yet', 'error');
+                    }
+                  }}
+                  className="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <i className="fas fa-comments"></i>
+                  Message
+                </button>
+                <button
+                  onClick={() => {
+                    if (teamRegistration) {
+                      setShowReportModal(true);
+                    } else {
+                      showNotification('Team data not loaded yet', 'error');
+                    }
+                  }}
+                  className="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <i className="fas fa-chart-pie"></i>
+                  Report
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Team Members List - Redesigned for event lifecycle */}
           <div className="space-y-4">
@@ -2194,8 +2446,57 @@ const TeamManagement = () => {
                 onClick={() => setShowExportDropdown(false)}
               ></div>
             )}
+
+            {/* Click outside to close team management dropdown */}
+            {showTeamManagementDropdown && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowTeamManagementDropdown(false)}
+              ></div>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Enhanced Team Management Modals */}
+      {showTaskModal && teamRegistration && (
+        <TaskManagementModal
+          eventId={eventId}
+          teamId={teamRegistration?.registration_id}
+          teamMembers={getTeamMembersForModal()}
+          onClose={() => setShowTaskModal(false)}
+          onSuccess={handleTaskModalSuccess}
+        />
+      )}
+
+      {showRoleModal && teamRegistration && (
+        <RoleAssignmentModal
+          eventId={eventId}
+          teamId={teamRegistration?.registration_id}
+          teamMembers={getTeamMembersForModal()}
+          onClose={() => setShowRoleModal(false)}
+          onSuccess={handleRoleModalSuccess}
+        />
+      )}
+
+      {showCommunicationModal && teamRegistration && (
+        <TeamCommunicationModal
+          eventId={eventId}
+          teamId={teamRegistration?.registration_id}
+          teamMembers={getTeamMembersForModal()}
+          onClose={() => setShowCommunicationModal(false)}
+          onSuccess={handleCommunicationModalSuccess}
+        />
+      )}
+
+      {showReportModal && teamRegistration && (
+        <ReportGenerationModal
+          eventId={eventId}
+          teamId={teamRegistration?.registration_id}
+          teamData={teamRegistration}
+          onClose={() => setShowReportModal(false)}
+          onSuccess={handleReportModalSuccess}
+        />
       )}
     </Layout>
   );

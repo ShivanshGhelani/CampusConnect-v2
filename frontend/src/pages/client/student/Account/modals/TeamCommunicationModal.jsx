@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const TeamCommunicationModal = ({ eventId, teamId, teamMembers, onClose, onSuccess }) => {
+const TeamCommunicationModal = ({ eventId, teamId, teamMembers = [], onClose, onSuccess }) => {
   const [messageData, setMessageData] = useState({
     title: '',
     content: '',
@@ -25,11 +25,18 @@ const TeamCommunicationModal = ({ eventId, teamId, teamMembers, onClose, onSucce
   ];
 
   // Filter members for mentions (exclude already mentioned)
-  const filteredMembers = teamMembers.filter(member =>
-    (member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     member.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    !messageData.mentions.includes(member.enrollment_no)
-  );
+  const filteredMembers = teamMembers.filter(member => {
+    if (!member || !member.name || !member.enrollment_no) return false;
+    
+    const memberName = (member.name || '').toLowerCase();
+    const memberEnrollment = (member.enrollment_no || '').toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
+    
+    const matchesSearch = memberName.includes(searchLower) || memberEnrollment.includes(searchLower);
+    const notAlreadyMentioned = !messageData.mentions.includes(member.enrollment_no);
+    
+    return matchesSearch && notAlreadyMentioned;
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -126,7 +133,7 @@ const TeamCommunicationModal = ({ eventId, teamId, teamMembers, onClose, onSucce
   ).filter(Boolean);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-green-600 to-teal-600 p-6 text-white">

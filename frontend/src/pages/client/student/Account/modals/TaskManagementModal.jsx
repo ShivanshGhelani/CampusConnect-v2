@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const TaskManagementModal = ({ eventId, teamId, teamMembers, onClose, onSuccess }) => {
+const TaskManagementModal = ({ eventId, teamId, teamMembers = [], onClose, onSuccess }) => {
   const [taskData, setTaskData] = useState({
     title: '',
     description: '',
@@ -36,10 +36,15 @@ const TaskManagementModal = ({ eventId, teamId, teamMembers, onClose, onSuccess 
   ];
 
   // Filter members based on search term
-  const filteredMembers = teamMembers.filter(member =>
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMembers = teamMembers.filter(member => {
+    if (!member || !member.name || !member.enrollment_no) return false;
+    
+    const memberName = (member.name || '').toLowerCase();
+    const memberEnrollment = (member.enrollment_no || '').toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
+    
+    return memberName.includes(searchLower) || memberEnrollment.includes(searchLower);
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -128,7 +133,7 @@ const TaskManagementModal = ({ eventId, teamId, teamMembers, onClose, onSuccess 
   const selectedAssignee = teamMembers.find(m => m.enrollment_no === taskData.assigned_to);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">

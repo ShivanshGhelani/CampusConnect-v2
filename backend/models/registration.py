@@ -57,6 +57,44 @@ class TeamInfo(BaseModel):
     team_members: Optional[List[str]] = None
     team_size: Optional[int] = None
 
+class TaskInfo(BaseModel):
+    """Task information for team management"""
+    task_id: str
+    title: str
+    description: Optional[str] = ""
+    priority: str = "medium"  # low, medium, high
+    deadline: Optional[datetime] = None
+    assigned_to: List[str] = []  # List of enrollment numbers
+    category: str = "general"
+    status: str = "pending"  # pending, in_progress, completed, cancelled
+    created_by: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_by: Optional[str] = None
+    completed_at: Optional[datetime] = None
+    reviews: List[Dict[str, Any]] = []
+
+class MessageInfo(BaseModel):
+    """Message information for team communication"""
+    message_id: str
+    content: str
+    priority: str = "normal"  # low, normal, high, urgent
+    mentions: List[str] = []  # List of enrollment numbers mentioned
+    category: str = "general"
+    sent_by: str
+    sent_at: datetime = Field(default_factory=datetime.utcnow)
+    read_by: List[str] = []  # List of enrollment numbers who read the message
+    reactions: Dict[str, List[str]] = {}  # emoji -> list of enrollment numbers
+    replies: List[Dict[str, Any]] = []
+
+class RoleAssignment(BaseModel):
+    """Role assignment information for team members"""
+    role: str
+    permissions: List[str] = []
+    description: Optional[str] = ""
+    assigned_by: str
+    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+
 class AttendanceSessionInfo(BaseModel):
     """Individual attendance session information"""
     session_id: str
@@ -112,6 +150,12 @@ class StudentRegistration(BaseModel):
     attendance: AttendanceInfo = Field(default_factory=AttendanceInfo)
     feedback: FeedbackInfo = Field(default_factory=FeedbackInfo)
     certificate: CertificateInfo = Field(default_factory=CertificateInfo)
+    
+    # Team Management Fields (for team registrations only)
+    tasks: List[TaskInfo] = Field(default=[], description="Team tasks")
+    messages: List[MessageInfo] = Field(default=[], description="Team messages")
+    team_roles: Dict[str, RoleAssignment] = Field(default={}, description="Role assignments by enrollment number")
+    team_members: Optional[List[Dict[str, Any]]] = Field(default=None, description="Detailed team member information")
     
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)

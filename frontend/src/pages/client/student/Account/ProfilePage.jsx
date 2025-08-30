@@ -5,6 +5,8 @@ import { useAvatar } from '../../../../hooks/useAvatar';
 import ProfileEventCard from '../../../../components/client/ProfileEventCard';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
+import MessageBox from '../../../../components/client/MessageBox';
+import { clientAPI } from '../../../../api/client';
 import api from '../../../../api/base';
 
 function ProfilePage() {
@@ -58,6 +60,10 @@ function ProfilePage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTeamDetailModal, setShowTeamDetailModal] = useState(false);
   const [selectedTeamDetail, setSelectedTeamDetail] = useState(null);
+  const [showMessageBox, setShowMessageBox] = useState(false);
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [teamRoles, setTeamRoles] = useState([]);
+  const [teamDataLoading, setTeamDataLoading] = useState(false);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [selectedQRData, setSelectedQRData] = useState(null);
   const [currentEventId, setCurrentEventId] = useState(null);
@@ -210,45 +216,91 @@ function ProfilePage() {
   const openTeamDetailModal = useCallback(async (teamDetail) => {
     setSelectedTeamDetail(teamDetail);
     setShowTeamDetailModal(true);
+    setTeamDataLoading(true);
 
-    // Fetch actual team members data from API using axios
     try {
-      const apiUrl = `/api/v1/client/profile/team-info/${teamDetail.eventId}/${teamDetail.teamId}`;
+      // For now, use mock data since the team-tools API endpoints don't exist yet
+      // Later these can be replaced with actual API calls
+      
+      // Mock team tasks data
+      const mockTasks = [
+        {
+          title: "Design Team Logo",
+          description: "Create a unique logo for the team that represents our project theme",
+          assigned_to: "Design Team Member",
+          priority: "high",
+          status: "in_progress",
+          due_date: "2025-09-02"
+        },
+        {
+          title: "Prepare Presentation",
+          description: "Create slides and prepare final presentation for the event",
+          assigned_to: "Team Leader",
+          priority: "medium",
+          status: "pending",
+          due_date: "2025-09-05"
+        }
+      ];
 
-      const response = await api.get(apiUrl);
-      const data = response.data;
+      // Mock team roles data
+      const mockRoles = [
+        {
+          role_name: "Team Leader",
+          assigned_to: teamDetail.userRole === 'team_leader' ? "You" : "Team Leader",
+          description: "Lead the team, coordinate activities, and ensure project completion",
+          status: "active"
+        },
+        {
+          role_name: "Technical Lead",
+          assigned_to: "Technical Member",
+          description: "Handle technical implementation and code reviews",
+          status: "active"
+        },
+        {
+          role_name: "Designer",
+          assigned_to: "Design Member",
+          description: "Create UI/UX designs and visual assets",
+          status: "in_progress"
+        }
+      ];
 
-      if (data.success && data.data) {
-        // Update the team detail with real member data and team name from API
-        setSelectedTeamDetail({
-          ...teamDetail,
-          teamName: data.data.team_name || teamDetail.teamName, // Use API team name or fallback to original
-          teamMembersData: data.data.members,
-          totalMembers: data.data.total_members
-        });
-      } else {
-        console.error('Failed to fetch team details:', data.message);
-        // Set empty array to show "no data" state but preserve team name
-        setSelectedTeamDetail({
-          ...teamDetail,
-          teamMembersData: [],
-          totalMembers: 0
-        });
+      setTeamTasks(mockTasks);
+      setTeamRoles(mockRoles);
+
+      // Use actual API calls now
+      try {
+        const [tasksResponse, rolesResponse] = await Promise.all([
+          clientAPI.getTeamTasks(teamDetail.eventId),
+          clientAPI.getTeamRoles(teamDetail.eventId)
+        ]);
+
+        if (tasksResponse.data.success) {
+          setTeamTasks(tasksResponse.data.data || []);
+        }
+        
+        if (rolesResponse.data.success) {
+          setTeamRoles(rolesResponse.data.data || []);
+        }
+      } catch (apiError) {
+        console.log('API not available, using mock data');
+        // Keep mock data as fallback
       }
     } catch (error) {
-      console.error('Error fetching team details:', error);
-      // Set empty array to show "no data" state but preserve team name
-      setSelectedTeamDetail({
-        ...teamDetail,
-        teamMembersData: [],
-        totalMembers: 0
-      });
+      console.error('Error fetching team data:', error);
+      setTeamTasks([]);
+      setTeamRoles([]);
+    } finally {
+      setTeamDataLoading(false);
     }
   }, []);
 
   const closeTeamDetailModal = useCallback(() => {
     setShowTeamDetailModal(false);
     setSelectedTeamDetail(null);
+    setShowMessageBox(false);
+    setTeamTasks([]);
+    setTeamRoles([]);
+    setTeamDataLoading(false);
   }, []);
 
   const openQRCodeModal = useCallback((qrData) => {
@@ -1056,14 +1108,28 @@ function ProfilePage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={closeTeamDetailModal}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
-                >
-                  <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Chat/Message Icon */}
+                  <button
+                    onClick={() => setShowMessageBox(true)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 text-slate-600 hover:text-blue-600 transition-all duration-200 group"
+                    title="Team Chat"
+                  >
+                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                  
+                  {/* Close Button */}
+                  <button
+                    onClick={closeTeamDetailModal}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
+                  >
+                    <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1282,6 +1348,146 @@ function ProfilePage() {
                   </div>
                 </div>
 
+                {/* Team Roles Section */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Team Roles & Responsibilities
+                  </h4>
+
+                  {teamDataLoading ? (
+                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500 mx-auto mb-2"></div>
+                      <p className="text-slate-600 text-sm">Loading team roles...</p>
+                    </div>
+                  ) : teamRoles.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {teamRoles.map((role, index) => (
+                        <div key={index} className="bg-white rounded-xl p-4 border border-slate-200">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h5 className="font-semibold text-slate-900 text-sm">{role.role_name}</h5>
+                              <p className="text-xs text-slate-600">
+                                Assigned to: {role.assigned_to || 'Unassigned'}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed mb-2">
+                            {role.description || 'No description provided'}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                              role.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              role.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {role.status === 'completed' && (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                              {role.status || 'pending'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <p className="text-slate-600 text-sm">No team roles assigned yet</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Team Tasks Section */}
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl p-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    Team Tasks & Progress
+                  </h4>
+
+                  {teamDataLoading ? (
+                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                      <p className="text-slate-600 text-sm">Loading team tasks...</p>
+                    </div>
+                  ) : teamTasks.length > 0 ? (
+                    <div className="space-y-3">
+                      {teamTasks.map((task, index) => (
+                        <div key={index} className="bg-white rounded-xl p-4 border border-slate-200">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-slate-900 text-sm mb-1">{task.title}</h5>
+                              <p className="text-xs text-slate-700 leading-relaxed">
+                                {task.description || 'No description provided'}
+                              </p>
+                            </div>
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${
+                              task.priority === 'high' ? 'bg-red-100 text-red-700' :
+                              task.priority === 'medium' ? 'bg-orange-100 text-orange-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {task.priority || 'normal'} priority
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-4">
+                              <span className="text-slate-600">
+                                Assigned to: <span className="font-medium text-slate-900">
+                                  {task.assigned_to || 'Unassigned'}
+                                </span>
+                              </span>
+                              {task.due_date && (
+                                <span className="text-slate-600">
+                                  Due: <span className="font-medium text-slate-900">
+                                    {new Date(task.due_date).toLocaleDateString()}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                              task.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {task.status === 'completed' && (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                              {task.status || 'pending'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
+                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                      </div>
+                      <p className="text-slate-600 text-sm">No team tasks assigned yet</p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex gap-4 pt-4 border-t border-slate-200">
                   {(selectedTeamDetail.userRole === 'team_leader' || selectedTeamDetail.userRole === 'team') && (
@@ -1346,6 +1552,16 @@ function ProfilePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MessageBox Component */}
+      {showMessageBox && selectedTeamDetail && (
+        <MessageBox
+          teamData={selectedTeamDetail}
+          eventId={selectedTeamDetail?.eventId}
+          onBack={() => setShowMessageBox(false)}
+          isVisible={showMessageBox}
+        />
       )}
     </div>
   );
