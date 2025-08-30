@@ -66,12 +66,20 @@ class TaskInfo(BaseModel):
     deadline: Optional[datetime] = None
     assigned_to: List[str] = []  # List of enrollment numbers
     category: str = "general"
-    status: str = "pending"  # pending, in_progress, completed, cancelled
+    status: str = "pending"  # pending, in_progress, submitted, under_review, completed, cancelled
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     completed_by: Optional[str] = None
     completed_at: Optional[datetime] = None
+    submitted_by: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    submission_link: Optional[str] = None
+    submission_notes: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_status: str = "pending"  # pending, approved, rejected, needs_revision
+    review_notes: Optional[str] = None
     reviews: List[Dict[str, Any]] = []
 
 class MessageInfo(BaseModel):

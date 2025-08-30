@@ -131,6 +131,10 @@ export const clientAPI = {
     params: status ? { status } : {}
   }),
   
+  submitTask: (eventId, taskId, submissionData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/submit`, submissionData),
+  
+  reviewTask: (eventId, taskId, reviewData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/review`, reviewData),
+  
   completeTask: (eventId, taskId, reviewData = {}) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/complete`, reviewData),
   
   // Role Assignment

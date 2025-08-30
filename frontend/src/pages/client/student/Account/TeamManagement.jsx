@@ -8,7 +8,6 @@ import Layout from '../../../../components/client/Layout.jsx';
 // Import modal components for enhanced team management
 import TaskManagementModal from './modals/TaskManagementModal';
 import RoleAssignmentModal from './modals/RoleAssignmentModal';
-import TeamCommunicationModal from './modals/TeamCommunicationModal';
 import ReportGenerationModal from './modals/ReportGenerationModal';
 
 const TeamManagement = () => {
@@ -36,9 +35,21 @@ const TeamManagement = () => {
   // Enhanced team management modals
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
-  const [showCommunicationModal, setShowCommunicationModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showTeamManagementDropdown, setShowTeamManagementDropdown] = useState(false);
+  
+  // New states for roles and tasks
+  const [memberRoles, setMemberRoles] = useState({});
+  const [memberTasks, setMemberTasks] = useState({});
+  const [showMemberTasksModal, setShowMemberTasksModal] = useState(false);
+  const [selectedMemberTasks, setSelectedMemberTasks] = useState(null);
+  
+  // Task review states
+  const [showTaskReviewModal, setShowTaskReviewModal] = useState(false);
+  const [reviewingTask, setReviewingTask] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState('approved');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Form states - optimized for event lifecycle
   const [participantEnrollment, setParticipantEnrollment] = useState('');
@@ -98,6 +109,9 @@ const TeamManagement = () => {
           await fetchParticipationStatus(registration.registration_id);
         }
 
+        // Note: Roles and tasks are now processed directly in processTeamRegistration
+        // loadTeamRolesAndTasks is now only used as a fallback or refresh mechanism
+
       } else if (response.data.success && !response.data.registered) {
         setError('You are not registered for team events in this event.');
       } else {
@@ -117,14 +131,54 @@ const TeamManagement = () => {
     const teamLeader = teamMembers.find(member => member.is_team_leader) || teamMembers[0];
     const otherMembers = teamMembers.filter(member => !member.is_team_leader);
 
+    // Process team roles and tasks from the registration document IMMEDIATELY
+    const teamRoles = registration.team_roles || {};
+    const teamTasks = registration.tasks || [];
+    
+    // Initialize member roles and tasks state IMMEDIATELY
+    const rolesMap = {};
+    const tasksMap = {};
+    
+    // Process roles
+    Object.keys(teamRoles).forEach(enrollment => {
+      rolesMap[enrollment] = {
+        role: teamRoles[enrollment].role,
+        description: teamRoles[enrollment].description || '',
+        permissions: teamRoles[enrollment].permissions || []
+      };
+    });
+    
+    // Process tasks - group by assigned members
+    teamTasks.forEach(task => {
+      task.assigned_to.forEach(enrollment => {
+        if (!tasksMap[enrollment]) {
+          tasksMap[enrollment] = [];
+        }
+        tasksMap[enrollment].push({
+          id: task.task_id,
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          category: task.category,
+          deadline: task.deadline,
+          status: task.status || 'pending',
+          created_at: task.created_at
+        });
+      });
+    });
+    
+    // Set the roles and tasks in state IMMEDIATELY
+    setMemberRoles(rolesMap);
+    setMemberTasks(tasksMap);
+
     return {
       registration_id: registration.registration_id,
       team_name: registration.team?.team_name || registration.team_name || 'Unnamed Team',
       team_size: teamMembers.length,
       max_size: eventData.team_size_max || 5,
       min_size: eventData.team_size_min || 2,
-      status: registration.registration?.status || 'active',
-      registered_at: registration.registration?.registered_at || registration.created_at,
+      status: registration.team?.status || 'active',
+      registered_at: registration.team?.registered_at || registration.created_at,
 
       // Team leader from team_members array with is_team_leader: true
       team_leader: teamLeader ? {
@@ -154,6 +208,10 @@ const TeamManagement = () => {
         feedback: member.feedback || { submitted: false },
         certificate: member.certificate || { eligible: false, issued: false }
       })),
+
+      // Store the raw data for debugging
+      team_roles: teamRoles,
+      tasks: teamTasks,
 
       // Event context
       event: {
@@ -644,23 +702,227 @@ const TeamManagement = () => {
     setRefreshing(false);
   };
 
+  // Load team roles and tasks - fallback API call to refresh data
+  const loadTeamRolesAndTasks = async () => {
+    if (!teamRegistration) return;
+    
+    try {
+      // Only call API if we don't have roles already loaded from registration
+      if (Object.keys(memberRoles).length === 0) {
+        // Fetch roles using team tools API
+        const rolesResponse = await clientAPI.getTeamRoles(eventId);
+        
+        if (rolesResponse.data?.success) {
+          const rolesMap = {};
+          const rolesData = rolesResponse.data.roles || [];
+          
+          rolesData.forEach(roleInfo => {
+            rolesMap[roleInfo.enrollment_no] = {
+              role: roleInfo.assigned_role,
+              description: roleInfo.description || '',
+              permissions: roleInfo.permissions || []
+            };
+          });
+          setMemberRoles(rolesMap);
+        } else {
+          // Use data from teamRegistration as fallback
+          if (teamRegistration.team_roles) {
+            const rolesMap = {};
+            Object.keys(teamRegistration.team_roles).forEach(enrollment => {
+              rolesMap[enrollment] = teamRegistration.team_roles[enrollment];
+            });
+            setMemberRoles(rolesMap);
+          }
+        }
+      }
+      
+      // Only call tasks API if we don't have tasks already loaded
+      if (Object.keys(memberTasks).length === 0) {
+        // Fetch tasks using team tools API
+        const tasksResponse = await clientAPI.getTeamTasks(eventId);
+        
+        if (tasksResponse.data?.success) {
+          const tasksMap = {};
+          const allTasks = tasksResponse.data.tasks || [];
+          
+          allTasks.forEach(task => {
+            task.assigned_to.forEach(enrollment => {
+              if (!tasksMap[enrollment]) {
+                tasksMap[enrollment] = [];
+              }
+              tasksMap[enrollment].push({
+                id: task.task_id,
+                title: task.title,
+                description: task.description,
+                priority: task.priority,
+                category: task.category,
+                deadline: task.deadline,
+                status: task.status || 'pending',
+                created_at: task.created_at
+              });
+            });
+          });
+          setMemberTasks(tasksMap);
+        } else {
+          // Use data from teamRegistration as fallback
+          if (teamRegistration.tasks) {
+            const tasksMap = {};
+            teamRegistration.tasks.forEach(task => {
+              task.assigned_to.forEach(enrollment => {
+                if (!tasksMap[enrollment]) {
+                  tasksMap[enrollment] = [];
+                }
+                tasksMap[enrollment].push(task);
+              });
+            });
+            setMemberTasks(tasksMap);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadTeamRolesAndTasks:', error);
+      
+      // Fallback to existing data in teamRegistration if API fails
+      if (teamRegistration.team_roles && Object.keys(memberRoles).length === 0) {
+        const rolesMap = {};
+        Object.keys(teamRegistration.team_roles).forEach(enrollment => {
+          rolesMap[enrollment] = teamRegistration.team_roles[enrollment];
+        });
+        setMemberRoles(rolesMap);
+      }
+      
+      if (teamRegistration.tasks && Object.keys(memberTasks).length === 0) {
+        const tasksMap = {};
+        teamRegistration.tasks.forEach(task => {
+          task.assigned_to.forEach(enrollment => {
+            if (!tasksMap[enrollment]) {
+              tasksMap[enrollment] = [];
+            }
+            tasksMap[enrollment].push(task);
+          });
+        });
+        setMemberTasks(tasksMap);
+      }
+    }
+  };
+
+  // Get role for a specific member
+  const getMemberRole = (enrollment_no) => {
+    // Check if this member has an assigned role
+    const assignedRole = memberRoles[enrollment_no];
+    if (assignedRole) {
+      return assignedRole;
+    }
+    
+    // Check if this is the team leader
+    if (teamRegistration?.team_leader?.enrollment_no === enrollment_no) {
+      return { 
+        role: 'Team Leader', 
+        description: 'Leads and coordinates the team', 
+        permissions: ['manage_team', 'assign_tasks', 'assign_roles'] 
+      };
+    }
+    
+    // Default member role
+    return { role: 'Team Member', description: 'Contributing team member', permissions: [] };
+  };
+
+  // Get tasks for a specific member
+  const getMemberTasks = (enrollment_no) => {
+    return memberTasks[enrollment_no] || [];
+  };
+
+  // Show member tasks modal
+  const showMemberTasks = (member) => {
+    const tasks = getMemberTasks(member.enrollment_no);
+    setSelectedMemberTasks({
+      member: member,
+      tasks: tasks
+    });
+    setShowMemberTasksModal(true);
+  };
+
+  // Show member work progress (placeholder for future implementation)
+  const showMemberProgress = (member) => {
+    alert(`🚧 View Work Progress Feature Under Development!\n\nThis feature will display:\n• Work submission links\n• Progress tracking\n• Completed milestones\n• Work quality assessments\n\nFor member: ${member.name} (${member.enrollment_no})\nComing soon! 🔜`);
+  };
+
+  // Task review functions for team leaders
+  const openTaskReviewModal = (task) => {
+    setReviewingTask(task);
+    setReviewStatus('approved');
+    setReviewNotes('');
+    setShowTaskReviewModal(true);
+  };
+
+  const closeTaskReviewModal = () => {
+    setShowTaskReviewModal(false);
+    setReviewingTask(null);
+    setReviewStatus('approved');
+    setReviewNotes('');
+  };
+
+  const submitTaskReview = async () => {
+    if (!reviewingTask) return;
+
+    setReviewLoading(true);
+    
+    try {
+      const response = await clientAPI.reviewTask(eventId, reviewingTask.task_id, {
+        review_status: reviewStatus,
+        review_notes: reviewNotes
+      });
+      
+      console.log('TeamManagement: Task review response:', response);
+      
+      // Refresh team data to reflect changes
+      await loadTeamRolesAndTasks();
+      showNotification(`Task ${reviewStatus === 'approved' ? 'approved' : reviewStatus === 'rejected' ? 'rejected' : 'needs revision'}!`, 'success');
+      closeTaskReviewModal();
+      
+    } catch (error) {
+      console.error('TeamManagement: Error reviewing task:', error);
+      showNotification(`Failed to review task: ${error.message}`, 'error');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  // Quick approve function for direct approval
+  const quickApproveTask = async (task, status = 'approved', notes = 'Quick approval') => {
+    setReviewLoading(true);
+    
+    try {
+      const response = await clientAPI.reviewTask(eventId, task.task_id, {
+        review_status: status,
+        review_notes: notes
+      });
+      
+      console.log('TeamManagement: Quick task review response:', response);
+      
+      // Refresh team data to reflect changes
+      await loadTeamRolesAndTasks();
+      showNotification(`Task ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'needs revision'}!`, 'success');
+      
+    } catch (error) {
+      console.error('TeamManagement: Error quick reviewing task:', error);
+      showNotification(`Failed to review task: ${error.message}`, 'error');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   // Enhanced team management functions
   const handleTaskModalSuccess = () => {
     setShowTaskModal(false);
     showNotification('Task created successfully!', 'success');
-    fetchTeamData(); // Refresh to get updated tasks
+    loadTeamRolesAndTasks(); // Refresh to get updated tasks
   };
 
   const handleRoleModalSuccess = () => {
     setShowRoleModal(false);
     showNotification('Role assigned successfully!', 'success');
-    fetchTeamData(); // Refresh to get updated roles
-  };
-
-  const handleCommunicationModalSuccess = () => {
-    setShowCommunicationModal(false);
-    showNotification('Message sent successfully!', 'success');
-    fetchTeamData(); // Refresh to get updated communication log
+    loadTeamRolesAndTasks(); // Refresh to get updated roles
   };
 
   const handleReportModalSuccess = () => {
@@ -686,6 +948,7 @@ const TeamManagement = () => {
       allMembers.push({
         enrollment_no: leader.enrollment_no || '',
         name: leader.full_name || leader.name || 'Team Leader',
+        email: leader.email || '',
         role: 'Team Leader',
         isLeader: true
       });
@@ -698,6 +961,7 @@ const TeamManagement = () => {
           allMembers.push({
             enrollment_no: member.enrollment_no || `member_${index}`,
             name: member.full_name || member.name || `Member ${index + 1}`,
+            email: member.email || '',
             role: member.role || 'Member',
             isLeader: false
           });
@@ -706,8 +970,8 @@ const TeamManagement = () => {
     }
     
     // Debug log to see what data we're working with
-    console.log('Team members for modal:', allMembers);
-    console.log('Original team registration:', teamRegistration);
+    console.log('🔍 Team members for modal:', allMembers);
+    console.log('🔍 Original team registration:', teamRegistration);
     
     return allMembers;
   };
@@ -872,6 +1136,20 @@ const TeamManagement = () => {
   const feedbackCount = allTeamMembers.filter(member => member.feedback?.submitted).length;
   const certificateCount = allTeamMembers.filter(member => member.certificate?.issued).length;
 
+  // Calculate task statistics for team leader notifications
+  const taskStats = (() => {
+    const allTasks = Object.values(memberTasks).flat();
+    return {
+      total: allTasks.length,
+      completed: allTasks.filter(t => t.status === 'completed').length,
+      submitted: allTasks.filter(t => t.status === 'submitted').length,
+      inProgress: allTasks.filter(t => t.status === 'in_progress').length,
+      pending: allTasks.filter(t => !t.status || t.status === 'pending').length,
+      needsReview: allTasks.filter(t => t.status === 'submitted').length,
+      needsRevision: allTasks.filter(t => t.review_status === 'needs_revision').length
+    };
+  })();
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -900,6 +1178,27 @@ const TeamManagement = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Task Status Summary for Team Leader */}
+              {isTeamLeader() && taskStats.total > 0 && (
+                <div className="text-right">
+                  <div className="text-sm text-gray-600 mb-1">Task Overview</div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="text-green-600 font-medium">{taskStats.completed} Completed</span>
+                    {taskStats.needsReview > 0 && (
+                      <span className="text-purple-600 font-medium bg-purple-50 px-2 py-1 rounded">
+                        {taskStats.needsReview} Need Review
+                      </span>
+                    )}
+                    {taskStats.needsRevision > 0 && (
+                      <span className="text-yellow-600 font-medium bg-yellow-50 px-2 py-1 rounded">
+                        {taskStats.needsRevision} Need Revision
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center space-x-4">
                 <button
                   onClick={refreshTeamData}
@@ -917,8 +1216,35 @@ const TeamManagement = () => {
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Team Leader Task Notifications */}
+          {isTeamLeader() && (taskStats.needsReview > 0 || taskStats.needsRevision > 0) && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i className="fas fa-exclamation-circle text-purple-600"></i>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-purple-800 mb-1">Team Leader Actions Required</h3>
+                  <div className="text-sm text-purple-700 space-y-1">
+                    {taskStats.needsReview > 0 && (
+                      <p>• {taskStats.needsReview} task(s) have been submitted and are waiting for your review</p>
+                    )}
+                    {taskStats.needsRevision > 0 && (
+                      <p>• {taskStats.needsRevision} task(s) need revision based on your feedback</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-purple-600 mt-2">
+                    Click on team members below to view and review their tasks.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-            {/* Event Status Indicator */}
+          {/* Event Status Indicator */}
+          <div className="bg-white rounded-lg border p-6 mb-6">
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <i className="fas fa-calendar-alt text-blue-600"></i>
@@ -1024,6 +1350,89 @@ const TeamManagement = () => {
               Detailed Status
             </button>
 
+            {/* Team Tools Button - Only for Team Leaders */}
+            {isTeamLeader() && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowTeamManagementDropdown(!showTeamManagementDropdown)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <i className="fas fa-cog mr-2"></i>
+                  Team Tools
+                  <i className={`fas fa-chevron-${showTeamManagementDropdown ? 'up' : 'down'}`}></i>
+                </button>
+
+                {showTeamManagementDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          if (teamRegistration) {
+                            setShowTaskModal(true);
+                            setShowTeamManagementDropdown(false);
+                          } else {
+                            showNotification('Team data not loaded yet', 'error');
+                            setShowTeamManagementDropdown(false);
+                          }
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100"
+                      >
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <i className="fas fa-tasks text-blue-600 text-sm"></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Assign Tasks</p>
+                          <p className="text-xs text-gray-600">Create and assign tasks to members</p>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (teamRegistration) {
+                            setShowRoleModal(true);
+                            setShowTeamManagementDropdown(false);
+                          } else {
+                            showNotification('Team data not loaded yet', 'error');
+                            setShowTeamManagementDropdown(false);
+                          }
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-100"
+                      >
+                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                          <i className="fas fa-user-tag text-purple-600 text-sm"></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Assign Roles</p>
+                          <p className="text-xs text-gray-600">Define member roles and responsibilities</p>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (teamRegistration) {
+                            setShowReportModal(true);
+                            setShowTeamManagementDropdown(false);
+                          } else {
+                            showNotification('Team data not loaded yet', 'error');
+                            setShowTeamManagementDropdown(false);
+                          }
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-indigo-50 flex items-center gap-3"
+                      >
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                          <i className="fas fa-chart-pie text-indigo-600 text-sm"></i>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Generate Report</p>
+                          <p className="text-xs text-gray-600">Create detailed team reports</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <button
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
@@ -1073,177 +1482,6 @@ const TeamManagement = () => {
             )}
           </div>
 
-          {/* Enhanced Team Management Buttons - Only for Team Leaders */}
-          {isTeamLeader() && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
-                    <i className="fas fa-crown text-yellow-500"></i>
-                    Team Leader Actions
-                  </h3>
-                  <p className="text-sm text-blue-700">Manage your team with advanced tools</p>
-                </div>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowTeamManagementDropdown(!showTeamManagementDropdown)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-                  >
-                    <i className="fas fa-cog"></i>
-                    Team Tools
-                    <i className={`fas fa-chevron-${showTeamManagementDropdown ? 'up' : 'down'} ml-1`}></i>
-                  </button>
-
-                  {showTeamManagementDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
-                      <div className="py-2">
-                        <button
-                          onClick={() => {
-                            if (teamRegistration) {
-                              setShowTaskModal(true);
-                              setShowTeamManagementDropdown(false);
-                            } else {
-                              showNotification('Team data not loaded yet', 'error');
-                              setShowTeamManagementDropdown(false);
-                            }
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100"
-                        >
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <i className="fas fa-tasks text-blue-600 text-sm"></i>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Assign Tasks</p>
-                            <p className="text-xs text-gray-600">Create and assign tasks to members</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (teamRegistration) {
-                              setShowRoleModal(true);
-                              setShowTeamManagementDropdown(false);
-                            } else {
-                              showNotification('Team data not loaded yet', 'error');
-                              setShowTeamManagementDropdown(false);
-                            }
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 border-b border-gray-100"
-                        >
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                            <i className="fas fa-user-tag text-purple-600 text-sm"></i>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Assign Roles</p>
-                            <p className="text-xs text-gray-600">Define member roles and responsibilities</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (teamRegistration) {
-                              setShowCommunicationModal(true);
-                              setShowTeamManagementDropdown(false);
-                            } else {
-                              showNotification('Team data not loaded yet', 'error');
-                              setShowTeamManagementDropdown(false);
-                            }
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-green-50 flex items-center gap-3 border-b border-gray-100"
-                        >
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <i className="fas fa-comments text-green-600 text-sm"></i>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Team Message</p>
-                            <p className="text-xs text-gray-600">Send messages to team members</p>
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (teamRegistration) {
-                              setShowReportModal(true);
-                              setShowTeamManagementDropdown(false);
-                            } else {
-                              showNotification('Team data not loaded yet', 'error');
-                              setShowTeamManagementDropdown(false);
-                            }
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-indigo-50 flex items-center gap-3"
-                        >
-                          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                            <i className="fas fa-chart-pie text-indigo-600 text-sm"></i>
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">Generate Report</p>
-                            <p className="text-xs text-gray-600">Create detailed team reports</p>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Action Buttons */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button
-                  onClick={() => {
-                    if (teamRegistration) {
-                      setShowTaskModal(true);
-                    } else {
-                      showNotification('Team data not loaded yet', 'error');
-                    }
-                  }}
-                  className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <i className="fas fa-tasks"></i>
-                  Tasks
-                </button>
-                <button
-                  onClick={() => {
-                    if (teamRegistration) {
-                      setShowRoleModal(true);
-                    } else {
-                      showNotification('Team data not loaded yet', 'error');
-                    }
-                  }}
-                  className="bg-purple-100 hover:bg-purple-200 text-purple-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <i className="fas fa-user-tag"></i>
-                  Roles
-                </button>
-                <button
-                  onClick={() => {
-                    if (teamRegistration) {
-                      setShowCommunicationModal(true);
-                    } else {
-                      showNotification('Team data not loaded yet', 'error');
-                    }
-                  }}
-                  className="bg-green-100 hover:bg-green-200 text-green-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <i className="fas fa-comments"></i>
-                  Message
-                </button>
-                <button
-                  onClick={() => {
-                    if (teamRegistration) {
-                      setShowReportModal(true);
-                    } else {
-                      showNotification('Team data not loaded yet', 'error');
-                    }
-                  }}
-                  className="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <i className="fas fa-chart-pie"></i>
-                  Report
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Team Members List - Redesigned for event lifecycle */}
           <div className="space-y-4">
             {/* Team Leader */}
@@ -1257,7 +1495,28 @@ const TeamManagement = () => {
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900">{teamRegistration.team_leader.name}</h3>
                       <p className="text-gray-600">{teamRegistration.team_leader.enrollment_no} • Team Leader</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      
+                      {/* Role Display */}
+                      <div className="mt-2">
+                        {(() => {
+                          const role = getMemberRole(teamRegistration.team_leader.enrollment_no);
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-user-tie"></i>
+                                {role.role}
+                              </span>
+                              {role.description && (
+                                <span className="text-xs text-gray-500" title={role.description}>
+                                  {role.description.length > 30 ? role.description.substring(0, 30) + '...' : role.description}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
                         <span>{teamRegistration.team_leader.department}</span>
                         <span>•</span>
                         <span>Sem {teamRegistration.team_leader.semester}</span>
@@ -1296,6 +1555,34 @@ const TeamManagement = () => {
                         <i className="fas fa-certificate text-xs"></i>
                       </div>
                     </div>
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-2">
+                      {/* View Tasks Button */}
+                      <button
+                        onClick={() => showMemberTasks({
+                          enrollment_no: teamRegistration.team_leader.enrollment_no,
+                          name: teamRegistration.team_leader.name,
+                          role: 'Team Leader'
+                        })}
+                        className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                        title="View assigned tasks"
+                      >
+                        <i className="fas fa-tasks"></i>
+                      </button>
+                      
+                      {/* View Progress Button */}
+                      <button
+                        onClick={() => showMemberProgress({
+                          enrollment_no: teamRegistration.team_leader.enrollment_no,
+                          name: teamRegistration.team_leader.name,
+                          role: 'Team Leader'
+                        })}
+                        className="p-2 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 transition-colors"
+                        title="View work progress"
+                      >
+                        <i className="fas fa-chart-line"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1312,7 +1599,28 @@ const TeamManagement = () => {
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900">{member.name}</h3>
                       <p className="text-gray-600">{member.enrollment_no} • Member</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      
+                      {/* Role Display */}
+                      <div className="mt-2">
+                        {(() => {
+                          const role = getMemberRole(member.enrollment_no);
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-user-tag"></i>
+                                {role.role}
+                              </span>
+                              {role.description && (
+                                <span className="text-xs text-gray-500" title={role.description}>
+                                  {role.description.length > 30 ? role.description.substring(0, 30) + '...' : role.description}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
                         <span>{member.department}</span>
                         <span>•</span>
                         <span>Sem {member.semester}</span>
@@ -1351,27 +1659,57 @@ const TeamManagement = () => {
                         <i className="fas fa-certificate text-xs"></i>
                       </div>
                     </div>
-                    {isRegistrationOpen && (
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-2">
+                      {/* View Tasks Button */}
                       <button
-                        onClick={() => {
-                          if (!canRemoveMembers) {
-                            setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
-                            return;
-                          }
-                          setRemoveTarget(member);
-                          setShowRemoveModal(true);
-                        }}
-                        disabled={!canRemoveMembers}
-                        className={`p-2 rounded-lg transition-colors ${
-                          canRemoveMembers 
-                            ? 'text-red-600 hover:text-red-800 hover:bg-red-50' 
-                            : 'text-gray-400 cursor-not-allowed bg-gray-100'
-                        }`}
-                        title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
+                        onClick={() => showMemberTasks({
+                          enrollment_no: member.enrollment_no,
+                          name: member.name,
+                          role: 'Member'
+                        })}
+                        className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                        title="View assigned tasks"
                       >
-                        <i className="fas fa-trash"></i>
+                        <i className="fas fa-tasks"></i>
                       </button>
-                    )}
+                      
+                      {/* View Progress Button */}
+                      <button
+                        onClick={() => showMemberProgress({
+                          enrollment_no: member.enrollment_no,
+                          name: member.name,
+                          role: 'Member'
+                        })}
+                        className="p-2 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 transition-colors"
+                        title="View work progress"
+                      >
+                        <i className="fas fa-chart-line"></i>
+                      </button>
+                      
+                      {/* Remove Button */}
+                      {isRegistrationOpen && (
+                        <button
+                          onClick={() => {
+                            if (!canRemoveMembers) {
+                              setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+                              return;
+                            }
+                            setRemoveTarget(member);
+                            setShowRemoveModal(true);
+                          }}
+                          disabled={!canRemoveMembers}
+                          className={`p-2 rounded-lg transition-colors ${
+                            canRemoveMembers 
+                              ? 'text-red-600 hover:text-red-800 hover:bg-red-50' 
+                              : 'text-gray-400 cursor-not-allowed bg-gray-100'
+                          }`}
+                          title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2479,16 +2817,6 @@ const TeamManagement = () => {
         />
       )}
 
-      {showCommunicationModal && teamRegistration && (
-        <TeamCommunicationModal
-          eventId={eventId}
-          teamId={teamRegistration?.registration_id}
-          teamMembers={getTeamMembersForModal()}
-          onClose={() => setShowCommunicationModal(false)}
-          onSuccess={handleCommunicationModalSuccess}
-        />
-      )}
-
       {showReportModal && teamRegistration && (
         <ReportGenerationModal
           eventId={eventId}
@@ -2497,6 +2825,438 @@ const TeamManagement = () => {
           onClose={() => setShowReportModal(false)}
           onSuccess={handleReportModalSuccess}
         />
+      )}
+
+      {/* Member Tasks Modal */}
+      {showMemberTasksModal && selectedMemberTasks && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Tasks for {selectedMemberTasks.member.name}</h2>
+                  <p className="text-blue-100">
+                    {selectedMemberTasks.member.role} • {selectedMemberTasks.tasks.length} task(s) assigned
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowMemberTasksModal(false)}
+                  className="text-white hover:text-blue-200 transition-colors"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              {/* Team Leader Notifications */}
+              {isTeamLeader() && selectedMemberTasks.tasks.length > 0 && (
+                <div className="mb-6">
+                  {(() => {
+                    const submittedTasks = selectedMemberTasks.tasks.filter(t => t.status === 'submitted');
+                    const needsRevisionTasks = selectedMemberTasks.tasks.filter(t => t.review_status === 'needs_revision');
+                    
+                    if (submittedTasks.length > 0 || needsRevisionTasks.length > 0) {
+                      return (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <i className="fas fa-exclamation-circle text-purple-600"></i>
+                            <h4 className="font-semibold text-purple-800">Team Leader Actions Required</h4>
+                          </div>
+                          {submittedTasks.length > 0 && (
+                            <p className="text-sm text-purple-700 mb-1">
+                              • {submittedTasks.length} task(s) submitted and awaiting your review
+                            </p>
+                          )}
+                          {needsRevisionTasks.length > 0 && (
+                            <p className="text-sm text-purple-700">
+                              • {needsRevisionTasks.length} task(s) need revision after your feedback
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+              
+              {selectedMemberTasks.tasks.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-tasks text-gray-400 text-2xl"></i>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks assigned</h3>
+                  <p className="text-gray-600">
+                    {selectedMemberTasks.member.name} doesn't have any tasks assigned yet.
+                  </p>
+                  {isTeamLeader() && (
+                    <button
+                      onClick={() => {
+                        setShowMemberTasksModal(false);
+                        setShowTaskModal(true);
+                      }}
+                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <i className="fas fa-plus mr-2"></i>
+                      Assign New Task
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedMemberTasks.tasks.map((task, index) => (
+                    <div key={task.id || index} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-lg font-semibold text-gray-900">{task.title}</h4>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              task.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {task.priority} priority
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              task.status === 'submitted' ? 'bg-indigo-100 text-indigo-800' :
+                              task.status === 'under_review' ? 'bg-purple-100 text-purple-800' :
+                              task.status === 'paused' ? 'bg-orange-100 text-orange-800' :
+                              task.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {task.status?.replace('_', ' ') || 'pending'}
+                            </span>
+                          </div>
+                          
+                          {task.description && (
+                            <p className="text-gray-600 mb-3">{task.description}</p>
+                          )}
+                          
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <i className="fas fa-tag"></i>
+                              <span className="capitalize">{task.category}</span>
+                            </div>
+                            {task.deadline && (
+                              <div className="flex items-center gap-1">
+                                <i className="fas fa-calendar"></i>
+                                <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <i className="fas fa-clock"></i>
+                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Submission Link Display */}
+                          {task.submission_link && (
+                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-blue-800 mb-1">Submitted Work:</p>
+                                  <a
+                                    href={task.submission_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 underline text-sm flex items-center gap-1"
+                                  >
+                                    <i className="fas fa-external-link-alt text-xs"></i>
+                                    {task.submission_link}
+                                  </a>
+                                  {task.submission_notes && (
+                                    <p className="text-sm text-gray-600 mt-1">Notes: {task.submission_notes}</p>
+                                  )}
+                                  {task.submitted_at && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Submitted: {new Date(task.submitted_at).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                {/* Review Button for Team Leader */}
+                                {task.status === 'submitted' && isTeamLeader() && (
+                                  <button
+                                    onClick={() => openTaskReviewModal(task)}
+                                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-1 shadow-md"
+                                  >
+                                    <i className="fas fa-eye text-xs"></i>
+                                    Review Task
+                                  </button>
+                                )}
+                                
+                                {/* Show review button for all submitted tasks if you're team leader */}
+                                {task.status === 'submitted' && !isTeamLeader() && (
+                                  <span className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm flex items-center gap-1">
+                                    <i className="fas fa-clock text-xs"></i>
+                                    Awaiting Review
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Review Status and Notes */}
+                              {task.review_status && task.review_status !== 'pending' && (
+                                <div className="mt-2 pt-2 border-t border-blue-200">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                      task.review_status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      task.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                      {task.review_status === 'approved' ? '✅ Approved' :
+                                       task.review_status === 'rejected' ? '❌ Rejected' :
+                                       '🔄 Needs Revision'}
+                                    </span>
+                                    {task.reviewed_at && (
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(task.reviewed_at).toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {task.review_notes && (
+                                    <p className="text-sm text-gray-700">
+                                      <strong>Review Notes:</strong> {task.review_notes}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Task Action Buttons */}
+                        <div className="mt-3 flex items-center gap-2">
+                          {task.status === 'submitted' && isTeamLeader() && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openTaskReviewModal(task)}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
+                              >
+                                <i className="fas fa-eye"></i>
+                                Review & Approve
+                              </button>
+                              <button
+                                onClick={() => quickApproveTask(task, 'approved', 'Quick approval by team leader')}
+                                disabled={reviewLoading}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
+                              >
+                                <i className="fas fa-check"></i>
+                                Quick Approve
+                              </button>
+                            </div>
+                          )}
+                          
+                          {task.status === 'submitted' && !isTeamLeader() && (
+                            <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm flex items-center gap-2">
+                              <i className="fas fa-clock"></i>
+                              Waiting for team leader review
+                            </span>
+                          )}
+                          
+                          {task.status === 'completed' && (
+                            <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm flex items-center gap-2">
+                              <i className="fas fa-check-circle"></i>
+                              Task Completed
+                            </span>
+                          )}
+                          
+                          {(task.status === 'pending' || task.status === 'in_progress') && isTeamLeader() && (
+                            <button
+                              onClick={() => quickApproveTask(task, 'approved', 'Completed by team leader')}
+                              disabled={reviewLoading}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
+                            >
+                              <i className="fas fa-check"></i>
+                              Mark Complete
+                            </button>
+                          )}
+                          
+                          {task.review_status === 'needs_revision' && (
+                            <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm flex items-center gap-2">
+                              <i className="fas fa-edit"></i>
+                              Needs Revision - Resubmit Required
+                            </span>
+                          )}
+                          
+                          {task.review_status === 'rejected' && (
+                            <span className="px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm flex items-center gap-2">
+                              <i className="fas fa-times-circle"></i>
+                              Rejected - Task Reset to Pending
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 ml-4">
+                          <div className={`w-3 h-3 rounded-full ${
+                            task.status === 'completed' ? 'bg-green-500' :
+                            task.status === 'in_progress' ? 'bg-blue-500' :
+                            'bg-gray-400'
+                          }`}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Total: {selectedMemberTasks.tasks.length} task(s) • 
+                Completed: {selectedMemberTasks.tasks.filter(t => t.status === 'completed').length} • 
+                Submitted: {selectedMemberTasks.tasks.filter(t => t.status === 'submitted').length} • 
+                In Progress: {selectedMemberTasks.tasks.filter(t => t.status === 'in_progress').length} • 
+                Pending: {selectedMemberTasks.tasks.filter(t => !t.status || t.status === 'pending').length}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowMemberTasksModal(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+                {isTeamLeader() && (
+                  <button
+                    onClick={() => {
+                      setShowMemberTasksModal(false);
+                      setShowTaskModal(true);
+                    }}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <i className="fas fa-plus mr-2"></i>
+                    Assign New Task
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Task Review Modal */}
+      {showTaskReviewModal && reviewingTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold">Review Task Submission</h3>
+                  <p className="text-purple-100 mt-1">{reviewingTask.title}</p>
+                </div>
+                <button
+                  onClick={closeTaskReviewModal}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Task Details */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold text-gray-800 mb-2">Task Details:</h4>
+                <p className="text-gray-700 mb-2"><strong>Category:</strong> {reviewingTask.category}</p>
+                {reviewingTask.description && (
+                  <p className="text-gray-700 mb-2"><strong>Description:</strong> {reviewingTask.description}</p>
+                )}
+                <p className="text-gray-700 mb-2"><strong>Priority:</strong> {reviewingTask.priority}</p>
+                <p className="text-gray-700"><strong>Assigned To:</strong> {reviewingTask.assigned_to?.join(', ')}</p>
+              </div>
+              
+              {/* Submission Details */}
+              {reviewingTask.submission_link && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-800 mb-2">Submitted Work:</h4>
+                  <a
+                    href={reviewingTask.submission_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2 mb-2"
+                  >
+                    <i className="fas fa-external-link-alt"></i>
+                    {reviewingTask.submission_link}
+                  </a>
+                  {reviewingTask.submission_notes && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-blue-700">Submission Notes:</p>
+                      <p className="text-sm text-blue-600">{reviewingTask.submission_notes}</p>
+                    </div>
+                  )}
+                  {reviewingTask.submitted_at && (
+                    <p className="text-xs text-blue-500 mt-2">
+                      Submitted: {new Date(reviewingTask.submitted_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Review Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Review Decision <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={reviewStatus}
+                    onChange={(e) => setReviewStatus(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="approved">✅ Approved - Task Complete</option>
+                    <option value="needs_revision">🔄 Needs Revision</option>
+                    <option value="rejected">❌ Rejected - Start Over</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Review Notes
+                  </label>
+                  <textarea
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Provide feedback on the submitted work..."
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={closeTaskReviewModal}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitTaskReview}
+                  disabled={reviewLoading}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  {reviewLoading ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i>
+                      Reviewing...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-check"></i>
+                      Submit Review
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

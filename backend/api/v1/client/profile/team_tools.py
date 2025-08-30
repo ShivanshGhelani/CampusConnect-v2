@@ -43,6 +43,16 @@ class MessageData(BaseModel):
     mentions: List[str] = Field(default=[], description="List of enrollment numbers to mention")
     category: str = Field(default="general", description="Message category")
 
+class TaskSubmissionData(BaseModel):
+    """Task submission data model"""
+    submission_link: str = Field(..., description="Link to submission (GitHub, Drive, Figma, etc.)")
+    submission_notes: Optional[str] = Field(default="", max_length=500, description="Notes about the submission")
+
+class TaskReviewData(BaseModel):
+    """Task review data model"""
+    review_status: str = Field(..., description="approved, rejected, needs_revision")
+    review_notes: Optional[str] = Field(default="", max_length=500, description="Review feedback")
+
 class ReportGenerationData(BaseModel):
     """Report generation request data model"""
     report_type: str = Field(..., description="team_overview, task_summary, attendance_report, communication_log")
@@ -266,18 +276,15 @@ async def get_team_tasks(
         logger.error(f"Error getting tasks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get tasks: {str(e)}")
 
-@router.put("/task/{event_id}/{task_id}/complete")
-async def complete_task(
+@router.put("/task/{event_id}/{task_id}/submit")
+async def submit_task(
     event_id: str,
     task_id: str,
-    request: Request,
+    submission_data: TaskSubmissionData,
     current_student: Student = Depends(require_student_login)
 ):
-    """Mark a task as completed with optional review"""
+    """Submit a task with link and move to under_review status"""
     try:
-        data = await request.json()
-        review_comment = data.get("review_comment", "")
-        
         # Get team registration
         registration = await get_team_registration(event_id, current_student.enrollment_no)
         if not registration:
@@ -299,19 +306,18 @@ async def complete_task(
         if current_student.enrollment_no not in task.get("assigned_to", []):
             raise HTTPException(status_code=403, detail="You are not assigned to this task")
         
-        # Update task completion
-        task["status"] = "completed"
-        task["completed_by"] = current_student.enrollment_no
-        task["completed_at"] = datetime.now(timezone.utc).isoformat()
-        task["updated_at"] = datetime.now(timezone.utc).isoformat()
+        # Check if task is in submittable state
+        if task.get("status") not in ["pending", "in_progress"]:
+            raise HTTPException(status_code=400, detail="Task cannot be submitted in current status")
         
-        # Add review if provided
-        if review_comment:
-            task["reviews"].append({
-                "reviewer": current_student.enrollment_no,
-                "comment": review_comment,
-                "reviewed_at": datetime.now(timezone.utc).isoformat()
-            })
+        # Update task submission
+        task["status"] = "submitted"
+        task["submitted_by"] = current_student.enrollment_no
+        task["submitted_at"] = datetime.now(timezone.utc).isoformat()
+        task["submission_link"] = submission_data.submission_link
+        task["submission_notes"] = submission_data.submission_notes
+        task["review_status"] = "pending"
+        task["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Update in database
         await DatabaseOperations.update_one(
@@ -325,11 +331,162 @@ async def complete_task(
             }
         )
         
-        logger.info(f"Task completed: {task_id} by {current_student.enrollment_no}")
+        logger.info(f"Task submitted: {task_id} by {current_student.enrollment_no}")
         
         return {
             "success": True,
-            "message": "Task completed successfully",
+            "message": "Task submitted successfully. Waiting for team leader review.",
+            "task": task
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting task: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to submit task")
+
+@router.put("/task/{event_id}/{task_id}/review")
+async def review_task(
+    event_id: str,
+    task_id: str,
+    review_data: TaskReviewData,
+    current_student: Student = Depends(require_student_login)
+):
+    """Review a submitted task (team leader only)"""
+    try:
+        # Verify team leadership
+        is_leader = await verify_team_leadership(event_id, current_student.enrollment_no)
+        if not is_leader:
+            raise HTTPException(status_code=403, detail="Only team leaders can review tasks")
+        
+        # Get team registration
+        registration = await get_team_registration(event_id, current_student.enrollment_no)
+        if not registration:
+            raise HTTPException(status_code=404, detail="Team registration not found")
+        
+        # Find the task
+        tasks = registration.get("tasks", [])
+        task_index = next(
+            (i for i, task in enumerate(tasks) if task.get("task_id") == task_id), 
+            None
+        )
+        
+        if task_index is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        task = tasks[task_index]
+        
+        # Check if task is in reviewable state
+        if task.get("status") != "submitted":
+            raise HTTPException(status_code=400, detail="Task must be submitted before review")
+        
+        # Update task review
+        task["review_status"] = review_data.review_status
+        task["review_notes"] = review_data.review_notes
+        task["reviewed_by"] = current_student.enrollment_no
+        task["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+        task["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update status based on review
+        if review_data.review_status == "approved":
+            task["status"] = "completed"
+            task["completed_by"] = task.get("submitted_by")
+            task["completed_at"] = datetime.now(timezone.utc).isoformat()
+        elif review_data.review_status == "rejected":
+            task["status"] = "pending"  # Reset to pending for resubmission
+        elif review_data.review_status == "needs_revision":
+            task["status"] = "in_progress"  # Set to in_progress for revision
+        
+        # Add review to reviews array
+        task["reviews"].append({
+            "reviewer": current_student.enrollment_no,
+            "review_status": review_data.review_status,
+            "comment": review_data.review_notes,
+            "reviewed_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Update in database
+        await DatabaseOperations.update_one(
+            "student_registrations",
+            {"_id": registration["_id"]},
+            {
+                "$set": {
+                    f"tasks.{task_index}": task,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        logger.info(f"Task reviewed: {task_id} by {current_student.enrollment_no} - {review_data.review_status}")
+        
+        return {
+            "success": True,
+            "message": f"Task review completed: {review_data.review_status}",
+            "task": task
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reviewing task: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to review task")
+
+@router.put("/task/{event_id}/{task_id}/complete")
+async def complete_task_direct(
+    event_id: str,
+    task_id: str,
+    current_student: Student = Depends(require_student_login)
+):
+    """Mark task as completed directly (team leader only, for urgent cases)"""
+    try:
+        # Verify team leadership
+        is_leader = await verify_team_leadership(event_id, current_student.enrollment_no)
+        if not is_leader:
+            raise HTTPException(status_code=403, detail="Only team leaders can directly complete tasks")
+        
+        # Get team registration
+        registration = await get_team_registration(event_id, current_student.enrollment_no)
+        if not registration:
+            raise HTTPException(status_code=404, detail="Team registration not found")
+        
+        # Find the task
+        tasks = registration.get("tasks", [])
+        task_index = next(
+            (i for i, task in enumerate(tasks) if task.get("task_id") == task_id), 
+            None
+        )
+        
+        if task_index is None:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        task = tasks[task_index]
+        
+        # Update task completion
+        task["status"] = "completed"
+        task["completed_by"] = current_student.enrollment_no
+        task["completed_at"] = datetime.now(timezone.utc).isoformat()
+        task["updated_at"] = datetime.now(timezone.utc).isoformat()
+        task["review_status"] = "approved"
+        task["reviewed_by"] = current_student.enrollment_no
+        task["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update in database
+        await DatabaseOperations.update_one(
+            "student_registrations",
+            {"_id": registration["_id"]},
+            {
+                "$set": {
+                    f"tasks.{task_index}": task,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        logger.info(f"Task completed directly: {task_id} by {current_student.enrollment_no}")
+        
+        return {
+            "success": True,
+            "message": "Task marked as completed",
             "task": task
         }
         
@@ -337,7 +494,7 @@ async def complete_task(
         raise
     except Exception as e:
         logger.error(f"Error completing task: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to complete task: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to complete task")
 
 @router.post("/assign-role/{event_id}")
 async def assign_role(
