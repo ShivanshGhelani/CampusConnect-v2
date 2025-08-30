@@ -230,8 +230,8 @@ function Students() {
       return student.statistics.total_registrations;
     }
     // Fallback to other possible fields
-    if (student.event_participation && Array.isArray(student.event_participation)) {
-      return student.event_participation.length;
+    if (student.event_participations && Array.isArray(student.event_participations)) {
+      return student.event_participations.length;
     }
     if (student.events_participated && Array.isArray(student.events_participated)) {
       return student.events_participated.length;

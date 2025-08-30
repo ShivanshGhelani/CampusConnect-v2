@@ -115,71 +115,70 @@ function StudentCard({ student, isOpen, onClose }) {
               </div>
             </div>
 
-              {/* Contact Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
+              {/* Contact Information & Details Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <i className="fas fa-address-card mr-2 text-blue-600"></i>
-                    Contact Information
+                    <svg className="w-5 h-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    Contact & Academic Info
                   </h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <i className="fas fa-envelope w-5 text-gray-400 mr-3"></i>
-                      <span className="text-sm text-gray-600 w-20">Email:</span>
-                      <span className="text-sm text-gray-900">{studentDetails.email || 'N/A'}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    {/* Email */}
+                    <div className="flex items-start pt-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Email Address</p>
+                        <p className="text-sm font-semibold text-gray-900 break-all">{studentDetails.email || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <i className="fas fa-phone w-5 text-gray-400 mr-3"></i>
-                      <span className="text-sm text-gray-600 w-20">Phone:</span>
-                      <span className="text-sm text-gray-900">
-                        {formatPhoneNumber(studentDetails.mobile_no || studentDetails.phone_number || studentDetails.phone)}
-                      </span>
+                    {/* Phone */}
+                    <div className="flex items-start pt-2">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Phone</p>
+                        <p className="text-sm font-semibold text-gray-900">{formatPhoneNumber(studentDetails.mobile_no || studentDetails.phone_number || studentDetails.phone)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <i className="fas fa-building w-5 text-gray-400 mr-3"></i>
-                      <span className="text-sm text-gray-600 w-20">Department:</span>
-                      <span className="text-sm text-gray-900">{studentDetails.department || 'N/A'}</span>
+                    {/* Department */}
+                    <div className="flex items-start pt-2">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Department</p>
+                        <p className="text-sm font-semibold text-gray-900">{studentDetails.department || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <i className="fas fa-graduation-cap w-5 text-gray-400 mr-3"></i>
-                      <span className="text-sm text-gray-600 w-20">Semester:</span>
-                      <span className="text-sm text-gray-900">{studentDetails.semester || 'N/A'}</span>
+                    {/* Semester */}
+                    <div className="flex items-start pt-2">
+                      <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Semester</p>
+                        <p className="text-sm font-semibold text-gray-900">{studentDetails.semester || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Statistics */}
+                {/* Quick Actions */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <i className="fas fa-chart-bar mr-2 text-green-600"></i>
-                    Participation Statistics
+                    <svg className="w-5 h-5 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    Quick Actions
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {studentDetails.statistics?.total_registrations || 
-                         (studentDetails.event_participations ? Object.keys(studentDetails.event_participations).length : 0)}
-                      </div>
-                      <div className="text-sm text-gray-500">Events Registered</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {studentDetails.statistics?.total_attendances || 0}
-                      </div>
-                      <div className="text-sm text-gray-500">Events Attended</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {studentDetails.statistics?.total_certificates || 0}
-                      </div>
-                      <div className="text-sm text-gray-500">Certificates Earned</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {studentDetails.statistics?.total_feedbacks || 0}
-                      </div>
-                      <div className="text-sm text-gray-500">Feedbacks Given</div>
-                    </div>
+                  <div className="space-y-3">
+                    <button 
+                    onClick={() => window.location.href = `mailto:${studentDetails.email}`}
+                    className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      Send Email
+                    </button>
                   </div>
                 </div>
               </div>
@@ -208,7 +207,7 @@ function StudentCard({ student, isOpen, onClose }) {
                         <div className="space-y-1 text-sm text-gray-600">
                           <div className="flex items-center">
                             <i className="fas fa-calendar w-4 mr-2"></i>
-                            {formatDate(participation.registration_datetime)}
+                            {formatDate(participation.registration_date)}
                           </div>
                           {participation.team_name && (
                             <div className="flex items-center">
