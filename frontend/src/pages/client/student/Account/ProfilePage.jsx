@@ -6,6 +6,7 @@ import ProfileEventCard from '../../../../components/client/ProfileEventCard';
 import AvatarUpload from '../../../../components/client/AvatarUpload';
 import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
 import MessageBox from '../../../../components/client/MessageBox';
+import TeamViewModal from '../../../../components/client/TeamViewModal';
 import { clientAPI } from '../../../../api/client';
 import api from '../../../../api/base';
 
@@ -1087,12 +1088,20 @@ function ProfilePage() {
       )}
 
       {/* Team Detail Modal */}
-      {showTeamDetailModal && selectedTeamDetail && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
-            {/* Modal Header */}
-            <div className="px-8 py-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+      <TeamViewModal
+        isOpen={showTeamDetailModal}
+        onClose={closeTeamDetailModal}
+        eventId={selectedTeamDetail?.eventId}
+        teamId={selectedTeamDetail?.teamId}
+        teamData={selectedTeamDetail}
+      />
+
+      {/* QR Code Modal */}
+      {showQRCodeModal && selectedQRData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1512,7 +1521,6 @@ function ProfilePage() {
               </div>
             </div>
           </div>
-        </div>
       )}
 
       {/* QR Code Modal */}
