@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, Request, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from dependencies.auth import require_student_login, get_current_student
 from models.student import Student
 from database.operations import DatabaseOperations
@@ -49,9 +49,9 @@ class TaskSubmissionData(BaseModel):
     submission_notes: Optional[str] = Field(default="", max_length=500, description="Notes about the submission")
 
 class TaskReviewData(BaseModel):
-    """Task review data model"""
-    review_status: str = Field(..., description="approved, rejected, needs_revision")
-    review_notes: Optional[str] = Field(default="", max_length=500, description="Review feedback")
+    """Task review data model - simplified for debugging"""
+    review_status: str
+    review_notes: str = ""
 
 class ReportGenerationData(BaseModel):
     """Report generation request data model"""
@@ -61,6 +61,38 @@ class ReportGenerationData(BaseModel):
     include_sections: List[str] = Field(default=[], description="Sections to include in report")
 
 # ===== UTILITY FUNCTIONS =====
+
+def validate_task_submission_data(task: Dict[str, Any]) -> List[str]:
+    """Validate task submission data and return list of issues found"""
+    issues = []
+    
+    if task.get("status") == "submitted":
+        if not task.get("submission_link"):
+            issues.append("Missing submission link")
+        elif not task["submission_link"].startswith(('http://', 'https://')):
+            issues.append("Invalid submission link format")
+            
+        if not task.get("submitted_by"):
+            issues.append("Missing submitted_by field")
+            
+        if not task.get("submitted_at"):
+            issues.append("Missing submitted_at timestamp")
+        
+        # Validate submission link accessibility (basic check)
+        submission_link = task.get("submission_link", "")
+        if submission_link:
+            # Check for common valid domains/patterns
+            valid_patterns = [
+                'github.com', 'gitlab.com', 'bitbucket.org',
+                'drive.google.com', 'docs.google.com', 'sheets.google.com',
+                'figma.com', 'codepen.io', 'replit.com', 'codesandbox.io',
+                'vercel.app', 'netlify.app', 'herokuapp.com'
+            ]
+            
+            if not any(pattern in submission_link.lower() for pattern in valid_patterns):
+                issues.append("Submission link may not be from a recognized platform")
+    
+    return issues
 
 async def get_team_registration(event_id: str, student_enrollment: str) -> Optional[Dict[str, Any]]:
     """Get team registration data for a student and event"""
@@ -352,8 +384,10 @@ async def review_task(
     review_data: TaskReviewData,
     current_student: Student = Depends(require_student_login)
 ):
-    """Review a submitted task (team leader only)"""
+    """Review a submitted task (team leader only) - Enhanced with data validation"""
     try:
+        logger.info(f"Task review request received: event_id={event_id}, task_id={task_id}, review_data={review_data.model_dump()}")
+        
         # Verify team leadership
         is_leader = await verify_team_leadership(event_id, current_student.enrollment_no)
         if not is_leader:
@@ -376,54 +410,147 @@ async def review_task(
         
         task = tasks[task_index]
         
-        # Check if task is in reviewable state
-        if task.get("status") != "submitted":
-            raise HTTPException(status_code=400, detail="Task must be submitted before review")
+        # Enhanced validation - Check if task is in reviewable state
+        reviewable_statuses = ["submitted", "completed"]
+        if task.get("status") not in reviewable_statuses:
+            logger.warning(f"Task review attempted on non-reviewable task: {task_id} (status: {task.get('status')})")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Task must be submitted or completed to be reviewed. Current status: {task.get('status')}"
+            )
         
-        # Update task review
+        # Validate review data
+        valid_statuses = ['approved', 'rejected', 'needs_revision']
+        if review_data.review_status not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid review status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # Require review notes for rejected and needs_revision statuses
+        if review_data.review_status in ['rejected', 'needs_revision'] and not review_data.review_notes.strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Review notes are required when status is '{review_data.review_status}'"
+            )
+        
+        # Enhanced validation using helper function
+        submission_issues = validate_task_submission_data(task)
+            
+        # Log data inconsistencies if found
+        if submission_issues:
+            logger.warning(f"Task {task_id} has submission data issues: {', '.join(submission_issues)}")
+        
+        # Store current task state for rollback if needed
+        original_task = task.copy()
+        
+        # Update task review - Enhanced with better tracking
+        current_time = datetime.now(timezone.utc).isoformat()
         task["review_status"] = review_data.review_status
         task["review_notes"] = review_data.review_notes
         task["reviewed_by"] = current_student.enrollment_no
-        task["reviewed_at"] = datetime.now(timezone.utc).isoformat()
-        task["updated_at"] = datetime.now(timezone.utc).isoformat()
+        task["reviewed_at"] = current_time
+        task["updated_at"] = current_time
         
-        # Update status based on review
-        if review_data.review_status == "approved":
-            task["status"] = "completed"
-            task["completed_by"] = task.get("submitted_by")
-            task["completed_at"] = datetime.now(timezone.utc).isoformat()
-        elif review_data.review_status == "rejected":
-            task["status"] = "pending"  # Reset to pending for resubmission
-        elif review_data.review_status == "needs_revision":
-            task["status"] = "in_progress"  # Set to in_progress for revision
+        # Update status based on review with enhanced logic
+        status_changes = {
+            "approved": {
+                "status": "completed",
+                "completed_by": task.get("submitted_by"),
+                "completed_at": current_time
+            },
+            "rejected": {
+                "status": "pending",  # Reset to pending for resubmission
+                # Clear submission data for rejected tasks
+                "submission_link": None,
+                "submission_notes": None,
+                "submitted_by": None,
+                "submitted_at": None
+            },
+            "needs_revision": {
+                "status": "in_progress"  # Set to in_progress for revision
+                # Keep submission data for reference during revision
+            }
+        }
         
-        # Add review to reviews array
-        task["reviews"].append({
+        if review_data.review_status in status_changes:
+            task.update(status_changes[review_data.review_status])
+        
+        # Add review to reviews array with enhanced tracking
+        review_entry = {
+            "review_id": f"review_{task_id}_{int(datetime.now().timestamp())}",
             "reviewer": current_student.enrollment_no,
             "review_status": review_data.review_status,
             "comment": review_data.review_notes,
-            "reviewed_at": datetime.now(timezone.utc).isoformat()
-        })
+            "reviewed_at": current_time,
+            "submission_link_at_review": task.get("submission_link"),
+            "data_issues_noted": submission_issues if submission_issues else None
+        }
         
-        # Update in database
-        await DatabaseOperations.update_one(
-            "student_registrations",
-            {"_id": registration["_id"]},
-            {
-                "$set": {
-                    f"tasks.{task_index}": task,
-                    "updated_at": datetime.now(timezone.utc)
+        # Initialize reviews array if it doesn't exist
+        if "reviews" not in task:
+            task["reviews"] = []
+        
+        task["reviews"].append(review_entry)
+        
+        # Update in database with error handling
+        try:
+            update_result = await DatabaseOperations.update_one(
+                "student_registrations",
+                {"_id": registration["_id"]},
+                {
+                    "$set": {
+                        f"tasks.{task_index}": task,
+                        "updated_at": datetime.now(timezone.utc)
+                    }
                 }
-            }
-        )
+            )
+            
+            # Handle different types of update results
+            if hasattr(update_result, 'modified_count'):
+                if update_result.modified_count == 0:
+                    logger.error(f"Failed to update task review in database: {task_id} - no documents modified")
+                    raise HTTPException(status_code=500, detail="Failed to save review to database")
+            elif isinstance(update_result, bool):
+                if not update_result:
+                    logger.error(f"Failed to update task review in database: {task_id} - update returned False")
+                    raise HTTPException(status_code=500, detail="Failed to save review to database")
+            else:
+                logger.info(f"Task review update completed: {task_id} - result type: {type(update_result)}")
+                
+        except Exception as db_error:
+            logger.error(f"Database error during task review update: {str(db_error)}")
+            raise HTTPException(status_code=500, detail="Database error during review update")
         
-        logger.info(f"Task reviewed: {task_id} by {current_student.enrollment_no} - {review_data.review_status}")
+        # Enhanced logging
+        logger.info(f"Task reviewed successfully: {task_id} by {current_student.enrollment_no} - {review_data.review_status}")
+        if submission_issues:
+            logger.info(f"Task {task_id} review completed despite data issues: {submission_issues}")
         
-        return {
+        # Prepare response with detailed information
+        response_data = {
             "success": True,
             "message": f"Task review completed: {review_data.review_status}",
-            "task": task
+            "task": task,
+            "review_summary": {
+                "reviewer": current_student.enrollment_no,
+                "decision": review_data.review_status,
+                "timestamp": current_time,
+                "notes_provided": bool(review_data.review_notes),
+                "data_issues_detected": submission_issues if submission_issues else None
+            }
         }
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except ValidationError as ve:
+        logger.error(f"Validation error reviewing task {task_id}: {str(ve)}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(ve)}")
+    except Exception as e:
+        logger.error(f"Unexpected error reviewing task {task_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to review task: {str(e)}")
         
     except HTTPException:
         raise

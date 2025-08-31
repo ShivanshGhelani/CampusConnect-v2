@@ -875,13 +875,29 @@ const TeamManagement = () => {
       return;
     }
 
+    // Validate review data before sending
+    const reviewData = {
+      review_status: reviewStatus,
+      review_notes: reviewNotes || ""
+    };
+    
+    console.log('TeamManagement: Review data being sent:', reviewData);
+    
+    // Basic validation
+    if (!reviewData.review_status) {
+      showNotification('Error: Review status is required.', 'error');
+      return;
+    }
+    
+    if ((reviewData.review_status === 'rejected' || reviewData.review_status === 'needs_revision') && !reviewData.review_notes.trim()) {
+      showNotification('Error: Review notes are required for rejected or revision requests.', 'error');
+      return;
+    }
+
     setReviewLoading(true);
     
     try {
-      const response = await clientAPI.reviewTask(eventId, taskId, {
-        review_status: reviewStatus,
-        review_notes: reviewNotes
-      });
+      const response = await clientAPI.reviewTask(eventId, taskId, reviewData);
       
       console.log('TeamManagement: Task review response:', response);
       
@@ -892,7 +908,23 @@ const TeamManagement = () => {
       
     } catch (error) {
       console.error('TeamManagement: Error reviewing task:', error);
-      showNotification(`Failed to review task: ${error.message}`, 'error');
+      console.error('TeamManagement: Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers
+      });
+      
+      let errorMessage = 'Failed to review task';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Invalid review data. Please check your inputs.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
       setReviewLoading(false);
     }
@@ -1170,7 +1202,7 @@ const TeamManagement = () => {
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto px-4 py-6">
 
           {/* Enhanced Team Header with Real-time Status */}
           <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
@@ -3157,25 +3189,32 @@ const TeamManagement = () => {
         </div>
       )}
       
-      {/* Task Review Modal */}
+      {/* Task Review Modal - Enhanced with data consistency checks */}
       {showTaskReviewModal && reviewingTask && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-6">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <h3 className="text-xl font-bold">Review Task Submission</h3>
-                  <p className="text-purple-100 mt-1">{reviewingTask.title}</p>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-purple-200">
-                    <span>Status: {reviewingTask.status}</span>
+                  <p className="text-purple-100 mt-1 text-lg font-medium">{reviewingTask.title}</p>
+                  <div className="flex items-center gap-6 mt-3 text-sm text-purple-200">
+                    <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+                      Status: <span className="font-medium">{reviewingTask.status}</span>
+                    </span>
+                    <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+                      Priority: <span className="font-medium">{reviewingTask.priority}</span>
+                    </span>
                     {reviewingTask.submitted_at && (
-                      <span>Submitted: {new Date(reviewingTask.submitted_at).toLocaleDateString()}</span>
+                      <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+                        Submitted: <span className="font-medium">{new Date(reviewingTask.submitted_at).toLocaleDateString()}</span>
+                      </span>
                     )}
                   </div>
                 </div>
                 <button
                   onClick={closeTaskReviewModal}
-                  className="text-white hover:text-gray-200 transition-colors"
+                  className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-purple-500/30 rounded-lg"
                 >
                   <i className="fas fa-times text-xl"></i>
                 </button>
@@ -3183,139 +3222,391 @@ const TeamManagement = () => {
             </div>
             
             <div className="p-6">
-              {/* Task Details */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-gray-800 mb-2">Task Details:</h4>
-                <p className="text-gray-700 mb-2"><strong>Category:</strong> {reviewingTask.category}</p>
-                {reviewingTask.description && (
-                  <p className="text-gray-700 mb-2"><strong>Description:</strong> {reviewingTask.description}</p>
-                )}
-                <p className="text-gray-700 mb-2"><strong>Priority:</strong> {reviewingTask.priority}</p>
-                <p className="text-gray-700"><strong>Assigned To:</strong> {reviewingTask.assigned_to?.join(', ')}</p>
+              {/* Task Overview Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Task Details */}
+                <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                  <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
+                    <i className="fas fa-tasks text-blue-600"></i>
+                    Task Information
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 font-medium">Category:</span>
+                      <span className="text-blue-700 font-semibold capitalize">{reviewingTask.category || 'General'}</span>
+                    </div>
+                    {reviewingTask.description && reviewingTask.description.trim() && (
+                      <div>
+                        <span className="text-gray-600 font-medium block mb-1">Description:</span>
+                        <p className="text-gray-700 text-sm bg-white p-3 rounded-lg border border-blue-100">
+                          {reviewingTask.description}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 font-medium">Created by:</span>
+                      <span className="text-blue-700 font-semibold">{reviewingTask.created_by || 'Unknown'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 font-medium">Created at:</span>
+                      <span className="text-blue-700 text-sm">
+                        {reviewingTask.created_at ? new Date(reviewingTask.created_at).toLocaleString() : 'Unknown'}
+                      </span>
+                    </div>
+                    {reviewingTask.deadline && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 font-medium">Deadline:</span>
+                        <span className="text-blue-700 text-sm">
+                          {new Date(reviewingTask.deadline).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Assignment Details */}
+                <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                    <i className="fas fa-users text-green-600"></i>
+                    Assignment Details
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-gray-600 font-medium block mb-2">Assigned To:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {(reviewingTask.assigned_to && reviewingTask.assigned_to.length > 0) ? 
+                          reviewingTask.assigned_to.map((enrollment, index) => {
+                            // Find the team member name for this enrollment
+                            const teamMember = teamRegistration?.members?.find(m => m.enrollment_no === enrollment) ||
+                                             teamRegistration?.team_leader?.enrollment_no === enrollment ? teamRegistration.team_leader : null;
+                            const memberName = teamMember?.name || enrollment;
+                            
+                            return (
+                              <span key={index} className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                                {memberName} ({enrollment})
+                              </span>
+                            );
+                          }) : (
+                            <span className="text-gray-500 italic">No specific assignments</span>
+                          )
+                        }
+                      </div>
+                    </div>
+                    {reviewingTask.deadline && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 font-medium">Deadline:</span>
+                        <span className="text-green-700 font-semibold">
+                          {new Date(reviewingTask.deadline).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {reviewingTask.submitted_by && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 font-medium">Submitted by:</span>
+                        <span className="text-green-700 font-semibold">
+                          {(() => {
+                            const submitter = teamRegistration?.members?.find(m => m.enrollment_no === reviewingTask.submitted_by) ||
+                                            teamRegistration?.team_leader?.enrollment_no === reviewingTask.submitted_by ? teamRegistration.team_leader : null;
+                            return submitter?.name || reviewingTask.submitted_by;
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              
-              {/* Submission Details - Enhanced Display */}
-              {reviewingTask.status === 'submitted' && (
+
+              {/* Submission Details - Enhanced Display with Data Validation */}
+              {reviewingTask.status === 'submitted' || reviewingTask.submission_link || reviewingTask.submitted_by ? (
                 <div className="mb-6">
-                  {reviewingTask.submission_link ? (
-                    <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <i className="fas fa-check-circle text-green-600"></i>
+                  <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i className="fas fa-upload text-purple-600"></i>
+                    Submission Review
+                  </h4>
+                  
+                  {reviewingTask.submission_link && reviewingTask.submission_link.trim() ? (
+                    <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fas fa-check-circle text-green-600 text-lg"></i>
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold text-green-800 mb-2">📎 Submitted Work</h4>
-                          <div className="space-y-2">
+                          <h5 className="font-bold text-green-800 mb-3 text-lg">📎 Submitted Work</h5>
+                          
+                          {/* Submission Link */}
+                          <div className="mb-4">
                             <a
                               href={reviewingTask.submission_link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-colors"
+                              className="inline-flex items-center gap-3 bg-white px-5 py-3 rounded-lg border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-all duration-200 font-medium shadow-sm"
                             >
-                              <i className="fas fa-external-link-alt"></i>
-                              <span className="font-medium">View Submission</span>
+                              <i className="fas fa-external-link-alt text-lg"></i>
+                              <span>View Submission</span>
+                              <i className="fas fa-arrow-right text-sm"></i>
                             </a>
-                            <p className="text-sm text-green-600 break-all">{reviewingTask.submission_link}</p>
+                            <p className="text-sm text-green-600 mt-2 break-all bg-white/70 p-2 rounded border border-green-200">
+                              <strong>Link:</strong> {reviewingTask.submission_link}
+                            </p>
                           </div>
                           
-                          {reviewingTask.submission_notes && (
-                            <div className="mt-3 p-3 bg-white rounded-lg border border-green-200">
-                              <p className="text-sm font-medium text-green-700 mb-1">📝 Submission Notes:</p>
-                              <p className="text-sm text-green-600">{reviewingTask.submission_notes}</p>
+                          {/* Submission Notes */}
+                          {reviewingTask.submission_notes ? (
+                            <div className="mb-4 p-4 bg-white rounded-lg border border-green-200">
+                              <p className="text-sm font-bold text-green-700 mb-2 flex items-center gap-2">
+                                <i className="fas fa-sticky-note"></i>
+                                Submission Notes:
+                              </p>
+                              <p className="text-sm text-green-600 leading-relaxed">{reviewingTask.submission_notes}</p>
+                            </div>
+                          ) : (
+                            <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <p className="text-sm text-yellow-700 flex items-center gap-2">
+                                <i className="fas fa-info-circle"></i>
+                                No submission notes provided
+                              </p>
                             </div>
                           )}
                           
-                          <div className="mt-2 flex items-center gap-4 text-xs text-green-500">
-                            {reviewingTask.submitted_by && (
-                              <span>👤 Submitted by: {reviewingTask.submitted_by}</span>
-                            )}
-                            {reviewingTask.submitted_at && (
-                              <span>🕒 {new Date(reviewingTask.submitted_at).toLocaleString()}</span>
-                            )}
+                          {/* Submission Metadata */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div className="bg-white/70 p-3 rounded-lg border border-green-200">
+                              <p className="text-green-600 font-medium flex items-center gap-2">
+                                <i className="fas fa-user"></i>
+                                Submitted by: 
+                                <span className="font-bold">{reviewingTask.submitted_by || 'Unknown'}</span>
+                              </p>
+                            </div>
+                            <div className="bg-white/70 p-3 rounded-lg border border-green-200">
+                              <p className="text-green-600 font-medium flex items-center gap-2">
+                                <i className="fas fa-clock"></i>
+                                Submitted at: 
+                                <span className="font-bold">
+                                  {reviewingTask.submitted_at ? new Date(reviewingTask.submitted_at).toLocaleString() : 'Unknown'}
+                                </span>
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
-                      <div className="flex items-center gap-3">
-                        <i className="fas fa-exclamation-triangle text-yellow-600"></i>
-                        <div>
-                          <h4 className="font-semibold text-yellow-800">⚠️ No Submission Link Found</h4>
-                          <p className="text-sm text-yellow-600">This task is marked as submitted but no submission link was provided.</p>
+                    <div className="p-5 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border-2 border-red-200">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+                        </div>
+                        <div className="flex-1">
+                          <h5 className="font-bold text-red-800 text-lg mb-2">⚠️ Submission Data Issue</h5>
+                          <p className="text-red-700 mb-3">
+                            This task is marked as <strong>submitted</strong> but no submission link was provided. 
+                            This indicates a data inconsistency that needs attention.
+                          </p>
+                          
+                          <div className="bg-white/70 p-4 rounded-lg border border-red-200">
+                            <h6 className="font-semibold text-red-800 mb-2">Available submission data:</h6>
+                            <div className="space-y-2 text-sm">
+                              <p><strong>Submitted by:</strong> {(() => {
+                                if (reviewingTask.submitted_by) {
+                                  const submitter = teamRegistration?.members?.find(m => m.enrollment_no === reviewingTask.submitted_by) ||
+                                                  teamRegistration?.team_leader?.enrollment_no === reviewingTask.submitted_by ? teamRegistration.team_leader : null;
+                                  return submitter ? `${submitter.name} (${reviewingTask.submitted_by})` : reviewingTask.submitted_by;
+                                }
+                                return 'Not recorded';
+                              })()}</p>
+                              <p><strong>Submitted at:</strong> {reviewingTask.submitted_at ? new Date(reviewingTask.submitted_at).toLocaleString() : 'Not recorded'}</p>
+                              <p><strong>Submission notes:</strong> {reviewingTask.submission_notes && reviewingTask.submission_notes.trim() ? reviewingTask.submission_notes : 'None provided'}</p>
+                              <p><strong>Review status:</strong> {reviewingTask.review_status || 'Pending'}</p>
+                              <p><strong>Task status:</strong> {reviewingTask.status}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-300">
+                            <p className="text-sm text-yellow-800 flex items-center gap-2">
+                              <i className="fas fa-lightbulb"></i>
+                              <strong>Recommendation:</strong> Contact the team member to resubmit with proper link, or mark as rejected to reset the task.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="mb-6 p-5 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <i className="fas fa-hourglass-half text-gray-500 text-xl"></i>
+                    </div>
+                    <h5 className="font-semibold text-gray-700 mb-2">Task Not Yet Submitted</h5>
+                    <p className="text-gray-600">
+                      This task has not been submitted yet and cannot be reviewed. Current status: <strong>{reviewingTask.status}</strong>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Previous Reviews Section */}
+              {reviewingTask.reviews && reviewingTask.reviews.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i className="fas fa-history text-indigo-600"></i>
+                    Review History
+                  </h4>
+                  <div className="space-y-3">
+                    {reviewingTask.reviews.map((review, index) => (
+                      <div key={index} className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-semibold text-indigo-800">Review #{index + 1}</span>
+                          <span className="text-sm text-indigo-600">
+                            {review.reviewed_at ? new Date(review.reviewed_at).toLocaleString() : 'Unknown date'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <strong>Reviewer:</strong> {review.reviewer || 'Unknown'}
+                          </div>
+                          <div>
+                            <strong>Status:</strong> 
+                            <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                              review.review_status === 'approved' ? 'bg-green-100 text-green-800' :
+                              review.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {review.review_status || 'Unknown'}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Comment:</strong> {review.comment || 'No comment provided'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
               
-              {/* Review Form - Only show for submitted tasks */}
-              {reviewingTask.status === 'submitted' ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Review Decision <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={reviewStatus}
-                      onChange={(e) => setReviewStatus(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="approved">✅ Approved - Task Complete</option>
-                      <option value="needs_revision">🔄 Needs Revision</option>
-                      <option value="rejected">❌ Rejected - Start Over</option>
-                    </select>
-                  </div>
-                
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Review Notes
-                    </label>
-                    <textarea
-                      value={reviewNotes}
-                      onChange={(e) => setReviewNotes(e.target.value)}
-                      placeholder="Provide feedback on the submitted work..."
-                      rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+              {/* Review Form - Enhanced for better UX */}
+              {(reviewingTask.status === 'submitted' || reviewingTask.status === 'completed' || reviewingTask.submission_link) ? (
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-200">
+                  <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
+                    <i className="fas fa-gavel text-purple-600"></i>
+                    Submit Your Review
+                  </h4>
+                  
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">
+                        Review Decision <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <button
+                          onClick={() => setReviewStatus('approved')}
+                          className={`p-4 rounded-lg border-2 transition-all ${
+                            reviewStatus === 'approved' 
+                              ? 'border-green-500 bg-green-50 text-green-800' 
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
+                          }`}
+                        >
+                          <i className="fas fa-check-circle text-2xl mb-2 block"></i>
+                          <span className="font-semibold">Approved</span>
+                          <p className="text-xs mt-1">Task Complete</p>
+                        </button>
+                        <button
+                          onClick={() => setReviewStatus('needs_revision')}
+                          className={`p-4 rounded-lg border-2 transition-all ${
+                            reviewStatus === 'needs_revision' 
+                              ? 'border-yellow-500 bg-yellow-50 text-yellow-800' 
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-yellow-300'
+                          }`}
+                        >
+                          <i className="fas fa-edit text-2xl mb-2 block"></i>
+                          <span className="font-semibold">Needs Revision</span>
+                          <p className="text-xs mt-1">Require Changes</p>
+                        </button>
+                        <button
+                          onClick={() => setReviewStatus('rejected')}
+                          className={`p-4 rounded-lg border-2 transition-all ${
+                            reviewStatus === 'rejected' 
+                              ? 'border-red-500 bg-red-50 text-red-800' 
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-red-300'
+                          }`}
+                        >
+                          <i className="fas fa-times-circle text-2xl mb-2 block"></i>
+                          <span className="font-semibold">Rejected</span>
+                          <p className="text-xs mt-1">Start Over</p>
+                        </button>
+                      </div>
+                    </div>
+                  
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-3">
+                        Review Notes & Feedback
+                      </label>
+                      <textarea
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        placeholder={`Provide detailed feedback for ${reviewStatus}...${reviewStatus === 'approved' ? '\n• What was done well?\n• Any additional comments?' : reviewStatus === 'needs_revision' ? '\n• What needs to be changed?\n• Specific improvements required?' : '\n• Why is this rejected?\n• What needs to be redone?'}`}
+                        rows={5}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Provide constructive feedback to help team members improve their work.
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <p className="text-gray-600 text-center">
-                    This task has not been submitted yet and cannot be reviewed.
-                  </p>
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                  <div className="text-center">
+                    <i className="fas fa-info-circle text-gray-400 text-3xl mb-3"></i>
+                    <p className="text-gray-600 font-medium">
+                      This task has limited review options.
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Status: {reviewingTask.status} • {
+                        reviewingTask.submission_link ? 
+                        'Has submission but status may not be "submitted"' : 
+                        'No submission data available'
+                      }
+                    </p>
+                  </div>
                 </div>
               )}
               
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={closeTaskReviewModal}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  {reviewingTask.status === 'submitted' ? 'Cancel' : 'Close'}
-                </button>
-                {reviewingTask.status === 'submitted' && (
+              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Review decisions will notify team members and update task status
+                </div>
+                <div className="flex gap-3">
                   <button
-                    onClick={submitTaskReview}
-                    disabled={reviewLoading}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    onClick={closeTaskReviewModal}
+                    className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
                   >
-                    {reviewLoading ? (
-                      <>
-                        <i className="fas fa-spinner fa-spin"></i>
-                        Reviewing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-check"></i>
-                        Submit Review
-                      </>
-                    )}
+                    {(reviewingTask.status === 'submitted' || reviewingTask.status === 'completed' || reviewingTask.submission_link) ? 'Cancel' : 'Close'}
                   </button>
-                )}
+                  {(reviewingTask.status === 'submitted' || reviewingTask.status === 'completed' || reviewingTask.submission_link) && (
+                    <button
+                      onClick={submitTaskReview}
+                      disabled={reviewLoading}
+                      className="px-8 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium shadow-lg"
+                    >
+                      {reviewLoading ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i>
+                          Submitting Review...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-gavel"></i>
+                          Submit Review
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

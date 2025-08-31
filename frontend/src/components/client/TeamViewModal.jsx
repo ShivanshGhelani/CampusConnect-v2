@@ -438,183 +438,185 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Team Overview</h2>
-              <p className="text-purple-100">
-                {teamRegistration?.team?.team_name || teamData?.teamName || 'Team Details'} - {teamRegistration?.event?.event_name || teamData?.eventName}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-purple-200 transition-colors"
-            >
-              <i className="fas fa-times text-xl"></i>
-            </button>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Team Overview</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {teamRegistration?.team?.team_name || teamData?.teamName || 'Team Details'} - {teamRegistration?.event?.event_name || teamData?.eventName}
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Notification */}
         {notification.show && (
           <div className={`absolute top-4 right-4 z-10 px-4 py-2 rounded-lg shadow-lg ${
             notification.type === 'success' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
           } flex items-center gap-2`}>
-            <i className={`fas ${notification.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
+            <svg className={`w-4 h-4 ${notification.type === 'success' ? 'text-green-500' : 'text-red-500'}`} fill="currentColor" viewBox="0 0 20 20">
+              {notification.type === 'success' ? (
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              ) : (
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              )}
+            </svg>
             {notification.message}
           </div>
         )}
 
         {/* Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="max-h-[75vh] overflow-y-auto">
+        <div className="max-h-[75vh] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-16">
               <div className="text-center">
-                <i className="fas fa-spinner fa-spin text-3xl text-purple-600 mb-4"></i>
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-gray-600">Loading team data...</p>
               </div>
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-              <i className="fas fa-exclamation-circle text-red-600 text-xl mb-2"></i>
-              <p className="text-red-800">{error}</p>
+            <div className="m-6 bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <p className="text-red-800 mb-4">{error}</p>
               <button 
                 onClick={loadTeamData}
-                className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Retry
               </button>
             </div>
           ) : teamRegistration ? (
-            <div className="space-y-8">
-              {/* Team Members Details */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <i className="fas fa-users text-purple-600"></i>
-                  Team Members & Roles
+            <div className="space-y-6">
+              {/* Team Members Section */}
+              <div className="p-6">
+                <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Team Members ({teamRegistration.team_members?.length || 0})
                 </h3>
+                
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {teamRegistration.team_members?.map((member, index) => {
-                        const memberRole = getMemberRole(member.student.enrollment_no);
-                        return (
-                          <tr key={index} className={member.student.enrollment_no === user.enrollment_no ? 'bg-blue-50' : ''}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                  member.is_team_leader ? 'bg-yellow-100' : 'bg-gray-100'
-                                }`}>
-                                  <i className={`fas ${member.is_team_leader ? 'fa-crown text-yellow-600' : 'fa-user text-gray-600'}`}></i>
-                                </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                                    {member.student.name}
-                                    {member.student.enrollment_no === user.enrollment_no && (
-                                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">You</span>
-                                    )}
-                                  </div>
-                                  <div className="text-sm text-gray-500">{member.student.enrollment_no}</div>
-                                  <div className="text-sm text-gray-500">{member.student.department}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                member.is_team_leader 
-                                  ? 'bg-yellow-100 text-yellow-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {member.is_team_leader ? 'Team Leader' : 'Team Member'}
+                  {teamRegistration.team_members?.map((member, index) => {
+                    const memberRole = getMemberRole(member.student.enrollment_no);
+                    const isCurrentUser = member.student.enrollment_no === user.enrollment_no;
+                    const isPresent = member.attendance?.marked || member.attendance?.status === 'present';
+                    
+                    return (
+                      <div key={index} className={`flex items-center justify-between p-4 ${
+                        index !== teamRegistration.team_members.length - 1 ? 'border-b border-gray-100' : ''
+                      } ${isCurrentUser ? 'bg-blue-50' : 'hover:bg-gray-50'} transition-colors`}>
+                        
+                        {/* Left side - User info */}
+                        <div className="flex items-center gap-3 flex-1">
+                          {/* Avatar with leader crown or user icon */}
+                          <div className="relative">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-700">
+                                {member.student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                  {memberRole.role}
-                                </span>
-                                {memberRole.description && (
-                                  <p className="text-xs text-gray-500 mt-1">{memberRole.description}</p>
-                                )}
+                            </div>
+                            {member.is_team_leader && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                                <svg className="w-2.5 h-2.5 text-yellow-800" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                              {member.registration_id}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  member.attendance?.marked || member.attendance?.status === 'present' 
-                                    ? 'bg-green-500' 
-                                    : 'bg-red-500'
-                                }`}></div>
-                                <span className="text-sm text-gray-600">
-                                  {member.attendance?.marked || member.attendance?.status === 'present' ? 'Present' : 'Pending'}
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            )}
+                          </div>
+                          
+                          {/* Name and details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-gray-900 truncate">{member.student.name}</h4>
+                              {isCurrentUser && (
+                                <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded font-medium">You</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{member.student.enrollment_no}</p>
+                            <p className="text-xs text-gray-500 truncate">{member.student.department}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Right side - Status indicators */}
+                        <div className="flex items-center gap-3">
+                          {/* Role badge */}
+                          <div className="text-right">
+                            <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
+                              {memberRole.role}
+                            </span>
+                          </div>
+                          
+                          {/* Attendance status */}
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className={`text-xs font-medium ${isPresent ? 'text-green-700' : 'text-red-700'}`}>
+                              {isPresent ? 'Present' : 'Absent'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* My Tasks Section */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <i className="fas fa-tasks text-green-600"></i>
-                  My Assigned Tasks ({memberTasks.length})
+              <div className="p-6 border-t border-gray-200">
+                <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                  My Tasks ({memberTasks.length})
                 </h3>
                 {memberTasks.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {memberTasks.map((task, index) => (
-                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-lg">{task.title}</h4>
+                            <h4 className="font-medium text-gray-900">{task.title}</h4>
                             {task.description && (
-                              <p className="text-gray-600 mt-2">{task.description}</p>
+                              <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-2 ml-4">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(task.priority)}`}>
-                              {task.priority} priority
+                          <div className="flex gap-2 ml-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
                             </span>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(task.status)}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
                               {task.status}
                             </span>
                           </div>
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
-                              <i className="fas fa-folder"></i>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                              </svg>
                               {task.category}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <i className="fas fa-user"></i>
-                              Created by {task.created_by}
                             </span>
                             {task.deadline && (
                               <span className="flex items-center gap-1">
-                                <i className="fas fa-calendar"></i>
-                                Due: {new Date(task.deadline).toLocaleDateString()}
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {new Date(task.deadline).toLocaleDateString()}
                               </span>
                             )}
                           </div>
@@ -622,84 +624,57 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                           {/* Task Action Buttons */}
                           <div className="flex items-center gap-2">
                             {task.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'in_progress')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  {taskUpdateLoading[task.task_id] ? (
-                                    <i className="fas fa-spinner fa-spin"></i>
-                                  ) : (
-                                    <>
-                                      <i className="fas fa-play text-xs"></i>
-                                      Start Task
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'blocked')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  <i className="fas fa-exclamation-triangle text-xs"></i>
-                                  Mark Blocked
-                                </button>
-                              </>
+                              <button
+                                onClick={() => updateTaskStatus(task.task_id, 'in_progress')}
+                                disabled={taskUpdateLoading[task.task_id]}
+                                className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                              >
+                                {taskUpdateLoading[task.task_id] ? (
+                                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Start
+                                  </>
+                                )}
+                              </button>
                             )}
                             
                             {task.status === 'in_progress' && (
-                              <>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'submit')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  {taskUpdateLoading[task.task_id] ? (
-                                    <i className="fas fa-spinner fa-spin"></i>
-                                  ) : (
-                                    <>
-                                      <i className="fas fa-upload text-xs"></i>
-                                      Submit Task
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'paused')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  <i className="fas fa-pause text-xs"></i>
-                                  Pause
-                                </button>
-                              </>
+                              <button
+                                onClick={() => updateTaskStatus(task.task_id, 'submit')}
+                                disabled={taskUpdateLoading[task.task_id]}
+                                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Submit
+                              </button>
                             )}
                             
                             {task.status === 'submitted' && (
                               <>
                                 {isTeamLeader() ? (
-                                  <>
-                                    <button
-                                      onClick={() => updateTaskStatus(task.task_id, 'review')}
-                                      disabled={taskUpdateLoading[task.task_id]}
-                                      className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                    >
-                                      <i className="fas fa-eye text-xs"></i>
-                                      Review Task
-                                    </button>
-                                    <button
-                                      onClick={() => updateTaskStatus(task.task_id, 'completed')}
-                                      disabled={taskUpdateLoading[task.task_id]}
-                                      className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                    >
-                                      <i className="fas fa-check text-xs"></i>
-                                      Direct Approve
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => updateTaskStatus(task.task_id, 'review')}
+                                    disabled={taskUpdateLoading[task.task_id]}
+                                    className="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Review
+                                  </button>
                                 ) : (
-                                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                    <i className="fas fa-clock text-xs"></i>
-                                    Waiting for Review
+                                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-xs flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Pending Review
                                   </span>
                                 )}
                                 {task.submission_link && (
@@ -707,77 +682,23 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                                     href={task.submission_link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm flex items-center gap-1"
+                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
                                   >
-                                    <i className="fas fa-external-link-alt text-xs"></i>
-                                    View Submission
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    View
                                   </a>
                                 )}
-                              </>
-                            )}
-                            
-                            {task.status === 'under_review' && (
-                              <>
-                                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                  <i className="fas fa-hourglass-half text-xs"></i>
-                                  Under Review
-                                </span>
-                                {task.submission_link && (
-                                  <a
-                                    href={task.submission_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm flex items-center gap-1"
-                                  >
-                                    <i className="fas fa-external-link-alt text-xs"></i>
-                                    View Submission
-                                  </a>
-                                )}
-                              </>
-                            )}
-                            
-                            {task.status === 'paused' && (
-                              <>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'in_progress')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  <i className="fas fa-play text-xs"></i>
-                                  Resume
-                                </button>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'pending')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  <i className="fas fa-undo text-xs"></i>
-                                  Reset
-                                </button>
-                              </>
-                            )}
-                            
-                            {task.status === 'blocked' && (
-                              <>
-                                <button
-                                  onClick={() => updateTaskStatus(task.task_id, 'pending')}
-                                  disabled={taskUpdateLoading[task.task_id]}
-                                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-1"
-                                >
-                                  <i className="fas fa-unlock text-xs"></i>
-                                  Unblock
-                                </button>
-                                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                  <i className="fas fa-exclamation-triangle text-xs"></i>
-                                  Blocked - Contact Team Leader
-                                </span>
                               </>
                             )}
                             
                             {task.status === 'completed' && (
                               <>
-                                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                  <i className="fas fa-check-circle text-xs"></i>
+                                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
                                   Completed
                                 </span>
                                 {task.submission_link && (
@@ -785,33 +706,15 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                                     href={task.submission_link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm flex items-center gap-1"
+                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
                                   >
-                                    <i className="fas fa-external-link-alt text-xs"></i>
-                                    View Work
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                    View
                                   </a>
                                 )}
-                                {task.review_notes && (
-                                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm flex items-center gap-1" title={task.review_notes}>
-                                    <i className="fas fa-comment text-xs"></i>
-                                    Review Notes
-                                  </span>
-                                )}
                               </>
-                            )}
-                            
-                            {task.status === 'review_requested' && (
-                              <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                <i className="fas fa-eye text-xs"></i>
-                                Under Review
-                              </span>
-                            )}
-                            
-                            {task.status === 'completed' && (
-                              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm font-medium flex items-center gap-1">
-                                <i className="fas fa-check text-xs"></i>
-                                Completed
-                              </span>
                             )}
                           </div>
                         </div>
@@ -820,128 +723,85 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                   </div>
                 ) : (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <i className="fas fa-clipboard text-4xl text-gray-400 mb-4"></i>
-                    <p className="text-gray-600 text-lg">No tasks assigned to you yet</p>
-                    <p className="text-gray-500 text-sm">Tasks will appear here when the team leader assigns them</p>
+                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <p className="text-gray-600">No tasks assigned yet</p>
+                    <p className="text-gray-500 text-sm">Tasks will appear here when assigned</p>
                   </div>
                 )}
               </div>
 
-              {/* Team Registration & Attendance Status */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Registration Status */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <i className="fas fa-clipboard-list text-blue-600"></i>
-                    Registration Status
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-gray-600">Team Registration ID</p>
-                      <p className="font-mono font-medium text-gray-900">{teamRegistration.registration_id}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Registration Date</p>
-                      <p className="font-medium text-gray-900">
-                        {new Date(teamRegistration.team?.registered_at || teamRegistration.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Team Size</p>
-                      <p className="font-medium text-gray-900">{teamRegistration.team?.team_size || teamRegistration.team_members?.length} members</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Status</p>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {teamRegistration.team?.status || 'Active'}
-                      </span>
-                    </div>
+              {/* Quick Info */}
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">{teamRegistration.team_members?.length || 0}</p>
+                    <p className="text-sm text-gray-600">Team Members</p>
                   </div>
-                </div>
-
-                {/* Attendance Overview */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <i className="fas fa-user-check text-green-600"></i>
-                    Team Attendance Overview
-                  </h4>
-                  <div className="space-y-3">
-                    {teamRegistration.team_members?.map((member, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">
-                          {member.student.name}
-                          {member.student.enrollment_no === user.enrollment_no && ' (You)'}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${
-                            member.attendance?.marked || member.attendance?.status === 'present' 
-                              ? 'bg-green-500' 
-                              : 'bg-red-500'
-                          }`}></div>
-                          <span className="text-sm text-gray-600">
-                            {member.attendance?.marked || member.attendance?.status === 'present' ? 'Present' : 'Not Marked'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="border-t pt-3 mt-3">
-                      <div className="flex items-center justify-between font-medium">
-                        <span className="text-gray-700">Team Attendance Rate</span>
-                        <span className="text-gray-900">
-                          {teamRegistration.team_members ? 
-                            Math.round((teamRegistration.team_members.filter(m => m.attendance?.marked || m.attendance?.status === 'present').length / teamRegistration.team_members.length) * 100) 
-                            : 0}%
-                        </span>
-                      </div>
-                    </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {teamRegistration.team_members ? 
+                        Math.round((teamRegistration.team_members.filter(m => m.attendance?.marked || m.attendance?.status === 'present').length / teamRegistration.team_members.length) * 100) 
+                        : 0}%
+                    </p>
+                    <p className="text-sm text-gray-600">Attendance Rate</p>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <i className="fas fa-exclamation-triangle text-4xl mb-4"></i>
+            <div className="text-center py-16 text-gray-500">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
               <p className="text-lg">No team data available</p>
-              <p className="text-sm">Unable to load team information for this event</p>
+              <p className="text-sm">Unable to load team information</p>
             </div>
           )}
         </div>
 
+        </div>
+
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Close
-          </button>
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
       
       {/* Task Submission Modal */}
       {showSubmissionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">Submit Task</h3>
-                  <p className="text-blue-100 mt-1">{selectedTask?.title}</p>
-                </div>
-                <button
-                  onClick={closeSubmissionModal}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  <i className="fas fa-times text-xl"></i>
-                </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Submit Task</h3>
+                <p className="text-sm text-gray-600 mt-1">{selectedTask?.title}</p>
               </div>
+              <button
+                onClick={closeSubmissionModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
             <div className="p-6">
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <i className="fas fa-lightbulb text-yellow-500"></i>
-                  Smart Link Suggestions for "{selectedTask?.category || 'general'}" tasks
+                <h4 className="text-base font-medium text-gray-800 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Suggestions for "{selectedTask?.category || 'general'}" tasks
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {getLinkSuggestions(selectedTask?.category || 'general').map((suggestion, index) => (
@@ -950,8 +810,8 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                       onClick={() => setSubmissionLink(suggestion.placeholder)}
                       className="p-3 text-left border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
                     >
-                      <div className="font-medium text-gray-800">{suggestion.label}</div>
-                      <div className="text-sm text-gray-500 truncate">{suggestion.placeholder}</div>
+                      <div className="font-medium text-gray-800 text-sm">{suggestion.label}</div>
+                      <div className="text-xs text-gray-500 truncate">{suggestion.placeholder}</div>
                     </button>
                   ))}
                 </div>
@@ -971,13 +831,13 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                     required
                   />
                   <p className="text-sm text-gray-500 mt-1">
-                    Provide a link to your completed work (GitHub, Drive, Figma, etc.)
+                    Provide a link to your completed work
                   </p>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Submission Notes (Optional)
+                    Notes (Optional)
                   </label>
                   <textarea
                     value={submissionNotes}
@@ -1003,12 +863,14 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                 >
                   {submissionLoading ? (
                     <>
-                      <i className="fas fa-spinner fa-spin"></i>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       Submitting...
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-upload"></i>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
                       Submit Task
                     </>
                   )}
@@ -1021,34 +883,36 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
       
       {/* Task Review Modal */}
       {showReviewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">Review Task</h3>
-                  <p className="text-purple-100 mt-1">{selectedTask?.title}</p>
-                </div>
-                <button
-                  onClick={closeReviewModal}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  <i className="fas fa-times text-xl"></i>
-                </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Review Task</h3>
+                <p className="text-sm text-gray-600 mt-1">{selectedTask?.title}</p>
               </div>
+              <button
+                onClick={closeReviewModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
             <div className="p-6">
               {selectedTask?.submission_link && (
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-gray-800 mb-2">Submitted Work:</h4>
+                  <h4 className="font-medium text-gray-800 mb-2">Submitted Work:</h4>
                   <a
                     href={selectedTask.submission_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2"
                   >
-                    <i className="fas fa-external-link-alt"></i>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
                     {selectedTask.submission_link}
                   </a>
                   {selectedTask.submission_notes && (
@@ -1104,12 +968,14 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                 >
                   {reviewLoading ? (
                     <>
-                      <i className="fas fa-spinner fa-spin"></i>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       Reviewing...
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-check"></i>
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
                       Submit Review
                     </>
                   )}
