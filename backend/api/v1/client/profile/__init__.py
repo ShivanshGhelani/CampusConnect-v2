@@ -1110,5 +1110,100 @@ async def get_team_info(
         traceback.print_exc()
         return {"success": False, "message": f"Error retrieving team info: {str(e)}"}
 
+@router.get("/team-registration-details/{event_id}")
+async def get_team_registration_details(
+    event_id: str,
+    student: Student = Depends(require_student_login)
+):
+    """Get complete team registration details from student_registrations collection for QR code generation"""
+    try:
+        logger.info(f"Fetching team registration details for event {event_id}, student {student.enrollment_no}")
+        
+        # Find the team registration in student_registrations collection
+        team_registration = await DatabaseOperations.find_one(
+            "student_registrations",
+            {
+                "$or": [
+                    # Student is team leader (stored in team.team_leader)
+                    {
+                        "event.event_id": event_id,
+                        "registration_type": "team",
+                        "team.team_leader": student.enrollment_no
+                    },
+                    # Student is team member (in team_members array)
+                    {
+                        "event.event_id": event_id,
+                        "registration_type": "team",
+                        "team_members.student.enrollment_no": student.enrollment_no
+                    }
+                ]
+            }
+        )
+        
+        if not team_registration:
+            return {
+                "success": False,
+                "message": "No team registration found for this event",
+                "team_registration": None
+            }
+        
+        # Extract team information
+        team_data = team_registration.get("team", {})
+        team_members = team_registration.get("team_members", [])
+        
+        # Format team member data for QR code generation
+        formatted_members = []
+        for member in team_members:
+            student_info = member.get("student", {})
+            formatted_member = {
+                "enrollment_no": student_info.get("enrollment_no", ""),
+                "name": student_info.get("name", ""),
+                "email": student_info.get("email", ""),
+                "phone": student_info.get("phone", ""),
+                "department": student_info.get("department", ""),
+                "semester": student_info.get("semester", ""),
+                "is_team_leader": member.get("is_team_leader", False),
+                "registration_id": member.get("registration_id", "")
+            }
+            formatted_members.append(formatted_member)
+        
+        # Format the complete team data
+        complete_team_data = {
+            "team_registration_id": team_registration.get("registration_id", ""),
+            "team_name": team_data.get("team_name", ""),
+            "team_leader": team_data.get("team_leader", ""),
+            "team_size": len(formatted_members),
+            "members": formatted_members,
+            "event": {
+                "event_id": event_id,
+                "event_name": team_registration.get("event", {}).get("event_name", ""),
+                "start_datetime": team_registration.get("event", {}).get("start_datetime", ""),
+                "end_datetime": team_registration.get("event", {}).get("end_datetime", "")
+            },
+            "registration_details": {
+                "created_at": team_registration.get("created_at", ""),
+                "updated_at": team_registration.get("updated_at", ""),
+                "status": team_data.get("status", "confirmed")
+            }
+        }
+        
+        logger.info(f"Successfully retrieved complete team data for {team_data.get('team_name', 'Unknown')} with {len(formatted_members)} members")
+        
+        return {
+            "success": True,
+            "message": "Team registration details retrieved successfully",
+            "team_registration": complete_team_data
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting team registration details: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False, 
+            "message": f"Error retrieving team registration details: {str(e)}",
+            "team_registration": None
+        }
+
 # Include team management tools
 router.include_router(team_tools_router, prefix="/team-tools", tags=["Team Management"])

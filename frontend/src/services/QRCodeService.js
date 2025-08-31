@@ -17,6 +17,13 @@ class QRCodeService {
    * @returns {Object} QR data object
    */
   generateQRData(registrationData, eventData, options = {}) {
+    console.log('=== QR CODE SERVICE DEBUG ===');
+    console.log('Registration Data:', registrationData);
+    console.log('Registration Data Keys:', Object.keys(registrationData || {}));
+    console.log('Event Data:', eventData);
+    console.log('Event Data Keys:', Object.keys(eventData || {}));
+    console.log('Options:', options);
+    
     const isTeamRegistration = registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader';
     const isFacultyRegistration = registrationData.employee_id !== undefined;
     
@@ -32,19 +39,19 @@ class QRCodeService {
       
       // User info (works for both student and faculty)
       user: {
-        name: registrationData.full_name || registrationData.student_data?.full_name,
-        id: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no,
+        name: registrationData.full_name || registrationData.student_data?.full_name || 'User',
+        id: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || 'Unknown',
         department: this.getDepartment(registrationData),
-        email: registrationData.email || registrationData.student_data?.email,
+        email: registrationData.email || registrationData.student_data?.email || 'N/A',
         type: isFacultyRegistration ? 'faculty' : 'student'
       },
       
       // Legacy field for backward compatibility (map to user)
       leader: {
-        name: registrationData.full_name || registrationData.student_data?.full_name,
-        enrollment: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no,
+        name: registrationData.full_name || registrationData.student_data?.full_name || 'Team Leader',
+        enrollment: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || 'Unknown',
         department: this.getDepartment(registrationData),
-        email: registrationData.email || registrationData.student_data?.email
+        email: registrationData.email || registrationData.student_data?.email || 'N/A'
       },
       
       // Team information (if applicable) - Single QR with full team data
@@ -67,6 +74,9 @@ class QRCodeService {
       version: '2.1' // Updated version for faculty support
     };
 
+    console.log('Generated QR Data:', qrData);
+    console.log('============================');
+    
     return qrData;
   }
 
@@ -103,7 +113,13 @@ class QRCodeService {
    * @returns {string} Team ID
    */
   generateTeamId(registrationData, eventData) {
-    const eventId = eventData.event_id || eventData.id;
+    // First check if we already have a team registration ID
+    if (registrationData.team_registration_id) {
+      return registrationData.team_registration_id;
+    }
+    
+    // Otherwise generate one
+    const eventId = eventData.event_id || eventData.id || 'EVENT';
     const teamName = (registrationData.team_name || registrationData.student_data?.team_name || 'TEAM')
       .replace(/[^A-Z0-9]/gi, '').toUpperCase();
     const leaderId = (registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || '000')
@@ -293,6 +309,82 @@ class QRCodeService {
 
     const finalOptions = { ...defaultStyle, ...styleOptions };
     return await this.generateQRCode(qrData, finalOptions);
+  }
+
+  /**
+   * Utility: Get department from various possible data structures
+   * @param {Object} data - Data object
+   * @returns {string} Department name
+   */
+  getDepartment(data) {
+    return data?.department || 
+           data?.student_data?.department || 
+           data?.student?.department || 
+           'N/A';
+  }
+
+  /**
+   * Utility: Get team members from registration data
+   * @param {Object} registrationData - Registration data
+   * @returns {Array} Team members array
+   */
+  getTeamMembers(registrationData) {
+    console.log('Getting team members from registration data:', registrationData);
+    
+    // Handle different possible structures for team members
+    let members = [];
+    
+    // Check various possible structures
+    if (registrationData.team_members && Array.isArray(registrationData.team_members)) {
+      members = registrationData.team_members;
+    } else if (registrationData.student_data?.team_members && Array.isArray(registrationData.student_data.team_members)) {
+      members = registrationData.student_data.team_members;
+    } else if (registrationData.members && Array.isArray(registrationData.members)) {
+      members = registrationData.members;
+    }
+    
+    console.log('Found team members:', members);
+    
+    // If we have enhanced team member data, use it directly (includes leader)
+    if (members && members.length > 0 && members[0].enrollment_no) {
+      console.log('Using enhanced team member data directly');
+      return members;
+    }
+    
+    // Fallback: Always include the team leader/registrant as first member if not already included
+    const leaderData = {
+      name: registrationData.full_name || registrationData.student_data?.full_name || 'Team Leader',
+      enrollment_no: registrationData.enrollment_no || registrationData.student_data?.enrollment_no,
+      department: this.getDepartment(registrationData),
+      email: registrationData.email || registrationData.student_data?.email,
+      is_leader: true
+    };
+    
+    console.log('Leader data:', leaderData);
+    
+    // Check if leader is already in the members array
+    const leaderExists = members.some(member => 
+      member.enrollment_no === leaderData.enrollment_no ||
+      member.enrollment === leaderData.enrollment_no ||
+      member.student?.enrollment_no === leaderData.enrollment_no
+    );
+    
+    if (!leaderExists && leaderData.name && leaderData.enrollment_no) {
+      members = [leaderData, ...members];
+    }
+    
+    console.log('Final team members with leader:', members);
+    return members;
+  }
+
+  /**
+   * Utility: Calculate team size including leader
+   * @param {Object} registrationData - Registration data
+   * @returns {number} Total team size
+   */
+  calculateTeamSize(registrationData) {
+    const members = this.getTeamMembers(registrationData);
+    return members.length;
   }
 }
 

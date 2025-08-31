@@ -214,7 +214,22 @@ function ProfilePage() {
     setSelectedEventDetail(null);
   }, []);
 
+  const closeQRCodeModal = useCallback(() => {
+    setShowQRCodeModal(false);
+    setSelectedQRData(null);
+  }, []);
+
   const openTeamDetailModal = useCallback(async (teamDetail) => {
+    console.log('=== TEAM DETAIL MODAL DEBUG ===');
+    console.log('Opening team detail modal with:', teamDetail);
+    console.log('Current QR modal state:', showQRCodeModal);
+    console.log('==============================');
+    
+    // Close QR modal if it's open to prevent stacking
+    if (showQRCodeModal) {
+      closeQRCodeModal();
+    }
+    
     setSelectedTeamDetail(teamDetail);
     setShowTeamDetailModal(true);
     setTeamDataLoading(true);
@@ -293,7 +308,7 @@ function ProfilePage() {
     } finally {
       setTeamDataLoading(false);
     }
-  }, []);
+  }, [showQRCodeModal, closeQRCodeModal]);
 
   const closeTeamDetailModal = useCallback(() => {
     setShowTeamDetailModal(false);
@@ -304,15 +319,79 @@ function ProfilePage() {
     setTeamDataLoading(false);
   }, []);
 
-  const openQRCodeModal = useCallback((qrData) => {
-    setSelectedQRData(qrData);
+  const openQRCodeModal = useCallback(async (qrData) => {
+    console.log('=== QR CODE DATA DEBUG ===');
+    console.log('Full QR Data received:', qrData);
+    console.log('Registration ID:', qrData?.registration?.reg_id);
+    console.log('Event ID:', qrData?.eventId);
+    console.log('Event Name:', qrData?.eventName);
+    console.log('Registration Type:', qrData?.registrationType);
+    console.log('Team Name:', qrData?.teamName);
+    console.log('Registration Object:', qrData?.registration);
+    console.log('Event Object:', qrData?.event);
+    console.log('========================');
+    
+    // Close team modal if it's open to prevent stacking
+    if (showTeamDetailModal) {
+      closeTeamDetailModal();
+    }
+    
+    let enhancedQRData = { ...qrData };
+    
+    // If this is a team registration, try to fetch full team details with members
+    if (qrData?.registrationType === 'team' && qrData?.eventId) {
+      try {
+        console.log('Fetching full team data for QR code generation...');
+        const teamResponse = await clientAPI.getTeamRegistrationDetails(qrData.eventId);
+        
+        if (teamResponse.data?.success && teamResponse.data?.team_registration) {
+          console.log('Enhanced team data received:', teamResponse.data.team_registration);
+          
+          // Map the team members to the expected format for QR service
+          const mappedTeamMembers = teamResponse.data.team_registration.members?.map(member => ({
+            name: member.student?.name || member.name,
+            enrollment_no: member.student?.enrollment_no || member.enrollment_no,
+            email: member.student?.email || member.email,
+            phone: member.student?.phone || member.phone,
+            department: member.student?.department || member.department,
+            semester: member.student?.semester || member.semester,
+            is_leader: member.is_team_leader || false,
+            registration_id: member.registration_id
+          })) || [];
+          
+          // Enhance the registration data with full team member details
+          enhancedQRData.registration = {
+            ...qrData.registration,
+            team_members: mappedTeamMembers,
+            team_details: {
+              team_name: teamResponse.data.team_registration.team_name,
+              team_leader: teamResponse.data.team_registration.team_leader,
+              team_registration_id: teamResponse.data.team_registration.team_registration_id
+            },
+            // Add any other relevant team data
+            team_size: teamResponse.data.team_registration.team_size || mappedTeamMembers.length || 1
+          };
+          
+          // Also enhance event data with event_id if available
+          if (teamResponse.data.team_registration.event?.event_id) {
+            enhancedQRData.event = {
+              ...qrData.event,
+              event_id: teamResponse.data.team_registration.event.event_id
+            };
+          }
+          
+          console.log('Enhanced QR data with mapped team members:', enhancedQRData.registration);
+          console.log('Team members mapped for QR service:', mappedTeamMembers);
+        }
+      } catch (error) {
+        console.warn('Could not fetch full team data for QR code, using basic data:', error);
+        // Continue with basic data if team fetch fails
+      }
+    }
+    
+    setSelectedQRData(enhancedQRData);
     setShowQRCodeModal(true);
-  }, []);
-
-  const closeQRCodeModal = useCallback(() => {
-    setShowQRCodeModal(false);
-    setSelectedQRData(null);
-  }, []);
+  }, [showTeamDetailModal, closeTeamDetailModal]);
 
   const confirmCancelRegistration = useCallback((eventId, eventName) => {
     setCurrentEventId(eventId);
@@ -1095,434 +1174,6 @@ function ProfilePage() {
         teamId={selectedTeamDetail?.teamId}
         teamData={selectedTeamDetail}
       />
-
-      {/* QR Code Modal */}
-      {showQRCodeModal && selectedQRData && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">
-                      {selectedTeamDetail.teamName || 'Team Information'}
-                    </h3>
-                    <span className="text-sm text-slate-500 font-medium">
-                      {selectedTeamDetail.eventName} • Team Members Status
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Chat/Message Icon */}
-                  <button
-                    onClick={() => setShowMessageBox(true)}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/50 text-slate-600 hover:text-blue-600 transition-all duration-200 group"
-                    title="Team Chat"
-                  >
-                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </button>
-                  
-                  {/* Close Button */}
-                  <button
-                    onClick={closeTeamDetailModal}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
-                  >
-                    <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="space-y-6">
-                {/* Team Overview */}
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6">
-                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Team Overview
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl p-4 border border-slate-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                        </svg>
-                        <span className="text-sm font-medium text-slate-600">Team Name</span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {selectedTeamDetail.teamName || 'Not specified'}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 border border-slate-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span className="text-sm font-medium text-slate-600">Team ID</span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-900 font-mono">
-                        {selectedTeamDetail.teamId || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm font-medium text-blue-800">Your Role:</span>
-                      <span className="text-sm font-semibold text-blue-900">
-                        {selectedTeamDetail.userRole === 'team_leader' || selectedTeamDetail.userRole === 'team' ? 'Team Leader' : 'Team Member'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Members Status */}
-                <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl p-6">
-                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Team Members Status
-                  </h4>
-
-                  {/* Team Basic Information */}
-                  <div className="bg-white rounded-xl p-4 border border-slate-200 mb-4">
-                    <h5 className="text-sm font-semibold text-slate-900 mb-3">Team Information</h5>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-600">Team Name:</span>
-                        <span className="ml-2 font-semibold text-slate-900">
-                          {selectedTeamDetail.teamName || 'Not specified'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Team ID:</span>
-                        <span className="ml-2 font-mono font-semibold text-slate-900">
-                          {selectedTeamDetail.teamId || 'Not Available'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Your Role:</span>
-                        <span className="ml-2 font-semibold text-purple-700">
-                          {selectedTeamDetail.userRole === 'team_leader' || selectedTeamDetail.userRole === 'team'
-                            ? 'Team Leader'
-                            : selectedTeamDetail.userRole === 'team_member'
-                              ? 'Team Member'
-                              : 'Unknown'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Event:</span>
-                        <span className="ml-2 font-semibold text-slate-900">
-                          {selectedTeamDetail.eventName || 'Not Available'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Team Members Display */}
-                  {selectedTeamDetail.teamMembersData && selectedTeamDetail.teamMembersData.length > 0 ? (
-                    <div className="space-y-4">
-                      {selectedTeamDetail.teamMembersData.map((member, index) => (
-                        <div key={member.enrollment_no} className="bg-white rounded-xl p-4 border border-slate-200">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 bg-gradient-to-br rounded-full flex items-center justify-center ${member.registration_type === 'team_leader'
-                                ? 'from-indigo-100 to-purple-100'
-                                : 'from-purple-100 to-pink-100'
-                                }`}>
-                                <svg className={`w-5 h-5 ${member.registration_type === 'team_leader' ? 'text-indigo-600' : 'text-purple-600'
-                                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  {member.registration_type === 'team_leader' ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                  ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  )}
-                                </svg>
-                              </div>
-                              <div>
-                                <h5 className="text-sm font-semibold text-slate-900">{member.full_name}</h5>
-                                <p className="text-xs text-slate-600">{member.enrollment_no}</p>
-                              </div>
-                            </div>
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${member.registration_type === 'team_leader'
-                              ? 'bg-indigo-100 text-indigo-800'
-                              : 'bg-purple-100 text-purple-800'
-                              }`}>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {member.registration_type === 'team_leader' ? (
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                ) : (
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                )}
-                              </svg>
-                              {member.registration_type === 'team_leader' ? 'Leader' : 'Member'}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2 text-xs">
-                            <div className="bg-slate-50 rounded-lg p-2">
-                              <span className="text-slate-600 block">Reg ID:</span>
-                              <span className="font-mono font-semibold text-slate-900">{member.registration_id}</span>
-                            </div>
-                            <div className={`rounded-lg p-2 ${member.attendance.marked
-                              ? 'bg-emerald-50'
-                              : 'bg-red-50'
-                              }`}>
-                              <span className={`block ${member.attendance.marked ? 'text-emerald-600' : 'text-red-600'
-                                }`}>Attendance:</span>
-                              <span className={`font-semibold ${member.attendance.marked ? 'text-emerald-800' : 'text-red-800'
-                                }`}>
-                                {member.attendance.marked ? '✓ Marked' : '✗ Pending'}
-                              </span>
-                            </div>
-                            <div className={`rounded-lg p-2 ${member.attendance.attendance_id ? 'bg-purple-50' : 'bg-slate-50'
-                              }`}>
-                              <span className={`block ${member.attendance.attendance_id ? 'text-purple-600' : 'text-slate-600'
-                                }`}>Att ID:</span>
-                              <span className={`font-mono font-semibold ${member.attendance.attendance_id ? 'text-purple-800' : 'text-slate-500'
-                                }`}>
-                                {member.attendance.attendance_id || 'Not Yet'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : selectedTeamDetail && selectedTeamDetail.teamMembersData === undefined ? (
-                    // Loading state
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 0 0-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 0 1 5.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 0 1 9.288 0M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm6 3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
-                        </svg>
-                      </div>
-                      <h5 className="text-lg font-semibold text-slate-900 mb-2">Loading Team Members...</h5>
-                      <p className="text-slate-600">
-                        Fetching team member details and attendance status.
-                      </p>
-                    </div>
-                  ) : (
-                    // Error or no data state
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-100 to-orange-200 rounded-2xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <h5 className="text-lg font-semibold text-slate-900 mb-2">No Team Data Available</h5>
-                      <p className="text-slate-600 mb-4">
-                        Unable to load team member information at the moment.
-                      </p>
-                      <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
-                        <p><strong>Debug Info:</strong></p>
-                        <p>Event ID: {selectedTeamDetail?.eventId || 'Not available'}</p>
-                        <p>Team ID: {selectedTeamDetail?.teamId || 'Not available'}</p>
-                        <p>Team Name: {selectedTeamDetail?.teamName || 'Not available'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Info Box */}
-                  <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <h6 className="text-sm font-semibold text-blue-900 mb-1">Team Attendance Tracking</h6>
-                        <p className="text-xs text-blue-800 leading-relaxed">
-                          You can see which team members have marked their attendance and which ones haven't.
-                          If someone hasn't marked attendance yet, you can remind them to do so during the event.
-                          Both physical and virtual attendance are tracked with unique IDs.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Roles Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6">
-                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    Team Roles & Responsibilities
-                  </h4>
-
-                  {teamDataLoading ? (
-                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500 mx-auto mb-2"></div>
-                      <p className="text-slate-600 text-sm">Loading team roles...</p>
-                    </div>
-                  ) : teamRoles.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {teamRoles.map((role, index) => (
-                        <div key={index} className="bg-white rounded-xl p-4 border border-slate-200">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <h5 className="font-semibold text-slate-900 text-sm">{role.role_name}</h5>
-                              <p className="text-xs text-slate-600">
-                                Assigned to: {role.assigned_to || 'Unassigned'}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-700 leading-relaxed mb-2">
-                            {role.description || 'No description provided'}
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                              role.status === 'completed' ? 'bg-green-100 text-green-700' :
-                              role.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                              'bg-slate-100 text-slate-700'
-                            }`}>
-                              {role.status === 'completed' && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                              {role.status || 'pending'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                      </div>
-                      <p className="text-slate-600 text-sm">No team roles assigned yet</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Team Tasks Section */}
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl p-6">
-                  <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                    Team Tasks & Progress
-                  </h4>
-
-                  {teamDataLoading ? (
-                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
-                      <p className="text-slate-600 text-sm">Loading team tasks...</p>
-                    </div>
-                  ) : teamTasks.length > 0 ? (
-                    <div className="space-y-3">
-                      {teamTasks.map((task, index) => (
-                        <div key={index} className="bg-white rounded-xl p-4 border border-slate-200">
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-slate-900 text-sm mb-1">{task.title}</h5>
-                              <p className="text-xs text-slate-700 leading-relaxed">
-                                {task.description || 'No description provided'}
-                              </p>
-                            </div>
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium flex-shrink-0 ${
-                              task.priority === 'high' ? 'bg-red-100 text-red-700' :
-                              task.priority === 'medium' ? 'bg-orange-100 text-orange-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {task.priority || 'normal'} priority
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-4">
-                              <span className="text-slate-600">
-                                Assigned to: <span className="font-medium text-slate-900">
-                                  {task.assigned_to || 'Unassigned'}
-                                </span>
-                              </span>
-                              {task.due_date && (
-                                <span className="text-slate-600">
-                                  Due: <span className="font-medium text-slate-900">
-                                    {new Date(task.due_date).toLocaleDateString()}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                              task.status === 'completed' ? 'bg-green-100 text-green-700' :
-                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                              'bg-slate-100 text-slate-700'
-                            }`}>
-                              {task.status === 'completed' && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                              {task.status || 'pending'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-xl p-4 border border-slate-200 text-center">
-                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                      </div>
-                      <p className="text-slate-600 text-sm">No team tasks assigned yet</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-4 pt-4 border-t border-slate-200">
-                  {(selectedTeamDetail.userRole === 'team_leader' || selectedTeamDetail.userRole === 'team') && (
-                    <Link
-                      to={`/client/events/${selectedTeamDetail.eventId}/manage-team`}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-200 font-semibold"
-                      onClick={closeTeamDetailModal}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                      </svg>
-                      Manage Team
-                    </Link>
-                  )}
-                  <button
-                    onClick={closeTeamDetailModal}
-                    className="px-6 py-3 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-      )}
-
       {/* QR Code Modal */}
       {showQRCodeModal && selectedQRData && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">

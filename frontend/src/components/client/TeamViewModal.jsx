@@ -3,6 +3,12 @@ import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
 const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
+  console.log('=== TEAM VIEW MODAL DEBUG ===');
+  console.log('isOpen:', isOpen);
+  console.log('eventId:', eventId);
+  console.log('teamId:', teamId);
+  console.log('teamData received:', teamData);
+  console.log('============================');
   const { user } = useAuth();
   const [teamRegistration, setTeamRegistration] = useState(null);
   const [memberTasks, setMemberTasks] = useState([]);
@@ -43,6 +49,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
     try {
       console.log('TeamViewModal: Loading team data for eventId:', eventId);
+      console.log('TeamViewModal: teamData prop:', teamData);
       
       // Get team registration data
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
@@ -66,103 +73,125 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
       console.log('TeamViewModal: Processed team registration:', teamReg);
 
-      if (teamReg) {
-        setTeamRegistration(teamReg);
-
-        // Load team roles and tasks separately using the team-tools API
+      // If we don't have team registration but have teamData with reg_id, 
+      // this might be a member's individual registration ID - try to find the team
+      if (!teamReg && teamData?.reg_id) {
+        console.log('TeamViewModal: No team registration found, trying with member reg_id:', teamData.reg_id);
         try {
-          // Get team roles
-          const rolesResponse = await clientAPI.getTeamRoles(eventId);
-          console.log('TeamViewModal: Roles response:', rolesResponse);
-          console.log('TeamViewModal: Roles response.data:', rolesResponse.data);
+          // Try to get team data using the member registration ID
+          const memberTeamResponse = await clientAPI.getTeamByMemberRegistration(eventId, teamData.reg_id);
+          console.log('TeamViewModal: Member team response:', memberTeamResponse);
           
-          let teamRoles = {};
-          if (rolesResponse.data?.success && rolesResponse.data?.roles) {
-            // Handle roles array format: roles: [{enrollment_no: "...", role: "...", ...}, ...]
-            const rolesArray = rolesResponse.data.roles;
-            console.log('TeamViewModal: Processing roles array:', rolesArray);
-            
-            teamRoles = {};
-            rolesArray.forEach(roleItem => {
-              console.log('TeamViewModal: Processing role item:', roleItem);
-              
-              if (roleItem.enrollment_no || roleItem.member_enrollment) {
-                const enrollmentNo = roleItem.enrollment_no || roleItem.member_enrollment;
-                
-                // Handle different possible field names for the role
-                const roleValue = roleItem.role || roleItem.role_name || roleItem.assigned_role || roleItem.position;
-                
-                teamRoles[enrollmentNo] = {
-                  role: roleValue,
-                  description: roleItem.description,
-                  permissions: roleItem.permissions || [],
-                  assigned_by: roleItem.assigned_by,
-                  assigned_at: roleItem.assigned_at
-                };
-                
-                console.log('TeamViewModal: Added role for', enrollmentNo, ':', teamRoles[enrollmentNo]);
-              }
-            });
-          } else if (rolesResponse.data?.success) {
-            // Handle other possible structures
-            teamRoles = rolesResponse.data?.data?.team_roles || rolesResponse.data?.team_roles || {};
-          } else if (rolesResponse.data?.team_roles) {
-            teamRoles = rolesResponse.data.team_roles;
-          } else if (rolesResponse.data) {
-            // Sometimes the data might be directly in the response
-            teamRoles = rolesResponse.data;
+          if (memberTeamResponse.data?.success && memberTeamResponse.data?.team_registration) {
+            teamReg = memberTeamResponse.data.team_registration;
+            console.log('TeamViewModal: Found team via member registration:', teamReg);
           }
-          
-          setMemberRoles(teamRoles);
-          console.log('TeamViewModal: Team roles processed and set:', teamRoles);
+        } catch (memberTeamError) {
+          console.log('TeamViewModal: Error getting team by member registration:', memberTeamError);
+          // Continue with original approach if this fails
+        }
+      }
 
-          // Get team tasks
-          const tasksResponse = await clientAPI.getTeamTasks(eventId);
-          console.log('TeamViewModal: Tasks response:', tasksResponse);
-          console.log('TeamViewModal: Tasks response.data:', tasksResponse.data);
-          
-          let allTeamTasks = [];
-          if (tasksResponse.data?.success && tasksResponse.data?.tasks) {
-            // Handle tasks array format: tasks: [{task_id: "...", title: "...", ...}, ...]
-            allTeamTasks = tasksResponse.data.tasks;
-          } else if (tasksResponse.data?.success) {
-            // Handle other possible structures
-            allTeamTasks = tasksResponse.data?.data?.tasks || tasksResponse.data?.tasks || [];
-          } else if (tasksResponse.data?.tasks) {
-            allTeamTasks = tasksResponse.data.tasks;
-          } else if (Array.isArray(tasksResponse.data)) {
-            // Sometimes the data might be directly an array
-            allTeamTasks = tasksResponse.data;
-          }
-          
-          setAllTasks(allTeamTasks);
-          console.log('TeamViewModal: All tasks processed and set:', allTeamTasks);
+      if (teamReg) {
+        // Process the team registration data
+        console.log('TeamViewModal: Processing team registration data');
+        
+        // Ensure we have the correct structure for team members
+        if (teamReg.team_members) {
+          teamReg.team_members = teamReg.team_members.map(member => {
+            // Ensure each member has the required fields
+            return {
+              ...member,
+              registration_id: member.registration_id || `REG_${member.student?.enrollment_no}_${Date.now()}`,
+              student: {
+                ...member.student,
+                name: member.student?.name || 'Unknown',
+                enrollment_no: member.student?.enrollment_no || 'Unknown',
+                department: member.student?.department || 'Unknown'
+              },
+              is_team_leader: member.is_team_leader || false
+            };
+          });
+        }
+        
+        // Process team roles from the registration data if available
+        if (teamReg.team_roles) {
+          console.log('TeamViewModal: Processing team roles from registration:', teamReg.team_roles);
+          setMemberRoles(teamReg.team_roles);
+        }
+        
+        // Process tasks from the registration data if available
+        if (teamReg.tasks) {
+          console.log('TeamViewModal: Processing tasks from registration:', teamReg.tasks);
+          setAllTasks(teamReg.tasks);
           
           // Filter tasks for current user
-          const userTasks = allTeamTasks.filter(task => 
+          const userTasks = teamReg.tasks.filter(task => 
             task.assigned_to && Array.isArray(task.assigned_to) && task.assigned_to.includes(user.enrollment_no)
           );
           setMemberTasks(userTasks);
-          console.log('TeamViewModal: User tasks filtered and set:', userTasks, 'for user:', user.enrollment_no);
-        } catch (apiError) {
-          console.error('TeamViewModal: Error loading roles/tasks:', apiError);
-          // Don't fail the whole modal for roles/tasks errors
-          // Use the data from team registration if available
-          const teamRoles = teamReg.team_roles || {};
-          const allTeamTasks = teamReg.tasks || [];
-          
-          setMemberRoles(teamRoles);
-          setAllTasks(allTeamTasks);
-          
-          const userTasks = allTeamTasks.filter(task => 
-            task.assigned_to && Array.isArray(task.assigned_to) && task.assigned_to.includes(user.enrollment_no)
-          );
-          setMemberTasks(userTasks);
-          
-          console.log('TeamViewModal: Using fallback data - roles:', teamRoles, 'tasks:', userTasks);
+          console.log('TeamViewModal: User tasks filtered:', userTasks);
+        }
+        
+        setTeamRegistration(teamReg);
+
+        // Load additional team roles and tasks from API if not in registration data
+        if (!teamReg.team_roles || !teamReg.tasks) {
+          try {
+            // Get team roles if not in registration
+            if (!teamReg.team_roles) {
+              const rolesResponse = await clientAPI.getTeamRoles(eventId);
+              console.log('TeamViewModal: Roles response:', rolesResponse);
+              
+              let teamRoles = {};
+              if (rolesResponse.data?.success && rolesResponse.data?.roles) {
+                const rolesArray = rolesResponse.data.roles;
+                console.log('TeamViewModal: Processing roles array:', rolesArray);
+                
+                teamRoles = {};
+                rolesArray.forEach(roleItem => {
+                  if (roleItem.enrollment_no || roleItem.member_enrollment) {
+                    const enrollmentNo = roleItem.enrollment_no || roleItem.member_enrollment;
+                    const roleValue = roleItem.role || roleItem.role_name || roleItem.assigned_role || roleItem.position;
+                    
+                    teamRoles[enrollmentNo] = {
+                      role: roleValue,
+                      description: roleItem.description,
+                      permissions: roleItem.permissions || [],
+                      assigned_by: roleItem.assigned_by,
+                      assigned_at: roleItem.assigned_at
+                    };
+                  }
+                });
+                setMemberRoles(teamRoles);
+              }
+            }
+
+            // Get team tasks if not in registration
+            if (!teamReg.tasks) {
+              const tasksResponse = await clientAPI.getTeamTasks(eventId);
+              console.log('TeamViewModal: Tasks response:', tasksResponse);
+              
+              let allTeamTasks = [];
+              if (tasksResponse.data?.success && tasksResponse.data?.tasks) {
+                allTeamTasks = tasksResponse.data.tasks;
+              } else if (Array.isArray(tasksResponse.data)) {
+                allTeamTasks = tasksResponse.data;
+              }
+              
+              setAllTasks(allTeamTasks);
+              
+              const userTasks = allTeamTasks.filter(task => 
+                task.assigned_to && Array.isArray(task.assigned_to) && task.assigned_to.includes(user.enrollment_no)
+              );
+              setMemberTasks(userTasks);
+            }
+          } catch (apiError) {
+            console.error('TeamViewModal: Error loading additional roles/tasks:', apiError);
+          }
         }
       } else {
-        console.log('TeamViewModal: No team registration found in response');
+        console.log('TeamViewModal: No team registration found');
         setError('No team registration found for this event');
       }
 
@@ -172,7 +201,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
     } finally {
       setLoading(false);
     }
-  }, [eventId, user.enrollment_no]); // useCallback dependency array
+  }, [eventId, user.enrollment_no, teamData]); // Added teamData to dependencies
 
   // Load team data when modal opens
   useEffect(() => {
@@ -476,21 +505,20 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         )}
 
         {/* Content */}
-        <div className="max-h-[75vh] overflow-y-auto">
-        <div className="max-h-[75vh] overflow-y-auto">
+        <div className="max-h-[60vh] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="text-gray-600">Loading team data...</p>
               </div>
             </div>
           ) : error ? (
-            <div className="m-6 bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-              <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="m-4 bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <svg className="w-10 h-10 text-red-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
-              <p className="text-red-800 mb-4">{error}</p>
+              <p className="text-red-800 mb-3">{error}</p>
               <button 
                 onClick={loadTeamData}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -499,10 +527,10 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
               </button>
             </div>
           ) : teamRegistration ? (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Team Members Section */}
-              <div className="p-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="p-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
@@ -516,7 +544,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                     const isPresent = member.attendance?.marked || member.attendance?.status === 'present';
                     
                     return (
-                      <div key={index} className={`flex items-center justify-between p-4 ${
+                      <div key={index} className={`flex items-center justify-between p-3 ${
                         index !== teamRegistration.team_members.length - 1 ? 'border-b border-gray-100' : ''
                       } ${isCurrentUser ? 'bg-blue-50' : 'hover:bg-gray-50'} transition-colors`}>
                         
@@ -524,14 +552,14 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                         <div className="flex items-center gap-3 flex-1">
                           {/* Avatar with leader crown or user icon */}
                           <div className="relative">
-                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-700">
+                            <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-gray-700">
                                 {member.student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                               </span>
                             </div>
                             {member.is_team_leader && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                                <svg className="w-2.5 h-2.5 text-yellow-800" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-yellow-400 rounded-full flex items-center justify-center">
+                                <svg className="w-2 h-2 text-yellow-800" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
                               </div>
@@ -540,31 +568,24 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                           
                           {/* Name and details */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-gray-900 truncate">{member.student.name}</h4>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="font-medium text-gray-900 truncate text-sm">{member.student.name}</h4>
                               {isCurrentUser && (
                                 <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded font-medium">You</span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600">{member.student.enrollment_no}</p>
+                            <p className="text-xs text-gray-600">{member.student.enrollment_no}</p>
                             <p className="text-xs text-gray-500 truncate">{member.student.department}</p>
+                            <p className="text-xs text-gray-500 font-mono">ID: {member.registration_id}</p>
                           </div>
                         </div>
                         
                         {/* Right side - Status indicators */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {/* Role badge */}
                           <div className="text-right">
                             <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md font-medium">
                               {memberRole.role}
-                            </span>
-                          </div>
-                          
-                          {/* Attendance status */}
-                          <div className="flex items-center gap-1.5">
-                            <div className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                            <span className={`text-xs font-medium ${isPresent ? 'text-green-700' : 'text-red-700'}`}>
-                              {isPresent ? 'Present' : 'Absent'}
                             </span>
                           </div>
                         </div>
@@ -575,25 +596,25 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
               </div>
 
               {/* My Tasks Section */}
-              <div className="p-6 border-t border-gray-200">
-                <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="p-4 border-t border-gray-200">
+                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                   </svg>
                   My Tasks ({memberTasks.length})
                 </h3>
                 {memberTasks.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {memberTasks.map((task, index) => (
-                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{task.title}</h4>
+                            <h4 className="font-medium text-gray-900 text-sm">{task.title}</h4>
                             {task.description && (
-                              <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                              <p className="text-xs text-gray-600 mt-1">{task.description}</p>
                             )}
                           </div>
-                          <div className="flex gap-2 ml-4">
+                          <div className="flex gap-1 ml-3">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
                               {task.priority}
                             </span>
@@ -604,7 +625,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -622,12 +643,12 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                           </div>
                           
                           {/* Task Action Buttons */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             {task.status === 'pending' && (
                               <button
                                 onClick={() => updateTaskStatus(task.task_id, 'in_progress')}
                                 disabled={taskUpdateLoading[task.task_id]}
-                                className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                                className="px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
                               >
                                 {taskUpdateLoading[task.task_id] ? (
                                   <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
@@ -646,7 +667,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                               <button
                                 onClick={() => updateTaskStatus(task.task_id, 'submit')}
                                 disabled={taskUpdateLoading[task.task_id]}
-                                className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                                className="px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
                               >
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -661,7 +682,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                                   <button
                                     onClick={() => updateTaskStatus(task.task_id, 'review')}
                                     disabled={taskUpdateLoading[task.task_id]}
-                                    className="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
+                                    className="px-2 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors text-xs flex items-center gap-1"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -670,11 +691,11 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                                     Review
                                   </button>
                                 ) : (
-                                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-xs flex items-center gap-1">
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs flex items-center gap-1">
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    Pending Review
+                                    Pending
                                   </span>
                                 )}
                                 {task.submission_link && (
@@ -682,7 +703,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                                     href={task.submission_link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
+                                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M14 4h6m0 0v6m0-6L10 14" />
@@ -695,18 +716,18 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                             
                             {task.status === 'completed' && (
                               <>
-                                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs flex items-center gap-1">
+                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs flex items-center gap-1">
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                   </svg>
-                                  Completed
+                                  Done
                                 </span>
                                 {task.submission_link && (
                                   <a
                                     href={task.submission_link}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
+                                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-xs flex items-center gap-1"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M14 4h6m0 0v6m0-6L10 14" />
@@ -722,45 +743,43 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <p className="text-gray-600">No tasks assigned yet</p>
-                    <p className="text-gray-500 text-sm">Tasks will appear here when assigned</p>
+                    <p className="text-gray-600 text-sm">No tasks assigned yet</p>
+                    <p className="text-gray-500 text-xs">Tasks will appear here when assigned</p>
                   </div>
                 )}
               </div>
 
               {/* Quick Info */}
-              <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">{teamRegistration.team_members?.length || 0}</p>
-                    <p className="text-sm text-gray-600">Team Members</p>
+                    <p className="text-xl font-bold text-gray-900">{teamRegistration.team_members?.length || 0}</p>
+                    <p className="text-xs text-gray-600">Team Members</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {teamRegistration.team_members ? 
                         Math.round((teamRegistration.team_members.filter(m => m.attendance?.marked || m.attendance?.status === 'present').length / teamRegistration.team_members.length) * 100) 
                         : 0}%
                     </p>
-                    <p className="text-sm text-gray-600">Attendance Rate</p>
+                    <p className="text-xs text-gray-600">Attendance Rate</p>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-16 text-gray-500">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center py-12 text-gray-500">
+              <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
-              <p className="text-lg">No team data available</p>
+              <p className="text-base">No team data available</p>
               <p className="text-sm">Unable to load team information</p>
             </div>
           )}
-        </div>
-
         </div>
 
         {/* Footer */}

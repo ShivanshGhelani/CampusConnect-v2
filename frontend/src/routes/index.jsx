@@ -19,6 +19,7 @@ import FeedbackConfirm from '../pages/client/FeedbackConfirm';
 import CertificateDownload from '../pages/client/CertificateDownload';
 import QRCodeDemo from '../pages/QRCodeDemo'; // QR Code Demo Page
 import QRTest from '../pages/QRTest'; // QR Code Test Page
+import QRTest_Updated from '../pages/QRTest_Updated'; // QR Code Test Page - Enhanced
 import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page
 import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
@@ -482,6 +483,10 @@ function AppRoutes() {
         <Route
           path="/test/qr"
           element={<QRTest />}
+        />
+        <Route
+          path="/test/qr-enhanced"
+          element={<QRTest_Updated />}
         />
         
         {/* Test Mode - Overview of All Pages */}

@@ -15,6 +15,11 @@ const QRCodeDisplay = ({
   className = '',
   style = 'default'
 }) => {
+  console.log('=== QR CODE DISPLAY DEBUG ===');
+  console.log('Registration Data:', registrationData);
+  console.log('Event Data:', eventData);
+  console.log('============================');
+  
   const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
