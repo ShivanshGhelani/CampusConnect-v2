@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/base';
+import { Users } from 'lucide-react';
 
 // Status badge component
 const StatusBadge = ({ status }) => {
@@ -202,7 +203,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
           {/* Right Column: Action Buttons (2 per row) */}
           {showActions && (
             <div className="flex flex-col gap-1.5 max-w-sm justify-between items-end">
-              {/* Row 1: QR Code + Details */}
+              {/* Row 1: QR Code only */}
               <div className="flex gap-1.5">
                 <button
                   onClick={() => onViewQRCode && onViewQRCode({
@@ -220,35 +221,36 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                   </svg>
                   QR Code
                 </button>
-
-                <button
-                  onClick={() => onViewDetails && onViewDetails(reg)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-blue-100 hover:border-blue-200 flex-1 justify-center"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  Details
-                </button>
               </div>
 
-              {/* Row 2: Conditional buttons (Team Management / View Team) */}
+              {/* Row 2: Conditional buttons based on registration type */}
               <div className="flex gap-1.5">
-                {/* Team Management Button - Show only for team leaders */}
+                {/* For Individual Events: Show Details Button */}
+                {reg.registration?.registration_type === 'individual' && (
+                  <button
+                    onClick={() => onViewDetails && onViewDetails(reg)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-all duration-200 border border-blue-100 hover:border-blue-200 flex-1 justify-center"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Details
+                  </button>
+                )}
+
+                {/* For Team Events: Team Management Button - Show only for team leaders */}
                 {(reg.registration?.registration_type === "team_leader" || reg.registration?.is_team_leader) && (
                   <Link
                     to={`/client/events/${reg.event_id}/manage-team`}
                     className="inline-flex items-center gap-1 text-xs px-2 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors duration-200 border border-indigo-100 flex-1 justify-center"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
+                    <Users className='w-3.5 h-3.5' />
                     Manage Team
                   </Link>
                 )}
 
-                {/* View Team Button - Show only for team participants */}
+                {/* For Team Events: View Team Button - Show only for team participants */}
                 {shouldShowViewTeamButton && (
                   <button
                     onClick={() => onViewTeam && onViewTeam({
