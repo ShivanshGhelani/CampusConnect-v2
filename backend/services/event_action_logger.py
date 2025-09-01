@@ -402,6 +402,45 @@ class EventActionLogger:
         except Exception as e:
             logger.error(f"❌ Failed to get event action history for {event_id}: {str(e)}")
             return {"event_id": event_id, "error": str(e)}
+    
+    async def log_action(
+        self,
+        event_id: str,
+        action_type: str,
+        performed_by: str,
+        details: Optional[Dict[str, Any]] = None,
+        request_metadata: Optional[Dict[str, Any]] = None
+    ):
+        """Generic action logging method for custom event actions"""
+        try:
+            # Map custom action types to audit action types
+            action_type_mapping = {
+                "feedback_form_created": AuditActionType.FEEDBACK_FORM_CREATED,
+                "feedback_form_updated": AuditActionType.FEEDBACK_FORM_UPDATED,
+                "feedback_form_deleted": AuditActionType.FEEDBACK_FORM_DELETED,
+                "feedback_submitted": AuditActionType.FEEDBACK_SUBMITTED
+            }
+            
+            # Get the mapped action type or default to a general one
+            mapped_action_type = action_type_mapping.get(action_type, AuditActionType.EVENT_UPDATED)
+            
+            # Log to audit service
+            await self.audit_service.log_action(
+                action_type=mapped_action_type,
+                action_description=f"Event action: {action_type} for event {event_id}",
+                performed_by_username=performed_by,
+                performed_by_role="admin",  # Default role for admin actions
+                target_type="event",
+                target_id=event_id,
+                target_name=event_id,
+                metadata=details,  # Use metadata instead of details
+                severity=AuditSeverity.INFO
+            )
+            
+            logger.info(f"✅ Logged action '{action_type}' for event {event_id} by {performed_by}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to log action '{action_type}' for event {event_id}: {str(e)}")
 
 # Global instance
 event_action_logger = EventActionLogger()

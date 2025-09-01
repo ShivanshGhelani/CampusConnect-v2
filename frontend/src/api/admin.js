@@ -192,4 +192,24 @@ export const adminAPI = {
   getEventStatisticsSimple: (eventId) => 
     api.get(`/api/v1/registrations/statistics/${eventId}`),
 
+  // FEEDBACK MANAGEMENT ENDPOINTS
+  createFeedbackForm: (eventId, feedbackData) => 
+    api.post(`/api/v1/admin/events/feedback/create/${eventId}`, feedbackData),
+  
+  getFeedbackForm: (eventId) => 
+    api.get(`/api/v1/admin/events/feedback/form/${eventId}`),
+  
+  getFeedbackResponses: (eventId, options = {}) => {
+    const { page = 1, limit = 50 } = options;
+    return api.get(`/api/v1/admin/events/feedback/responses/${eventId}`, {
+      params: { page, limit }
+    });
+  },
+  
+  getFeedbackAnalytics: (eventId) => 
+    api.get(`/api/v1/admin/events/feedback/analytics/${eventId}`),
+  
+  deleteFeedbackForm: (eventId) => 
+    api.delete(`/api/v1/admin/events/feedback/delete/${eventId}`),
+
 };

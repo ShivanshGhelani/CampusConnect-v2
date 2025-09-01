@@ -27,6 +27,12 @@ class AuditActionType(str, Enum):
     EVENT_DELETION_APPROVED = "event_deletion_approved"
     EVENT_DELETION_REJECTED = "event_deletion_rejected"
     
+    # Feedback Management
+    FEEDBACK_FORM_CREATED = "feedback_form_created"
+    FEEDBACK_FORM_UPDATED = "feedback_form_updated"
+    FEEDBACK_FORM_DELETED = "feedback_form_deleted"
+    FEEDBACK_SUBMITTED = "feedback_submitted"
+    
     # Venue Management
     VENUE_CREATED = "venue_created"
     VENUE_UPDATED = "venue_updated"

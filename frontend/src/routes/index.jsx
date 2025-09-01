@@ -15,8 +15,6 @@ import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackForm from '../pages/client/FeedbackForm';
 import FeedbackSuccess from '../pages/client/FeedbackSuccess';
-import FeedbackConfirm from '../pages/client/FeedbackConfirm';
-import CertificateDownload from '../pages/client/CertificateDownload';
 import QRCodeDemo from '../pages/QRCodeDemo'; // QR Code Demo Page
 import QRTest from '../pages/QRTest'; // QR Code Test Page
 import QRTest_Updated from '../pages/QRTest_Updated'; // QR Code Test Page - Enhanced
@@ -25,6 +23,7 @@ import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
+import FeedbackPreviewClient from '../pages/test/FeedbackPreviewClient'; // Feedback Test Page
 import AttendanceShowcase from '../pages/AttendanceShowcase'; // Attendance Components Showcase
 
 // Student components - new organized structure
@@ -121,9 +120,8 @@ function AppRoutes() {
           
           {/* Continue with other client routes... */}
           <Route path="client/events/:eventId/feedback" element={<FeedbackForm />} />
+          <Route path="client/events/:eventId/feedback/success" element={<FeedbackSuccess />} />
           <Route path="client/events/:eventId/feedback-success" element={<FeedbackSuccess />} />
-          <Route path="client/events/:eventId/feedback-confirmation" element={<FeedbackConfirm />} />
-          <Route path="client/events/:eventId/certificate" element={<CertificateDownload />} />
           <Route path="client/events/:eventId/registration-success" element={<RegistrationSuccess />} />
           
           {/* Protected Routes */}
@@ -365,6 +363,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/admin/events/:eventId/feedback/responses"
+          element={
+            <ProtectedRoute userType="admin">
+              <Feedbacks />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/events/:eventId/feedback/setup"
           element={
             <ProtectedRoute userType="admin">
@@ -511,6 +517,16 @@ function AppRoutes() {
         <Route
           path="/test/all-pages"
           element={<TestMode />}
+        />
+        
+        {/* Feedback Test Page */}
+        <Route
+          path="/test/feedback-preview"
+          element={<FeedbackPreviewClient />}
+        />
+        <Route
+          path="/test/feedback"
+          element={<FeedbackPreviewClient />}
         />
         
         {/* Attendance Components Showcase */}

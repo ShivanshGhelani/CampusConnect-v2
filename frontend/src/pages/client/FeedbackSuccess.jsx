@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
+import certificateGenerateService from '../../services/certificateGenerateService.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const FeedbackSuccess = () => {
@@ -16,20 +17,54 @@ const FeedbackSuccess = () => {
   const [attendance, setAttendance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
+  const [certificateMessage, setCertificateMessage] = useState('');
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/auth/login', { state: { from: location } });
+    // Check if this is test mode from search params
+    const isTestMode = searchParams.get('test_mode') === 'true';
+    
+    if (!isAuthenticated && !isTestMode) {
+      navigate('/auth/login', { state: { from: `/client/events/${eventId}/feedback/success` } });
       return;
     }
     
     fetchData();
-  }, [eventId, isAuthenticated]);
+  }, [eventId, isAuthenticated, searchParams]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
       setError('');
+
+      // Check if this is test mode
+      const isTestMode = searchParams.get('test_mode') === 'true';
+      
+      if (isTestMode) {
+        // For test mode, set mock data - URLs will fail and use fallback templates
+        setEvent({
+          event_id: eventId,
+          event_name: "AI & Deep Learning Hackathon",
+          description: "Test event for feedback system",
+          certificate_templates: {
+            "Certificate of Participation": "https://test-fallback-url-participation.html",
+            "Certificate of Innovation": "https://test-fallback-url-innovation.html"
+          }
+        });
+        setRegistration({
+          registrar_id: "22beit3004111",
+          registration_id: "test_reg_" + Date.now(),
+          full_name: "Test Student",
+          email: "22beit3004111@test.edu",
+          department: "Computer Engineering",
+          course: "B.E. Information Technology"
+        });
+        setAttendance({
+          attendance_id: "test_attendance_" + Date.now(),
+          marked_at: new Date().toISOString()
+        });
+        return;
+      }
 
       // Fetch event details
       const eventResponse = await clientAPI.getEventDetails(eventId);
@@ -82,6 +117,59 @@ const FeedbackSuccess = () => {
     }
     
     return date.toLocaleDateString();
+  };
+
+  const handleCertificateDownload = async (certificateType = 'Certificate of Participation') => {
+    try {
+      setIsGeneratingCertificate(true);
+      setCertificateMessage('');
+
+      // Check if certificate templates are available
+      if (!event?.certificate_templates || Object.keys(event.certificate_templates).length === 0) {
+        throw new Error('No certificate templates available for this event');
+      }
+
+      // Get user data (for test mode, use registration data)
+      const isTestMode = searchParams.get('test_mode') === 'true';
+      const studentData = isTestMode ? {
+        full_name: registration?.full_name || 'Test Student',
+        enrollment: registration?.registrar_id || '22beit3004111',
+        email: `${registration?.registrar_id || '22beit3004111'}@test.edu`,
+        department: 'Computer Engineering',
+        course: 'B.E. Information Technology'
+      } : user;
+
+      // Debug the certificate generation process
+      console.log('=== STARTING CERTIFICATE GENERATION ===');
+      await certificateGenerateService.debugCertificateGeneration(
+        event,
+        studentData,
+        registration,
+        attendance,
+        certificateType
+      );
+
+      // Generate certificate
+      const result = await certificateGenerateService.generateCertificate(
+        event,
+        studentData,
+        registration,
+        attendance,
+        certificateType
+      );
+
+      if (result.success) {
+        setCertificateMessage('✅ Certificate downloaded successfully!');
+      } else {
+        throw new Error(result.message);
+      }
+
+    } catch (error) {
+      console.error('Certificate generation error:', error);
+      setCertificateMessage(`❌ ${error.message}`);
+    } finally {
+      setIsGeneratingCertificate(false);
+    }
   };
 
   if (isLoading) {
@@ -190,17 +278,54 @@ const FeedbackSuccess = () => {
               </div>
             )}
             
-            <div className="flex justify-center">
-              <Link 
-                to={`/client/events/${eventId}/certificate${searchParams.get('feedback_submitted') ? '?feedback_submitted=True' : ''}`}
-                className="group bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-bold py-3 px-8 rounded-lg inline-flex items-center transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-              >
-                <svg className="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                  <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                </svg>
-                Download Certificate
-              </Link>
+            {/* Certificate Download Section */}
+            <div className="space-y-4">
+              {certificateMessage && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  certificateMessage.includes('✅') 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  {certificateMessage}
+                </div>
+              )}
+              
+              {event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">Available certificates:</p>
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    {Object.keys(event.certificate_templates).map((templateName) => (
+                      <button
+                        key={templateName}
+                        onClick={() => handleCertificateDownload(templateName)}
+                        disabled={isGeneratingCertificate}
+                        className="group bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-6 rounded-lg inline-flex items-center transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:transform-none disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingCertificate ? (
+                          <>
+                            <svg className="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            Download {templateName}
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+                  <p className="text-sm">Certificate templates are not available for this event yet. Please contact the event organizers.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

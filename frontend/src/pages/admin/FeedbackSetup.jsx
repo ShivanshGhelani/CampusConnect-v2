@@ -21,6 +21,7 @@ import {
   GripVertical 
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
+import { adminAPI } from '../../api/admin';
 
 // Reusable Action Button Component
 const ActionButton = ({ 
@@ -576,54 +577,86 @@ function FeedbackSetup() {
         title: formTitle,
         description: formDescription,
         elements: formElements,
-        event_id: eventId
+        is_active: true
       };
 
       console.log('Saving form:', formData);
       
-      // Here you would make an API call to save the form
-      // await saveFormToAPI(formData);
+      // Call the API to save the feedback form
+      const response = await adminAPI.createFeedbackForm(eventId, formData);
       
-      alert('Feedback form saved successfully!');
-      navigate(`/admin/events/${eventId}/feedback`);
+      if (response.data.success) {
+        alert('Feedback form saved successfully!');
+        navigate(`/admin/events/${eventId}/feedback`);
+      } else {
+        throw new Error(response.data.message || 'Failed to save form');
+      }
       
     } catch (error) {
       console.error('Error saving form:', error);
-      alert('Failed to save form. Please try again.');
+      alert(`Failed to save form: ${error.response?.data?.detail || error.message || 'Please try again.'}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Add some default elements on component mount
+  // Load existing feedback form or add default elements on component mount
   useEffect(() => {
-    if (formElements.length === 0) {
-      const defaultElements = [
-        {
-          id: 'overall_rating',
-          type: 'rating',
-          label: 'Overall Rating',
-          required: true,
-          props: { max: 5 }
-        },
-        {
-          id: 'feedback_text',
-          type: 'textarea',
-          label: 'What did you think about this event?',
-          required: true,
-          props: { placeholder: 'Please share your thoughts and feedback...', rows: 4 }
-        },
-        {
-          id: 'recommend',
-          type: 'radio',
-          label: 'Would you recommend this event to others?',
-          required: true,
-          props: { options: ['Definitely', 'Probably', 'Not Sure', 'Probably Not', 'Definitely Not'] }
+    const loadFeedbackForm = async () => {
+      try {
+        console.log('Loading feedback form for event:', eventId);
+        const response = await adminAPI.getFeedbackForm(eventId);
+        console.log('Feedback form response:', response.data);
+        
+        if (response.data.success && response.data.feedback_form) {
+          const feedbackForm = response.data.feedback_form;
+          console.log('Found existing feedback form:', feedbackForm);
+          
+          setFormTitle(feedbackForm.title || 'Event Feedback Form');
+          setFormDescription(feedbackForm.description || 'Please share your feedback about this event.');
+          setFormElements(feedbackForm.elements || []);
+        } else {
+          console.log('No feedback form found, creating default elements');
+          createDefaultElements();
         }
-      ];
-      setFormElements(defaultElements);
-    }
-  }, []);
+      } catch (error) {
+        console.error('Error loading feedback form:', error);
+        console.log('No existing feedback form found, creating default elements');
+        createDefaultElements();
+      }
+    };
+
+    const createDefaultElements = () => {
+      if (formElements.length === 0) {
+        const defaultElements = [
+          {
+            id: 'overall_rating',
+            type: 'rating',
+            label: 'Overall Rating',
+            required: true,
+            props: { max: 5 }
+          },
+          {
+            id: 'feedback_text',
+            type: 'textarea',
+            label: 'What did you think about this event?',
+            required: true,
+            props: { placeholder: 'Please share your thoughts and feedback...', rows: 4 }
+          },
+          {
+            id: 'recommend',
+            type: 'radio',
+            label: 'Would you recommend this event to others?',
+            required: true,
+            props: { options: ['Definitely', 'Probably', 'Not Sure', 'Probably Not', 'Definitely Not'] }
+          }
+        ];
+        setFormElements(defaultElements);
+      }
+    };
+
+    loadFeedbackForm();
+  }, [eventId]);
 
   return (
     <AdminLayout>

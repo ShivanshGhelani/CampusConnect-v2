@@ -170,6 +170,14 @@ export const clientAPI = {
     ...feedbackData 
   }),
   
+  // FEEDBACK ENDPOINTS
+  getFeedbackForm: (eventId) => api.get(`/api/v1/client/feedback/form/${eventId}`),
+  submitEventFeedback: (eventId, feedbackResponses) => api.post('/api/v1/client/feedback/submit', {
+    event_id: eventId,
+    feedback_responses: feedbackResponses
+  }),
+  checkFeedbackEligibility: (eventId) => api.get(`/api/v1/client/feedback/eligibility/${eventId}`),
+  
   // Certificates - Keep existing
   getCertificates: () => api.get('/api/v1/client/certificates/available'),
   downloadCertificate: (certificateId) => api.get(`/api/v1/client/certificates/download/${certificateId}`),
