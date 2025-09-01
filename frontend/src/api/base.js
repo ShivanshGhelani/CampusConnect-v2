@@ -1,22 +1,26 @@
 import axios from 'axios';
 
-// Function to get the API base URL - FIXED FOR CONSISTENCY
+// Function to get the API base URL - FIXED FOR VERCEL DEPLOYMENT
 const getApiBaseUrl = () => {
-  // Check for environment variable first
-  const envApiUrl = import.meta.env.API_URL;
+  // Check for Vite environment variable first
+  const envApiUrl = import.meta.env.VITE_API_BASE_URL;
   if (envApiUrl) {
+    console.log('Using API URL from environment:', envApiUrl);
     return envApiUrl;
   }
   
-  // Always use localhost for development to maintain cookie consistency
-  // This prevents 127.0.0.1 vs localhost cookie domain issues
+  // Fallback to localhost for development
+  console.log('Using fallback localhost API URL');
   return 'http://localhost:8000';
 };
 
-// Create axios instance with base configuration - FIXED FOR CREDENTIALS
+// Create axios instance with base configuration - FIXED FOR CROSS-ORIGIN
+const apiBaseUrl = getApiBaseUrl();
+console.log('Initializing API with base URL:', apiBaseUrl);
+
 const api = axios.create({
-  baseURL: getApiBaseUrl(),
-  withCredentials: true,  // Required for session cookies
+  baseURL: apiBaseUrl,
+  withCredentials: true,  // Required for session cookies across domains
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,7 +29,10 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // No need to add Authorization headers - we use session cookies
+    // Debug logging for cross-origin requests
+    console.log('Making API request to:', config.baseURL + config.url);
+    console.log('With credentials:', config.withCredentials);
+    
     // Ensure credentials are always sent for session-based auth
     config.withCredentials = true;
     return config;
