@@ -59,6 +59,8 @@ import EventDetail from '../pages/admin/EventDetail';
 import ExportData from '../pages/admin/ExportData';
 import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
+import Feedbacks from '../pages/admin/Feedbacks';
+import FeedbackSetup from '../pages/admin/FeedbackSetup';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 import CertificateEditor from '../pages/admin/CertificateEditor';
 import DropdownManagement from '../components/admin/SuperAdmin/DropdownManagement';
@@ -351,6 +353,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <EventDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/:eventId/feedback"
+          element={
+            <ProtectedRoute userType="admin">
+              <Feedbacks />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events/:eventId/feedback/setup"
+          element={
+            <ProtectedRoute userType="admin">
+              <FeedbackSetup />
             </ProtectedRoute>
           }
         />

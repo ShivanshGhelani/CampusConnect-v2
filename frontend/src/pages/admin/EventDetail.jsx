@@ -173,7 +173,7 @@ function EventDetail() {
         onClick={disabled ? undefined : onClick}
         disabled={disabled}
         className={`w-full flex items-center px-4 py-2 text-sm text-left ${variants[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-        title={disabled ? (isEventStarted ? "Cannot edit event after it has started" : "Cannot edit completed event") : ""}
+        title={disabled ? (isSuperAdmin ? "" : (isEventStarted ? "Cannot edit event after it has started" : "Cannot edit completed event")) : ""}
       >
         {Icon && <Icon className="w-4 h-4 mr-3" />}
         {children}
@@ -656,8 +656,9 @@ function EventDetail() {
   // Conditional button states based on event status
   const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started'; 
   const isEventCompleted = event?.status === 'completed';
-  const canTakeAttendance = isEventStarted; // Attendance only when event is ongoing/started
-  const canEditEvent = canEdit && !isEventStarted && !isEventCompleted; // Edit only when event hasn't started and isn't completed
+  const isSuperAdmin = user?.role === 'super_admin';
+  const canTakeAttendance = isSuperAdmin || isEventStarted; // Super admin can always take attendance, others only when event is ongoing/started
+  const canEditEvent = isSuperAdmin || (canEdit && !isEventStarted && !isEventCompleted); // Super admin can always edit, others only when event hasn't started and isn't completed
 
 
 
@@ -803,9 +804,21 @@ function EventDetail() {
                 icon={UserCheck}
                 disabled={!canTakeAttendance}
                 className={!canTakeAttendance ? "cursor-not-allowed" : ""}
-                title={!canTakeAttendance ? "Attendance can only be taken when the event is ongoing" : "Take attendance for this event"}
+                title={!canTakeAttendance ? (isSuperAdmin ? "Take attendance for this event" : "Attendance can only be taken when the event is ongoing") : "Take attendance for this event"}
               >
                 Attendance
+              </ActionButton>
+
+              <ActionButton
+                onClick={() => {
+                  // Navigate to feedback management page
+                  navigate(`/admin/events/${eventId}/feedback`);
+                }}
+                variant="primary"
+                icon={FileText}
+                title="View and manage feedback for this event"
+              >
+                Feedback
               </ActionButton>
 
               {/* Desktop: Show all buttons */}
@@ -817,8 +830,8 @@ function EventDetail() {
                     })}
                     variant="secondary"
                     icon={Edit3}
-                    disabled={isEventStarted}
-                    title={isEventStarted ? "Cannot edit event after it has started" : isEventCompleted ? "Cannot edit completed event" : "Edit event details"}
+                    disabled={!canEditEvent}
+                    title={!canEditEvent ? (isSuperAdmin ? "Edit event details" : "Cannot edit event after it has started or when completed") : "Edit event details"}
                   >
                     Edit Event
                   </ActionButton>
@@ -965,7 +978,7 @@ function EventDetail() {
                   {canEdit && (
                     <DropdownItem
                       onClick={() => {
-                        if (!isEventStarted && !isEventCompleted) {
+                        if (canEditEvent) {
                           navigate(`/admin/events/${eventId}/edit`, {
                             state: { eventData: event }
                           });
@@ -973,7 +986,7 @@ function EventDetail() {
                         }
                       }}
                       icon={Edit3}
-                      disabled={isEventStarted || isEventCompleted}
+                      disabled={!canEditEvent}
                     >
                       Edit Event
                     </DropdownItem>

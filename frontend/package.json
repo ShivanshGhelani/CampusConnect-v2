@@ -11,7 +11,9 @@
     "preview": "vite preview --host localhost"
   },
   "dependencies": {
+    "@formio/js": "^5.2.1",
     "@heroicons/react": "^2.2.0",
+    "@hookform/resolvers": "^5.2.1",
     "@monaco-editor/react": "^4.7.0",
     "@react-pdf/renderer": "^4.3.0",
     "@supabase/supabase-js": "^2.50.0",
@@ -23,6 +25,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-hook-form": "^7.62.0",
     "react-image-crop": "^11.0.10",
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.6.2",
