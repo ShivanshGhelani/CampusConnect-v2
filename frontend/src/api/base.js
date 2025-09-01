@@ -3,7 +3,7 @@ import axios from 'axios';
 // Function to get the API base URL - FIXED FOR CONSISTENCY
 const getApiBaseUrl = () => {
   // Check for environment variable first
-  const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+  const envApiUrl = import.meta.env.API_URL;
   if (envApiUrl) {
     return envApiUrl;
   }

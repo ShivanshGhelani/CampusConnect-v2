@@ -21,17 +21,29 @@ logger = setup_logger(logging.INFO)
 # Create FastAPI app
 app = FastAPI()
 
-# Configure CORS for frontend communication - FIXED FOR CREDENTIALS
+# Configure CORS for frontend communication - UPDATED FOR DEPLOYMENT
 import os
 
-# CORS configuration - Allow specific origins when using credentials
-print("Development mode: Allowing localhost origins for credentials support")
-
-# Define allowed origins for development (cannot use "*" with credentials)
+# CORS configuration - Allow multiple origins for different deployment scenarios
 ALLOWED_ORIGINS = [
+    # Local development
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    
+    # Production frontend (Vercel)
+    "https://campusconnect-self.vercel.app",
+    
+    # Additional Vercel preview deployments (if any)
+    "https://*.vercel.app",
+    
+    # Ngrok development (for testing)
+    "https://jaguar-giving-awfully.ngrok-free.app",
 ]
+
+# Get additional origins from environment variables
+additional_origins = os.getenv("ADDITIONAL_CORS_ORIGINS", "")
+if additional_origins:
+    ALLOWED_ORIGINS.extend([origin.strip() for origin in additional_origins.split(",")])
 
 print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 

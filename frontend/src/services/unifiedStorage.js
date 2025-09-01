@@ -5,7 +5,7 @@
 
 class UnifiedStorageService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    this.baseURL = import.meta.env.API_URL || 'http://localhost:8000';
   }
 
   // Event file uploads (posters, certificates)
