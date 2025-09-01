@@ -47,8 +47,8 @@ const FeedbackSuccess = () => {
           event_name: "AI & Deep Learning Hackathon",
           description: "Test event for feedback system",
           certificate_templates: {
-            "Certificate of Participation": "https://test-fallback-url-participation.html",
-            "Certificate of Innovation": "https://test-fallback-url-innovation.html"
+            "Certificate of Participation": "https://gygschntnaivagnbwmgw.supabase.co/storage/v1/object/public/campusconnect/certificate-templates/participation-template.html",
+            "Certificate of Innovation": "https://gygschntnaivagnbwmgw.supabase.co/storage/v1/object/public/campusconnect/certificate-templates/innovation-template.html"
           }
         });
         setRegistration({
@@ -70,12 +70,31 @@ const FeedbackSuccess = () => {
       const eventResponse = await clientAPI.getEventDetails(eventId);
       if (eventResponse.data.success) {
         setEvent(eventResponse.data.event);
+        console.log('📅 Real event data loaded:', eventResponse.data.event);
+        console.log('🎖️ Available certificate templates:', eventResponse.data.event.certificate_templates);
+        console.log('🗂️ Event has certificates:', !!eventResponse.data.event.certificate_templates);
+      } else {
+        throw new Error('Failed to fetch event details');
       }
 
       // Fetch registration status to get registration details
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
       if (registrationResponse.data.success) {
         setRegistration(registrationResponse.data.registration);
+        console.log('📝 Registration data loaded:', registrationResponse.data.registration);
+      } else {
+        console.log('⚠️ No registration found for this event');
+      }
+
+      // Fetch user profile
+      try {
+        const userResponse = await clientAPI.getProfile();
+        if (userResponse.data.success) {
+          setUser(userResponse.data.user);
+          console.log('👤 User profile loaded:', userResponse.data.user);
+        }
+      } catch (userError) {
+        console.log('User profile not available:', userError);
       }
 
       // Fetch attendance status
@@ -85,6 +104,7 @@ const FeedbackSuccess = () => {
           setAttendance({
             attendance_id: attendanceResponse.data.attendance_data?.attendance_id
           });
+          console.log('✅ Attendance confirmed:', attendanceResponse.data.attendance_data);
         }
       } catch (attendanceError) {
         // Attendance might not be marked yet, which is okay
@@ -127,6 +147,22 @@ const FeedbackSuccess = () => {
       // Check if certificate templates are available
       if (!event?.certificate_templates || Object.keys(event.certificate_templates).length === 0) {
         throw new Error('No certificate templates available for this event');
+      }
+
+      // Test direct URL access first
+      const templateUrl = event.certificate_templates[certificateType];
+      if (templateUrl) {
+        console.log('🔍 Testing direct URL access...');
+        try {
+          const testResponse = await fetch(templateUrl);
+          console.log(`🌐 Direct fetch test: ${testResponse.status} ${testResponse.ok ? '✅' : '❌'}`);
+          if (testResponse.ok) {
+            const content = await testResponse.text();
+            console.log(`📄 Content preview: ${content.substring(0, 200)}...`);
+          }
+        } catch (testError) {
+          console.log('🚫 Direct fetch test failed:', testError.message);
+        }
       }
 
       // Get user data (for test mode, use registration data)

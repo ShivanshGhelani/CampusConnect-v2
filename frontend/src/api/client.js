@@ -163,6 +163,7 @@ export const clientAPI = {
     event_id: eventId, 
     ...attendanceData 
   }),
+  getAttendanceStatus: (eventId) => api.get(`/api/v1/client/attendance/status/${eventId}`),
   
   // Feedback - Keep existing
   submitFeedback: (eventId, feedbackData) => api.post('/api/v1/client/feedback/submit', { 

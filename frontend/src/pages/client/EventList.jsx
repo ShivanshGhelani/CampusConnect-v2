@@ -104,7 +104,6 @@ function EventList() {
   const [paginatedEvents, setPaginatedEvents] = useState([]); // Events for current page
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [backgroundImage, setBackgroundImage] = useState('');
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -153,22 +152,10 @@ function EventList() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // College event background images
-  const eventBackgrounds = [
-    'https://images.unsplash.com/photo-1523580494863-6f3031224c94?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // College fest
-    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // University corridor
-    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // University building
-    'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Graduation ceremony
-    'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Students working together
-    'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80', // Students studying
-  ];  // Fetch events only once and cache them
+  // Fetch events only once and cache them
   useEffect(() => {
     console.log('EventList mounted, initializing...');
     mountedRef.current = true;
-
-    // Set a random background image only once
-    const randomImage = eventBackgrounds[Math.floor(Math.random() * eventBackgrounds.length)];
-    setBackgroundImage(randomImage);
 
     // Always fetch events on mount (cache will handle duplicates)
     fetchEventsOnce();
@@ -650,24 +637,14 @@ function EventList() {
     );
   }
 
-  const statusCounts = getEventStatusCounts(); return (
-    <div className="min-h-screen relative overflow-x-hidden">
-      {/* Subtle Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-          filter: 'brightness(0.95) contrast(0.8) opacity(0.15)'
-        }}
-      ></div>
-
-      {/* Background Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-teal-50/90 to-sky-100/90"></div>
-
+  const statusCounts = getEventStatusCounts(); 
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-sky-100 pt-26">
       {/* Content Layer */}
-      <div className="relative z-10">
+      <div className="relative">
         {/* Simple Header */}
-        <div className="bg-gradient-to-r from-teal-50/80 to-sky-50/80 border-b border-teal-200/50 backdrop-blur-sm">
+        <div className="bg-gradient-to-r from-teal-50/80 to-sky-50/80 border-b border-teal-200/50">
           <div className="max-w-6xl mx-auto px-4 py-8">
 
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -681,7 +658,7 @@ function EventList() {
 
         {/* Enhanced Search Section */}
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="bg-gradient-to-br from-white/80 to-sky-50/80 rounded-xl shadow-lg border border-teal-200/50 p-6 mb-8 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-white to-sky-50 rounded-xl shadow-lg border border-teal-200/50 p-6 mb-8">
             <div className="flex flex-col lg:flex-row gap-6">
               {/* Search Bar */}
               <div className="flex-1 min-w-0">

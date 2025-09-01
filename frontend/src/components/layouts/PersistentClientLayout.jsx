@@ -12,8 +12,14 @@ function PersistentClientLayout() {
                            !location.pathname.includes('/registration') && 
                            !location.pathname.includes('/attendance');
   
+  // Check if current route is homepage (should have no padding for hero section)
+  const isHomepage = location.pathname === '/';
+  
+  // Check if current route is events list page (should have no padding for custom header)
+  const isEventsListPage = location.pathname === '/client/events' || location.pathname === '/events';
+  
   return (
-    <ClientLayout noPadding={isEventDetailPage}>
+    <ClientLayout noPadding={isEventDetailPage || isHomepage || isEventsListPage}>
       <Outlet />
     </ClientLayout>
   );

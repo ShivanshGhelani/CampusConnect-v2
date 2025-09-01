@@ -8,7 +8,7 @@ function ClientLayout({ children, noPadding = false }) {
       <TopBanner />
       <ClientNavigation />
       {/* Responsive padding for different navigation layouts */}
-      <div className={noPadding ? "" : "pt-28 sm:pt-26 md:pt-32 lg:pt-24 pb-0 md:pb-0 lg:pb-0"}> {/* Responsive spacing for TopBanner + Header + Tablet nav */}
+      <div className={noPadding ? "" : "pt-26 pb-0 md:pb-0 lg:pb-0"}> {/* TopBanner (40px) + Navigation (64px) = 104px = pt-26 */}
         <main className="pb-20 md:pb-0"> {/* Add bottom padding for mobile nav */}
           {children}
         </main>

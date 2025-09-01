@@ -105,9 +105,9 @@ function ClientNavigation() {
 
   return (
     <>
-      <nav className="bg-white shadow-lg fixed top-12 sm:top-10 md:top-8 left-0 right-0 z-40">
+      <nav className="bg-white shadow-lg fixed top-10 left-0 right-0 z-40 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 ml-3 mr-3">
             {/* Logo */}
             <div className="flex items-center flex-shrink-0">
               <Link to="/" className="flex items-center space-x-2 sm:space-x-3">
@@ -430,112 +430,78 @@ function ClientNavigation() {
 
       {/* Proper Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-        <div className={`${isAuthenticated && userType === 'student' ? 'grid-cols-6' : 'grid-cols-5'} grid h-16`}>
-          {/* Upcoming Button */}
+        <div className={`grid h-18 ${isAuthenticated ? 'grid-cols-5' : 'grid-cols-3'}`}>
+          {/* Events Button */}
           <Link
-            to={userType === 'faculty' ? '/faculty/events?filter=upcoming' : '/client/events?filter=upcoming'}
-            className={`flex flex-col items-center justify-center ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'upcoming')
+            to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
+            className={`flex flex-col items-center justify-center py-1 ${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
               ? 'text-blue-600'
               : 'text-gray-500'
               } transition-colors`}
           >
-            <i className="fas fa-clock text-lg mb-1"></i>
-            <span className="text-xs font-medium">Upcoming</span>
+            <i className="fas fa-calendar text-base mb-0.5"></i>
+            <span className="text-sm font-medium">Events</span>
           </Link>
 
-          {/* Live Button */}
-          <Link
-            to={userType === 'faculty' ? '/faculty/events?filter=ongoing' : '/client/events?filter=ongoing'}
-            className={`flex flex-col items-center justify-center relative ${isActivePath(userType === 'faculty' ? '/faculty/events' : '/client/events', 'ongoing')
-              ? 'text-green-600'
-              : 'text-gray-500'
-              } transition-colors`}
-          >
-            <div className="relative">
-              <i className="fas fa-broadcast-tower text-lg mb-1"></i>
-              {/* Live indicator dot */}
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            </div>
-            <span className="text-xs font-medium">Live</span>
-          </Link>
+          {/* Teams Button - Only show when authenticated and student */}
+          {isAuthenticated && userType === 'student' && (
+            <Link
+              to="/client/invitations"
+              className={`flex flex-col items-center justify-center py-1 ${location.pathname === '/client/invitations'
+                ? 'text-blue-600'
+                : 'text-gray-500'
+                } transition-colors`}
+            >
+              <i className="fas fa-user-friends text-base mb-0.5"></i>
+              <span className="text-xs font-medium">Teams</span>
+            </Link>
+          )}
 
-          {/* Center Logo - Elevated */}
-          <Link to="/" className="flex flex-col items-center justify-center relative -mt-6">
-            <div className="w-14 h-14 bg-gradient-to-r from-teal-500 to-purple-500 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
+          {/* Center Logo - Simplified */}
+          <Link to="/" className="flex flex-col items-center justify-center py-1">
+            <div className="w-8 h-8 bg-transparent rounded-full flex items-center justify-center">
               <img
                 src="/logo/ksv.png"
                 alt="Logo"
-                className="w-8 h-8 object-contain"
+                className="w-6 h-6 object-contain"
               />
             </div>
-            <span className="text-xs font-bold text-slate-800 mt-1">Campus</span>
+            <span className="text-xs font-bold text-slate-800 -mt-0.5">Campus</span>
           </Link>
 
-          {/* Profile/Join Button */}
-          {isAuthenticated ? (
+          {/* Join Button - Show when not authenticated */}
+          {!isAuthenticated && (
+            <Link
+              to="/auth/login?tab=student"
+              className="flex flex-col items-center justify-center py-1 text-green-600 transition-colors"
+            >
+              <i className="fas fa-sign-in-alt text-base mb-0.5"></i>
+              <span className="text-xs font-medium">Join</span>
+            </Link>
+          )}
+
+          {/* Profile Button - Show when authenticated */}
+          {isAuthenticated && (
             <Link
               to={userType === 'faculty' ? '/faculty/profile' : '/client/profile'}
-              className={`flex flex-col items-center justify-center ${(userType === 'faculty' && location.pathname === '/faculty/profile') ||
+              className={`flex flex-col items-center justify-center py-1 ${(userType === 'faculty' && location.pathname === '/faculty/profile') ||
                 (userType === 'student' && location.pathname === '/client/profile')
                 ? 'text-indigo-600'
                 : 'text-gray-500'
                 } transition-colors`}
             >
-              <i className="fas fa-user text-lg mb-1"></i>
+              <i className="fas fa-user text-base mb-0.5"></i>
               <span className="text-xs font-medium">Profile</span>
             </Link>
-          ) : (
-            <Link
-              to="/auth/login?tab=student"
-              className="flex flex-col items-center justify-center text-green-600"
-            >
-              <i className="fas fa-sign-in-alt text-lg mb-1"></i>
-              <span className="text-xs font-medium">Join</span>
-            </Link>
           )}
 
-          {/* Settings/Logout */}
-          {isAuthenticated ? (
-            userType === 'student' ? (
-              <Link
-                to="/client/invitations"
-                className={`flex flex-col items-center justify-center ${location.pathname === '/client/invitations'
-                  ? 'text-blue-600'
-                  : 'text-gray-500'
-                  } transition-colors`}
-              >
-                <i className="fas fa-user-friends text-lg mb-1"></i>
-                <span className="text-xs font-medium">Teams</span>
-              </Link>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
-              >
-                <i className="fas fa-sign-out-alt text-lg mb-1"></i>
-                <span className="text-xs font-medium">Logout</span>
-              </button>
-            )
-          ) : (
-            <Link
-              to={userType === 'faculty' ? '/faculty/events?filter=all' : '/client/events?filter=all'}
-              className={`flex flex-col items-center justify-center ${isActivePathNoFilter(userType === 'faculty' ? '/faculty/events' : '/client/events')
-                ? 'text-blue-600'
-                : 'text-gray-500'
-                } transition-colors`}
-            >
-              <i className="fas fa-calendar text-lg mb-1"></i>
-              <span className="text-xs font-medium">Events</span>
-            </Link>
-          )}
-
-          {/* Student Logout Button - Additional slot when student is logged in */}
-          {isAuthenticated && userType === 'student' && (
+          {/* Logout Button - Show when authenticated */}
+          {isAuthenticated && (
             <button
               onClick={handleLogout}
-              className="flex flex-col items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+              className="flex flex-col items-center justify-center py-1 text-gray-500 hover:text-red-500 transition-colors"
             >
-              <i className="fas fa-sign-out-alt text-lg mb-1"></i>
+              <i className="fas fa-sign-out-alt text-base mb-0.5"></i>
               <span className="text-xs font-medium">Logout</span>
             </button>
           )}
@@ -543,7 +509,7 @@ function ClientNavigation() {
       </div>
 
       {/* Add bottom padding to prevent content being hidden behind bottom nav */}
-      <div className="md:hidden h-16"></div>
+      <div className="md:hidden h-14"></div>
     </>
   );
 }

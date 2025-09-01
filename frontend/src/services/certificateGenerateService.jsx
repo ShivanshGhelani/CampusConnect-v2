@@ -111,47 +111,38 @@ class CertificateGenerateService {
    * Fetch HTML template from URL
    */
   async fetchTemplate(templateUrl, certificateType = 'Certificate of Participation') {
+    console.log('🔗 Fetching template from:', templateUrl);
+    
     try {
-      console.log(`Attempting to fetch template from URL: ${templateUrl}`);
+      // Use the same simple approach as EventDetail.jsx
+      const response = await fetch(templateUrl);
+      console.log(`📡 Response: ${response.status} ${response.ok ? '✅' : '❌'}`);
       
-      // Try multiple methods to fetch the template
-      const fetchOptions = [
-        { method: 'GET', mode: 'cors' },
-        { method: 'GET', mode: 'no-cors' },
-        { method: 'GET' }
-      ];
-
-      for (const options of fetchOptions) {
-        try {
-          console.log(`Trying fetch with options:`, options);
-          const response = await fetch(templateUrl, options);
-          
-          if (response.ok) {
-            const htmlContent = await response.text();
-            console.log(`Successfully fetched template. Content length: ${htmlContent.length}`);
-            console.log('Template content preview:', htmlContent.substring(0, 200));
-            
-            // Validate that we got actual HTML content
-            if (htmlContent && htmlContent.length > 50 && htmlContent.includes('<')) {
-              console.log('Valid HTML template fetched successfully');
-              return htmlContent;
-            } else {
-              console.warn('Invalid HTML content received');
-            }
-          } else {
-            console.warn(`Fetch failed with status: ${response.status} ${response.statusText}`);
-          }
-        } catch (fetchError) {
-          console.warn(`Fetch attempt failed:`, fetchError.message);
+      if (!response.ok) {
+        // Let's check if this is a 400 error and provide more context
+        if (response.status === 400) {
+          console.warn('⚠️ 400 Bad Request - This might indicate:');
+          console.warn('   - File does not exist in Supabase storage');
+          console.warn('   - Incorrect bucket name or file path');
+          console.warn('   - Bucket permissions issue');
+          console.warn('   - URL format issue');
         }
+        throw new Error(`Failed to load template: ${response.status} ${response.statusText}`);
       }
       
-      console.error('All fetch attempts failed, using fallback template');
-      return this.getFallbackTemplate(certificateType);
+      const htmlContent = await response.text();
+      console.log(`✅ Template fetched successfully! Length: ${htmlContent.length} characters`);
       
+      // Validate that we got actual HTML content
+      if (htmlContent && htmlContent.length > 50 && htmlContent.includes('<')) {
+        console.log(`🎯 Using REAL template for "${certificateType}"`);
+        return htmlContent;
+      } else {
+        throw new Error('Invalid HTML content received');
+      }
     } catch (error) {
-      console.error('Error in fetchTemplate:', error);
-      console.log('Using fallback template due to error');
+      console.error('❌ Template fetch failed:', error.message);
+      console.log(`🔄 Using fallback template for "${certificateType}"...`);
       return this.getFallbackTemplate(certificateType);
     }
   }
@@ -486,7 +477,7 @@ class CertificateGenerateService {
   async testTemplateUrl(templateUrl) {
     try {
       console.log(`Testing template URL: ${templateUrl}`);
-      const response = await fetch(templateUrl, { method: 'HEAD' });
+      const response = await fetch(templateUrl);
       console.log(`URL test result: ${response.status} ${response.statusText}`);
       return response.ok;
     } catch (error) {
