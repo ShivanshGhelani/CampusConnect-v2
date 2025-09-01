@@ -155,6 +155,9 @@ const TeamManagement = () => {
           tasksMap[enrollment] = [];
         }
         tasksMap[enrollment].push({
+          // Keep all original task fields first
+          ...task,
+          // Add/override specific fields for backward compatibility
           id: task.task_id,
           title: task.title,
           description: task.description,
@@ -162,7 +165,22 @@ const TeamManagement = () => {
           category: task.category,
           deadline: task.deadline,
           status: task.status || 'pending',
-          created_at: task.created_at
+          created_at: task.created_at,
+          // Explicitly include submission fields
+          submission_link: task.submission_link,
+          submitted_by: task.submitted_by,
+          submitted_at: task.submitted_at,
+          submission_notes: task.submission_notes,
+          review_status: task.review_status,
+          review_notes: task.review_notes,
+          reviewed_by: task.reviewed_by,
+          reviewed_at: task.reviewed_at,
+          created_by: task.created_by,
+          updated_at: task.updated_at,
+          completed_by: task.completed_by,
+          completed_at: task.completed_at,
+          assigned_to: task.assigned_to,
+          reviews: task.reviews || []
         });
       });
     });
@@ -755,9 +773,27 @@ const TeamManagement = () => {
                 tasksMap[enrollment] = [];
               }
               tasksMap[enrollment].push({
-                ...task, // Keep all original task fields
+                // Keep all original task fields first
+                ...task,
+                // Add/override specific fields for backward compatibility
                 id: task.task_id, // Keep backward compatibility
-                status: task.status || 'pending' // Ensure status exists
+                status: task.status || 'pending', // Ensure status exists
+                // Explicitly map submission fields to ensure they're available
+                submission_link: task.submission_link,
+                submitted_by: task.submitted_by,
+                submitted_at: task.submitted_at,
+                submission_notes: task.submission_notes,
+                review_status: task.review_status,
+                review_notes: task.review_notes,
+                reviewed_by: task.reviewed_by,
+                reviewed_at: task.reviewed_at,
+                created_by: task.created_by,
+                created_at: task.created_at,
+                updated_at: task.updated_at,
+                completed_by: task.completed_by,
+                completed_at: task.completed_at,
+                assigned_to: task.assigned_to,
+                reviews: task.reviews || []
               });
             });
           });
@@ -867,6 +903,9 @@ const TeamManagement = () => {
     if (!reviewingTask) return;
 
     console.log('TeamManagement: Reviewing task object:', reviewingTask);
+    console.log('TeamManagement: Review status selected:', reviewStatus);
+    console.log('TeamManagement: Review notes provided:', reviewNotes);
+    
     const taskId = reviewingTask.task_id || reviewingTask.id;
     console.log('TeamManagement: Task ID for review:', taskId);
 
@@ -889,8 +928,14 @@ const TeamManagement = () => {
       return;
     }
     
-    if ((reviewData.review_status === 'rejected' || reviewData.review_status === 'needs_revision') && !reviewData.review_notes.trim()) {
-      showNotification('Error: Review notes are required for rejected or revision requests.', 'error');
+    // Enhanced validation with clearer messages
+    if (reviewData.review_status === 'needs_revision' && !reviewData.review_notes.trim()) {
+      showNotification('Error: Please provide specific feedback on what needs to be revised.', 'error');
+      return;
+    }
+    
+    if (reviewData.review_status === 'rejected' && !reviewData.review_notes.trim()) {
+      showNotification('Error: Please explain why the task is being rejected.', 'error');
       return;
     }
 
@@ -901,10 +946,26 @@ const TeamManagement = () => {
       
       console.log('TeamManagement: Task review response:', response);
       
-      // Refresh team data to reflect changes
-      await loadTeamRolesAndTasks();
-      showNotification(`Task ${reviewStatus === 'approved' ? 'approved' : reviewStatus === 'rejected' ? 'rejected' : 'needs revision'}!`, 'success');
-      closeTaskReviewModal();
+      if (response.data && response.data.success) {
+        // Show success notification based on review status
+        const statusMessages = {
+          'approved': 'Task approved successfully!',
+          'rejected': 'Task rejected successfully!',
+          'needs_revision': 'Task marked for revision successfully!'
+        };
+        
+        showNotification(statusMessages[reviewStatus] || 'Task review submitted successfully!', 'success');
+        
+        // Close modal first
+        closeTaskReviewModal();
+        
+        // Then refresh data after a short delay to ensure modal is closed
+        setTimeout(async () => {
+          await loadTeamRolesAndTasks();
+        }, 300);
+      } else {
+        throw new Error(response.data?.message || 'Failed to submit review');
+      }
       
     } catch (error) {
       console.error('TeamManagement: Error reviewing task:', error);
@@ -1228,25 +1289,7 @@ const TeamManagement = () => {
                 </div>
               </div>
               
-              {/* Task Status Summary for Team Leader */}
-              {isTeamLeader() && taskStats.total > 0 && (
-                <div className="text-right">
-                  <div className="text-sm text-gray-600 mb-1">Task Overview</div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="text-green-600 font-medium">{taskStats.completed} Completed</span>
-                    {taskStats.needsReview > 0 && (
-                      <span className="text-purple-600 font-medium bg-purple-50 px-2 py-1 rounded">
-                        {taskStats.needsReview} Need Review
-                      </span>
-                    )}
-                    {taskStats.needsRevision > 0 && (
-                      <span className="text-yellow-600 font-medium bg-yellow-50 px-2 py-1 rounded">
-                        {taskStats.needsRevision} Need Revision
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+
               
               <div className="flex items-center space-x-4">
                 <button
@@ -1351,7 +1394,7 @@ const TeamManagement = () => {
           )}
 
           {/* Enhanced Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div className="bg-white p-4 rounded-lg border text-center">
               <div className="text-2xl font-bold text-blue-600">{teamRegistration.team_size}</div>
               <div className="text-xs text-gray-600">Current Size</div>
@@ -1360,6 +1403,20 @@ const TeamManagement = () => {
               <div className="text-2xl font-bold text-green-600">{availableSlots}</div>
               <div className="text-xs text-gray-600">Available Slots</div>
             </div>
+            
+            {/* Task Overview Card - Moved from header (only for team leaders with tasks) */}
+            {isTeamLeader() && taskStats.total > 0 && (
+              <div className="bg-white p-4 rounded-lg border text-center">
+                <div className="text-2xl font-bold text-purple-600">{taskStats.completed}</div>
+                <div className="text-xs text-gray-600">Tasks Completed</div>
+                {taskStats.needsReview > 0 && (
+                  <div className="text-xs text-purple-500 mt-1 font-medium">
+                    {taskStats.needsReview} In Review
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="bg-white p-4 rounded-lg border text-center">
               <div className="text-2xl font-bold text-emerald-600">{attendanceCount}</div>
               <div className="text-xs text-gray-600">Attendance Marked</div>
@@ -2957,10 +3014,11 @@ const TeamManagement = () => {
               ) : (
                 <div className="space-y-4">
                   {selectedMemberTasks.tasks.map((task, index) => (
-                    <div key={task.id || index} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                    <div key={task.id || index} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      {/* Task Header */}
+                      <div className="p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
                             <h4 className="text-lg font-semibold text-gray-900">{task.title}</h4>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               task.priority === 'high' ? 'bg-red-100 text-red-800' :
@@ -2982,170 +3040,168 @@ const TeamManagement = () => {
                             </span>
                           </div>
                           
-                          {task.description && (
-                            <p className="text-gray-600 mb-3">{task.description}</p>
-                          )}
-                          
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <i className="fas fa-tag"></i>
-                              <span className="capitalize">{task.category}</span>
-                            </div>
-                            {task.deadline && (
-                              <div className="flex items-center gap-1">
-                                <i className="fas fa-calendar"></i>
-                                <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1">
-                              <i className="fas fa-clock"></i>
-                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Submission Link Display */}
-                          {task.submission_link && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-medium text-blue-800 mb-1">Submitted Work:</p>
-                                  <a
-                                    href={task.submission_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:text-blue-800 underline text-sm flex items-center gap-1"
-                                  >
-                                    <i className="fas fa-external-link-alt text-xs"></i>
-                                    {task.submission_link}
-                                  </a>
-                                  {task.submission_notes && (
-                                    <p className="text-sm text-gray-600 mt-1">Notes: {task.submission_notes}</p>
-                                  )}
-                                  {task.submitted_at && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      Submitted: {new Date(task.submitted_at).toLocaleString()}
-                                    </p>
-                                  )}
-                                </div>
-                                
-                                {/* Review Button for Team Leader */}
-                                {task.status === 'submitted' && isTeamLeader() && (
-                                  <button
-                                    onClick={() => openTaskReviewModal(task)}
-                                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-1 shadow-md"
-                                  >
-                                    <i className="fas fa-eye text-xs"></i>
-                                    Review Task
-                                  </button>
-                                )}
-                                
-                                {/* Show review button for all submitted tasks if you're team leader */}
-                                {task.status === 'submitted' && !isTeamLeader() && (
-                                  <span className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm flex items-center gap-1">
-                                    <i className="fas fa-clock text-xs"></i>
-                                    Awaiting Review
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {/* Review Status and Notes */}
-                              {task.review_status && task.review_status !== 'pending' && (
-                                <div className="mt-2 pt-2 border-t border-blue-200">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      task.review_status === 'approved' ? 'bg-green-100 text-green-800' :
-                                      task.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                      'bg-yellow-100 text-yellow-800'
-                                    }`}>
-                                      {task.review_status === 'approved' ? '✅ Approved' :
-                                       task.review_status === 'rejected' ? '❌ Rejected' :
-                                       '🔄 Needs Revision'}
-                                    </span>
-                                    {task.reviewed_at && (
-                                      <span className="text-xs text-gray-500">
-                                        {new Date(task.reviewed_at).toLocaleString()}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {task.review_notes && (
-                                    <p className="text-sm text-gray-700">
-                                      <strong>Review Notes:</strong> {task.review_notes}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Task Action Buttons */}
-                        <div className="mt-3 flex items-center gap-2">
-                          {task.status === 'submitted' && isTeamLeader() && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => openTaskReviewModal(task)}
-                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
-                              >
-                                <i className="fas fa-eye"></i>
-                                Review & Approve
-                              </button>
-                              <button
-                                onClick={() => quickApproveTask(task, 'approved', 'Quick approval by team leader')}
-                                disabled={reviewLoading}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
-                              >
-                                <i className="fas fa-check"></i>
-                                Quick Approve
-                              </button>
-                            </div>
-                          )}
-                          
-                          {task.status === 'submitted' && !isTeamLeader() && (
-                            <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm flex items-center gap-2">
-                              <i className="fas fa-clock"></i>
-                              Waiting for team leader review
-                            </span>
-                          )}
-                          
-                          {task.status === 'completed' && (
-                            <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm flex items-center gap-2">
-                              <i className="fas fa-check-circle"></i>
-                              Task Completed
-                            </span>
-                          )}
-                          
-                          {(task.status === 'pending' || task.status === 'in_progress') && isTeamLeader() && (
-                            <button
-                              onClick={() => quickApproveTask(task, 'approved', 'Completed by team leader')}
-                              disabled={reviewLoading}
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm flex items-center gap-2"
-                            >
-                              <i className="fas fa-check"></i>
-                              Mark Complete
-                            </button>
-                          )}
-                          
-                          {task.review_status === 'needs_revision' && (
-                            <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm flex items-center gap-2">
-                              <i className="fas fa-edit"></i>
-                              Needs Revision - Resubmit Required
-                            </span>
-                          )}
-                          
-                          {task.review_status === 'rejected' && (
-                            <span className="px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm flex items-center gap-2">
-                              <i className="fas fa-times-circle"></i>
-                              Rejected - Task Reset to Pending
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2 ml-4">
+                          {/* Status Indicator */}
                           <div className={`w-3 h-3 rounded-full ${
                             task.status === 'completed' ? 'bg-green-500' :
                             task.status === 'in_progress' ? 'bg-blue-500' :
+                            task.status === 'submitted' ? 'bg-purple-500' :
                             'bg-gray-400'
                           }`}></div>
+                        </div>
+                        
+                        {/* Task Metadata */}
+                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <i className="fas fa-tag"></i>
+                            <span className="capitalize">{task.category}</span>
+                          </div>
+                          {task.deadline && (
+                            <div className="flex items-center gap-1">
+                              <i className="fas fa-calendar"></i>
+                              <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <i className="fas fa-clock"></i>
+                            <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Task Content */}
+                      <div className="p-4">
+                        {task.description && (
+                          <p className="text-gray-600 mb-4">{task.description}</p>
+                        )}
+                        
+                        {/* Submission Section */}
+                        {task.submission_link && (
+                          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-paperclip text-blue-600"></i>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-blue-800 mb-2">Submitted Work:</p>
+                                <a
+                                  href={task.submission_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 underline text-sm font-medium"
+                                >
+                                  <i className="fas fa-external-link-alt"></i>
+                                  View Submission
+                                </a>
+                                {task.submission_notes && (
+                                  <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded border">
+                                    <strong>Notes:</strong> {task.submission_notes}
+                                  </p>
+                                )}
+                                {task.submitted_at && (
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    Submitted: {new Date(task.submitted_at).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Review Status */}
+                            {task.review_status && task.review_status !== 'pending' && (
+                              <div className="mt-3 pt-3 border-t border-blue-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    task.review_status === 'approved' ? 'bg-green-100 text-green-800' :
+                                    task.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {task.review_status === 'approved' ? '✅ Approved' :
+                                     task.review_status === 'rejected' ? '❌ Rejected' :
+                                     '🔄 Needs Revision'}
+                                  </span>
+                                  {task.reviewed_at && (
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(task.reviewed_at).toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                                {task.review_notes && (
+                                  <p className="text-sm text-gray-700 bg-white p-2 rounded border">
+                                    <strong>Review Notes:</strong> {task.review_notes}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Action Buttons Footer */}
+                      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {/* Status Messages */}
+                            {task.status === 'submitted' && !isTeamLeader() && (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                <i className="fas fa-clock"></i>
+                                Awaiting Review
+                              </span>
+                            )}
+                            
+                            {task.status === 'completed' && (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                <i className="fas fa-check-circle"></i>
+                                Task Completed
+                              </span>
+                            )}
+                            
+                            {task.review_status === 'needs_revision' && (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                <i className="fas fa-edit"></i>
+                                Needs Revision
+                              </span>
+                            )}
+                            
+                            {task.review_status === 'rejected' && (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                                <i className="fas fa-times-circle"></i>
+                                Rejected
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2">
+                            {task.status === 'submitted' && isTeamLeader() && (
+                              <>
+                                <button
+                                  onClick={() => openTaskReviewModal(task)}
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                                >
+                                  <i className="fas fa-eye"></i>
+                                  Review
+                                </button>
+                                <button
+                                  onClick={() => quickApproveTask(task, 'approved', 'Quick approval by team leader')}
+                                  disabled={reviewLoading}
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                                >
+                                  <i className="fas fa-check"></i>
+                                  Quick Approve
+                                </button>
+                              </>
+                            )}
+                            
+                            {(task.status === 'pending' || task.status === 'in_progress') && isTeamLeader() && (
+                              <button
+                                onClick={() => quickApproveTask(task, 'approved', 'Completed by team leader')}
+                                disabled={reviewLoading}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                              >
+                                <i className="fas fa-check"></i>
+                                Mark Complete
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3542,16 +3598,27 @@ const TeamManagement = () => {
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-3">
                         Review Notes & Feedback
+                        {(reviewStatus === 'needs_revision' || reviewStatus === 'rejected') && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
                       </label>
                       <textarea
                         value={reviewNotes}
                         onChange={(e) => setReviewNotes(e.target.value)}
                         placeholder={`Provide detailed feedback for ${reviewStatus}...${reviewStatus === 'approved' ? '\n• What was done well?\n• Any additional comments?' : reviewStatus === 'needs_revision' ? '\n• What needs to be changed?\n• Specific improvements required?' : '\n• Why is this rejected?\n• What needs to be redone?'}`}
                         rows={5}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
+                          (reviewStatus === 'needs_revision' || reviewStatus === 'rejected') 
+                            ? 'border-red-300 bg-red-50' 
+                            : 'border-gray-300'
+                        }`}
+                        required={reviewStatus === 'needs_revision' || reviewStatus === 'rejected'}
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Provide constructive feedback to help team members improve their work.
+                        {(reviewStatus === 'needs_revision' || reviewStatus === 'rejected') 
+                          ? `⚠️ Detailed feedback is required for ${reviewStatus.replace('_', ' ')} reviews.`
+                          : 'Provide constructive feedback to help team members improve their work.'
+                        }
                       </p>
                     </div>
                   </div>

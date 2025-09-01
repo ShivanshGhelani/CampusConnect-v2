@@ -294,7 +294,7 @@ async def get_team_tasks(
                 task for task in tasks 
                 if current_student.enrollment_no in task.get("assigned_to", [])
             ]
-        
+        print(tasks[0])
         return {
             "success": True,
             "message": f"Retrieved {len(tasks)} tasks",
