@@ -20,7 +20,6 @@ class DropdownOptionsService {
           departments: [
             { value: 'Computer Engineering', label: 'Computer Engineering' },
             { value: 'Information Technology', label: 'Information Technology' },
-            { value: 'Electronics & Communication', label: 'Electronics & Communication' },
             { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
             { value: 'Civil Engineering', label: 'Civil Engineering' },
             { value: 'Electrical Engineering', label: 'Electrical Engineering' },
@@ -36,7 +35,6 @@ class DropdownOptionsService {
           departments: [
             { value: 'Computer Science & Engineering', label: 'Computer Science & Engineering' },
             { value: 'Information Technology', label: 'Information Technology' },
-            { value: 'Electronics & Communication', label: 'Electronics & Communication' },
             { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
             { value: 'Civil Engineering', label: 'Civil Engineering' },
             { value: 'Electrical Engineering', label: 'Electrical Engineering' },

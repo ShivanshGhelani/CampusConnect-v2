@@ -610,6 +610,18 @@ function CreateEvent() {
     // For hybrid mode, keep both fields as they're both needed
   }, [form.mode]);
 
+  // Clear student-specific fields when target audience changes away from student
+  useEffect(() => {
+    if (form.target_audience && form.target_audience !== 'student') {
+      setForm(prev => ({
+        ...prev,
+        student_department: [],
+        student_semester: [],
+        custom_text: ''
+      }));
+    }
+  }, [form.target_audience]);
+
   // Save form data to localStorage whenever form or currentStep changes
   useEffect(() => {
     saveFormToStorage(form, currentStep);
@@ -630,24 +642,38 @@ function CreateEvent() {
       const allDepartments = dropdownOptionsService.getOptions('student', 'departments').map(opt => opt.value);
       
       if (selectedValues.includes('all')) {
-        // If "All" is selected, select all departments except "all"
-        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
-          ? allDepartments 
-          : selectedValues.filter(val => val !== 'all');
-        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+        // Check if all departments are already selected (to implement toggle behavior)
+        const currentValues = form[fieldName] || [];
+        const allCurrentlySelected = allDepartments.every(dept => currentValues.includes(dept));
+        
+        if (allCurrentlySelected) {
+          // If all departments are already selected and user clicked "All" again, deselect all
+          setForm(prev => ({ ...prev, [fieldName]: [] }));
+        } else {
+          // If not all departments are selected, select all departments
+          setForm(prev => ({ ...prev, [fieldName]: allDepartments }));
+        }
       } else {
+        // Normal selection without "all" option
         setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
       }
     } else if (fieldName === 'student_semester') {
       const allSemesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
       
       if (selectedValues.includes('all')) {
-        // If "All" is selected, select all semesters except "all"
-        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
-          ? allSemesters 
-          : selectedValues.filter(val => val !== 'all');
-        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+        // Check if all semesters are already selected (to implement toggle behavior)
+        const currentValues = form[fieldName] || [];
+        const allCurrentlySelected = allSemesters.every(sem => currentValues.includes(sem));
+        
+        if (allCurrentlySelected) {
+          // If all semesters are already selected and user clicked "All" again, deselect all
+          setForm(prev => ({ ...prev, [fieldName]: [] }));
+        } else {
+          // If not all semesters are selected, select all semesters
+          setForm(prev => ({ ...prev, [fieldName]: allSemesters }));
+        }
       } else {
+        // Normal selection without "all" option
         setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
       }
     } else {
@@ -1843,13 +1869,14 @@ function CreateEvent() {
         event_name: form.event_name,
         event_type: form.event_type,
         target_audience: form.target_audience,
-        student_department: Array.isArray(form.student_department) && form.student_department.length > 0 
-          ? form.student_department 
+        // Only include student fields if target audience is 'student'
+        student_department: form.target_audience === 'student' && Array.isArray(form.student_department) && form.student_department.length > 0 
+          ? form.student_department.filter(dept => dept !== 'all') // Filter out 'all' option
           : null,
-        student_semester: Array.isArray(form.student_semester) && form.student_semester.length > 0 
-          ? form.student_semester 
+        student_semester: form.target_audience === 'student' && Array.isArray(form.student_semester) && form.student_semester.length > 0 
+          ? form.student_semester.filter(sem => sem !== 'all') // Filter out 'all' option
           : null,
-        custom_text: form.custom_text || null,
+        custom_text: form.target_audience === 'student' ? (form.custom_text || null) : null,
         is_xenesis_event: form.event_type === 'xenesis' || form.is_xenesis_event,
         short_description: form.short_description,
         detailed_description: form.detailed_description,
@@ -1936,13 +1963,27 @@ function CreateEvent() {
       const response = await adminAPI.createEvent(eventData);
 
       if (response.data && response.data.success) {
-        // Add event to client-side scheduler
-        try {
-          addEventToScheduler(eventData);
-          console.log('✅ Added event to client scheduler');
-        } catch (schedulerError) {
-          console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
-          // Don't fail the creation process
+        // Determine if approval is pending based on user role
+        let pendingApproval;
+        if (user?.role === 'super_admin') {
+          pendingApproval = false;
+        } else if (user?.role === 'organizer_admin') {
+          pendingApproval = false;
+        } else {
+          pendingApproval = true;
+        }
+
+        // Add event to client-side scheduler only if no approval required
+        if (!pendingApproval && (user?.role === 'super_admin' || user?.role === 'organizer_admin')) {
+          try {
+            addEventToScheduler(eventData);
+            console.log('✅ Added event to client scheduler (no approval required)');
+          } catch (schedulerError) {
+            console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
+            // Don't fail the creation process
+          }
+        } else {
+          console.log('⏸️ Event requires approval - not adding to client scheduler yet');
         }
 
         // Clear the session after successful event creation
@@ -1951,20 +1992,16 @@ function CreateEvent() {
         }
 
         let successMessage;
-        let pendingApproval;
 
         // Different messages based on user role - all go to success page
         if (user?.role === 'super_admin') {
           successMessage = 'Event created and activated successfully! Faculty organizers have been assigned.';
-          pendingApproval = false;
         } else if (user?.role === 'organizer_admin') {
           successMessage = 'Event created successfully! You have been assigned as the primary organizer.';
-          pendingApproval = false;
         } else {
           successMessage = user.role === 'executive_admin'
             ? 'Event Request Sent Successfully!'
             : 'Event created successfully! It is pending Super Admin approval.';
-          pendingApproval = true;
         }
 
         // All users go to the success page with different states
@@ -2170,7 +2207,7 @@ function CreateEvent() {
                       error={errors.student_department}
                       helperText="Select one or more departments (e.g., CSE, IT, ECE)"
                       searchable={true}
-                      showSelectAll={true}
+                      showSelectAll={false}
                       required={true}
                     />
                     {errors.student_department && <p className="text-xs text-red-600 mt-1">{errors.student_department}</p>}
@@ -2196,7 +2233,7 @@ function CreateEvent() {
                       error={errors.student_semester}
                       helperText="Select one or more semesters (e.g., 3, 4, 5)"
                       searchable={false}
-                      showSelectAll={true}
+                      showSelectAll={false}
                       required={true}
                     />
                     {errors.student_semester && <p className="text-xs text-red-600 mt-1">{errors.student_semester}</p>}
