@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
@@ -15,12 +16,11 @@ const GENDER_OPTIONS = [
 ];
 
 function FacultyProfileEdit() {
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [validationLoading, setValidationLoading] = useState({});
   const [showPassword, setShowPassword] = useState({
@@ -216,37 +216,38 @@ function FacultyProfileEdit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setError('');
-    setSuccess('');
 
     try {
       // Check for validation errors before submission
       const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
       if (hasValidationErrors) {
-        setError('Please fix the validation errors before submitting');
+        toast.error('Please fix the validation errors before submitting');
         setSaving(false);
         return;
       }
 
+      // Check if password change is requested
+      const hasPasswordChange = formData.new_password || formData.confirm_new_password;
+
       // Validate password fields if any password is provided
-      if (formData.new_password || formData.current_password || formData.confirm_new_password) {
+      if (hasPasswordChange) {
         if (!formData.current_password) {
-          setError('Current password is required to change password');
+          toast.error('Current password is required to change password');
           setSaving(false);
           return;
         }
         if (!formData.new_password) {
-          setError('New password is required');
+          toast.error('New password is required');
           setSaving(false);
           return;
         }
         if (formData.new_password !== formData.confirm_new_password) {
-          setError('New passwords do not match');
+          toast.error('New passwords do not match');
           setSaving(false);
           return;
         }
         if (formData.new_password.length < 6) {
-          setError('New password must be at least 6 characters long');
+          toast.error('New password must be at least 6 characters long');
           setSaving(false);
           return;
         }
@@ -263,7 +264,34 @@ function FacultyProfileEdit() {
       const response = await api.put('/api/v1/client/profile/faculty/update', updateData);
       
       if (response.data.success) {
-        setSuccess('Profile updated successfully!');
+        // Immediately update the auth context with new profile data
+        try {
+          const currentUserData = JSON.parse(localStorage.getItem('user_data') || '{}');
+          const mergedUserData = { ...currentUserData, ...updateData };
+          
+          // Update localStorage first
+          localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+          
+          // Force update auth context state immediately
+          const authEvent = new CustomEvent('userDataUpdated', { detail: mergedUserData });
+          window.dispatchEvent(authEvent);
+          
+          // Also update session storage data
+          const updatedSessionData = {
+            ...JSON.parse(sessionStorage.getItem('campus_connect_session_user') || '{}'),
+            ...updateData
+          };
+          sessionStorage.setItem('campus_connect_session_user', JSON.stringify(updatedSessionData));
+          
+        } catch (storageError) {
+          console.warn('Failed to update storage:', storageError);
+        }
+
+        // Refresh user data from backend to ensure consistency
+        await refreshUserData();
+
+        toast.success(hasPasswordChange ? 'Profile and password updated successfully!' : 'Profile updated successfully!');
+        
         // Clear password fields after successful update
         setFormData(prev => ({
           ...prev,
@@ -277,11 +305,11 @@ function FacultyProfileEdit() {
           navigate('/faculty/profile');
         }, 2000);
       } else {
-        setError(response.data.message || 'Failed to update profile');
+        toast.error(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(
+      toast.error(
         error.response?.data?.message || 
         error.response?.data?.detail || 
         'Failed to update profile. Please try again.'
@@ -332,40 +360,10 @@ function FacultyProfileEdit() {
         {/* Main Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           
-          {/* Success/Error Messages */}
-          {success && (
-            <div className="mb-6 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{success}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Profile Edit Form */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-            <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <form onSubmit={handleSubmit} className="p-8 space-y-8" autoComplete="off"
+                  autoCorrect="off" autoCapitalize="off" spellCheck="false">
               
               {/* Personal Information Section */}
               <div className="border-b border-gray-200 pb-8">
@@ -388,6 +386,10 @@ function FacultyProfileEdit() {
                       label="Full Name"
                       value={formData.full_name}
                       onChange={handleInputChange}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
                       icon={
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -415,6 +417,10 @@ function FacultyProfileEdit() {
                         placeholder="Enter your email address"
                         value={formData.email}
                         onChange={handleInputChange}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                         {validationLoading.email ? (
@@ -451,6 +457,10 @@ function FacultyProfileEdit() {
                         placeholder="10-digit mobile number"
                         value={formData.contact_no}
                         onChange={handleInputChange}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                         {validationLoading.contact_no ? (
@@ -494,6 +504,10 @@ function FacultyProfileEdit() {
                         max={new Date().toISOString().split('T')[0]}
                         value={formData.date_of_birth}
                         onChange={handleInputChange}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,6 +663,10 @@ function FacultyProfileEdit() {
                         max={new Date().toISOString().split('T')[0]}
                         value={formData.date_of_joining}
                         onChange={handleInputChange}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -707,6 +725,10 @@ function FacultyProfileEdit() {
                         placeholder="Enter your current password"
                         value={formData.current_password}
                         onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <button 
                         type="button" 
@@ -743,6 +765,10 @@ function FacultyProfileEdit() {
                           placeholder="Leave blank to keep current password"
                           value={formData.new_password}
                           onChange={handleInputChange}
+                          autoComplete="new-password"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
                         />
                         <button 
                           type="button" 
@@ -775,6 +801,10 @@ function FacultyProfileEdit() {
                           placeholder="Confirm your new password"
                           value={formData.confirm_new_password}
                           onChange={handleInputChange}
+                          autoComplete="new-password"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
                         />
                         <button 
                           type="button" 

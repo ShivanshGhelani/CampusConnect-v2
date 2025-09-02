@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../context/AuthContext';
+import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../api/base';
 import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
@@ -26,12 +27,11 @@ const SEMESTER_OPTIONS = [
 ];
 
 function EditProfile() {
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [validationLoading, setValidationLoading] = useState({});
   const [showPassword, setShowPassword] = useState({
@@ -218,7 +218,7 @@ function EditProfile() {
     // Check for validation errors before submission
     const hasValidationErrors = Object.keys(validationErrors).some(key => validationErrors[key]);
     if (hasValidationErrors) {
-      setError('Please fix the validation errors before submitting');
+      toast.error('Please fix the validation errors before submitting');
       return;
     }
     
@@ -228,25 +228,23 @@ function EditProfile() {
     // Validate passwords if provided
     if (hasPasswordChange) {
       if (!formData.current_password) {
-        setError('Current password is required to change password');
+        toast.error('Current password is required to change password');
         return;
       }
       
       if (formData.new_password !== formData.confirm_new_password) {
-        setError('New passwords do not match');
+        toast.error('New passwords do not match');
         return;
       }
       
       if (formData.new_password.length < 6) {
-        setError('New password must be at least 6 characters long');
+        toast.error('New password must be at least 6 characters long');
         return;
       }
     }
 
     try {
       setSaving(true);
-      setError('');
-      setSuccess('');
 
       // Prepare profile data for submission (exclude password fields)
       const profileData = { ...formData };
@@ -274,7 +272,33 @@ function EditProfile() {
         }
       }
 
-      setSuccess('Profile updated successfully!');
+      // Immediately update the auth context with new profile data
+      try {
+        const currentUserData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const mergedUserData = { ...currentUserData, ...profileData };
+        
+        // Update localStorage first
+        localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+        
+        // Force update auth context state immediately
+        const authEvent = new CustomEvent('userDataUpdated', { detail: mergedUserData });
+        window.dispatchEvent(authEvent);
+        
+        // Also update session storage data
+        const updatedSessionData = {
+          ...JSON.parse(sessionStorage.getItem('campus_connect_session_user') || '{}'),
+          ...profileData
+        };
+        sessionStorage.setItem('campus_connect_session_user', JSON.stringify(updatedSessionData));
+        
+      } catch (storageError) {
+        console.warn('Failed to update storage:', storageError);
+      }
+
+      // Refresh user data from backend to ensure consistency
+      await refreshUserData();
+
+      toast.success(hasPasswordChange ? 'Profile and password updated successfully!' : 'Profile updated successfully!');
       
       // Clear password fields on success
       setFormData(prev => ({
@@ -286,7 +310,7 @@ function EditProfile() {
 
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(error.message || 'Failed to update profile. Please try again.');
+      toast.error(error.message || 'Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -333,22 +357,10 @@ function EditProfile() {
             </nav>
           </div>
 
-          {/* Success/Error Messages */}
-          {success && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              {success}
-            </div>
-          )}
-          
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
           {/* Main Form */}
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <form onSubmit={handleSubmit} className="p-8 space-y-8" autoComplete="off"
+                  autoCorrect="off" autoCapitalize="off" spellCheck="false">
               
               {/* Personal Information Section */}
               <div>
@@ -365,6 +377,10 @@ function EditProfile() {
                     label="Full Name"
                     value={formData.full_name}
                     onChange={handleInputChange}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                     icon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -385,6 +401,10 @@ function EditProfile() {
                     loading={validationLoading.email}
                     error={!!validationErrors.email}
                     helperText={validationErrors.email}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                     icon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -406,6 +426,10 @@ function EditProfile() {
                     error={!!validationErrors.mobile_no}
                     helperText={validationErrors.mobile_no || "Your active mobile number for notifications"}
                     pattern="[0-9]{10}"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                     icon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h5.5a2 2 0 012 2v6.5a1 1 0 01-1 1H10a1 1 0 01-1-1v-1M7 13h5.5a1 1 0 011 1v5.5a2 2 0 01-2 2H4a1 1 0 01-1-1V14a1 1 0 011-1h3z" />
@@ -437,6 +461,10 @@ function EditProfile() {
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
                       value={formData.date_of_birth}
                       onChange={handleInputChange}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
                     />
                   </div>
                 </div>
@@ -510,6 +538,10 @@ function EditProfile() {
                         placeholder="Enter current password"
                         value={formData.current_password}
                         onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <button
                         type="button"
@@ -541,6 +573,10 @@ function EditProfile() {
                         placeholder="Enter new password"
                         value={formData.new_password}
                         onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <button
                         type="button"
@@ -572,6 +608,10 @@ function EditProfile() {
                         placeholder="Confirm new password"
                         value={formData.confirm_new_password}
                         onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <button
                         type="button"

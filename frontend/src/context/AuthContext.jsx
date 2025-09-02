@@ -99,6 +99,34 @@ export function AuthProvider({ children }) {
     checkAuthStatus();
   }, []);
 
+  // Listen for custom userDataUpdated events to immediately update UI
+  useEffect(() => {
+    const handleUserDataUpdate = (event) => {
+      const updatedUserData = event.detail;
+      
+      if (state.isAuthenticated && updatedUserData) {
+        console.log('🔄 Received userDataUpdated event, updating auth state immediately');
+        
+        // Update the auth context state immediately
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: {
+            user: updatedUserData,
+            userType: state.userType,
+          },
+        });
+      }
+    };
+
+    // Add event listener for custom userDataUpdated events
+    window.addEventListener('userDataUpdated', handleUserDataUpdate);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate);
+    };
+  }, [state.isAuthenticated, state.userType]);
+
   const checkAuthStatus = async () => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     
