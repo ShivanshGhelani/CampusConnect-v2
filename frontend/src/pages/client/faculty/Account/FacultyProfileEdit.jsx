@@ -184,11 +184,7 @@ function FacultyProfileEdit() {
       [name]: processedValue
     }));
 
-    // Clear messages when user starts typing
-    if (success) setSuccess('');
-    if (error) setError('');
-    
-    // Clear specific validation error
+    // Clear specific validation error when user starts typing
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
         ...prev,
@@ -267,19 +263,38 @@ function FacultyProfileEdit() {
         // Immediately update the auth context with new profile data
         try {
           const currentUserData = JSON.parse(localStorage.getItem('user_data') || '{}');
-          const mergedUserData = { ...currentUserData, ...updateData };
           
-          // Update localStorage first
-          localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+          // Properly map faculty profile data to user data fields
+          const userDataUpdate = {
+            ...currentUserData,
+            full_name: updateData.full_name,
+            email: updateData.email,
+            contact_no: updateData.contact_no,
+            gender: updateData.gender,
+            date_of_birth: updateData.date_of_birth,
+            employee_id: updateData.employee_id,
+            department: updateData.department,
+            designation: updateData.designation,
+            qualification: updateData.qualification,
+            specialization: updateData.specialization,
+            experience_years: updateData.experience_years,
+            seating: updateData.seating,
+            date_of_joining: updateData.date_of_joining
+          };
+          
+          console.log('📝 Updating localStorage user_data for faculty:', userDataUpdate);
+          
+          // Update localStorage with properly mapped data
+          localStorage.setItem('user_data', JSON.stringify(userDataUpdate));
           
           // Force update auth context state immediately
-          const authEvent = new CustomEvent('userDataUpdated', { detail: mergedUserData });
+          const authEvent = new CustomEvent('userDataUpdated', { detail: userDataUpdate });
           window.dispatchEvent(authEvent);
           
           // Also update session storage data
           const updatedSessionData = {
             ...JSON.parse(sessionStorage.getItem('campus_connect_session_user') || '{}'),
-            ...updateData
+            ...userDataUpdate
           };
           sessionStorage.setItem('campus_connect_session_user', JSON.stringify(updatedSessionData));
           

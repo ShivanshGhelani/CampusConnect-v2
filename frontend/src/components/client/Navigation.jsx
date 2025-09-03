@@ -20,11 +20,17 @@ function ClientNavigation() {
   const hoverTimeoutRef = useRef(null);
 
   // Memoize user display info to prevent re-renders
-  const userDisplayInfo = useMemo(() => ({
-    name: user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User',
-    id: user?.enrollment_no || user?.employee_id || 'No ID',
-    type: userType === 'faculty' ? 'Faculty' : 'Student'
-  }), [user?.full_name, user?.enrollment_no, user?.faculty_id, user?.employee_id, userType]);
+  const userDisplayInfo = useMemo(() => {
+    const userName = user?.full_name || user?.enrollment_no || user?.faculty_id || 'Guest User';
+    const userId = user?.enrollment_no || user?.employee_id || 'No ID';
+    const userTypeLabel = userType === 'faculty' ? 'Faculty' : 'Student';
+    
+    return {
+      name: typeof userName === 'string' ? userName : 'Guest User',
+      id: typeof userId === 'string' ? userId : 'No ID', 
+      type: userTypeLabel
+    };
+  }, [user?.full_name, user?.enrollment_no, user?.faculty_id, user?.employee_id, userType]);
 
   // Fixed hover handlers to prevent avatar flickering
   const handleMouseEnter = () => {

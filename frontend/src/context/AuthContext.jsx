@@ -147,13 +147,29 @@ export function AuthProvider({ children }) {
         }
         
         if (response && response.data.authenticated) {
+          // Merge server data with localStorage data to preserve profile updates
+          const storedUserDataParsed = JSON.parse(storedUserData);
+          const mergedUserData = {
+            ...response.data.user,
+            ...storedUserDataParsed
+          };
+          
+          console.log('🔄 Merging server auth data with localStorage updates:', {
+            server: response.data.user,
+            localStorage: storedUserDataParsed,
+            merged: mergedUserData
+          });
+          
           dispatch({
             type: authActions.LOGIN_SUCCESS,
             payload: {
-              user: response.data.user,
+              user: mergedUserData,
               userType: storedUserType,
             },
           });
+          
+          // Update localStorage with merged data to ensure consistency
+          localStorage.setItem('user_data', JSON.stringify(mergedUserData));
           
           // Initialize session avatar cache on successful auth check
           console.log('🚀 Initializing session avatar cache on auth check');
@@ -449,18 +465,31 @@ export function AuthProvider({ children }) {
       }
 
       if (response?.data?.success && response.data.user) {
-        // Update user data in state
+        // Merge server data with current localStorage to preserve profile updates
+        const currentStoredData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const mergedUserData = {
+          ...response.data.user,
+          ...currentStoredData
+        };
+        
+        console.log('🔄 Refreshing user data with localStorage preservation:', {
+          server: response.data.user,
+          localStorage: currentStoredData,
+          merged: mergedUserData
+        });
+        
+        // Update user data in state with merged data
         dispatch({
           type: authActions.LOGIN_SUCCESS,
           payload: {
-            user: response.data.user,
+            user: mergedUserData,
             userType: state.userType,
           },
         });
         
-        // Update localStorage
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
-        console.log('✅ User data refreshed successfully');
+        // Update localStorage with merged data
+        localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+        console.log('✅ User data refreshed successfully with profile updates preserved');
       }
     } catch (error) {
       console.error('Failed to refresh user data:', error);

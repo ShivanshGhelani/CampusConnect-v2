@@ -183,11 +183,7 @@ function EditProfile() {
       [name]: processedValue
     }));
 
-    // Clear messages when user starts typing
-    if (success) setSuccess('');
-    if (error) setError('');
-    
-    // Clear specific validation error
+    // Clear specific validation error when user starts typing
     if (validationErrors[name]) {
       setValidationErrors(prev => ({
         ...prev,
@@ -275,19 +271,32 @@ function EditProfile() {
       // Immediately update the auth context with new profile data
       try {
         const currentUserData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const mergedUserData = { ...currentUserData, ...profileData };
         
-        // Update localStorage first
-        localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+        // Properly map profile data to user data fields
+        const userDataUpdate = {
+          ...currentUserData,
+          full_name: profileData.full_name,
+          email: profileData.email,
+          mobile_no: profileData.mobile_no,
+          gender: profileData.gender,
+          date_of_birth: profileData.date_of_birth,
+          department: profileData.department,
+          semester: profileData.semester
+        };
+        
+        console.log('📝 Updating localStorage user_data:', userDataUpdate);
+        
+        // Update localStorage with properly mapped data
+        localStorage.setItem('user_data', JSON.stringify(userDataUpdate));
         
         // Force update auth context state immediately
-        const authEvent = new CustomEvent('userDataUpdated', { detail: mergedUserData });
+        const authEvent = new CustomEvent('userDataUpdated', { detail: userDataUpdate });
         window.dispatchEvent(authEvent);
         
         // Also update session storage data
         const updatedSessionData = {
           ...JSON.parse(sessionStorage.getItem('campus_connect_session_user') || '{}'),
-          ...profileData
+          ...userDataUpdate
         };
         sessionStorage.setItem('campus_connect_session_user', JSON.stringify(updatedSessionData));
         

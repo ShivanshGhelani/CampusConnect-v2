@@ -69,6 +69,42 @@ function FacultyProfilePage() {
     updateAvatar(newAvatarUrl);
   }, [updateAvatar]);
 
+  // Listen for user data updates and refresh profile data
+  useEffect(() => {
+    const handleUserDataUpdate = (event) => {
+      const updatedUserData = event.detail;
+      
+      if (updatedUserData && profileData) {
+        console.log('📱 FacultyProfilePage: Received user data update, refreshing profile data');
+        
+        // Update the profile data with the new user data
+        setProfileData(prevProfileData => ({
+          ...prevProfileData,
+          ...updatedUserData
+        }));
+      }
+    };
+
+    // Listen for custom userDataUpdated events
+    window.addEventListener('userDataUpdated', handleUserDataUpdate);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate);
+    };
+  }, [profileData]);
+
+  // Also listen for changes to the user from AuthContext
+  useEffect(() => {
+    if (user && profileData && user.full_name !== profileData.full_name) {
+      console.log('📱 FacultyProfilePage: User context changed, updating profile data');
+      setProfileData(prevProfileData => ({
+        ...prevProfileData,
+        ...user
+      }));
+    }
+  }, [user?.full_name, user?.email, user?.contact_no, user?.department, user?.designation]);
+
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
     const fetchData = async () => {
