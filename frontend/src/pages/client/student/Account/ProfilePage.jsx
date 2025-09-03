@@ -582,7 +582,7 @@ function ProfilePage() {
                   </p>
 
                   {/* Quick Actions */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <div className="flex flex-row sm:flex-row gap-2 sm:gap-3">
                     <Link
                       to="/client/profile/edit"
                       className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl border border-blue-500 hover:border-blue-600 transition-all duration-200 text-sm font-semibold"
@@ -665,7 +665,7 @@ function ProfilePage() {
         {/* My Events Section - Mobile/Tablet */}
         <div className="bg-white">
           <div className="px-4 sm:px-6 py-6">
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl overflow-hidden">
+            <div className="rounded-2xl overflow-hidden">
               {/* Section Header */}
               <div className="px-4 py-4 bg-white">
                 <div className="flex items-center justify-between">
@@ -703,19 +703,18 @@ function ProfilePage() {
               </div>
 
               {/* Events List */}
-              <div className="px-4 pb-4">
+              <div className="p-1 pt-2 pb-4">
                 {sortedRegistrations.length > 0 ? (
                   <div className="space-y-3">
                     {sortedRegistrations.slice(0, 3).map((reg, index) => (
-                      <div key={index} className="bg-white rounded-xl overflow-hidden shadow-sm">
-                        <ProfileEventCard
-                          reg={reg}
-                          onCancelRegistration={confirmCancelRegistration}
-                          onViewDetails={openEventDetailModal}
-                          onViewTeam={openTeamDetailModal}
-                          onViewQRCode={openQRCodeModal}
-                        />
-                      </div>
+                      <ProfileEventCard
+                        key={`${reg.event_id}-${index}`}
+                        reg={reg}
+                        onCancelRegistration={confirmCancelRegistration}
+                        onViewDetails={openEventDetailModal}
+                        onViewTeam={openTeamDetailModal}
+                        onViewQRCode={openQRCodeModal}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -741,6 +740,9 @@ function ProfilePage() {
                   </div>
                 )}
               </div>
+
+              {/* Extra padding at bottom for mobile scrolling */}
+              <div className="pb-20"></div>
             </div>
           </div>
         </div>

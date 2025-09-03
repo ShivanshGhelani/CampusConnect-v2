@@ -446,8 +446,42 @@ function ClientNavigation() {
               } transition-colors`}
           >
             <i className="fas fa-calendar text-base mb-0.5"></i>
-            <span className="text-sm font-medium">Events</span>
+            <span className="text-xs font-medium">Events</span>
           </Link>
+
+          {/* Organize Event Button - Only show for faculty */}
+          {isAuthenticated && userType === 'faculty' && (
+            <button
+              onClick={async () => {
+                try {
+                  const response = await organizerAPI.accessOrganizerPortal();
+
+                  if (response.data.success) {
+                    // Update auth context to reflect organizer admin role
+                    await transitionToOrganizerAdmin(response.data);
+
+                    // Navigate to organizer portal (use the redirect URL from response)
+                    navigate(response.data.redirect_url || '/admin/events');
+                  } else {
+                    // Show specific error message
+                    console.log('Access denied:', response.data);
+                    alert(response.data.message || 'Unable to access organizer portal');
+                  }
+                } catch (error) {
+                  console.error('Error accessing organizer portal:', error);
+                  if (error.response?.data?.message) {
+                    alert(error.response.data.message);
+                  } else {
+                    alert('Network error. Please try again.');
+                  }
+                }
+              }}
+              className="flex flex-col items-center justify-center py-1 text-blue-600 transition-colors"
+            >
+              <i className="fas fa-plus text-base mb-0.5"></i>
+              <span className="text-xs font-medium">Organize</span>
+            </button>
+          )}
 
           {/* Teams Button - Only show when authenticated and student */}
           {isAuthenticated && userType === 'student' && (

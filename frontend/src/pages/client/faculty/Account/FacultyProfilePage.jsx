@@ -358,8 +358,242 @@ function FacultyProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">
+    <div className="min-h-screen lg:bg-gradient-to-br lg:from-slate-50 lg:to-blue-50">
+      {/* Mobile/Tablet Layout - Edge to Edge */}
+      <div className="lg:hidden bg-white min-h-screen fixed inset-0 z-10 overflow-y-auto">
+        {/* Profile Header - Mobile/Tablet */}
+        {loading || !profileData ? (
+          <div className="bg-white animate-pulse pt-26">
+            {/* Header Skeleton */}
+            <div className="relative bg-gradient-to-r from-slate-300 to-slate-400 px-4 sm:px-6 py-8 overflow-hidden">
+              <div className="relative flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                <div className="w-20 h-20 rounded-full bg-slate-200"></div>
+                <div className="flex-1 text-center sm:text-left space-y-3">
+                  <div className="h-6 bg-slate-200 rounded w-3/4 mx-auto sm:mx-0"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto sm:mx-0"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/3 mx-auto sm:mx-0"></div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">
+                    <div className="h-8 bg-slate-200 rounded-xl w-24 mx-auto sm:mx-0"></div>
+                    <div className="h-8 bg-slate-200 rounded-xl w-24 mx-auto sm:mx-0"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Divider */}
+            <div className="h-px bg-slate-200"></div>
+            
+            {/* Stats Skeleton */}
+            <div className="px-4 sm:px-6 py-6 bg-slate-50">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-5 h-5 bg-slate-200 rounded"></div>
+                <div className="h-6 bg-slate-200 rounded w-32"></div>
+              </div>
+              <div className="bg-white rounded-xl p-3">
+                <div className="flex">
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-8 mx-auto"></div>
+                    <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-8 mx-auto"></div>
+                    <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-8 mx-auto"></div>
+                    <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-8 mx-auto"></div>
+                    <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Divider */}
+            <div className="h-px bg-slate-200"></div>
+            
+            {/* Events Skeleton */}
+            <div className="px-4 sm:px-6 py-6 bg-slate-50">
+              <div className="bg-white p-4 rounded-xl mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-slate-200 rounded-xl"></div>
+                    <div className="h-6 bg-slate-200 rounded w-24"></div>
+                  </div>
+                  <div className="h-6 bg-slate-200 rounded w-20"></div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="bg-white rounded-xl p-4 h-24"></div>
+                <div className="bg-white rounded-xl p-4 h-24"></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white pt-26">
+            {/* Profile Header Section */}
+            <div className="relative bg-gradient-to-r from-blue-600 to-blue-800 px-4 sm:px-6 py-6 overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-300 rounded-full -translate-y-20 translate-x-20"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400 rounded-full translate-y-16 -translate-x-16"></div>
+              </div>
+
+              <div className="relative flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                {/* Avatar */}
+                <AvatarUpload
+                  currentAvatar={avatarUrl}
+                  onAvatarUpdate={handleAvatarUpdate}
+                  className="flex-shrink-0"
+                />
+
+                {/* Name and Basic Info */}
+                <div className="flex-1 text-center sm:text-left">
+                  <h1 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                    {(profileData?.full_name || user?.full_name || 'Faculty User')}
+                  </h1>
+                  <p className="text-blue-100 text-sm font-medium mb-1">
+                    {profileData?.employee_id || user?.employee_id || 'Employee ID not provided'}
+                  </p>
+                  <p className="text-blue-200 text-sm mb-4">
+                    Member since {formatMemberSince(profileData?.profile_created_at || user?.created_at)}
+                  </p>
+
+                  {/* Quick Actions */}
+                  <div className="flex flex-row sm:flex-row gap-2 sm:gap-3">
+                    <Link
+                      to="/faculty/profile/edit"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl border border-blue-500 hover:border-blue-600 transition-all duration-200 text-sm font-semibold"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit Profile
+                    </Link>
+
+                    <Link
+                      to="/client/certificates"
+                      className="relative inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl border border-emerald-500 hover:border-emerald-600 transition-all duration-200 text-sm font-semibold"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                      My Certificates
+                      {dashboardStats.certificates_earned > 0 && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">{dashboardStats.certificates_earned}</span>
+                        </div>
+                      )}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-slate-200"></div>
+
+            {/* Dashboard Stats - Mobile */}
+            <div className="px-4 sm:px-6 py-6 bg-slate-50">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <h3 className="text-slate-700 font-semibold">Activity Overview</h3>
+              </div>
+              <div className="bg-white rounded-xl p-3">
+                <div className="flex">
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-slate-500 mb-1">Events</p>
+                    <p className="text-lg font-bold text-slate-900">{dashboardStats.total_registrations}</p>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-slate-500 mb-1">Attended</p>
+                    <p className="text-lg font-bold text-slate-900">{dashboardStats.attendance_marked}</p>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-slate-500 mb-1">Feedback</p>
+                    <p className="text-lg font-bold text-slate-900">{dashboardStats.feedback_submitted}</p>
+                  </div>
+                  <div className="w-px bg-slate-200 mx-2"></div>
+                  <div className="flex-1 text-center">
+                    <p className="text-xs text-slate-500 mb-1">Certificates</p>
+                    <p className="text-lg font-bold text-slate-900">{dashboardStats.certificates_earned}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-slate-200"></div>
+
+            {/* Recent Activity - Mobile */}
+            <div className="px-4 sm:px-6 py-6 bg-slate-50">
+              <div className="p-4 mb-1">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold text-gray-900 ">Recent Activity</h2>
+                  {sortedRegistrations.length > 3 && (
+                    <button
+                    onClick={openEventsModal}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-semibold"
+                    >
+                      View All
+                    </button>
+                  )}
+                </div>
+                  <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+              </div>
+              
+              {sortedRegistrations.length > 0 ? (
+                <div className="space-y-4">
+                  {sortedRegistrations.slice(0, 3).map((reg, index) => (
+                    <ProfileEventCard
+                      key={`${reg.event_id}-${index}`}
+                      reg={reg}
+                      showActions={true}
+                      onCancelRegistration={confirmCancelRegistration}
+                      onViewDetails={openEventDetailModal}
+                      onViewTeam={openTeamDetailModal}
+                      onViewQRCode={openQRCodeModal}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-white rounded-xl">
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Yet</h3>
+                  <p className="text-gray-600 mb-4">You haven't registered for any events yet.</p>
+                  <Link 
+                    to="/faculty/events" 
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Browse Events
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Extra padding at bottom for mobile scrolling */}
+            <div className="pb-20"></div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Layout (Two Columns) */}
+      <div className="hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-9">
           {/* Main 2-Column Layout */}
           <div className="flex gap-8">
             {/* Left Column */}
@@ -635,9 +869,8 @@ function FacultyProfilePage() {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
         </div>
+      </div>
 
       {/* All Events Modal */}
       {showEventsModal && (
@@ -1200,6 +1433,8 @@ function FacultyProfilePage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

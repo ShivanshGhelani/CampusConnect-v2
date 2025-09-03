@@ -1439,7 +1439,7 @@ const TeamManagement = () => {
                 className="flex-1 min-w-[200px] bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
               >
                 <i className="fas fa-user-plus mr-2"></i>
-                Add Member ({availableSlots} slots left)
+                Add Member
               </button>
             ) : (
               <div className="flex-1 min-w-[200px] bg-gray-200 text-gray-500 px-6 py-3 rounded-lg font-medium text-center">
