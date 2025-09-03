@@ -1262,26 +1262,28 @@ const TeamManagement = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="min-h-screen bg-gray-50 pt-4 sm:pt-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Enhanced Team Header with Real-time Status */}
-          <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <i className="fas fa-users text-blue-600 text-xl"></i>
+          {/* Enhanced Team Header with Real-time Status - Mobile Responsive */}
+          <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i className="fas fa-users text-blue-600 text-lg sm:text-xl"></i>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{teamRegistration.team_name}</h1>
-                  <p className="text-gray-600">{event?.event_name}</p>
-                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                    <span>Registration ID: <code className="font-mono">{teamRegistration.registration_id}</code></span>
-                    <span>•</span>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{teamRegistration.team_name}</h1>
+                  <p className="text-sm sm:text-base text-gray-600 truncate">{event?.event_name}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-1 text-xs sm:text-sm text-gray-500 space-y-1 sm:space-y-0">
+                    <span className="break-all sm:break-normal">
+                      Registration ID: <code className="font-mono">{teamRegistration.registration_id}</code>
+                    </span>
+                    <span className="hidden sm:inline">•</span>
                     <span>Registered: {new Date(teamRegistration.registered_at).toLocaleDateString()}</span>
                     {lastUpdated && (
                       <>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
                       </>
                     )}
@@ -1289,9 +1291,7 @@ const TeamManagement = () => {
                 </div>
               </div>
               
-
-              
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-between sm:justify-end space-x-3 sm:space-x-4">
                 <button
                   onClick={refreshTeamData}
                   disabled={refreshing}
@@ -1300,7 +1300,7 @@ const TeamManagement = () => {
                 >
                   <i className={`fas fa-sync-alt ${refreshing ? 'animate-spin' : ''}`}></i>
                 </button>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${teamRegistration.status === 'active'
+                <div className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${teamRegistration.status === 'active'
                   ? 'bg-green-100 text-green-800'
                   : 'bg-red-100 text-red-800'
                   }`}>
@@ -1310,10 +1310,10 @@ const TeamManagement = () => {
             </div>
           </div>
           
-          {/* Team Leader Task Notifications */}
+          {/* Team Leader Task Notifications - Mobile Responsive */}
           {isTeamLeader() && (taskStats.needsReview > 0 || taskStats.needsRevision > 0) && (
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <i className="fas fa-exclamation-circle text-purple-600"></i>
                 </div>
@@ -1335,9 +1335,9 @@ const TeamManagement = () => {
             </div>
           )}
 
-          {/* Event Status Indicator */}
-          <div className="bg-white rounded-lg border p-6 mb-6">
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+          {/* Event Status Indicator - Mobile Responsive */}
+          <div className="bg-white rounded-lg border p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg space-y-4 sm:space-y-0">
               <div className="flex items-center space-x-3">
                 <i className="fas fa-calendar-alt text-blue-600"></i>
                 <div>
@@ -1345,7 +1345,7 @@ const TeamManagement = () => {
                   <div className="text-sm text-gray-600 capitalize">{event?.status?.replace('_', ' ')}</div>
                 </div>
               </div>
-              <div className="flex items-center space-x-6 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-sm">
                 <div className={`flex items-center space-x-2 ${teamStatus?.attendance_available ? 'text-green-600' : 'text-gray-400'}`}>
                   <i className="fas fa-check-circle"></i>
                   <span>Attendance {teamStatus?.attendance_available ? 'Open' : 'Closed'}</span>
@@ -1393,21 +1393,21 @@ const TeamManagement = () => {
             </div>
           )}
 
-          {/* Enhanced Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-2xl font-bold text-blue-600">{teamRegistration.team_size}</div>
+          {/* Enhanced Stats Grid - Mobile Responsive */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="bg-white p-3 sm:p-4 rounded-lg border text-center">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{teamRegistration.team_size}</div>
               <div className="text-xs text-gray-600">Current Size</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-2xl font-bold text-green-600">{availableSlots}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg border text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{availableSlots}</div>
               <div className="text-xs text-gray-600">Available Slots</div>
             </div>
             
-            {/* Task Overview Card - Moved from header (only for team leaders with tasks) */}
+            {/* Task Overview Card - Only for team leaders with tasks */}
             {isTeamLeader() && taskStats.total > 0 && (
-              <div className="bg-white p-4 rounded-lg border text-center">
-                <div className="text-2xl font-bold text-purple-600">{taskStats.completed}</div>
+              <div className="bg-white p-3 sm:p-4 rounded-lg border text-center col-span-1 sm:col-span-1">
+                <div className="text-xl sm:text-2xl font-bold text-purple-600">{taskStats.completed}</div>
                 <div className="text-xs text-gray-600">Tasks Completed</div>
                 {taskStats.needsReview > 0 && (
                   <div className="text-xs text-purple-500 mt-1 font-medium">
@@ -1417,32 +1417,32 @@ const TeamManagement = () => {
               </div>
             )}
             
-            <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-2xl font-bold text-emerald-600">{attendanceCount}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg border text-center">
+              <div className="text-xl sm:text-2xl font-bold text-emerald-600">{attendanceCount}</div>
               <div className="text-xs text-gray-600">Attendance Marked</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-2xl font-bold text-purple-600">{feedbackCount}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg border text-center">
+              <div className="text-xl sm:text-2xl font-bold text-purple-600">{feedbackCount}</div>
               <div className="text-xs text-gray-600">Feedback Submitted</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border text-center">
-              <div className="text-2xl font-bold text-orange-600">{certificateCount}</div>
+            <div className="bg-white p-3 sm:p-4 rounded-lg border text-center">
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">{certificateCount}</div>
               <div className="text-xs text-gray-600">Certificates Issued</div>
             </div>
           </div>
 
-          {/* Action Buttons - Conditional based on event status */}
-          <div className="flex flex-wrap gap-4 mb-6">
+          {/* Action Buttons - Mobile Responsive */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mb-4 sm:mb-6">
             {canAddMembers && isRegistrationOpen ? (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex-1 min-w-[200px] bg-cyan-500 hover:bg-cyan-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
+                className="flex-1 sm:flex-none sm:min-w-[200px] bg-cyan-500 hover:bg-cyan-600 text-white px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
               >
                 <i className="fas fa-user-plus mr-2"></i>
                 Add Member
               </button>
             ) : (
-              <div className="flex-1 min-w-[200px] bg-gray-200 text-gray-500 px-6 py-3 rounded-lg font-medium text-center">
+              <div className="flex-1 sm:flex-none sm:min-w-[200px] bg-gray-200 text-gray-500 px-4 sm:px-6 py-3 rounded-lg font-medium text-center">
                 <i className="fas fa-users mr-2"></i>
                 {canAddMembers ? 'Registration Closed' : `Team Full (${teamRegistration.team_size}/${teamRegistration.max_size})`}
               </div>
@@ -1450,10 +1450,10 @@ const TeamManagement = () => {
 
             <button
               onClick={() => setShowTeamStatusModal(true)}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="sm:flex-none bg-purple-500 hover:bg-purple-600 text-white px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors"
             >
               <i className="fas fa-chart-line mr-2"></i>
-              Detailed Status
+              <span className="hidden sm:inline">Detailed </span>Status
             </button>
 
             {/* Team Tools Button - Only for Team Leaders */}
@@ -1461,7 +1461,7 @@ const TeamManagement = () => {
               <div className="relative">
                 <button
                   onClick={() => setShowTeamManagementDropdown(!showTeamManagementDropdown)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <i className="fas fa-cog mr-2"></i>
                   Team Tools
@@ -1469,7 +1469,7 @@ const TeamManagement = () => {
                 </button>
 
                 {showTeamManagementDropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
+                  <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-full sm:w-64 bg-white border rounded-lg shadow-lg z-50">
                     <div className="py-2">
                       <button
                         onClick={() => {
@@ -1542,14 +1542,14 @@ const TeamManagement = () => {
             <div className="relative">
               <button
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
-                className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 <i className="fas fa-download mr-2"></i>
                 Export
               </button>
 
               {showExportDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg z-50">
+                <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-full sm:w-64 bg-white border rounded-lg shadow-lg z-50">
                   <div className="p-2">
                     <button
                       onClick={() => exportTeamData('csv')}
@@ -1580,7 +1580,7 @@ const TeamManagement = () => {
             {isRegistrationOpen && (
               <button
                 onClick={() => setShowCancelModal(true)}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 <i className="fas fa-times mr-2"></i>
                 Cancel Registration
@@ -1590,15 +1590,16 @@ const TeamManagement = () => {
 
           {/* Team Members List - Redesigned for event lifecycle */}
           <div className="space-y-4">
-            {/* Team Leader */}
+            {/* Team Leader - Full Content Mobile & Desktop */}
             {teamRegistration.team_leader && (
-              <div className="bg-white rounded-lg border-l-4 border-l-blue-500 p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="bg-white rounded-lg border-l-4 border-l-blue-500 shadow-sm">
+                {/* Mobile Layout - Full Content */}
+                <div className="block sm:hidden p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <i className="fas fa-crown text-blue-600"></i>
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-lg text-gray-900">{teamRegistration.team_leader.name}</h3>
                       <p className="text-gray-600">{teamRegistration.team_leader.enrollment_no} • Team Leader</p>
                       
@@ -1607,14 +1608,14 @@ const TeamManagement = () => {
                         {(() => {
                           const role = getMemberRole(teamRegistration.team_leader.enrollment_no);
                           return (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium w-fit">
                                 <i className="fas fa-user-tie"></i>
                                 {role.role}
                               </span>
                               {role.description && (
                                 <span className="text-xs text-gray-500" title={role.description}>
-                                  {role.description.length > 30 ? role.description.substring(0, 30) + '...' : role.description}
+                                  {role.description}
                                 </span>
                               )}
                             </div>
@@ -1622,103 +1623,201 @@ const TeamManagement = () => {
                         })()}
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                      {/* Department & Semester */}
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
                         <span>{teamRegistration.team_leader.department}</span>
                         <span>•</span>
                         <span>Sem {teamRegistration.team_leader.semester}</span>
                       </div>
+
+                      {/* Contact Info */}
+                      <div className="mt-3 space-y-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-envelope text-gray-400 w-4"></i>
+                          <span>{teamRegistration.team_leader.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-phone text-gray-400 w-4"></i>
+                          <span>{teamRegistration.team_leader.phone}</span>
+                        </div>
+                      </div>
+
+                      {/* Participation Status */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${teamRegistration.team_leader.attendance?.marked
+                          ? 'bg-green-100 text-green-700'
+                          : teamStatus?.attendance_available
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-gray-100 text-gray-500'
+                          }`}>
+                          <i className="fas fa-check text-xs"></i>
+                          <span>Attendance</span>
+                        </div>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${teamRegistration.team_leader.feedback?.submitted
+                          ? 'bg-purple-100 text-purple-700'
+                          : teamStatus?.feedback_available
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-gray-100 text-gray-500'
+                          }`}>
+                          <i className="fas fa-comment text-xs"></i>
+                          <span>Feedback</span>
+                        </div>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${teamRegistration.team_leader.certificate?.issued
+                          ? 'bg-orange-100 text-orange-700'
+                          : teamStatus?.certificates_available
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-gray-100 text-gray-500'
+                          }`}>
+                          <i className="fas fa-certificate text-xs"></i>
+                          <span>Certificate</span>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
+                      <div className="mt-4">
+                        <button
+                          onClick={() => showMemberTasks({
+                            enrollment_no: teamRegistration.team_leader.enrollment_no,
+                            name: teamRegistration.team_leader.name,
+                            role: 'Team Leader'
+                          })}
+                          className="w-full px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                        >
+                          <i className="fas fa-tasks mr-2"></i>
+                          View Tasks
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-6">
-                    <div className="text-right text-sm text-gray-600">
-                      <div>{teamRegistration.team_leader.email}</div>
-                      <div>{teamRegistration.team_leader.phone}</div>
+                </div>
+
+                {/* Desktop Layout - Keep Original */}
+                <div className="hidden sm:block p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-crown text-blue-600"></i>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900">{teamRegistration.team_leader.name}</h3>
+                        <p className="text-gray-600">{teamRegistration.team_leader.enrollment_no} • Team Leader</p>
+                        
+                        {/* Role Display */}
+                        <div className="mt-2">
+                          {(() => {
+                            const role = getMemberRole(teamRegistration.team_leader.enrollment_no);
+                            return (
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                  <i className="fas fa-user-tie"></i>
+                                  {role.role}
+                                </span>
+                                {role.description && (
+                                  <span className="text-xs text-gray-500" title={role.description}>
+                                    {role.description.length > 30 ? role.description.substring(0, 30) + '...' : role.description}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                          <span>{teamRegistration.team_leader.department}</span>
+                          <span>•</span>
+                          <span>Sem {teamRegistration.team_leader.semester}</span>
+                        </div>
+                      </div>
                     </div>
-                    {/* Participation Status Indicators */}
-                    <div className="flex items-center space-x-2">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.attendance?.marked
-                        ? 'bg-green-100 text-green-600'
-                        : teamStatus?.attendance_available
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Attendance: ${teamRegistration.team_leader.attendance?.marked ? 'Marked' : 'Pending'}`}>
-                        <i className="fas fa-check text-xs"></i>
+                    <div className="flex items-center space-x-6">
+                      <div className="text-right text-sm text-gray-600">
+                        <div>{teamRegistration.team_leader.email}</div>
+                        <div>{teamRegistration.team_leader.phone}</div>
                       </div>
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.feedback?.submitted
-                        ? 'bg-purple-100 text-purple-600'
-                        : teamStatus?.feedback_available
+                      {/* Participation Status Indicators */}
+                      <div className="flex items-center space-x-2">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.attendance?.marked
+                          ? 'bg-green-100 text-green-600'
+                          : teamStatus?.attendance_available
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-gray-100 text-gray-400'
+                          }`} title={`Attendance: ${teamRegistration.team_leader.attendance?.marked ? 'Marked' : 'Pending'}`}>
+                          <i className="fas fa-check text-xs"></i>
+                        </div>
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.feedback?.submitted
+                          ? 'bg-purple-100 text-purple-600'
+                          : teamStatus?.feedback_available
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-gray-100 text-gray-400'
+                          }`} title={`Feedback: ${teamRegistration.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
+                          <i className="fas fa-comment text-xs"></i>
+                        </div>
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.certificate?.issued
                           ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Feedback: ${teamRegistration.team_leader.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
-                        <i className="fas fa-comment text-xs"></i>
+                          : teamStatus?.certificates_available
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-gray-100 text-gray-400'
+                          }`} title={`Certificate: ${teamRegistration.team_leader.certificate?.issued ? 'Available' : 'Pending'}`}>
+                          <i className="fas fa-certificate text-xs"></i>
+                        </div>
                       </div>
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${teamRegistration.team_leader.certificate?.issued
-                        ? 'bg-orange-100 text-orange-600'
-                        : teamStatus?.certificates_available
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Certificate: ${teamRegistration.team_leader.certificate?.issued ? 'Available' : 'Pending'}`}>
-                        <i className="fas fa-certificate text-xs"></i>
+                      {/* Action Buttons */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => showMemberTasks({
+                            enrollment_no: teamRegistration.team_leader.enrollment_no,
+                            name: teamRegistration.team_leader.name,
+                            role: 'Team Leader'
+                          })}
+                          className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                          title="View assigned tasks"
+                        >
+                          <i className="fas fa-tasks"></i>
+                        </button>
+                        
+                        <button
+                          onClick={() => showMemberProgress({
+                            enrollment_no: teamRegistration.team_leader.enrollment_no,
+                            name: teamRegistration.team_leader.name,
+                            role: 'Team Leader'
+                          })}
+                          className="p-2 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 transition-colors"
+                          title="View work progress"
+                        >
+                          <i className="fas fa-chart-line"></i>
+                        </button>
                       </div>
-                    </div>
-                    {/* Action Buttons */}
-                    <div className="flex items-center space-x-2">
-                      {/* View Tasks Button */}
-                      <button
-                        onClick={() => showMemberTasks({
-                          enrollment_no: teamRegistration.team_leader.enrollment_no,
-                          name: teamRegistration.team_leader.name,
-                          role: 'Team Leader'
-                        })}
-                        className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
-                        title="View assigned tasks"
-                      >
-                        <i className="fas fa-tasks"></i>
-                      </button>
-                      
-                      {/* View Progress Button */}
-                      <button
-                        onClick={() => showMemberProgress({
-                          enrollment_no: teamRegistration.team_leader.enrollment_no,
-                          name: teamRegistration.team_leader.name,
-                          role: 'Team Leader'
-                        })}
-                        className="p-2 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 transition-colors"
-                        title="View work progress"
-                      >
-                        <i className="fas fa-chart-line"></i>
-                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Team Members */}
+            {/* Team Members - Full Content Mobile & Desktop */}
             {teamRegistration.members && teamRegistration.members.length > 0 && teamRegistration.members.map((member, index) => (
-              <div key={member.id || index} className="bg-white rounded-lg border p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-user text-gray-600"></i>
+              <React.Fragment key={member.id || index}>
+                {/* Mobile Layout - Full Content */}
+                <div className="block sm:hidden bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <i className="fas fa-user text-white"></i>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900">{member.name}</h3>
-                      <p className="text-gray-600">{member.enrollment_no} • Member</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900">{member.name}</h3>
+                      <p className="text-gray-600">{member.enrollment_no}</p>
                       
                       {/* Role Display */}
                       <div className="mt-2">
                         {(() => {
                           const role = getMemberRole(member.enrollment_no);
                           return (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                                <i className="fas fa-user-tag"></i>
+                            <div className="flex flex-col gap-1">
+                              <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded w-fit">
                                 {role.role}
                               </span>
                               {role.description && (
                                 <span className="text-xs text-gray-500" title={role.description}>
-                                  {role.description.length > 30 ? role.description.substring(0, 30) + '...' : role.description}
+                                  {role.description}
                                 </span>
                               )}
                             </div>
@@ -1726,99 +1825,206 @@ const TeamManagement = () => {
                         })()}
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                        <span>{member.department}</span>
+                      {/* Department & Semester */}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                        <span><i className="fas fa-graduation-cap mr-1"></i>{member.department}</span>
                         <span>•</span>
-                        <span>Sem {member.semester}</span>
+                        <span><i className="fas fa-calendar mr-1"></i>Sem {member.semester}</span>
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-6">
-                    <div className="text-right text-sm text-gray-600">
-                      <div>{member.email}</div>
-                      <div>{member.phone}</div>
-                    </div>
-                    {/* Participation Status Indicators */}
-                    <div className="flex items-center space-x-2">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.attendance?.marked
-                        ? 'bg-green-100 text-green-600'
-                        : teamStatus?.attendance_available
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Attendance: ${member.attendance?.marked ? 'Marked' : 'Pending'}`}>
-                        <i className="fas fa-check text-xs"></i>
+
+                      {/* Contact Info */}
+                      <div className="mt-3 space-y-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-envelope text-gray-400 w-4"></i>
+                          <span>{member.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-phone text-gray-400 w-4"></i>
+                          <span>{member.phone}</span>
+                        </div>
                       </div>
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.feedback?.submitted
-                        ? 'bg-purple-100 text-purple-600'
-                        : teamStatus?.feedback_available
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Feedback: ${member.feedback?.submitted ? 'Submitted' : 'Pending'}`}>
-                        <i className="fas fa-comment text-xs"></i>
+
+                      {/* Participation Status */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.attendance?.marked 
+                            ? 'bg-green-100 text-green-700' 
+                            : teamStatus?.attendance_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-check"></i>
+                          <span>Attendance</span>
+                        </div>
+                        
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.feedback?.submitted 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : teamStatus?.feedback_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-comment"></i>
+                          <span>Feedback</span>
+                        </div>
+                        
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.certificate?.issued 
+                            ? 'bg-orange-100 text-orange-700' 
+                            : teamStatus?.certificates_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-certificate"></i>
+                          <span>Certificate</span>
+                        </div>
                       </div>
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${member.certificate?.issued
-                        ? 'bg-orange-100 text-orange-600'
-                        : teamStatus?.certificates_available
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-gray-100 text-gray-400'
-                        }`} title={`Certificate: ${member.certificate?.issued ? 'Available' : 'Pending'}`}>
-                        <i className="fas fa-certificate text-xs"></i>
-                      </div>
-                    </div>
-                    {/* Action Buttons */}
-                    <div className="flex items-center space-x-2">
-                      {/* View Tasks Button */}
-                      <button
-                        onClick={() => showMemberTasks({
-                          enrollment_no: member.enrollment_no,
-                          name: member.name,
-                          role: 'Member'
-                        })}
-                        className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
-                        title="View assigned tasks"
-                      >
-                        <i className="fas fa-tasks"></i>
-                      </button>
-                      
-                      {/* View Progress Button */}
-                      <button
-                        onClick={() => showMemberProgress({
-                          enrollment_no: member.enrollment_no,
-                          name: member.name,
-                          role: 'Member'
-                        })}
-                        className="p-2 rounded-lg text-green-600 hover:text-green-800 hover:bg-green-50 transition-colors"
-                        title="View work progress"
-                      >
-                        <i className="fas fa-chart-line"></i>
-                      </button>
-                      
-                      {/* Remove Button */}
-                      {isRegistrationOpen && (
+
+                      {/* Action Buttons */}
+                      <div className="mt-4 flex gap-2">
                         <button
-                          onClick={() => {
-                            if (!canRemoveMembers) {
-                              setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
-                              return;
-                            }
-                            setRemoveTarget(member);
-                            setShowRemoveModal(true);
-                          }}
-                          disabled={!canRemoveMembers}
-                          className={`p-2 rounded-lg transition-colors ${
-                            canRemoveMembers 
-                              ? 'text-red-600 hover:text-red-800 hover:bg-red-50' 
-                              : 'text-gray-400 cursor-not-allowed bg-gray-100'
-                          }`}
-                          title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
+                          onClick={() => showMemberTasks({
+                            enrollment_no: member.enrollment_no,
+                            name: member.name,
+                            role: 'Member'
+                          })}
+                          className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
                         >
-                          <i className="fas fa-trash"></i>
+                          <i className="fas fa-tasks mr-2"></i>
+                          View Tasks
                         </button>
-                      )}
+                        
+                        {isRegistrationOpen && (
+                          <button
+                            onClick={() => {
+                              if (!canRemoveMembers) {
+                                setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+                                return;
+                              }
+                              setRemoveTarget(member);
+                              setShowRemoveModal(true);
+                            }}
+                            disabled={!canRemoveMembers}
+                            className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                              canRemoveMembers
+                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                            }`}
+                            title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Desktop Layout - Preserved Original */}
+                <div className="hidden sm:block bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-user text-white"></i>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{member.name}</h3>
+                          <p className="text-gray-600">{member.enrollment_no}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => showMemberTasks({
+                            enrollment_no: member.enrollment_no,
+                            name: member.name,
+                            role: 'Member'
+                          })}
+                          className="px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        >
+                          <i className="fas fa-tasks mr-2"></i>
+                          View Tasks
+                        </button>
+                        
+                        {isRegistrationOpen && (
+                          <button
+                            onClick={() => {
+                              if (!canRemoveMembers) {
+                                setError(`Cannot remove member! Minimum team size required is ${teamRegistration.min_size} members.`);
+                                return;
+                              }
+                              setRemoveTarget(member);
+                              setShowRemoveModal(true);
+                            }}
+                            disabled={!canRemoveMembers}
+                            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                              canRemoveMembers
+                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                            }`}
+                            title={canRemoveMembers ? "Remove member" : `Cannot remove - minimum ${teamRegistration.min_size} members required`}
+                          >
+                            <i className="fas fa-trash mr-2"></i>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex items-center gap-4 text-sm text-gray-600">
+                      <span><i className="fas fa-graduation-cap mr-1"></i>{member.department}</span>
+                      <span><i className="fas fa-calendar mr-1"></i>Semester {member.semester}</span>
+                      <span><i className="fas fa-envelope mr-1"></i>{member.email}</span>
+                      <span><i className="fas fa-phone mr-1"></i>{member.phone}</span>
+                    </div>
+                    
+                    <div className="mt-4 flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Role:</span>
+                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                          {getMemberRole(member.enrollment_no).role}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 ml-auto">
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.attendance?.marked 
+                            ? 'bg-green-100 text-green-700' 
+                            : teamStatus?.attendance_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-check"></i>
+                          <span>Attendance</span>
+                        </div>
+                        
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.feedback?.submitted 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : teamStatus?.feedback_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-comment"></i>
+                          <span>Feedback</span>
+                        </div>
+                        
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          member.certificate?.issued 
+                            ? 'bg-orange-100 text-orange-700' 
+                            : teamStatus?.certificates_available 
+                              ? 'bg-orange-100 text-orange-700' 
+                              : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <i className="fas fa-certificate"></i>
+                          <span>Certificate</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </React.Fragment>
             ))}
 
             {/* Add Member Prompt - Only show if team needs more members and registration is open */}
@@ -2177,27 +2383,27 @@ const TeamManagement = () => {
         </div>
       )}
 
-      {/* Team Status Modal */}
+      {/* Team Status Modal - Mobile Responsive */}
       {showTeamStatusModal && teamParticipationStatus && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-          <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-hidden border border-gray-200">
-            {/* Modal Header */}
-            <div className="px-8 py-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-2 sm:p-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-4xl w-full mx-2 sm:mx-4 shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden border border-gray-200">
+            {/* Modal Header - Mobile Responsive */}
+            <div className="px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                    <i className="fas fa-chart-line text-white"></i>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                    <i className="fas fa-chart-line text-white text-sm sm:text-base"></i>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">Team Participation Status</h3>
-                    <span className="text-sm text-slate-500 font-medium">{event?.event_name} • {teamInfo.team_name}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 truncate">Team Participation Status</h3>
+                    <span className="text-xs sm:text-sm text-slate-500 font-medium block truncate">{event?.event_name} • {teamInfo.team_name}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowTeamStatusModal(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group"
+                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg sm:rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-200 group self-end sm:self-auto"
                 >
-                  <i className="fas fa-times group-hover:rotate-90 transition-transform duration-200"></i>
+                  <i className="fas fa-times group-hover:rotate-90 transition-transform duration-200 text-sm sm:text-base"></i>
                 </button>
               </div>
             </div>
@@ -2519,10 +2725,10 @@ const TeamManagement = () => {
 
             {/* Enhanced Modals for event lifecycle */}
 
-            {/* Add Member Modal */}
+            {/* Add Member Modal - Mobile Responsive */}
             {showAddModal && (
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-2 sm:mx-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Team Member</h3>
 
                   <form onSubmit={handleValidateSubmit}>
@@ -2535,27 +2741,27 @@ const TeamManagement = () => {
                         value={participantEnrollment}
                         onChange={handleEnrollmentChange}
                         placeholder="Enter enrollment number"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         maxLength="20"
                         required
                       />
                       {enrollmentError && (
-                        <p className="text-red-600 text-sm mt-1">{enrollmentError}</p>
+                        <p className="text-red-600 text-xs sm:text-sm mt-1">{enrollmentError}</p>
                       )}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <button
                         type="submit"
                         disabled={!participantEnrollment.trim() || isValidating}
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                       >
                         {isValidating ? 'Validating...' : 'Validate'}
                       </button>
                       <button
                         type="button"
                         onClick={handleAddModalClose}
-                        className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                        className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 text-sm font-medium"
                       >
                         Cancel
                       </button>
@@ -2565,53 +2771,53 @@ const TeamManagement = () => {
               </div>
             )}
 
-            {/* Confirm Add Modal */}
+            {/* Confirm Add Modal - Mobile Responsive */}
             {showConfirmModal && validatedStudent && (
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Team Member</h3>
 
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                       <div>
                         <div className="font-medium text-gray-700">Name</div>
-                        <div className="text-gray-900">{validatedStudent.full_name}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.full_name}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Enrollment</div>
-                        <div className="text-gray-900">{validatedStudent.enrollment_no}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.enrollment_no}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Department</div>
-                        <div className="text-gray-900">{validatedStudent.department}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.department}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Year/Semester</div>
-                        <div className="text-gray-900">{validatedStudent.semester}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.semester}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Email</div>
-                        <div className="text-gray-900">{validatedStudent.email}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.email}</div>
                       </div>
                       <div>
                         <div className="font-medium text-gray-700">Phone</div>
-                        <div className="text-gray-900">{validatedStudent.mobile_no}</div>
+                        <div className="text-gray-900 truncate">{validatedStudent.mobile_no}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
                       onClick={confirmAddMember}
                       disabled={isAdding}
-                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       {isAdding ? 'Adding...' : 'Confirm & Add'}
                     </button>
                     <button
                       onClick={handleConfirmModalClose}
                       disabled={isAdding}
-                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       Back
                     </button>
@@ -2620,28 +2826,28 @@ const TeamManagement = () => {
               </div>
             )}
 
-            {/* Remove Member Modal */}
+            {/* Remove Member Modal - Mobile Responsive */}
             {showRemoveModal && removeTarget && (
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-2 sm:mx-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Remove Team Member</h3>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-6 text-sm sm:text-base">
                     Are you sure you want to remove <strong>{removeTarget.name}</strong> from the team?
                     This action cannot be undone.
                   </p>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
                       onClick={confirmRemoveMember}
                       disabled={isRemoving}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       {isRemoving ? 'Removing...' : 'Remove'}
                     </button>
                     <button
                       onClick={handleRemoveModalClose}
                       disabled={isRemoving}
-                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       Cancel
                     </button>
@@ -2650,33 +2856,33 @@ const TeamManagement = () => {
               </div>
             )}
 
-            {/* Cancel Registration Modal */}
+            {/* Cancel Registration Modal - Mobile Responsive */}
             {showCancelModal && (
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-2 sm:mx-4">
                   <div className="text-center">
-                    <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    <div className="mx-auto mb-4 w-12 h-12 sm:w-16 sm:h-16 bg-red-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-exclamation-triangle text-red-600 text-xl sm:text-2xl"></i>
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Team Registration</h3>
-                    <p className="text-gray-600 mb-6">
+                    <p className="text-gray-600 mb-6 text-sm sm:text-base">
                       Are you sure you want to cancel your team registration for this event?
                       This will remove all team members and cannot be undone.
                     </p>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
                       onClick={cancelRegistration}
                       disabled={isCancelling}
-                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       {isCancelling ? 'Cancelling...' : 'Yes, Cancel Registration'}
                     </button>
                     <button
                       onClick={handleCancelModalClose}
                       disabled={isCancelling}
-                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed"
+                      className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       Keep Registration
                     </button>
@@ -2933,51 +3139,51 @@ const TeamManagement = () => {
         />
       )}
 
-      {/* Member Tasks Modal */}
+      {/* Member Tasks Modal - Mobile Responsive */}
       {showMemberTasksModal && selectedMemberTasks && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold mb-2">Tasks for {selectedMemberTasks.member.name}</h2>
-                  <p className="text-blue-100">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg sm:rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden mt-2 sm:mt-0">
+            {/* Modal Header - Mobile Responsive */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 text-white">
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 truncate">Tasks for {selectedMemberTasks.member.name}</h2>
+                  <p className="text-blue-100 text-sm sm:text-base truncate">
                     {selectedMemberTasks.member.role} • {selectedMemberTasks.tasks.length} task(s) assigned
                   </p>
                 </div>
                 <button
                   onClick={() => setShowMemberTasksModal(false)}
-                  className="text-white hover:text-blue-200 transition-colors"
+                  className="text-white hover:text-blue-200 transition-colors p-2 sm:p-1"
                 >
-                  <i className="fas fa-times text-xl"></i>
+                  <i className="fas fa-times text-lg sm:text-xl"></i>
                 </button>
               </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {/* Team Leader Notifications */}
+            {/* Modal Body - Mobile Responsive */}
+            <div className="p-3 sm:p-6 max-h-[70vh] sm:max-h-[60vh] overflow-y-auto">
+              {/* Team Leader Notifications - Mobile Responsive */}
               {isTeamLeader() && selectedMemberTasks.tasks.length > 0 && (
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                   {(() => {
                     const submittedTasks = selectedMemberTasks.tasks.filter(t => t.status === 'submitted');
                     const needsRevisionTasks = selectedMemberTasks.tasks.filter(t => t.review_status === 'needs_revision');
                     
                     if (submittedTasks.length > 0 || needsRevisionTasks.length > 0) {
                       return (
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <i className="fas fa-exclamation-circle text-purple-600"></i>
-                            <h4 className="font-semibold text-purple-800">Team Leader Actions Required</h4>
+                            <h4 className="font-semibold text-purple-800 text-sm sm:text-base">Team Leader Actions Required</h4>
                           </div>
                           {submittedTasks.length > 0 && (
-                            <p className="text-sm text-purple-700 mb-1">
+                            <p className="text-xs sm:text-sm text-purple-700 mb-1">
                               • {submittedTasks.length} task(s) submitted and awaiting your review
                             </p>
                           )}
                           {needsRevisionTasks.length > 0 && (
-                            <p className="text-sm text-purple-700">
+                            <p className="text-xs sm:text-sm text-purple-700">
                               • {needsRevisionTasks.length} task(s) need revision after your feedback
                             </p>
                           )}
@@ -2990,12 +3196,12 @@ const TeamManagement = () => {
               )}
               
               {selectedMemberTasks.tasks.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fas fa-tasks text-gray-400 text-2xl"></i>
+                <div className="text-center py-8 sm:py-12">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <i className="fas fa-tasks text-gray-400 text-lg sm:text-2xl"></i>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks assigned</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No tasks assigned</h3>
+                  <p className="text-gray-600 text-sm sm:text-base px-4">
                     {selectedMemberTasks.member.name} doesn't have any tasks assigned yet.
                   </p>
                   {isTeamLeader() && (
@@ -3004,7 +3210,7 @@ const TeamManagement = () => {
                         setShowMemberTasksModal(false);
                         setShowTaskModal(true);
                       }}
-                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                     >
                       <i className="fas fa-plus mr-2"></i>
                       Assign New Task
@@ -3012,36 +3218,38 @@ const TeamManagement = () => {
                   )}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {selectedMemberTasks.tasks.map((task, index) => (
                     <div key={task.id || index} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                      {/* Task Header */}
-                      <div className="p-4 bg-gray-50 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <h4 className="text-lg font-semibold text-gray-900">{task.title}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              task.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {task.priority} priority
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              task.status === 'submitted' ? 'bg-indigo-100 text-indigo-800' :
-                              task.status === 'under_review' ? 'bg-purple-100 text-purple-800' :
-                              task.status === 'paused' ? 'bg-orange-100 text-orange-800' :
-                              task.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {task.status?.replace('_', ' ') || 'pending'}
-                            </span>
+                      {/* Task Header - Mobile Responsive */}
+                      <div className="p-3 sm:p-4 bg-gray-50 border-b border-gray-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                            <h4 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{task.title}</h4>
+                            <div className="flex flex-wrap gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                task.priority === 'medium' ? 'bg-orange-100 text-orange-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {task.priority} priority
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                task.status === 'submitted' ? 'bg-indigo-100 text-indigo-800' :
+                                task.status === 'under_review' ? 'bg-purple-100 text-purple-800' :
+                                task.status === 'paused' ? 'bg-orange-100 text-orange-800' :
+                                task.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {task.status?.replace('_', ' ') || 'pending'}
+                              </span>
+                            </div>
                           </div>
                           
                           {/* Status Indicator */}
-                          <div className={`w-3 h-3 rounded-full ${
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
                             task.status === 'completed' ? 'bg-green-500' :
                             task.status === 'in_progress' ? 'bg-blue-500' :
                             task.status === 'submitted' ? 'bg-purple-500' :
@@ -3049,8 +3257,8 @@ const TeamManagement = () => {
                           }`}></div>
                         </div>
                         
-                        {/* Task Metadata */}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                        {/* Task Metadata - Mobile Responsive */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-gray-500">
                           <div className="flex items-center gap-1">
                             <i className="fas fa-tag"></i>
                             <span className="capitalize">{task.category}</span>
@@ -3068,32 +3276,32 @@ const TeamManagement = () => {
                         </div>
                       </div>
                       
-                      {/* Task Content */}
-                      <div className="p-4">
+                      {/* Task Content - Mobile Responsive */}
+                      <div className="p-3 sm:p-4">
                         {task.description && (
-                          <p className="text-gray-600 mb-4">{task.description}</p>
+                          <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">{task.description}</p>
                         )}
                         
-                        {/* Submission Section */}
+                        {/* Submission Section - Mobile Responsive */}
                         {task.submission_link && (
-                          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-paperclip text-blue-600"></i>
+                          <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-start gap-2 sm:gap-3">
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-paperclip text-blue-600 text-xs sm:text-sm"></i>
                               </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-blue-800 mb-2">Submitted Work:</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium text-blue-800 mb-2">Submitted Work:</p>
                                 <a
                                   href={task.submission_link}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 underline text-sm font-medium"
+                                  className="inline-flex items-center gap-1 sm:gap-2 text-blue-600 hover:text-blue-800 underline text-xs sm:text-sm font-medium"
                                 >
-                                  <i className="fas fa-external-link-alt"></i>
+                                  <i className="fas fa-external-link-alt text-xs"></i>
                                   View Submission
                                 </a>
                                 {task.submission_notes && (
-                                  <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded border">
+                                  <p className="text-xs sm:text-sm text-gray-600 mt-2 bg-white p-2 rounded border">
                                     <strong>Notes:</strong> {task.submission_notes}
                                   </p>
                                 )}
@@ -3105,11 +3313,11 @@ const TeamManagement = () => {
                               </div>
                             </div>
                             
-                            {/* Review Status */}
+                            {/* Review Status - Mobile Responsive */}
                             {task.review_status && task.review_status !== 'pending' && (
                               <div className="mt-3 pt-3 border-t border-blue-200">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium w-fit ${
                                     task.review_status === 'approved' ? 'bg-green-100 text-green-800' :
                                     task.review_status === 'rejected' ? 'bg-red-100 text-red-800' :
                                     'bg-yellow-100 text-yellow-800'
@@ -3125,7 +3333,7 @@ const TeamManagement = () => {
                                   )}
                                 </div>
                                 {task.review_notes && (
-                                  <p className="text-sm text-gray-700 bg-white p-2 rounded border">
+                                  <p className="text-xs sm:text-sm text-gray-700 bg-white p-2 rounded border">
                                     <strong>Review Notes:</strong> {task.review_notes}
                                   </p>
                                 )}
@@ -3135,57 +3343,57 @@ const TeamManagement = () => {
                         )}
                       </div>
                       
-                      {/* Action Buttons Footer */}
-                      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                      {/* Action Buttons Footer - Mobile Responsive */}
+                      <div className="px-3 sm:px-4 py-3 bg-gray-50 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                          <div className="flex flex-wrap gap-2">
                             {/* Status Messages */}
                             {task.status === 'submitted' && !isTeamLeader() && (
-                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                <i className="fas fa-clock"></i>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-clock text-xs"></i>
                                 Awaiting Review
                               </span>
                             )}
                             
                             {task.status === 'completed' && (
-                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                <i className="fas fa-check-circle"></i>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-check-circle text-xs"></i>
                                 Task Completed
                               </span>
                             )}
                             
                             {task.review_status === 'needs_revision' && (
-                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                                <i className="fas fa-edit"></i>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-edit text-xs"></i>
                                 Needs Revision
                               </span>
                             )}
                             
                             {task.review_status === 'rejected' && (
-                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-                                <i className="fas fa-times-circle"></i>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                <i className="fas fa-times-circle text-xs"></i>
                                 Rejected
                               </span>
                             )}
                           </div>
                           
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-2">
+                          {/* Action Buttons - Mobile Responsive */}
+                          <div className="flex flex-wrap gap-2">
                             {task.status === 'submitted' && isTeamLeader() && (
                               <>
                                 <button
                                   onClick={() => openTaskReviewModal(task)}
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                                  className="inline-flex items-center gap-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium"
                                 >
-                                  <i className="fas fa-eye"></i>
+                                  <i className="fas fa-eye text-xs"></i>
                                   Review
                                 </button>
                                 <button
                                   onClick={() => quickApproveTask(task, 'approved', 'Quick approval by team leader')}
                                   disabled={reviewLoading}
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                                  className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-xs sm:text-sm font-medium"
                                 >
-                                  <i className="fas fa-check"></i>
+                                  <i className="fas fa-check text-xs"></i>
                                   Quick Approve
                                 </button>
                               </>
@@ -3195,9 +3403,9 @@ const TeamManagement = () => {
                               <button
                                 onClick={() => quickApproveTask(task, 'approved', 'Completed by team leader')}
                                 disabled={reviewLoading}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                                className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-xs sm:text-sm font-medium"
                               >
-                                <i className="fas fa-check"></i>
+                                <i className="fas fa-check text-xs"></i>
                                 Mark Complete
                               </button>
                             )}
@@ -3210,20 +3418,21 @@ const TeamManagement = () => {
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                Total: {selectedMemberTasks.tasks.length} task(s) • 
-                Completed: {selectedMemberTasks.tasks.filter(t => t.status === 'completed').length} • 
-                Submitted: {selectedMemberTasks.tasks.filter(t => t.status === 'submitted').length} • 
-                In Progress: {selectedMemberTasks.tasks.filter(t => t.status === 'in_progress').length} • 
-                Pending: {selectedMemberTasks.tasks.filter(t => !t.status || t.status === 'pending').length}
+            {/* Modal Footer - Mobile Responsive */}
+            <div className="bg-gray-50 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+              <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
+                <div className="grid grid-cols-2 sm:block gap-1 sm:gap-0">
+                  <span>Total: {selectedMemberTasks.tasks.length}</span>
+                  <span className="sm:ml-2">Completed: {selectedMemberTasks.tasks.filter(t => t.status === 'completed').length}</span>
+                  <span className="sm:ml-2">Submitted: {selectedMemberTasks.tasks.filter(t => t.status === 'submitted').length}</span>
+                  <span className="sm:ml-2">Pending: {selectedMemberTasks.tasks.filter(t => !t.status || t.status === 'pending').length}</span>
+                </div>
               </div>
               
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowMemberTasksModal(false)}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 sm:flex-none px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm"
                 >
                   Close
                 </button>
@@ -3233,10 +3442,11 @@ const TeamManagement = () => {
                       setShowMemberTasksModal(false);
                       setShowTaskModal(true);
                     }}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                   >
-                    <i className="fas fa-plus mr-2"></i>
-                    Assign New Task
+                    <i className="fas fa-plus mr-1 sm:mr-2 text-xs"></i>
+                    <span className="hidden sm:inline">Assign New Task</span>
+                    <span className="sm:hidden">Add Task</span>
                   </button>
                 )}
               </div>
@@ -3245,24 +3455,24 @@ const TeamManagement = () => {
         </div>
       )}
       
-      {/* Task Review Modal - Enhanced with data consistency checks */}
+      {/* Task Review Modal - Mobile Responsive */}
       {showTaskReviewModal && reviewingTask && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold">Review Task Submission</h3>
-                  <p className="text-purple-100 mt-1 text-lg font-medium">{reviewingTask.title}</p>
-                  <div className="flex items-center gap-6 mt-3 text-sm text-purple-200">
-                    <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-start sm:items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mt-2 sm:mt-0">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold truncate">Review Task Submission</h3>
+                  <p className="text-purple-100 mt-1 text-base sm:text-lg font-medium truncate">{reviewingTask.title}</p>
+                  <div className="flex flex-wrap gap-2 sm:gap-6 mt-3 text-xs sm:text-sm text-purple-200">
+                    <span className="bg-purple-500/30 px-2 py-1 rounded-full">
                       Status: <span className="font-medium">{reviewingTask.status}</span>
                     </span>
-                    <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+                    <span className="bg-purple-500/30 px-2 py-1 rounded-full">
                       Priority: <span className="font-medium">{reviewingTask.priority}</span>
                     </span>
                     {reviewingTask.submitted_at && (
-                      <span className="bg-purple-500/30 px-3 py-1 rounded-full">
+                      <span className="bg-purple-500/30 px-2 py-1 rounded-full">
                         Submitted: <span className="font-medium">{new Date(reviewingTask.submitted_at).toLocaleDateString()}</span>
                       </span>
                     )}
@@ -3272,47 +3482,47 @@ const TeamManagement = () => {
                   onClick={closeTaskReviewModal}
                   className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-purple-500/30 rounded-lg"
                 >
-                  <i className="fas fa-times text-xl"></i>
+                  <i className="fas fa-times text-lg sm:text-xl"></i>
                 </button>
               </div>
             </div>
             
-            <div className="p-6">
-              {/* Task Overview Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="p-4 sm:p-6">
+              {/* Task Overview Section - Mobile Responsive */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* Task Details */}
-                <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                  <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2">
+                <div className="p-4 sm:p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200">
+                  <h4 className="font-bold text-blue-800 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
                     <i className="fas fa-tasks text-blue-600"></i>
                     Task Information
                   </h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 font-medium">Category:</span>
-                      <span className="text-blue-700 font-semibold capitalize">{reviewingTask.category || 'General'}</span>
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium text-sm">Category:</span>
+                      <span className="text-blue-700 font-semibold capitalize text-sm">{reviewingTask.category || 'General'}</span>
                     </div>
                     {reviewingTask.description && reviewingTask.description.trim() && (
                       <div>
-                        <span className="text-gray-600 font-medium block mb-1">Description:</span>
-                        <p className="text-gray-700 text-sm bg-white p-3 rounded-lg border border-blue-100">
+                        <span className="text-gray-600 font-medium block mb-1 text-sm">Description:</span>
+                        <p className="text-gray-700 text-xs sm:text-sm bg-white p-2 sm:p-3 rounded-lg border border-blue-100">
                           {reviewingTask.description}
                         </p>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 font-medium">Created by:</span>
-                      <span className="text-blue-700 font-semibold">{reviewingTask.created_by || 'Unknown'}</span>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium text-sm">Created by:</span>
+                      <span className="text-blue-700 font-semibold text-sm">{reviewingTask.created_by || 'Unknown'}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 font-medium">Created at:</span>
-                      <span className="text-blue-700 text-sm">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium text-sm">Created at:</span>
+                      <span className="text-blue-700 text-xs sm:text-sm">
                         {reviewingTask.created_at ? new Date(reviewingTask.created_at).toLocaleString() : 'Unknown'}
                       </span>
                     </div>
                     {reviewingTask.deadline && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 font-medium">Deadline:</span>
-                        <span className="text-blue-700 text-sm">
+                      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                        <span className="text-gray-600 font-medium text-sm">Deadline:</span>
+                        <span className="text-blue-700 text-xs sm:text-sm">
                           {new Date(reviewingTask.deadline).toLocaleString()}
                         </span>
                       </div>
@@ -3321,15 +3531,15 @@ const TeamManagement = () => {
                 </div>
 
                 {/* Assignment Details */}
-                <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                  <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                <div className="p-4 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg sm:rounded-xl border border-green-200">
+                  <h4 className="font-bold text-green-800 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
                     <i className="fas fa-users text-green-600"></i>
                     Assignment Details
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     <div>
-                      <span className="text-gray-600 font-medium block mb-2">Assigned To:</span>
-                      <div className="flex flex-wrap gap-2">
+                      <span className="text-gray-600 font-medium block mb-2 text-sm">Assigned To:</span>
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
                         {(reviewingTask.assigned_to && reviewingTask.assigned_to.length > 0) ? 
                           reviewingTask.assigned_to.map((enrollment, index) => {
                             // Find the team member name for this enrollment
@@ -3338,28 +3548,28 @@ const TeamManagement = () => {
                             const memberName = teamMember?.name || enrollment;
                             
                             return (
-                              <span key={index} className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                              <span key={index} className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs sm:text-sm font-medium">
                                 {memberName} ({enrollment})
                               </span>
                             );
                           }) : (
-                            <span className="text-gray-500 italic">No specific assignments</span>
+                            <span className="text-gray-500 italic text-sm">No specific assignments</span>
                           )
                         }
                       </div>
                     </div>
                     {reviewingTask.deadline && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 font-medium">Deadline:</span>
-                        <span className="text-green-700 font-semibold">
+                      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                        <span className="text-gray-600 font-medium text-sm">Deadline:</span>
+                        <span className="text-green-700 font-semibold text-sm">
                           {new Date(reviewingTask.deadline).toLocaleDateString()}
                         </span>
                       </div>
                     )}
                     {reviewingTask.submitted_by && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 font-medium">Submitted by:</span>
-                        <span className="text-green-700 font-semibold">
+                      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                        <span className="text-gray-600 font-medium text-sm">Submitted by:</span>
+                        <span className="text-green-700 font-semibold text-sm">
                           {(() => {
                             const submitter = teamRegistration?.members?.find(m => m.enrollment_no === reviewingTask.submitted_by) ||
                                             teamRegistration?.team_leader?.enrollment_no === reviewingTask.submitted_by ? teamRegistration.team_leader : null;
@@ -3372,71 +3582,73 @@ const TeamManagement = () => {
                 </div>
               </div>
 
-              {/* Submission Details - Enhanced Display with Data Validation */}
+              {/* Submission Details - Mobile Responsive */}
               {reviewingTask.status === 'submitted' || reviewingTask.submission_link || reviewingTask.submitted_by ? (
-                <div className="mb-6">
-                  <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div className="mb-4 sm:mb-6">
+                  <h4 className="font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
                     <i className="fas fa-upload text-purple-600"></i>
                     Submission Review
                   </h4>
                   
                   {reviewingTask.submission_link && reviewingTask.submission_link.trim() ? (
-                    <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <i className="fas fa-check-circle text-green-600 text-lg"></i>
+                    <div className="p-4 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg sm:rounded-xl border-2 border-green-200">
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <i className="fas fa-check-circle text-green-600 text-base sm:text-lg"></i>
                         </div>
-                        <div className="flex-1">
-                          <h5 className="font-bold text-green-800 mb-3 text-lg">📎 Submitted Work</h5>
+                        <div className="flex-1 min-w-0">
+                          <h5 className="font-bold text-green-800 mb-2 sm:mb-3 text-base sm:text-lg">📎 Submitted Work</h5>
                           
-                          {/* Submission Link */}
-                          <div className="mb-4">
+                          {/* Submission Link - Mobile Responsive */}
+                          <div className="mb-3 sm:mb-4">
                             <a
                               href={reviewingTask.submission_link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-3 bg-white px-5 py-3 rounded-lg border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-all duration-200 font-medium shadow-sm"
+                              className="inline-flex items-center gap-2 sm:gap-3 bg-white px-3 sm:px-5 py-2 sm:py-3 rounded-lg border-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 transition-all duration-200 font-medium shadow-sm text-sm sm:text-base"
                             >
-                              <i className="fas fa-external-link-alt text-lg"></i>
+                              <i className="fas fa-external-link-alt text-sm sm:text-lg"></i>
                               <span>View Submission</span>
-                              <i className="fas fa-arrow-right text-sm"></i>
+                              <i className="fas fa-arrow-right text-xs sm:text-sm"></i>
                             </a>
-                            <p className="text-sm text-green-600 mt-2 break-all bg-white/70 p-2 rounded border border-green-200">
+                            <p className="text-xs sm:text-sm text-green-600 mt-2 break-all bg-white/70 p-2 rounded border border-green-200">
                               <strong>Link:</strong> {reviewingTask.submission_link}
                             </p>
                           </div>
                           
-                          {/* Submission Notes */}
+                          {/* Submission Notes - Mobile Responsive */}
                           {reviewingTask.submission_notes ? (
-                            <div className="mb-4 p-4 bg-white rounded-lg border border-green-200">
-                              <p className="text-sm font-bold text-green-700 mb-2 flex items-center gap-2">
+                            <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-white rounded-lg border border-green-200">
+                              <p className="text-xs sm:text-sm font-bold text-green-700 mb-2 flex items-center gap-2">
                                 <i className="fas fa-sticky-note"></i>
                                 Submission Notes:
                               </p>
-                              <p className="text-sm text-green-600 leading-relaxed">{reviewingTask.submission_notes}</p>
+                              <p className="text-xs sm:text-sm text-green-600 leading-relaxed">{reviewingTask.submission_notes}</p>
                             </div>
                           ) : (
-                            <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                              <p className="text-sm text-yellow-700 flex items-center gap-2">
+                            <div className="mb-3 sm:mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <p className="text-xs sm:text-sm text-yellow-700 flex items-center gap-2">
                                 <i className="fas fa-info-circle"></i>
                                 No submission notes provided
                               </p>
                             </div>
                           )}
                           
-                          {/* Submission Metadata */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div className="bg-white/70 p-3 rounded-lg border border-green-200">
+                          {/* Submission Metadata - Mobile Responsive */}
+                          <div className="grid grid-cols-1 gap-2 sm:gap-4 text-xs sm:text-sm">
+                            <div className="bg-white/70 p-2 sm:p-3 rounded-lg border border-green-200">
                               <p className="text-green-600 font-medium flex items-center gap-2">
                                 <i className="fas fa-user"></i>
                                 Submitted by: 
                                 <span className="font-bold">{reviewingTask.submitted_by || 'Unknown'}</span>
                               </p>
                             </div>
-                            <div className="bg-white/70 p-3 rounded-lg border border-green-200">
-                              <p className="text-green-600 font-medium flex items-center gap-2">
-                                <i className="fas fa-clock"></i>
-                                Submitted at: 
+                            <div className="bg-white/70 p-2 sm:p-3 rounded-lg border border-green-200">
+                              <p className="text-green-600 font-medium flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                <span className="flex items-center gap-2">
+                                  <i className="fas fa-clock"></i>
+                                  Submitted at:
+                                </span>
                                 <span className="font-bold">
                                   {reviewingTask.submitted_at ? new Date(reviewingTask.submitted_at).toLocaleString() : 'Unknown'}
                                 </span>
@@ -3542,61 +3754,61 @@ const TeamManagement = () => {
                 </div>
               )}
               
-              {/* Review Form - Enhanced for better UX */}
+              {/* Review Form - Mobile Responsive */}
               {(reviewingTask.status === 'submitted' || reviewingTask.status === 'completed' || reviewingTask.submission_link) ? (
-                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-200">
-                  <h4 className="font-bold text-purple-800 mb-4 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border border-purple-200">
+                  <h4 className="font-bold text-purple-800 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
                     <i className="fas fa-gavel text-purple-600"></i>
                     Submit Your Review
                   </h4>
                   
-                  <div className="space-y-5">
+                  <div className="space-y-4 sm:space-y-5">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">
                         Review Decision <span className="text-red-500">*</span>
                       </label>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                         <button
                           onClick={() => setReviewStatus('approved')}
-                          className={`p-4 rounded-lg border-2 transition-all ${
+                          className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                             reviewStatus === 'approved' 
                               ? 'border-green-500 bg-green-50 text-green-800' 
                               : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
                           }`}
                         >
-                          <i className="fas fa-check-circle text-2xl mb-2 block"></i>
-                          <span className="font-semibold">Approved</span>
+                          <i className="fas fa-check-circle text-lg sm:text-2xl mb-1 sm:mb-2 block"></i>
+                          <span className="font-semibold text-sm sm:text-base">Approved</span>
                           <p className="text-xs mt-1">Task Complete</p>
                         </button>
                         <button
                           onClick={() => setReviewStatus('needs_revision')}
-                          className={`p-4 rounded-lg border-2 transition-all ${
+                          className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                             reviewStatus === 'needs_revision' 
                               ? 'border-yellow-500 bg-yellow-50 text-yellow-800' 
                               : 'border-gray-200 bg-white text-gray-600 hover:border-yellow-300'
                           }`}
                         >
-                          <i className="fas fa-edit text-2xl mb-2 block"></i>
-                          <span className="font-semibold">Needs Revision</span>
+                          <i className="fas fa-edit text-lg sm:text-2xl mb-1 sm:mb-2 block"></i>
+                          <span className="font-semibold text-sm sm:text-base">Needs Revision</span>
                           <p className="text-xs mt-1">Require Changes</p>
                         </button>
                         <button
                           onClick={() => setReviewStatus('rejected')}
-                          className={`p-4 rounded-lg border-2 transition-all ${
+                          className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                             reviewStatus === 'rejected' 
                               ? 'border-red-500 bg-red-50 text-red-800' 
                               : 'border-gray-200 bg-white text-gray-600 hover:border-red-300'
                           }`}
                         >
-                          <i className="fas fa-times-circle text-2xl mb-2 block"></i>
-                          <span className="font-semibold">Rejected</span>
+                          <i className="fas fa-times-circle text-lg sm:text-2xl mb-1 sm:mb-2 block"></i>
+                          <span className="font-semibold text-sm sm:text-base">Rejected</span>
                           <p className="text-xs mt-1">Start Over</p>
                         </button>
                       </div>
                     </div>
                   
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-3">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">
                         Review Notes & Feedback
                         {(reviewStatus === 'needs_revision' || reviewStatus === 'rejected') && (
                           <span className="text-red-500 ml-1">*</span>
@@ -3606,8 +3818,8 @@ const TeamManagement = () => {
                         value={reviewNotes}
                         onChange={(e) => setReviewNotes(e.target.value)}
                         placeholder={`Provide detailed feedback for ${reviewStatus}...${reviewStatus === 'approved' ? '\n• What was done well?\n• Any additional comments?' : reviewStatus === 'needs_revision' ? '\n• What needs to be changed?\n• Specific improvements required?' : '\n• Why is this rejected?\n• What needs to be redone?'}`}
-                        rows={5}
-                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
+                        rows={4}
+                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm sm:text-base ${
                           (reviewStatus === 'needs_revision' || reviewStatus === 'rejected') 
                             ? 'border-red-300 bg-red-50' 
                             : 'border-gray-300'
@@ -3624,13 +3836,13 @@ const TeamManagement = () => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <div className="bg-gray-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border border-gray-200">
                   <div className="text-center">
-                    <i className="fas fa-info-circle text-gray-400 text-3xl mb-3"></i>
-                    <p className="text-gray-600 font-medium">
+                    <i className="fas fa-info-circle text-gray-400 text-2xl sm:text-3xl mb-2 sm:mb-3"></i>
+                    <p className="text-gray-600 font-medium text-sm sm:text-base">
                       This task has limited review options.
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">
                       Status: {reviewingTask.status} • {
                         reviewingTask.submission_link ? 
                         'Has submission but status may not be "submitted"' : 
@@ -3641,16 +3853,16 @@ const TeamManagement = () => {
                 </div>
               )}
               
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-                <div className="text-sm text-gray-500">
+              {/* Action Buttons - Mobile Responsive */}
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+                <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
                   <i className="fas fa-info-circle mr-1"></i>
                   Review decisions will notify team members and update task status
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <button
                     onClick={closeTaskReviewModal}
-                    className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
+                    className="flex-1 sm:flex-none px-4 sm:px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium text-sm sm:text-base"
                   >
                     {(reviewingTask.status === 'submitted' || reviewingTask.status === 'completed' || reviewingTask.submission_link) ? 'Cancel' : 'Close'}
                   </button>
@@ -3658,16 +3870,17 @@ const TeamManagement = () => {
                     <button
                       onClick={submitTaskReview}
                       disabled={reviewLoading}
-                      className="px-8 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium shadow-lg"
+                      className="flex-1 sm:flex-none px-6 sm:px-8 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 font-medium shadow-lg text-sm sm:text-base"
                     >
                       {reviewLoading ? (
                         <>
-                          <i className="fas fa-spinner fa-spin"></i>
-                          Submitting Review...
+                          <i className="fas fa-spinner fa-spin text-xs sm:text-sm"></i>
+                          <span className="hidden sm:inline">Submitting Review...</span>
+                          <span className="sm:hidden">Submitting...</span>
                         </>
                       ) : (
                         <>
-                          <i className="fas fa-gavel"></i>
+                          <i className="fas fa-gavel text-xs sm:text-sm"></i>
                           Submit Review
                         </>
                       )}

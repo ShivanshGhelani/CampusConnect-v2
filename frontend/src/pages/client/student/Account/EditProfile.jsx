@@ -334,13 +334,394 @@ function EditProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Edit Profile</h1>
-          <p className="text-lg text-gray-600">Update your personal information and account settings</p>
+    <div className="min-h-screen lg:bg-gradient-to-br lg:from-purple-50 lg:via-white lg:to-blue-50">
+      {/* Mobile/Tablet Layout (Edge-to-edge) */}
+      <div 
+        className="lg:hidden bg-white fixed inset-0 z-10 overflow-y-auto w-full min-h-[100dvh]"
+        style={{ 
+          paddingTop: 'calc(env(safe-area-inset-top) + 104px)', // TopBanner (40px) + Navigation (64px)
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 72px)' // Bottom nav space
+        }}
+      >
+        {/* Mobile Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-4 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <Link 
+              to="/client/profile" 
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-white">Edit Profile</h1>
+              <p className="text-purple-100 text-xs">Update your information</p>
+            </div>
+          </div>
         </div>
+
+        {/* Mobile Form */}
+        <div className="bg-white flex-1 pb-20">
+          <form onSubmit={handleSubmit} className="space-y-0" autoComplete="off"
+                autoCorrect="off" autoCapitalize="off" spellCheck="false">
+            
+            {/* Personal Information Section */}
+            <div className="bg-white border-b border-gray-100">
+              <div className="px-4 py-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Personal Information
+                </h3>
+                <div className="space-y-3">
+                  
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <div className="relative">
+                      <input
+                        id="full_name" 
+                        name="full_name" 
+                        type="text" 
+                        required
+                        placeholder="Enter your full name"
+                        value={formData.full_name}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                    <div className="relative">
+                      <input
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        required
+                        placeholder="Enter your email address"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 ${
+                          validationErrors.email ? 'border-red-300 focus:border-red-500' : 'border-gray-200'
+                        }`}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        {validationLoading.email ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    {validationErrors.email && (
+                      <p className="text-xs text-red-600 mt-1">{validationErrors.email}</p>
+                    )}
+                  </div>
+
+                  {/* Mobile Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number *</label>
+                    <div className="relative">
+                      <input
+                        id="mobile_no" 
+                        name="mobile_no" 
+                        type="tel" 
+                        required 
+                        placeholder="10-digit mobile number"
+                        value={formData.mobile_no}
+                        onChange={handleInputChange}
+                        pattern="[0-9]{10}"
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200 ${
+                          validationErrors.mobile_no ? 'border-red-300 focus:border-red-500' : 'border-gray-200'
+                        }`}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        {validationLoading.mobile_no ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        ) : (
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h5.5a2 2 0 012 2v6.5a1 1 0 01-1 1H10a1 1 0 01-1-1v-1M7 13h5.5a1 1 0 011 1v5.5a2 2 0 01-2 2H4a1 1 0 01-1-1V14a1 1 0 011-1h3z" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    {validationErrors.mobile_no ? (
+                      <p className="text-xs text-red-600 mt-1">{validationErrors.mobile_no}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Your active mobile number for notifications</p>
+                    )}
+                  </div>
+
+                  {/* Gender */}
+                  <Dropdown
+                    label="Gender"
+                    placeholder="Select your gender"
+                    options={GENDER_OPTIONS}
+                    value={formData.gender}
+                    onChange={(value) => setFormData(prev => ({...prev, gender: value}))}
+                    required={true}
+                  />
+
+                  {/* Date of Birth */}
+                  <div>
+                    <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-1">
+                      Date of Birth
+                    </label>
+                    <input 
+                      id="date_of_birth" 
+                      name="date_of_birth" 
+                      type="date"
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                      value={formData.date_of_birth}
+                      onChange={handleInputChange}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Academic Information Section */}
+            <div className="bg-white border-b border-gray-100">
+              <div className="px-4 py-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Academic Information
+                </h3>
+                <div className="space-y-3">
+                  
+                  {/* Enrollment Number (Read-only) */}
+                  <div>
+                    <label htmlFor="enrollment_no" className="block text-sm font-medium text-gray-700 mb-1">
+                      Enrollment Number
+                    </label>
+                    <input 
+                      id="enrollment_no" 
+                      name="enrollment_no" 
+                      type="text"
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                      value={formData.enrollment_no}
+                      readOnly
+                      disabled
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enrollment number cannot be changed</p>
+                  </div>
+
+                  {/* Department */}
+                  <Dropdown
+                    label="Department"
+                    placeholder="Select your department"
+                    options={dropdownOptionsService.getOptions('student', 'departments')}
+                    value={formData.department}
+                    onChange={(value) => setFormData(prev => ({...prev, department: value}))}
+                    searchable={true}
+                    required={true}
+                  />
+
+                  {/* Semester */}
+                  <Dropdown
+                    label="Semester"
+                    placeholder="Select your semester"
+                    options={SEMESTER_OPTIONS}
+                    value={formData.semester}
+                    onChange={(value) => setFormData(prev => ({...prev, semester: value}))}
+                    required={true}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Password Change Section */}
+            <div className="bg-white border-b border-gray-100">
+              <div className="px-4 py-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Change Password
+                </h3>
+                <div className="space-y-3">
+                  
+                  {/* Current Password */}
+                  <div>
+                    <label htmlFor="current_password" className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="current_password" 
+                        name="current_password" 
+                        type={showPassword.current_password ? "text" : "password"}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Enter current password"
+                        value={formData.current_password}
+                        onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => togglePasswordVisibility('current_password')}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.current_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div>
+                    <label htmlFor="new_password" className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="new_password" 
+                        name="new_password" 
+                        type={showPassword.new_password ? "text" : "password"}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Enter new password"
+                        value={formData.new_password}
+                        onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => togglePasswordVisibility('new_password')}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.new_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div>
+                    <label htmlFor="confirm_new_password" className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input 
+                        id="confirm_new_password" 
+                        name="confirm_new_password" 
+                        type={showPassword.confirm_new_password ? "text" : "password"}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                        placeholder="Confirm new password"
+                        value={formData.confirm_new_password}
+                        onChange={handleInputChange}
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => togglePasswordVisibility('confirm_new_password')}
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword.confirm_new_password ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.465 8.465M9.878 9.878l4.242 4.242m0 0L16.5 16.5M14.12 14.12L16.5 16.5m-2.38-2.38a3 3 0 01-4.243-4.243m4.243 4.243L9.878 9.878" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Leave blank to keep current password</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Submit Buttons */}
+            <div className="bg-white px-4 py-4 border-t border-gray-100 sticky bottom-0 z-20">
+              <div className="flex flex-col gap-3">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving Changes...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Save Changes
+                    </>
+                  )}
+                </button>
+                <Link
+                  to="/client/profile"
+                  className="w-full py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium text-center text-sm"
+                >
+                  Cancel
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Desktop Layout */}
+      <div className="hidden lg:block py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Edit Profile</h1>
+            <p className="text-lg text-gray-600">Update your personal information and account settings</p>
+          </div>
 
           {/* Navigation */}
           <div className="mb-6">
@@ -673,7 +1054,7 @@ function EditProfile() {
           </div>
         </div>
       </div>
-
+    </div>
   );
 }
 
