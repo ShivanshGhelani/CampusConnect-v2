@@ -396,7 +396,7 @@ const Venues = () => {
                 value={searchTerm}
                 onChange={(value) => setSearchTerm(value)}
                 showFilters={false}
-                size="md"
+                size="lg"
               />
             </div>
 

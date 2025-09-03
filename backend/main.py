@@ -59,19 +59,20 @@ app.add_middleware(
 # Configure JSON encoder for the entire application
 json._default_encoder = CustomJSONEncoder()
 
-# Add session middleware for student authentication - FIXING COOKIE ISSUE
-print("Configuring session middleware with fixed cookie settings...")
+# Add session middleware for student authentication - FIXED FOR CROSS-ORIGIN
+print("Configuring session middleware for cross-origin requests (Vercel -> ngrok)...")
 
-# Try different session configuration - same_site="none" might be the issue
+# Configure for cross-origin HTTPS requests
 session_secret = os.getenv("SESSION_SECRET_KEY", "development-secret-key-for-cors-debugging")
 print(f"Using session secret (first 10 chars): {session_secret[:10]}...")
+print("Session config: same_site='none', https_only=True (required for cross-origin)")
 
 app.add_middleware(
     SessionMiddleware, 
     secret_key=session_secret,
     max_age=3600,            # 1 hour
-    same_site="lax",         # Changed from "none" - try "lax" for localhost
-    https_only=False,        # Allow HTTP in development
+    same_site="none",        # Required for cross-origin requests (Vercel -> ngrok)
+    https_only=True,         # Required for same_site="none" and ngrok uses HTTPS
 )
 
 # Mount static files

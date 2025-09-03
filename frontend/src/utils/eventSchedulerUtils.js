@@ -667,6 +667,64 @@ export const getSchedulerStatus = () => {
   return globalScheduler.getStatus();
 };
 
+// ==================== APPROVAL STATE MANAGEMENT ====================
+
+/**
+ * Add event to scheduler only if it doesn't require approval
+ * @param {Object} event - Event object
+ * @returns {boolean} True if added, false if skipped
+ */
+export const addEventToSchedulerSafe = (event) => {
+  // Don't add events that require approval and are still pending
+  if (event.approval_required && event.event_approval_status === 'pending_approval') {
+    console.log(`⏸️ Skipping scheduler addition for pending approval event: ${event.event_id}`);
+    return false;
+  }
+  
+  // Add approved events or events that don't require approval
+  try {
+    globalScheduler.addEvent(event);
+    console.log(`✅ Added event ${event.event_id} to scheduler (approved or no approval required)`);
+    return true;
+  } catch (error) {
+    console.warn(`⚠️ Failed to add event ${event.event_id} to scheduler:`, error);
+    return false;
+  }
+};
+
+/**
+ * Handle event approval - add triggers when event is approved
+ * @param {string} eventId - Event ID
+ * @param {Object} approvedEventData - Updated event data after approval
+ */
+export const handleEventApproval = (eventId, approvedEventData) => {
+  try {
+    // Remove any existing triggers (shouldn't be any, but cleanup)
+    globalScheduler.removeEvent(eventId);
+    
+    // Add triggers for the now-approved event
+    globalScheduler.addEvent(approvedEventData);
+    
+    console.log(`✅ Added triggers for approved event: ${eventId}`);
+  } catch (error) {
+    console.error(`❌ Failed to handle approval for event ${eventId}:`, error);
+  }
+};
+
+/**
+ * Handle event decline - ensure no triggers exist
+ * @param {string} eventId - Event ID
+ */
+export const handleEventDecline = (eventId) => {
+  try {
+    // Remove any triggers for declined event
+    globalScheduler.removeEvent(eventId);
+    console.log(`🗑️ Removed triggers for declined event: ${eventId}`);
+  } catch (error) {
+    console.warn(`⚠️ Failed to remove triggers for declined event ${eventId}:`, error);
+  }
+};
+
 // ==================== EXPORT DEFAULT ====================
 
 export default {

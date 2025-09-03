@@ -339,7 +339,7 @@ function Students() {
                 value={searchTerm}
                 onChange={handleSearchChange}
                 showFilters={false}
-                size="md"
+                size="lg"
               />
             </div>
 

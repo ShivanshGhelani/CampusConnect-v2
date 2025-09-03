@@ -12,13 +12,19 @@ function Avatar({ src, size = 'md', name, className = '' }) {
 
   // Memoize initials to prevent recalculation
   const initials = useMemo(() => {
-    if (name) {
-      const names = name.split(' ');
+    if (name && typeof name === 'string' && name.trim()) {
+      const trimmedName = name.trim();
+      const names = trimmedName.split(' ').filter(n => n.length > 0);
+      
       if (names.length > 1) {
+        // First and last name initials
         return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+      } else if (names.length === 1) {
+        // Single name - take first character
+        return names[0][0].toUpperCase();
       }
-      return names[0][0].toUpperCase();
     }
+    // Fallback to 'GU' for Guest User
     return 'GU';
   }, [name]);
 

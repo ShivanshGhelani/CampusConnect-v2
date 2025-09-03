@@ -10,6 +10,7 @@ function App() {
       <NotificationProvider>
         <ToastProvider>
           <div className="App h-full">
+            {console.log("API URL:", import.meta.env.API_URL)}
             <AppRoutes />
           </div>
         </ToastProvider>

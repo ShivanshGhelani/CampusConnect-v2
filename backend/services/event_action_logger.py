@@ -32,10 +32,28 @@ class EventActionLogger:
     ):
         """Log event creation with both audit and status logging"""
         try:
+            # Determine the action type based on approval requirement
+            approval_required = event_data.get("approval_required", False)
+            creation_context = request_metadata.get("creation_context", "direct_creation") if request_metadata else "direct_creation"
+            
+            # Different action descriptions based on context
+            if approval_required and creation_context == "approval_request":
+                action_description = f"Event creation request submitted: {event_name} (requires approval)"
+                action_type = AuditActionType.EVENT_APPROVAL_REQUESTED  # Use specific approval request type
+                severity = AuditSeverity.INFO
+                status_action = "event_creation_request"
+                new_status = f"pending_approval/requires_approval"
+            else:
+                action_description = f"Event created: {event_name}"
+                action_type = AuditActionType.EVENT_CREATED
+                severity = AuditSeverity.INFO
+                status_action = "event_created"
+                new_status = f"{event_data.get('status', 'unknown')}/{event_data.get('sub_status', 'unknown')}"
+            
             # 1. Log to audit_logs for administrative tracking
             await self.audit_service.log_action(
-                action_type=AuditActionType.EVENT_CREATED,
-                action_description=f"Event created: {event_name}",
+                action_type=action_type,
+                action_description=action_description,
                 performed_by_username=created_by_username,
                 performed_by_role=created_by_role,
                 target_type="event",
@@ -49,23 +67,27 @@ class EventActionLogger:
                     "start_datetime": event_data.get("start_datetime").isoformat() if event_data.get("start_datetime") else None,
                     "end_datetime": event_data.get("end_datetime").isoformat() if event_data.get("end_datetime") else None,
                     "status": event_data.get("status"),
+                    "approval_required": approval_required,
                     "mode": event_data.get("mode"),
-                    "venue": event_data.get("venue")
+                    "venue": event_data.get("venue"),
+                    "published": event_data.get("published", False)
                 },
                 metadata={
                     "action_source": "manual",
+                    "creation_context": creation_context,
                     "creation_timestamp": datetime.utcnow().isoformat(),
+                    "approval_workflow_triggered": approval_required,
                     **(request_metadata or {})
                 },
-                severity=AuditSeverity.INFO
+                severity=severity
             )
             
             # 2. Log to event_status_logs for enhanced status tracking
             status_log_entry = {
                 "event_id": event_id,
-                "action_type": "event_created",
+                "action_type": status_action,
                 "old_status": None,
-                "new_status": f"{event_data.get('status', 'unknown')}/{event_data.get('sub_status', 'unknown')}",
+                "new_status": new_status,
                 "trigger_type": "manual_creation",
                 "performed_by": created_by_username,
                 "performed_by_role": created_by_role,
@@ -75,13 +97,19 @@ class EventActionLogger:
                     "event_name": event_name,
                     "event_type": event_data.get("event_type"),
                     "organizing_department": event_data.get("organizing_department"),
-                    "action_source": "admin_portal"
+                    "action_source": "admin_portal",
+                    "creation_context": creation_context,
+                    "approval_required": approval_required,
+                    "auto_approved": not approval_required
                 }
             }
             
             await DatabaseOperations.insert_one(self.status_logs_collection, status_log_entry)
             
-            logger.info(f"✅ Event creation logged: {event_id} by {created_by_username}")
+            if approval_required:
+                logger.info(f"✅ Event creation request logged: {event_id} by {created_by_username} (REQUIRES APPROVAL)")
+            else:
+                logger.info(f"✅ Event creation logged: {event_id} by {created_by_username} (AUTO-APPROVED)")
             
         except Exception as e:
             logger.error(f"❌ Failed to log event creation for {event_id}: {str(e)}")
@@ -288,6 +316,157 @@ class EventActionLogger:
         except Exception as e:
             logger.error(f"❌ Failed to log event cancellation for {event_id}: {str(e)}")
     
+    async def log_event_approved(
+        self, 
+        event_id: str, 
+        event_name: str, 
+        approved_by_username: str, 
+        approved_by_role: str,
+        event_data: Dict[str, Any],
+        approval_timestamp: Optional[datetime] = None,
+        request_metadata: Optional[Dict[str, Any]] = None
+    ):
+        """Log event approval with both audit and status logging"""
+        try:
+            approval_time = approval_timestamp or datetime.utcnow()
+            
+            # 1. Log to audit_logs for administrative tracking
+            await self.audit_service.log_action(
+                action_type=AuditActionType.EVENT_APPROVED,
+                action_description=f"Event approved: {event_name}",
+                performed_by_username=approved_by_username,
+                performed_by_role=approved_by_role,
+                target_type="event",
+                target_id=event_id,
+                target_name=event_name,
+                before_data={
+                    "event_approval_status": "pending_approval",
+                    "published": False,
+                    "approval_required": True
+                },
+                after_data={
+                    "event_approval_status": "approved",
+                    "published": True,
+                    "approval_required": False,
+                    "approved_by": approved_by_username,
+                    "approved_at": approval_time.isoformat()
+                },
+                metadata={
+                    "action_source": "approval_workflow",
+                    "approval_timestamp": approval_time.isoformat(),
+                    "event_type": event_data.get("event_type"),
+                    "organizing_department": event_data.get("organizing_department"),
+                    "event_start_date": event_data.get("start_datetime").isoformat() if event_data.get("start_datetime") else None,
+                    **(request_metadata or {})
+                },
+                severity=AuditSeverity.INFO
+            )
+            
+            # 2. Log to event_status_logs for enhanced status tracking
+            status_log_entry = {
+                "event_id": event_id,
+                "action_type": "event_approved",
+                "old_status": "pending_approval/requires_approval",
+                "new_status": "approved/auto_approved",
+                "trigger_type": "manual_approval",
+                "performed_by": approved_by_username,
+                "performed_by_role": approved_by_role,
+                "timestamp": approval_time,
+                "scheduler_version": "approval_v1",
+                "metadata": {
+                    "event_name": event_name,
+                    "action_source": "approval_workflow",
+                    "approval_process": "admin_portal",
+                    "event_type": event_data.get("event_type"),
+                    "organizing_department": event_data.get("organizing_department"),
+                    "triggers_added": True  # Since approved events get scheduler triggers
+                }
+            }
+            
+            await DatabaseOperations.insert_one(self.status_logs_collection, status_log_entry)
+            
+            logger.info(f"✅ Event approval logged: {event_id} by {approved_by_username}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to log event approval for {event_id}: {str(e)}")
+    
+    async def log_event_declined(
+        self, 
+        event_id: str, 
+        event_name: str, 
+        declined_by_username: str, 
+        declined_by_role: str,
+        event_data: Dict[str, Any],
+        decline_reason: Optional[str] = None,
+        decline_timestamp: Optional[datetime] = None,
+        request_metadata: Optional[Dict[str, Any]] = None
+    ):
+        """Log event decline/rejection with both audit and status logging"""
+        try:
+            decline_time = decline_timestamp or datetime.utcnow()
+            
+            # 1. Log to audit_logs for administrative tracking
+            await self.audit_service.log_action(
+                action_type=AuditActionType.EVENT_REJECTED,
+                action_description=f"Event declined: {event_name}" + (f" (Reason: {decline_reason})" if decline_reason else ""),
+                performed_by_username=declined_by_username,
+                performed_by_role=declined_by_role,
+                target_type="event",
+                target_id=event_id,
+                target_name=event_name,
+                before_data={
+                    "event_approval_status": "pending_approval",
+                    "published": False,
+                    "approval_required": True
+                },
+                after_data={
+                    "event_approval_status": "declined",
+                    "published": False,
+                    "declined_by": declined_by_username,
+                    "declined_at": decline_time.isoformat(),
+                    "decline_reason": decline_reason
+                },
+                metadata={
+                    "action_source": "approval_workflow",
+                    "decline_timestamp": decline_time.isoformat(),
+                    "decline_reason": decline_reason,
+                    "event_type": event_data.get("event_type"),
+                    "organizing_department": event_data.get("organizing_department"),
+                    "will_be_deleted": True,  # Declined events are deleted
+                    **(request_metadata or {})
+                },
+                severity=AuditSeverity.WARNING
+            )
+            
+            # 2. Log to event_status_logs for enhanced status tracking
+            status_log_entry = {
+                "event_id": event_id,
+                "action_type": "event_declined",
+                "old_status": "pending_approval/requires_approval",
+                "new_status": "declined/rejected",
+                "trigger_type": "manual_decline",
+                "performed_by": declined_by_username,
+                "performed_by_role": declined_by_role,
+                "timestamp": decline_time,
+                "scheduler_version": "approval_v1",
+                "metadata": {
+                    "event_name": event_name,
+                    "action_source": "approval_workflow",
+                    "decline_reason": decline_reason,
+                    "approval_process": "admin_portal",
+                    "event_type": event_data.get("event_type"),
+                    "organizing_department": event_data.get("organizing_department"),
+                    "event_deleted": True  # Declined events are removed
+                }
+            }
+            
+            await DatabaseOperations.insert_one(self.status_logs_collection, status_log_entry)
+            
+            logger.info(f"✅ Event decline logged: {event_id} by {declined_by_username} (Reason: {decline_reason})")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to log event decline for {event_id}: {str(e)}")
+
     async def log_status_change(
         self, 
         event_id: str, 

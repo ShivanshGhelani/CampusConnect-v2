@@ -23,6 +23,7 @@ class AuditActionType(str, Enum):
     EVENT_STATUS_CHANGED = "event_status_changed"
     EVENT_APPROVED = "event_approved"
     EVENT_REJECTED = "event_rejected"
+    EVENT_APPROVAL_REQUESTED = "event_approval_requested"
     EVENT_DELETION_REQUESTED = "event_deletion_requested"
     EVENT_DELETION_APPROVED = "event_deletion_approved"
     EVENT_DELETION_REJECTED = "event_deletion_rejected"

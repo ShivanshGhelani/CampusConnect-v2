@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
-import DateTimePicker from '../../components/common/DateTimePicker';
 import DateRangePicker from '../../components/common/DateRangePicker';
-import ClockPicker from '../../components/common/ClockPicker';
 import AttendancePreview from '../../components/AttendancePreview';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
@@ -13,7 +11,6 @@ import MultiSelect from '../../components/ui/MultiSelect';
 import dropdownOptionsService from '../../services/dropdownOptionsService';
 import unifiedStorage from '../../services/unifiedStorage';
 import { addEventToScheduler } from '../../utils/eventSchedulerUtils';
-
 // Helper for step progress
 const steps = [
   'Basic Info',
@@ -198,7 +195,12 @@ function CreateEvent() {
   // Function to save form data to localStorage
   const saveFormToStorage = (formData, step) => {
     try {
-      localStorage.setItem('createEventForm', JSON.stringify(formData));
+      // Include customAttendanceStrategy in the saved data
+      const dataToSave = {
+        ...formData,
+        customAttendanceStrategy: customAttendanceStrategy
+      };
+      localStorage.setItem('createEventForm', JSON.stringify(dataToSave));
       localStorage.setItem('createEventCurrentStep', step.toString());
     } catch (error) {
       console.log('Error saving form to localStorage:', error);
@@ -264,6 +266,7 @@ function CreateEvent() {
     max_participants: '',
     min_participants: '1',
     attendance_mandatory: true,
+    customAttendanceStrategy: null, // Add attendance strategy to form state
     is_certificate_based: false,
     certificate_templates: {},
     event_poster: null,
@@ -375,6 +378,14 @@ function CreateEvent() {
       });
     };
   }, [eventCreatorSession]);
+
+  // Initialize customAttendanceStrategy from localStorage
+  useEffect(() => {
+    const savedForm = loadFormFromStorage();
+    if (savedForm?.customAttendanceStrategy) {
+      setCustomAttendanceStrategy(savedForm.customAttendanceStrategy);
+    }
+  }, []); // Run only once on mount
 
   // Inactivity timer - check every minute for logout
   useEffect(() => {
@@ -610,10 +621,54 @@ function CreateEvent() {
     // For hybrid mode, keep both fields as they're both needed
   }, [form.mode]);
 
+  // Clear student-specific fields when target audience changes away from student
+  useEffect(() => {
+    if (form.target_audience && form.target_audience !== 'student') {
+      setForm(prev => ({
+        ...prev,
+        student_department: [],
+        student_semester: [],
+        custom_text: ''
+      }));
+    }
+    
+    // Reset registration mode to individual when target audience is faculty
+    if (form.target_audience === 'faculty' && form.registration_mode === 'team') {
+      setForm(prev => ({
+        ...prev,
+        registration_mode: 'individual'
+      }));
+    }
+  }, [form.target_audience]);
+
+  // Reset paid/sponsored registration types to free (feature not available yet)
+  useEffect(() => {
+    if (form.registration_type === 'paid' || form.registration_type === 'sponsored') {
+      setForm(prev => ({
+        ...prev,
+        registration_type: 'free'
+      }));
+    }
+  }, [form.registration_type]);
+
   // Save form data to localStorage whenever form or currentStep changes
   useEffect(() => {
     saveFormToStorage(form, currentStep);
   }, [form, currentStep]);
+
+  // Also save when customAttendanceStrategy changes
+  useEffect(() => {
+    if (customAttendanceStrategy !== null) {
+      saveFormToStorage(form, currentStep);
+    }
+  }, [customAttendanceStrategy]);
+
+  // Sync customAttendanceStrategy with form data on load
+  useEffect(() => {
+    if (form.customAttendanceStrategy && !customAttendanceStrategy) {
+      setCustomAttendanceStrategy(form.customAttendanceStrategy);
+    }
+  }, [form.customAttendanceStrategy]);
 
   // Handle checkbox changes with explicit state updates
   const handleCheckboxChange = (name, checked) => {
@@ -630,24 +685,38 @@ function CreateEvent() {
       const allDepartments = dropdownOptionsService.getOptions('student', 'departments').map(opt => opt.value);
       
       if (selectedValues.includes('all')) {
-        // If "All" is selected, select all departments except "all"
-        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
-          ? allDepartments 
-          : selectedValues.filter(val => val !== 'all');
-        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+        // Check if all departments are already selected (to implement toggle behavior)
+        const currentValues = form[fieldName] || [];
+        const allCurrentlySelected = allDepartments.every(dept => currentValues.includes(dept));
+        
+        if (allCurrentlySelected) {
+          // If all departments are already selected and user clicked "All" again, deselect all
+          setForm(prev => ({ ...prev, [fieldName]: [] }));
+        } else {
+          // If not all departments are selected, select all departments
+          setForm(prev => ({ ...prev, [fieldName]: allDepartments }));
+        }
       } else {
+        // Normal selection without "all" option
         setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
       }
     } else if (fieldName === 'student_semester') {
       const allSemesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
       
       if (selectedValues.includes('all')) {
-        // If "All" is selected, select all semesters except "all"
-        const newValues = selectedValues.includes('all') && selectedValues.length === 1 
-          ? allSemesters 
-          : selectedValues.filter(val => val !== 'all');
-        setForm(prev => ({ ...prev, [fieldName]: newValues }));
+        // Check if all semesters are already selected (to implement toggle behavior)
+        const currentValues = form[fieldName] || [];
+        const allCurrentlySelected = allSemesters.every(sem => currentValues.includes(sem));
+        
+        if (allCurrentlySelected) {
+          // If all semesters are already selected and user clicked "All" again, deselect all
+          setForm(prev => ({ ...prev, [fieldName]: [] }));
+        } else {
+          // If not all semesters are selected, select all semesters
+          setForm(prev => ({ ...prev, [fieldName]: allSemesters }));
+        }
       } else {
+        // Normal selection without "all" option
         setForm(prev => ({ ...prev, [fieldName]: selectedValues }));
       }
     } else {
@@ -949,6 +1018,21 @@ function CreateEvent() {
     const isValid = Object.keys(stepErrors).length === 0;
     return isValid;
   };
+
+  // Handle attendance strategy changes
+  const handleAttendanceStrategyChange = (strategy) => {
+    setCustomAttendanceStrategy(strategy);
+    // Also update the form state for persistence
+    setForm(prev => ({
+      ...prev,
+      customAttendanceStrategy: strategy
+    }));
+  };
+
+  // Handle custom data changes from AttendancePreview
+  const handleCustomDataChange = useCallback((customData) => {
+    setCustomAttendanceStrategy(customData);
+  }, []);
 
   // Navigation with validation
   const nextStep = () => {
@@ -1843,13 +1927,14 @@ function CreateEvent() {
         event_name: form.event_name,
         event_type: form.event_type,
         target_audience: form.target_audience,
-        student_department: Array.isArray(form.student_department) && form.student_department.length > 0 
-          ? form.student_department 
+        // Only include student fields if target audience is 'student'
+        student_department: form.target_audience === 'student' && Array.isArray(form.student_department) && form.student_department.length > 0 
+          ? form.student_department.filter(dept => dept !== 'all') // Filter out 'all' option
           : null,
-        student_semester: Array.isArray(form.student_semester) && form.student_semester.length > 0 
-          ? form.student_semester 
+        student_semester: form.target_audience === 'student' && Array.isArray(form.student_semester) && form.student_semester.length > 0 
+          ? form.student_semester.filter(sem => sem !== 'all') // Filter out 'all' option
           : null,
-        custom_text: form.custom_text || null,
+        custom_text: form.target_audience === 'student' ? (form.custom_text || null) : null,
         is_xenesis_event: form.event_type === 'xenesis' || form.is_xenesis_event,
         short_description: form.short_description,
         detailed_description: form.detailed_description,
@@ -1936,13 +2021,27 @@ function CreateEvent() {
       const response = await adminAPI.createEvent(eventData);
 
       if (response.data && response.data.success) {
-        // Add event to client-side scheduler
-        try {
-          addEventToScheduler(eventData);
-          console.log('✅ Added event to client scheduler');
-        } catch (schedulerError) {
-          console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
-          // Don't fail the creation process
+        // Determine if approval is pending based on user role
+        let pendingApproval;
+        if (user?.role === 'super_admin') {
+          pendingApproval = false;
+        } else if (user?.role === 'organizer_admin') {
+          pendingApproval = false;
+        } else {
+          pendingApproval = true;
+        }
+
+        // Add event to client-side scheduler only if no approval required
+        if (!pendingApproval && (user?.role === 'super_admin' || user?.role === 'organizer_admin')) {
+          try {
+            addEventToScheduler(eventData);
+            console.log('✅ Added event to client scheduler (no approval required)');
+          } catch (schedulerError) {
+            console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
+            // Don't fail the creation process
+          }
+        } else {
+          console.log('⏸️ Event requires approval - not adding to client scheduler yet');
         }
 
         // Clear the session after successful event creation
@@ -1951,20 +2050,16 @@ function CreateEvent() {
         }
 
         let successMessage;
-        let pendingApproval;
 
         // Different messages based on user role - all go to success page
         if (user?.role === 'super_admin') {
           successMessage = 'Event created and activated successfully! Faculty organizers have been assigned.';
-          pendingApproval = false;
         } else if (user?.role === 'organizer_admin') {
           successMessage = 'Event created successfully! You have been assigned as the primary organizer.';
-          pendingApproval = false;
         } else {
           successMessage = user.role === 'executive_admin'
             ? 'Event Request Sent Successfully!'
             : 'Event created successfully! It is pending Super Admin approval.';
-          pendingApproval = true;
         }
 
         // All users go to the success page with different states
@@ -2170,7 +2265,7 @@ function CreateEvent() {
                       error={errors.student_department}
                       helperText="Select one or more departments (e.g., CSE, IT, ECE)"
                       searchable={true}
-                      showSelectAll={true}
+                      showSelectAll={false}
                       required={true}
                     />
                     {errors.student_department && <p className="text-xs text-red-600 mt-1">{errors.student_department}</p>}
@@ -2196,7 +2291,7 @@ function CreateEvent() {
                       error={errors.student_semester}
                       helperText="Select one or more semesters (e.g., 3, 4, 5)"
                       searchable={false}
-                      showSelectAll={true}
+                      showSelectAll={false}
                       required={true}
                     />
                     {errors.student_semester && <p className="text-xs text-red-600 mt-1">{errors.student_semester}</p>}
@@ -2529,8 +2624,8 @@ function CreateEvent() {
                       <Dropdown
                         options={[
                           { value: "free", label: "Free Registration" },
-                          { value: "paid", label: "Paid Registration" },
-                          { value: "sponsored", label: "Sponsored Event" }
+                          { value: "paid", label: "Paid Registration (Feature coming soon)", disabled: true },
+                          { value: "sponsored", label: "Sponsored Event (Feature coming soon)", disabled: true }
                         ]}
                         value={form.registration_type}
                         onChange={(value) => handleChange({ target: { name: 'registration_type', value } })}
@@ -2538,7 +2633,7 @@ function CreateEvent() {
                         required
                         error={errors.registration_type}
                       />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether the event is free, paid, or sponsored</p>
+                      <p className="helper-text text-xs text-gray-500 mt-1">Currently only free registration is available. Paid and sponsored options coming soon.</p>
                       {errors.registration_type && <p className="text-xs text-red-500">{errors.registration_type}</p>}
                     </div>
                     <div>
@@ -2546,7 +2641,11 @@ function CreateEvent() {
                       <Dropdown
                         options={[
                           { value: "individual", label: "Individual Registration" },
-                          { value: "team", label: "Team Registration" }
+                          { 
+                            value: "team", 
+                            label: form.target_audience === 'faculty' ? "Team Registration (Not available)" : "Team Registration",
+                            disabled: form.target_audience === 'faculty'
+                          }
                         ]}
                         value={form.registration_mode}
                         onChange={(value) => handleChange({ target: { name: 'registration_mode', value } })}
@@ -2554,7 +2653,12 @@ function CreateEvent() {
                         required
                         error={errors.registration_mode}
                       />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether participants register individually or as teams</p>
+                      <p className="helper-text text-xs text-gray-500 mt-1">
+                        {form.target_audience === 'faculty' 
+                          ? 'Faculty events support individual registration only'
+                          : 'Choose whether participants register individually or as teams'
+                        }
+                      </p>
                       {errors.registration_mode && <p className="text-xs text-red-500">{errors.registration_mode}</p>}
                     </div>
                   </div>
@@ -3079,10 +3183,13 @@ function CreateEvent() {
                     </h3>
 
                     <AttendancePreview
+                      key="attendance-preview"
                       eventData={form}
-                      onStrategyChange={setCustomAttendanceStrategy}
+                      onStrategyChange={handleAttendanceStrategyChange}
                       showCustomization={showAttendanceCustomization}
                       onToggleCustomization={() => setShowAttendanceCustomization(!showAttendanceCustomization)}
+                      initialCustomData={customAttendanceStrategy}
+                      onCustomDataChange={handleCustomDataChange}
                     />
                   </>
                 )}

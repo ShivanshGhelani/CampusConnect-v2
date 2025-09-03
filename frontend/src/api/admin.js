@@ -27,8 +27,51 @@ export const adminAPI = {
   getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
   
   // Event Approval Management
-  approveEvent: (eventId) => api.post(`/api/v1/admin/events/approve/${eventId}`),
-  declineEvent: (eventId, declineData) => api.post(`/api/v1/admin/events/decline/${eventId}`, declineData),
+  approveEvent: async (eventId) => {
+    const response = await api.post(`/api/v1/admin/events/approve/${eventId}`);
+    
+    // If approval successful, handle client-side trigger addition
+    if (response.data.success) {
+      try {
+        // Use event data from approval response if available, otherwise fetch
+        const eventData = response.data.event;
+        if (eventData) {
+          // Use the event data directly from approval response
+          const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
+          handleEventApproval(eventId, eventData);
+          console.log('✅ Client scheduler updated with approved event data:', eventId);
+        } else {
+          // Fallback: fetch event data separately
+          const eventResponse = await adminAPI.getEvent(eventId);
+          if (eventResponse.data.success) {
+            const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
+            handleEventApproval(eventId, eventResponse.data.event);
+            console.log('✅ Client scheduler updated after fetching event data:', eventId);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to update client scheduler after approval:', error);
+      }
+    }
+    
+    return response;
+  },
+  
+  declineEvent: async (eventId, declineData) => {
+    const response = await api.post(`/api/v1/admin/events/decline/${eventId}`, declineData);
+    
+    // If decline successful, handle client-side trigger removal
+    if (response.data.success) {
+      try {
+        const { handleEventDecline } = await import('../utils/eventSchedulerUtils.js');
+        handleEventDecline(eventId);
+      } catch (error) {
+        console.warn('Failed to update client scheduler after decline:', error);
+      }
+    }
+    
+    return response;
+  },
   
   // User Management - CONSOLIDATED
   getUsers: (filters) => api.get('/api/v1/admin/users/list', { params: filters }),

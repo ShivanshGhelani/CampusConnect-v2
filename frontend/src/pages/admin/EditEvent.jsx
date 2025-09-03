@@ -1860,8 +1860,12 @@ function EditEvent() {
                         placeholder="Select event duration"
                         className="w-full"
                         theme="purple"
-                        minDate={formData.registration_start_date ? (() => {
-                          const [year, month, day] = formData.registration_start_date.split('-');
+                        constrainToRegistration={true}
+                        registrationEndDate={formData.registration_end_date}
+                        registrationEndTime={formData.registration_end_time}
+                        minDate={formData.registration_end_date || formData.registration_start_date ? (() => {
+                          const targetDate = formData.registration_end_date || formData.registration_start_date;
+                          const [year, month, day] = targetDate.split('-');
                           return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                         })() : null}
                       />
@@ -2382,15 +2386,15 @@ function EditEvent() {
                     singleDate={true}
                     description="After this date, certificates will no longer be downloadable"
                     theme="purple"
-                    minDate={formData.start_date ? (() => {
+                    minDate={formData.end_date ? (() => {
                       try {
-                        const [year, month, day] = formData.start_date.split('-');
+                        const [year, month, day] = formData.end_date.split('-');
                         return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                       } catch (error) {
-                        console.error('Error parsing start date for minDate:', error);
-                        return null;
+                        console.error('Error parsing end date for minDate:', error);
+                        return new Date(); // Fallback to today
                       }
-                    })() : null}
+                    })() : new Date()}
                   />
 
                   <p className="text-sm text-purple-800 mt-5">

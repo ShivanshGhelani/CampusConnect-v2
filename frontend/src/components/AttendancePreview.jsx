@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Users, Target, AlertTriangle, CheckCircle, Settings, Edit3, Plus, Trash2, Save, RotateCcw, Copy, Move, ChevronDown, ChevronRight, Zap, Award, Eye, Lightbulb } from 'lucide-react';
 import { adminAPI } from '../api/admin';
@@ -7,7 +7,9 @@ const AttendancePreview = ({
   eventData, 
   onStrategyChange, 
   showCustomization = false,
-  onToggleCustomization 
+  onToggleCustomization,
+  initialCustomData = null,
+  onCustomDataChange = null // Callback to notify parent of internal changes
 }) => {
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -24,12 +26,14 @@ const AttendancePreview = ({
   const [customSessions, setCustomSessions] = useState([]);
   const [customCriteria, setCustomCriteria] = useState({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasCustomWork, setHasCustomWork] = useState(false); // Track if user has done custom work
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [draggedSession, setDraggedSession] = useState(null);
   const [hoveredSession, setHoveredSession] = useState(null);
   const [expandedSessions, setExpandedSessions] = useState(new Set());
   const [showPresets, setShowPresets] = useState(false);
   const [animatingChanges, setAnimatingChanges] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // Track initialization state
 
   // Available strategies for customization
   const availableStrategies = [
@@ -40,20 +44,79 @@ const AttendancePreview = ({
     { value: 'continuous', label: 'Continuous Monitoring', description: 'Regular progress checks' }
   ];
 
+  // Initialize with saved custom data from localStorage
+  useEffect(() => {
+    if (initialCustomData) {
+      if (initialCustomData.strategy) {
+        setCustomStrategy(initialCustomData.strategy);
+        setHasCustomWork(true);
+      }
+      
+      if (initialCustomData.sessions && initialCustomData.sessions.length > 0) {
+        setCustomSessions(initialCustomData.sessions);
+        setHasCustomWork(true);
+      }
+      
+      if (initialCustomData.criteria) {
+        setCustomCriteria(initialCustomData.criteria);
+        setHasCustomWork(true);
+      }
+      
+      if (initialCustomData.validationData) {
+        setValidationData(initialCustomData.validationData);
+      }
+      
+      if (initialCustomData.previewData) {
+        setPreviewData(initialCustomData.previewData);
+      }
+      
+      // Mark as having unsaved changes if there were modifications
+      if (initialCustomData.hasUnsavedChanges) {
+        setHasUnsavedChanges(true);
+      }
+    }
+    
+    // Set initialization complete after a brief delay to allow all state to settle
+    setTimeout(() => setIsInitializing(false), 100);
+  }, [initialCustomData]);
+
   // Generate preview when event data changes
   useEffect(() => {
-    if (eventData.event_name && eventData.event_type && eventData.start_date && eventData.start_time && eventData.end_date && eventData.end_time) {
+    // Only auto-generate preview if:
+    // 1. We don't have existing preview data
+    // 2. User hasn't done custom work that we should preserve
+    // 3. All required fields are present
+    // 4. No initial custom data provided
+    // 5. Not currently initializing
+    // 6. No custom sessions already exist
+    if (!previewData && 
+        !hasCustomWork &&
+        !initialCustomData && // Don't auto-generate if we have initial custom data
+        !isInitializing && // Don't auto-generate during initialization
+        customSessions.length === 0 && // Don't auto-generate if we have custom sessions
+        eventData.event_name && 
+        eventData.event_type && 
+        eventData.start_date && 
+        eventData.start_time && 
+        eventData.end_date && 
+        eventData.end_time) {
       generatePreview();
     }
-  }, [eventData.event_name, eventData.event_type, eventData.start_date, eventData.start_time, eventData.end_date, eventData.end_time, eventData.detailed_description, eventData.registration_mode]);
+  }, [eventData.event_name, eventData.event_type, eventData.start_date, eventData.start_time, eventData.end_date, eventData.end_time, eventData.detailed_description, eventData.registration_mode, hasCustomWork, isInitializing, customSessions.length]);
 
   // Validate custom strategy when it changes
   useEffect(() => {
-    if (customStrategy && eventData.start_date && eventData.start_time && eventData.end_date && eventData.end_time) {
-      // Always validate when customStrategy changes, regardless of whether it's the detected strategy
+    if (customStrategy && 
+        eventData.start_date && 
+        eventData.start_time && 
+        eventData.end_date && 
+        eventData.end_time &&
+        !isInitializing && // Don't validate during initialization
+        customSessions.length === 0) { // Only validate if we don't have custom sessions already
+      // Only validate when customStrategy changes and we don't have existing custom sessions
       validateCustomStrategy();
     }
-  }, [customStrategy]);
+  }, [customStrategy, isInitializing, customSessions.length]);
 
   // Check for missing required fields
   const missingFields = useMemo(() => {
@@ -65,7 +128,7 @@ const AttendancePreview = ({
     return missing;
   }, [eventData.registration_mode, eventData.event_type, eventData.start_date, eventData.start_time, eventData.end_date, eventData.end_time]);
 
-  const generatePreview = async () => {
+  const generatePreview = async (forceRegenerate = false) => {
     if (!eventData.start_date || !eventData.start_time || !eventData.end_date || !eventData.end_time) {
       return;
     }
@@ -91,6 +154,12 @@ const AttendancePreview = ({
       const response = await adminAPI.previewAttendanceStrategy(requestData);
       const data = response.data;
       setPreviewData(data);
+      
+      // If force regenerate, reset custom work flag
+      if (forceRegenerate) {
+        setHasCustomWork(false);
+        setHasUnsavedChanges(false);
+      }
       
       // Initialize custom strategy with detected strategy and notify parent
       if (data.success && data.detected_strategy) {
@@ -195,6 +264,7 @@ const AttendancePreview = ({
     
     // Update the custom strategy state
     setCustomStrategy(newStrategy);
+    setHasCustomWork(true); // Mark that user has made a custom strategy choice
     
     // Always trigger validation to get new sessions for the selected strategy
     // This will generate appropriate sessions based on the strategy type
@@ -271,6 +341,7 @@ const AttendancePreview = ({
       )
     );
     setHasUnsavedChanges(true);
+    setHasCustomWork(true); // Mark that user has done custom work
     
     // Auto-calculate duration if start/end time changes
     if (field === 'start_time' || field === 'end_time') {
@@ -321,6 +392,7 @@ const AttendancePreview = ({
 
     setCustomSessions(newSessions);
     setHasUnsavedChanges(true);
+    setHasCustomWork(true); // Mark that user has done custom work
     setShowPresets(false);
     setAnimatingChanges(true);
     setTimeout(() => setAnimatingChanges(false), 500);
@@ -404,6 +476,7 @@ const AttendancePreview = ({
     
     setCustomSessions([...customSessions, newSession]);
     setHasUnsavedChanges(true);
+    setHasCustomWork(true); // Mark that user has done custom work
     setEditingSessionId(newSession.session_id);
     setExpandedSessions(prev => new Set([...prev, newSession.session_id]));
     setAnimatingChanges(true);
@@ -433,6 +506,7 @@ const AttendancePreview = ({
         prevSessions.filter(session => session.session_id !== sessionId)
       );
       setHasUnsavedChanges(true);
+      setHasCustomWork(true); // Mark that user has done custom work
       
       if (editingSessionId === sessionId) {
         setEditingSessionId(null);
@@ -479,6 +553,7 @@ const AttendancePreview = ({
         setCustomCriteria({ ...previewData.criteria });
       }
       setHasUnsavedChanges(false);
+      setHasCustomWork(false); // Reset custom work flag
       setEditingSessionId(null);
       setExpandedSessions(new Set());
       setSuccess('✨ Reset to default configuration');
@@ -577,6 +652,78 @@ const AttendancePreview = ({
     }
   }, [validationData, previewData]);
 
+  // Check if we have custom work when sessions or criteria change
+  useEffect(() => {
+    if (customSessions.length > 0 && previewData?.sessions) {
+      // Compare sessions to see if there are differences
+      const hasSessionDifferences = customSessions.some((customSession, index) => {
+        const originalSession = previewData.sessions[index];
+        if (!originalSession) return true; // New session added
+        
+        return (
+          customSession.session_name !== originalSession.session_name ||
+          customSession.is_mandatory !== originalSession.is_mandatory ||
+          customSession.weight !== originalSession.weight ||
+          Math.abs(new Date(customSession.start_time) - new Date(originalSession.start_time)) > 60000 || // More than 1 minute difference
+          Math.abs(new Date(customSession.end_time) - new Date(originalSession.end_time)) > 60000
+        );
+      });
+      
+      if (hasSessionDifferences || customSessions.length !== previewData.sessions.length) {
+        setHasCustomWork(true);
+      }
+    }
+  }, [customSessions, customCriteria, previewData]);
+
+  // Notify parent component when custom data changes
+  const previousCustomDataRef = useRef();
+  const notificationTimeoutRef = useRef();
+  
+  useEffect(() => {
+    // Don't notify during initialization
+    if (isInitializing) return;
+    
+    if (onCustomDataChange && (hasCustomWork || hasUnsavedChanges)) {
+      // Clear any pending notification
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+      
+      // Debounce the notification to prevent rapid updates
+      notificationTimeoutRef.current = setTimeout(() => {
+        const customData = {
+          strategy: customStrategy,
+          sessions: customSessions,
+          criteria: customCriteria,
+          hasUnsavedChanges,
+          hasCustomWork,
+          validationData,
+          previewData
+        };
+        
+        // Only notify if the data has actually changed
+        const previousData = previousCustomDataRef.current;
+        if (!previousData || 
+            previousData.strategy !== customData.strategy ||
+            previousData.hasUnsavedChanges !== customData.hasUnsavedChanges ||
+            previousData.hasCustomWork !== customData.hasCustomWork ||
+            previousData.sessions?.length !== customData.sessions?.length ||
+            Object.keys(previousData.criteria || {}).length !== Object.keys(customData.criteria || {}).length) {
+          
+          previousCustomDataRef.current = customData;
+          onCustomDataChange(customData);
+        }
+      }, 100); // 100ms debounce
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, [customStrategy, customSessions, customCriteria, hasUnsavedChanges, hasCustomWork, validationData, previewData, isInitializing]);
+
   const getStrategyIcon = (strategy) => {
     const icons = {
       'single_mark': <CheckCircle className="w-5 h-5" />,
@@ -651,11 +798,13 @@ const AttendancePreview = ({
     );
   }
 
-  if (!previewData?.success) {
+  // Check if we have data to show
+  if (!previewData?.success && !validationData?.success && !hasCustomWork && customSessions.length === 0) {
     return null;
   }
 
-  const data = previewData;
+  // Use the most relevant data source
+  const data = previewData || validationData || {};
   
   // Determine current data to display based on state
   const currentData = (() => {
@@ -671,8 +820,20 @@ const AttendancePreview = ({
       };
     }
     
+    // If we have custom sessions but no validation data, create a basic structure
+    if (customSessions.length > 0 && (!validationData || !validationData.success)) {
+      return {
+        type: customStrategy || 'session_based',
+        name: `Custom ${(customStrategy || 'session_based').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Strategy`,
+        description: 'User-customized attendance strategy',
+        sessions: customSessions,
+        criteria: customCriteria || {},
+        recommendations: []
+      };
+    }
+    
     // If no validation data but we have a custom strategy selected that differs from detected
-    if (customStrategy && customStrategy !== data.detected_strategy?.type) {
+    if (customStrategy && data?.detected_strategy && customStrategy !== data.detected_strategy?.type) {
       // Show loading state or basic info while waiting for validation
       return {
         type: customStrategy,
@@ -686,12 +847,12 @@ const AttendancePreview = ({
     
     // Otherwise, use original detected strategy data
     return {
-      type: data.detected_strategy?.type,
-      name: data.detected_strategy?.name,
-      description: data.detected_strategy?.description,
-      sessions: data.sessions || [],
-      criteria: data.criteria || {},
-      recommendations: data.recommendations || []
+      type: data?.detected_strategy?.type,
+      name: data?.detected_strategy?.name,
+      description: data?.detected_strategy?.description,
+      sessions: data?.sessions || [],
+      criteria: data?.criteria || {},
+      recommendations: data?.recommendations || []
     };
   })();
 
@@ -715,11 +876,35 @@ const AttendancePreview = ({
               {hasUnsavedChanges && (
                 <span className="ml-2 text-amber-600 font-medium">• Unsaved changes</span>
               )}
+              {hasCustomWork && (
+                <span className="ml-2 text-blue-600 font-medium">• Custom configuration</span>
+              )}
             </p>
           </div>
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Refresh Preview Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (hasCustomWork || hasUnsavedChanges) {
+                if (confirm('This will regenerate the attendance strategy and reset all your customizations. Are you sure?')) {
+                  generatePreview(true);
+                }
+              } else {
+                generatePreview(true);
+              }
+            }}
+            disabled={loading}
+            className="flex items-center space-x-1 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh attendance strategy preview"
+          >
+            <svg className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
           {hasUnsavedChanges && (
             <>
               <button
