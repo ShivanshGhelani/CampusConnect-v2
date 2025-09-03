@@ -1,0 +1,3908 @@
+Total API Endpoints: 189
+
+============================================================
+ENDPOINT 1
+Method: GET
+Path: /api/v1/registrations/status/{event_id}
+Category/Tags: api-v1, event-registrations-api, registrations
+Summary: Get Registration Status
+Description: Get registration status for current student
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 2
+Method: POST
+Path: /api/v1/registrations/attendance/{event_id}/mark
+Category/Tags: api-v1, event-registrations-api, registrations
+Summary: Mark Attendance
+Description: Mark attendance for current student
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Attendance Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 3
+Method: GET
+Path: /api/v1/registrations/event/{event_id}/registrations
+Category/Tags: api-v1, event-registrations-api, registrations
+Summary: Get Event Registrations
+Description: Get all registrations for an event (admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 4
+Method: GET
+Path: /api/v1/registrations/event/{event_id}/recent
+Category/Tags: api-v1, event-registrations-api, registrations
+Summary: Get Recent Registrations
+Description: Get recent registrations for an event (public endpoint for EventDetail.jsx)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 5
+Method: POST
+Path: /api/v1/storage/upload/event-files
+Category/Tags: Storage
+Summary: Upload Event Files
+Description: Upload event-related files (posters, certificates) to campusconnect-event-data bucket
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_event_files_api_v1_storage_upload_event_files_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 6
+Method: POST
+Path: /api/v1/storage/upload/avatar
+Category/Tags: Storage
+Summary: Upload Avatar
+Description: Upload user avatar to campusconnect bucket
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_avatar_api_v1_storage_upload_avatar_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 7
+Method: POST
+Path: /api/v1/storage/upload/certificate-template
+Category/Tags: Storage
+Summary: Upload Certificate Template
+Description: Upload certificate template to campusconnect bucket
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_certificate_template_api_v1_storage_upload_certificate_template_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 8
+Method: POST
+Path: /api/v1/storage/upload/asset
+Category/Tags: Storage
+Summary: Upload Asset
+Description: Upload college assets (logos, signatures) to campusconnect-assets-private bucket
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_asset_api_v1_storage_upload_asset_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 9
+Method: DELETE
+Path: /api/v1/storage/delete/event-files/{event_id}
+Category/Tags: Storage
+Summary: Delete Event Files
+Description: Delete all files for an event from campusconnect-event-data bucket
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 10
+Method: DELETE
+Path: /api/v1/storage/delete/event-specific-files/{event_id}
+Category/Tags: Storage
+Summary: Delete Specific Event Files
+Description: Delete specific file types for an event from campusconnect-event-data bucket
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: file_types
+    In: query
+    Required: True
+    Type: string
+    Description: Comma-separated list of file types to delete (e.g., 'event_poster,Certificate of Participation')
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 11
+Method: DELETE
+Path: /api/v1/storage/delete/avatar
+Category/Tags: Storage
+Summary: Delete Avatar Endpoint
+Description: Delete user avatar from campusconnect bucket
+Request Body:
+  MIME Type: application/x-www-form-urlencoded
+  Schema: {
+    "$ref": "#/components/schemas/Body_delete_avatar_endpoint_api_v1_storage_delete_avatar_delete"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 12
+Method: DELETE
+Path: /api/v1/storage/delete/asset
+Category/Tags: Storage
+Summary: Delete Asset Endpoint
+Description: Delete college asset from campusconnect-assets-private bucket
+Request Body:
+  MIME Type: application/x-www-form-urlencoded
+  Schema: {
+    "$ref": "#/components/schemas/Body_delete_asset_endpoint_api_v1_storage_delete_asset_delete"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 13
+Method: GET
+Path: /api/v1/auth/admin/status
+Category/Tags: api-v1, auth-api
+Summary: Get Admin Status
+Description: Legacy admin status endpoint (backwards compatibility)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 14
+Method: GET
+Path: /api/v1/auth/student/status
+Category/Tags: api-v1, auth-api
+Summary: Get Student Status
+Description: Legacy student status endpoint (backwards compatibility)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 15
+Method: GET
+Path: /api/v1/auth/faculty/status
+Category/Tags: api-v1, auth-api
+Summary: Get Faculty Status
+Description: Legacy faculty status endpoint (backwards compatibility)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 16
+Method: POST
+Path: /api/v1/auth/admin/login
+Category/Tags: api-v1, auth-api
+Summary: Admin Login Api
+Description: API endpoint for admin login with token-based authentication
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/AdminLoginRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 17
+Method: POST
+Path: /api/v1/auth/admin/logout
+Category/Tags: api-v1, auth-api
+Summary: Admin Logout Api
+Description: API endpoint for admin logout with token cleanup
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 18
+Method: POST
+Path: /api/v1/auth/student/login
+Category/Tags: api-v1, auth-api
+Summary: Student Login Api
+Description: API endpoint for student login with token-based authentication
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/StudentLoginRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 19
+Method: POST
+Path: /api/v1/auth/faculty/login
+Category/Tags: api-v1, auth-api
+Summary: Faculty Login Api
+Description: API endpoint for faculty login with token-based authentication
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/FacultyLoginRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 20
+Method: POST
+Path: /api/v1/auth/student/logout
+Category/Tags: api-v1, auth-api
+Summary: Student Logout Api
+Description: API endpoint for student logout with token cleanup
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 21
+Method: POST
+Path: /api/v1/auth/faculty/logout
+Category/Tags: api-v1, auth-api
+Summary: Faculty Logout Api
+Description: API endpoint for faculty logout with token cleanup
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 22
+Method: POST
+Path: /api/v1/auth/refresh-token
+Category/Tags: api-v1, auth-api
+Summary: Refresh Token Api
+Description: API endpoint to refresh access token using refresh token
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/RefreshTokenRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 23
+Method: POST
+Path: /api/v1/auth/student/register
+Category/Tags: api-v1, auth-api
+Summary: Student Register Api
+Description: API endpoint for student registration
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/StudentRegisterRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 24
+Method: POST
+Path: /api/v1/auth/faculty/register
+Category/Tags: api-v1, auth-api
+Summary: Faculty Register Api
+Description: API endpoint for faculty registration
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/FacultyRegisterRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 25
+Method: POST
+Path: /api/v1/auth/validate-field
+Category/Tags: api-v1, auth-api
+Summary: Validate Field Api
+Description: API endpoint to validate individual form fields (email, phone, enrollment_no, employee_id)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 26
+Method: POST
+Path: /api/v1/auth/forgot-password/student
+Category/Tags: api-v1, auth-api, Password Reset
+Summary: Forgot Password Student
+Description: Initiate password reset for student
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/ForgotPasswordRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/ForgotPasswordResponse"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 27
+Method: POST
+Path: /api/v1/auth/forgot-password/faculty
+Category/Tags: api-v1, auth-api, Password Reset
+Summary: Forgot Password Faculty
+Description: Initiate password reset for faculty
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/ForgotPasswordFacultyRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/ForgotPasswordResponse"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 28
+Method: GET
+Path: /api/v1/auth/validate-reset-token/{token}
+Category/Tags: api-v1, auth-api, Password Reset
+Summary: Validate Reset Token
+Description: Validate password reset token and return user info
+Parameters:
+  - Name: token
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/TokenValidationResponse"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 29
+Method: POST
+Path: /api/v1/auth/reset-password/{token}
+Category/Tags: api-v1, auth-api, Password Reset
+Summary: Reset Password
+Description: Reset user password using valid token
+Parameters:
+  - Name: token
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/ResetPasswordRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/ResetPasswordResponse"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 30
+Method: GET
+Path: /api/v1/auth/status
+Category/Tags: api-v1, auth-api
+Summary: Get Unified Auth Status
+Description: Unified authentication status endpoint
+Returns authentication status for current user or specific user type
+
+Query params:
+- user_type: Optional filter for specific user type (admin/student/faculty)
+Parameters:
+  - Name: user_type
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 31
+Method: GET
+Path: /api/v1/client/events/list
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Events List
+Description: Get paginated list of events with optional filters and Redis caching, filtered by user type
+Parameters:
+  - Name: status
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event status: all, upcoming, ongoing, completed
+  - Name: category
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event category
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number for pagination
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of events per page
+  - Name: force_refresh
+    In: query
+    Required: False
+    Type: boolean
+    Description: Force refresh cache
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 32
+Method: GET
+Path: /api/v1/client/events/details/{event_id}
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Event Details
+Description: Get detailed information about a specific event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 33
+Method: GET
+Path: /api/v1/client/events/timeline/{event_id}
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Event Timeline
+Description: Get comprehensive timeline information for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 34
+Method: GET
+Path: /api/v1/client/events/categories
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Event Categories
+Description: Get list of all event categories
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 35
+Method: GET
+Path: /api/v1/client/events/search
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Search Events
+Description: Search events by name, description, or category with target audience filtering
+Parameters:
+  - Name: q
+    In: query
+    Required: True
+    Type: string
+    Description: Search query
+  - Name: status
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event status
+  - Name: category
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event category
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number for pagination
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of events per page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 36
+Method: GET
+Path: /api/v1/client/events/upcoming
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Upcoming Events
+Description: Get upcoming events (quick access endpoint) with target audience filtering
+Parameters:
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of upcoming events to retrieve
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 37
+Method: GET
+Path: /api/v1/client/profile/info
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Profile Info
+Description: Get current student profile information - FIXED for field mapping
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 38
+Method: PUT
+Path: /api/v1/client/profile/update
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Update Profile
+Description: Update student profile information
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 39
+Method: GET
+Path: /api/v1/client/profile/faculty/info
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Faculty Profile Info
+Description: Get current faculty profile information
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 40
+Method: PUT
+Path: /api/v1/client/profile/faculty/update
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Update Faculty Profile
+Description: Update faculty profile information
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 41
+Method: GET
+Path: /api/v1/client/profile/dashboard-stats
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Dashboard Stats
+Description: Get dashboard statistics for the student
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 42
+Method: GET
+Path: /api/v1/client/profile/event-history
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Event History
+Description: Get complete event participation history for the student
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 43
+Method: POST
+Path: /api/v1/client/profile/change-password
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Change Password
+Description: Change student password
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 44
+Method: GET
+Path: /api/v1/client/profile/faculty/dashboard-stats
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Faculty Dashboard Stats
+Description: Get dashboard statistics for faculty
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 45
+Method: GET
+Path: /api/v1/client/profile/faculty/event-history
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Faculty Event History
+Description: Get complete event participation history for the faculty
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 46
+Method: GET
+Path: /api/v1/client/profile/team-details/{event_id}/{team_id}
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Team Details
+Description: Get detailed team member information for a specific team and event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: team_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 47
+Method: GET
+Path: /api/v1/client/profile/test-auth
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Test Auth
+Description: Simple test endpoint to check if student authentication works
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 48
+Method: GET
+Path: /api/v1/client/profile/team-info-debug/{event_id}/{team_id}
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Team Info Debug
+Description: Debug version without authentication requirement
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: team_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 49
+Method: GET
+Path: /api/v1/client/profile/team-info/{event_id}/{team_id}
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Team Info
+Description: Get detailed team member information - modified to handle auth issues
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: team_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 50
+Method: GET
+Path: /api/v1/client/profile/team-registration-details/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api
+Summary: Get Team Registration Details
+Description: Get complete team registration details from student_registrations collection for QR code generation
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 51
+Method: POST
+Path: /api/v1/client/profile/team-tools/create-task/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Create Task
+Description: Create a new task for the team (team leader only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/TaskData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 52
+Method: GET
+Path: /api/v1/client/profile/team-tools/tasks/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Get Team Tasks
+Description: Get all tasks for the team
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: status
+    In: query
+    Required: False
+    Type: None
+    Description: Filter by task status
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 53
+Method: PUT
+Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/submit
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Submit Task
+Description: Submit a task with link and move to under_review status
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: task_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/TaskSubmissionData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 54
+Method: PUT
+Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/review
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Review Task
+Description: Review a submitted task (team leader only) - Enhanced with data validation
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: task_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/TaskReviewData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 55
+Method: PUT
+Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/complete
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Complete Task Direct
+Description: Mark task as completed directly (team leader only, for urgent cases)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: task_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 56
+Method: POST
+Path: /api/v1/client/profile/team-tools/assign-role/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Assign Role
+Description: Assign role to team member (team leader only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/RoleAssignmentData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 57
+Method: GET
+Path: /api/v1/client/profile/team-tools/roles/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Get Team Roles
+Description: Get all role assignments for the team
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 58
+Method: POST
+Path: /api/v1/client/profile/team-tools/post-message/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Post Message
+Description: Post a message to the team communication board
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/MessageData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 59
+Method: GET
+Path: /api/v1/client/profile/team-tools/messages/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Get Team Messages
+Description: Get team messages with pagination
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of messages to retrieve
+  - Name: skip
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of messages to skip
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 60
+Method: POST
+Path: /api/v1/client/profile/team-tools/generate-report/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Generate Report
+Description: Generate team report (team leader only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/ReportGenerationData"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 61
+Method: GET
+Path: /api/v1/client/profile/team-tools/team-overview/{event_id}
+Category/Tags: api-v1, client-api, client-profile-api, Team Management
+Summary: Get Team Overview
+Description: Get comprehensive team overview for dashboard
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 62
+Method: POST
+Path: /api/v1/client/registration/register
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Register For Event
+Description: Universal registration endpoint for events
+Handles individual registration and team registration for both students and faculty
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/RegistrationRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 63
+Method: GET
+Path: /api/v1/client/registration/status/{event_id}
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Get Registration Status
+Description: Get registration status for current user (student or faculty)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 64
+Method: GET
+Path: /api/v1/client/registration/event/{event_id}/status
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Get Registration Status Alt
+Description: Get registration status for current user (alternative URL pattern)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 65
+Method: DELETE
+Path: /api/v1/client/registration/cancel/{event_id}
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Cancel Registration
+Description: Cancel registration for an event (student or faculty)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 66
+Method: GET
+Path: /api/v1/client/registration/my-registrations
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Get My Registrations
+Description: Get all registrations for current user (student or faculty)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 67
+Method: GET
+Path: /api/v1/client/registration/lookup/faculty/{employee_id}
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Lookup Faculty
+Description: Lookup faculty by employee ID for registration purposes
+Parameters:
+  - Name: employee_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 68
+Method: GET
+Path: /api/v1/client/registration/lookup/student/{enrollment_no}
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Lookup Student
+Description: Lookup student by enrollment number for registration purposes
+Parameters:
+  - Name: enrollment_no
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 69
+Method: GET
+Path: /api/v1/client/registration/lookup/student/{enrollment_no}/eligibility/{event_id}
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Check Student Eligibility
+Description: Check if student is eligible for specific event based on event criteria
+Parameters:
+  - Name: enrollment_no
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 70
+Method: GET
+Path: /api/v1/client/registration/invitations
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Get My Invitations
+Description: Get team invitations for current student
+Parameters:
+  - Name: status
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by invitation status
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 71
+Method: POST
+Path: /api/v1/client/registration/invitations/{invitation_id}/respond
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Respond To Invitation
+Description: Respond to a team invitation (accept or decline)
+Parameters:
+  - Name: invitation_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 72
+Method: GET
+Path: /api/v1/client/registration/team/{team_registration_id}/details
+Category/Tags: api-v1, client-api, client-registration-api
+Summary: Get Team Details
+Description: Get team details by team registration ID
+Parameters:
+  - Name: team_registration_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 73
+Method: GET
+Path: /api/v1/client/feedback/form/{event_id}
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Get Feedback Form
+Description: Get feedback form for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 74
+Method: POST
+Path: /api/v1/client/feedback/submit
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Submit Feedback
+Description: Submit feedback for an event
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 75
+Method: GET
+Path: /api/v1/client/feedback/eligibility/{event_id}
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Check Feedback Eligibility
+Description: Check if student is eligible to submit feedback
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 76
+Method: GET
+Path: /api/v1/client/feedback/test-health
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Test Health
+Description: Simple health check for test endpoints
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 77
+Method: GET
+Path: /api/v1/client/feedback/test-form/{event_id}
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Get Test Feedback Form
+Description: Get feedback form for testing purposes (no authentication required)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 78
+Method: POST
+Path: /api/v1/client/feedback/test-submit
+Category/Tags: api-v1, client-api, client-feedback-api
+Summary: Submit Test Feedback
+Description: Submit test feedback for an event (test mode only - no authentication required)
+Request Body:
+  MIME Type: application/x-www-form-urlencoded
+  Schema: {
+    "$ref": "#/components/schemas/Body_submit_test_feedback_api_v1_client_feedback_test_submit_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 79
+Method: GET
+Path: /api/v1/admin/events/faculty-organizers
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Faculty Organizers
+Description: Get faculty members who can be event organizers
+
+Returns:
+    List of faculty organizers with their basic information
+Parameters:
+  - Name: search
+    In: query
+    Required: False
+    Type: None
+    Description: Search query for faculty name, email, or employee ID
+  - Name: department
+    In: query
+    Required: False
+    Type: None
+    Description: Filter by department
+  - Name: designation
+    In: query
+    Required: False
+    Type: None
+    Description: Filter by designation
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Maximum number of results
+  - Name: skip
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of results to skip for pagination
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 80
+Method: GET
+Path: /api/v1/admin/events/faculty-organizers/{employee_id}/assigned-events
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Faculty Assigned Events
+Description: Get events assigned to a specific faculty organizer
+
+Args:
+    employee_id: Faculty employee ID
+    
+Returns:
+    List of event IDs assigned to the faculty member
+Parameters:
+  - Name: employee_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 81
+Method: POST
+Path: /api/v1/admin/events/create
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Create Event
+Description: Create a new event
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/CreateEvent"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 82
+Method: PUT
+Path: /api/v1/admin/events/update/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Update Event
+Description: Update an existing event - handles both frontend datetime format and Pydantic model format
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 83
+Method: GET
+Path: /api/v1/admin/events/list
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Events List
+Description: Get paginated list of events for admin management with Redis caching
+Parameters:
+  - Name: status
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event status
+  - Name: target_audience
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by target audience
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Events per page (max 1000)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 84
+Method: GET
+Path: /api/v1/admin/events/pending-approval
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Pending Approval Events
+Description: Get events pending Super Admin approval (Super Admin only)
+Parameters:
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Events per page (max 1000)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 85
+Method: GET
+Path: /api/v1/admin/events/details/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Event Details
+Description: Get detailed event information for admin management
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 86
+Method: GET
+Path: /api/v1/admin/events/stats
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Event Stats
+Description: Get comprehensive event statistics for admin dashboard
+Parameters:
+  - Name: event_id
+    In: query
+    Required: True
+    Type: string
+    Description: Event ID to get statistics for
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 87
+Method: GET
+Path: /api/v1/admin/events/registrations/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Event Registrations
+Description: Get detailed registration data for an event using existing registration service
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Registrations per page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 88
+Method: POST
+Path: /api/v1/admin/events/bulk-update-status
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Bulk Update Event Status
+Description: Bulk update status for multiple events
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 89
+Method: GET
+Path: /api/v1/admin/events/attendance/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Event Attendance
+Description: Get detailed attendance data for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Attendees per page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 90
+Method: POST
+Path: /api/v1/admin/events/export/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Export Event Data
+Description: Export event registration data in various formats
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 91
+Method: GET
+Path: /api/v1/admin/events/debug-event/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Debug Event Data
+Description: Debug endpoint to check what fields exist in an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 92
+Method: DELETE
+Path: /api/v1/admin/events/delete/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Delete Event
+Description: Step-by-step event deletion:
+1. Delete event files from Supabase storage
+2. Remove event ID from faculty assigned_events
+3. Delete event data from events collection
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 93
+Method: POST
+Path: /api/v1/admin/events/trigger-pending-notifications
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Trigger Pending Notifications
+Description: Trigger notifications for all pending approval events
+This endpoint finds all events with status 'pending_approval' and sends
+notification requests to Super Admins for approval.
+
+Only Super Admins can trigger this endpoint.
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 94
+Method: POST
+Path: /api/v1/admin/events/approve/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Approve Event
+Description: Approve a pending event - accessible by Super Admin and assigned faculty organizers
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 95
+Method: POST
+Path: /api/v1/admin/events/decline/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Decline Event
+Description: Decline a pending event - accessible by Super Admin and assigned faculty organizers
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 96
+Method: POST
+Path: /api/v1/admin/events/feedback/create/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Create Feedback Form
+Description: Create or update feedback form for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 97
+Method: GET
+Path: /api/v1/admin/events/feedback/form/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Feedback Form
+Description: Get feedback form for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 98
+Method: GET
+Path: /api/v1/admin/events/feedback/responses/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Feedback Responses
+Description: Get all feedback responses for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Responses per page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 99
+Method: GET
+Path: /api/v1/admin/events/feedback/analytics/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Get Feedback Analytics
+Description: Get feedback analytics and summary for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 100
+Method: DELETE
+Path: /api/v1/admin/events/feedback/delete/{event_id}
+Category/Tags: api-v1, admin-api, admin-events-api
+Summary: Delete Feedback Form
+Description: Delete feedback form for an event
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 101
+Method: GET
+Path: /api/v1/admin/assets/list
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: List Assets
+Description: List all assets from database with optional filtering
+Parameters:
+  - Name: asset_type
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: skip
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 102
+Method: GET
+Path: /api/v1/admin/assets/statistics
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Get Asset Statistics
+Description: Get comprehensive asset statistics
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 103
+Method: POST
+Path: /api/v1/admin/assets/upload
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Upload Asset
+Description: Upload new asset with comprehensive processing
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_asset_api_v1_admin_assets_upload_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 104
+Method: GET
+Path: /api/v1/admin/assets/details/{asset_id}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Get Asset Details
+Description: Get specific asset by ID with full details
+Parameters:
+  - Name: asset_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 105
+Method: GET
+Path: /api/v1/admin/assets/short-url/{asset_id}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Get Asset Short Url
+Description: Get or generate short URL for asset
+Parameters:
+  - Name: asset_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 106
+Method: GET
+Path: /api/v1/admin/assets/image-tag/{asset_id}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Get Asset Image Tag
+Description: Get HTML image tag for asset
+Parameters:
+  - Name: asset_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 107
+Method: DELETE
+Path: /api/v1/admin/assets/delete/{asset_id}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Delete Asset
+Description: Delete asset completely
+Parameters:
+  - Name: asset_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 108
+Method: GET
+Path: /api/v1/admin/assets/s/{short_code}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Redirect Short Url
+Description: Redirect to secure asset access (legacy short URL support)
+Parameters:
+  - Name: short_code
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 109
+Method: GET
+Path: /api/v1/admin/assets/view/{token}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: View Asset With Short Token
+Description: View asset through short secure token
+Parameters:
+  - Name: token
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 110
+Method: GET
+Path: /api/v1/admin/assets/secure/{access_token}
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: Get Secure Asset
+Description: Serve asset with secure, time-limited access token (legacy)
+Parameters:
+  - Name: access_token
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 111
+Method: GET
+Path: /api/v1/admin/assets/dashboard
+Category/Tags: api-v1, admin-api, admin-assets-api
+Summary: List Dashboard Assets
+Description: Legacy endpoint - redirects to new assets list
+Parameters:
+  - Name: category
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 112
+Method: GET
+Path: /api/v1/admin/venues/
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Get Venues
+Description: Get list of all active venues - REQUIRES ADMIN AUTHENTICATION
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "items": {
+        "$ref": "#/components/schemas/Venue"
+    },
+    "type": "array",
+    "title": "Response Get Venues Api V1 Admin Venues  Get"
+}
+
+============================================================
+ENDPOINT 113
+Method: POST
+Path: /api/v1/admin/venues/
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Create Venue
+Description: Create a new venue (admin only)
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/VenueCreate"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "additionalProperties": true,
+    "type": "object",
+    "title": "Response Create Venue Api V1 Admin Venues  Post"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 114
+Method: GET
+Path: /api/v1/admin/venues/list
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Get Venues List
+Description: Get list of all active venues (alternative endpoint for frontend compatibility) - REQUIRES ADMIN AUTHENTICATION
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "items": {
+        "$ref": "#/components/schemas/Venue"
+    },
+    "type": "array",
+    "title": "Response Get Venues List Api V1 Admin Venues List Get"
+}
+
+============================================================
+ENDPOINT 115
+Method: GET
+Path: /api/v1/admin/venues/all
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Get All Venues
+Description: Get list of all venues including inactive (admin only)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "items": {
+        "$ref": "#/components/schemas/Venue"
+    },
+    "type": "array",
+    "title": "Response Get All Venues Api V1 Admin Venues All Get"
+}
+
+============================================================
+ENDPOINT 116
+Method: GET
+Path: /api/v1/admin/venues/{venue_id}
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Get Venue
+Description: Get a specific venue by ID
+Parameters:
+  - Name: venue_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/Venue"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 117
+Method: PUT
+Path: /api/v1/admin/venues/{venue_id}
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Update Venue
+Description: Update a venue (admin only)
+Parameters:
+  - Name: venue_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/VenueUpdate"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Update Venue Api V1 Admin Venues  Venue Id  Put"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 118
+Method: DELETE
+Path: /api/v1/admin/venues/{venue_id}
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Delete Venue
+Description: Delete a venue (admin only) - soft delete by setting is_active to False
+Parameters:
+  - Name: venue_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Delete Venue Api V1 Admin Venues  Venue Id  Delete"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 119
+Method: POST
+Path: /api/v1/admin/venues/{venue_id}/restore
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Restore Venue
+Description: Restore a soft-deleted venue (admin only)
+Parameters:
+  - Name: venue_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Restore Venue Api V1 Admin Venues  Venue Id  Restore Post"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 120
+Method: DELETE
+Path: /api/v1/admin/venues/{venue_id}/permanent
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Permanently Delete Venue
+Description: Permanently delete a venue from database (admin only) - IRREVERSIBLE
+Parameters:
+  - Name: venue_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Permanently Delete Venue Api V1 Admin Venues  Venue Id  Permanent Delete"
+}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 121
+Method: GET
+Path: /api/v1/admin/users/list
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Get Users
+Description: Get list of users with filtering options - REQUIRES ADMIN AUTHENTICATION
+Parameters:
+  - Name: user_type
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: include_all
+    In: query
+    Required: False
+    Type: boolean
+    Description: No description
+  - Name: user_id
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 122
+Method: POST
+Path: /api/v1/admin/users/list
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Create User
+Description: Create a new user (Super Admin only)
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "User Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 123
+Method: PUT
+Path: /api/v1/admin/users/list
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Update User
+Description: Update an existing user
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "User Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 124
+Method: DELETE
+Path: /api/v1/admin/users/list/{user_id}
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Delete User
+Description: Delete a user (Super Admin only) - soft delete by setting is_active to False
+Parameters:
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 125
+Method: PATCH
+Path: /api/v1/admin/users/restore/{user_id}
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Restore User
+Description: Restore a soft-deleted user (Super Admin only) - set is_active to True
+Parameters:
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 126
+Method: DELETE
+Path: /api/v1/admin/users/hard-delete/{user_id}
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Hard Delete User
+Description: Permanently delete a user (Super Admin only) - removes from database completely
+Parameters:
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 127
+Method: POST
+Path: /api/v1/admin/attendance-preview/preview-strategy
+Category/Tags: api-v1, admin-api, admin-attendance-preview-api
+Summary: Preview Attendance Strategy
+Description: Preview attendance strategy for event data
+Returns the detected strategy, sessions, and configuration details
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/EventPreviewRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 128
+Method: POST
+Path: /api/v1/admin/attendance-preview/validate-custom-strategy
+Category/Tags: api-v1, admin-api, admin-attendance-preview-api
+Summary: Validate Custom Strategy
+Description: Validate a custom attendance strategy configuration
+Allows users to override the detected strategy
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "$ref": "#/components/schemas/CustomStrategyRequest"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 129
+Method: GET
+Path: /api/v1/admin/participation/event/{event_id}/participants
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Get Event Participants
+Description: Get all participants for an event with admin-specific formatting (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: registration_type
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+  - Name: search
+    In: query
+    Required: False
+    Type: None
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 130
+Method: POST
+Path: /api/v1/admin/participation/attendance/mark
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Mark Student Attendance
+Description: Mark attendance for a student (Admin only)
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "additionalProperties": true,
+    "type": "object",
+    "title": "Attendance Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 131
+Method: POST
+Path: /api/v1/admin/participation/attendance/bulk-mark
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Bulk Mark Attendance
+Description: Mark attendance for multiple students (Admin only)
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "additionalProperties": true,
+    "type": "object",
+    "title": "Bulk Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 132
+Method: POST
+Path: /api/v1/admin/participation/certificate/issue
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Issue Student Certificate
+Description: Issue certificate for a student (Admin only)
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "additionalProperties": true,
+    "type": "object",
+    "title": "Certificate Data"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 133
+Method: GET
+Path: /api/v1/admin/participation/student/{enrollment_no}/participations
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Get Student Participation History
+Description: Get participation history for a student (Admin only)
+Parameters:
+  - Name: enrollment_no
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: include_details
+    In: query
+    Required: False
+    Type: boolean
+    Description: Include event details
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 134
+Method: GET
+Path: /api/v1/admin/participation/statistics/event/{event_id}
+Category/Tags: api-v1, admin-api, admin-participation-management-api
+Summary: Get Event Participation Statistics
+Description: Get comprehensive participation statistics for an event (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 135
+Method: GET
+Path: /api/v1/admin/dashboard/recent-activity
+Category/Tags: api-v1, admin-api
+Summary: Get Recent Activity Dashboard
+Description: Get recent activity logs for the admin dashboard with dynamic messaging.
+
+This endpoint fetches the latest event status logs and returns them
+with intelligent, context-aware messages based on trigger types.
+Parameters:
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 136
+Method: GET
+Path: /api/v1/admin/dashboard/activity-summary
+Category/Tags: api-v1, admin-api
+Summary: Get Activity Summary Dashboard
+Description: Get activity summary statistics for the admin dashboard.
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 137
+Method: GET
+Path: /api/v1/admin/analytics/overview
+Category/Tags: api-v1, admin-api
+Summary: Get Analytics Overview
+Description: Get analytics overview for admin dashboard with real-time scheduler data
+Parameters:
+  - Name: period
+    In: query
+    Required: False
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 138
+Method: GET
+Path: /api/v1/email/health
+Category/Tags: api-v1, email-api, email-api
+Summary: Email Service Health
+Description: Get email service health status and statistics
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 139
+Method: GET
+Path: /api/v1/email/stats
+Category/Tags: api-v1, email-api, email-api
+Summary: Email Service Statistics
+Description: Get comprehensive email service statistics
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 140
+Method: POST
+Path: /api/v1/email/circuit-breaker/reset
+Category/Tags: api-v1, email-api, email-api
+Summary: Reset Circuit Breaker
+Description: Reset the email service circuit breaker
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 141
+Method: POST
+Path: /api/v1/email/test
+Category/Tags: api-v1, email-api, email-api
+Summary: Test Email Service
+Description: Test email service by sending a test email
+Parameters:
+  - Name: test_email
+    In: query
+    Required: False
+    Type: string
+    Description: No description
+  - Name: bypass_circuit_breaker
+    In: query
+    Required: False
+    Type: boolean
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 142
+Method: GET
+Path: /api/v1/organizer
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Organizer Root No Slash
+Description: Redirect root organizer path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 143
+Method: GET
+Path: /api/v1/organizer/
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Organizer Root With Slash
+Description: Redirect root organizer path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 144
+Method: GET
+Path: /api/v1/organizer/dashboard
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Organizer Dashboard
+Description: Redirect to organizer dashboard
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 145
+Method: GET
+Path: /api/v1/organizer/events
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Organizer Events
+Description: Redirect to organizer events page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 146
+Method: POST
+Path: /api/v1/organizer/request-access
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Request Organizer Access
+Description: Faculty member requests organizer access
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 147
+Method: GET
+Path: /api/v1/organizer/access-status
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Get Organizer Access Status
+Description: Get current organizer access status for faculty
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 148
+Method: POST
+Path: /api/v1/organizer/access-portal
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Access Organizer Portal
+Description: Faculty member accesses organizer portal (creates admin session)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 149
+Method: POST
+Path: /api/v1/organizer/admin/grant-access/{faculty_employee_id}
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Grant Organizer Access
+Description: Admin endpoint to grant organizer access to faculty
+Parameters:
+  - Name: faculty_employee_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Request Body:
+  MIME Type: application/json
+  Schema: {
+    "anyOf": [
+        {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        {
+            "type": "null"
+        }
+    ],
+    "title": "Assigned Events"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 150
+Method: POST
+Path: /api/v1/organizer/admin/revoke-access/{faculty_employee_id}
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Revoke Organizer Access
+Description: Admin endpoint to revoke organizer access from faculty
+Parameters:
+  - Name: faculty_employee_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 151
+Method: GET
+Path: /api/v1/organizer/admin/requests
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Get Organizer Requests
+Description: Get all pending organizer access requests (Super Admin only)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 152
+Method: GET
+Path: /api/v1/organizer/dashboard-stats
+Category/Tags: api-v1, organizer-access-api, organizer-access
+Summary: Get Organizer Dashboard Stats
+Description: Get dashboard statistics for organizer portal
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 153
+Method: GET
+Path: /api/v1/admin
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Admin Root No Slash
+Description: Redirect root admin path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 154
+Method: GET
+Path: /api/v1/admin/
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Summary: Admin Root With Slash
+Description: Redirect root admin path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 155
+Method: GET
+Path: /api/v1/auth/login
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Admin Login Page
+Description: Show admin login page - redirect to unified login with admin tab selected
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 156
+Method: POST
+Path: /api/v1/auth/login
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Admin Login
+Description: Handle admin login - redirect to API endpoint
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 157
+Method: GET
+Path: /api/v1/auth/logout
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Admin Logout
+Description: Handle admin logout - redirect to API endpoint
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 158
+Method: GET
+Path: /api/v1/auth/api/profile
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Get Admin Profile
+Description: API endpoint to get admin profile data
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 159
+Method: PUT
+Path: /api/v1/auth/api/profile
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Update Admin Profile
+Description: API endpoint to update admin profile
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 160
+Method: PUT
+Path: /api/v1/auth/api/username
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Update Admin Username
+Description: API endpoint to update admin username
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 161
+Method: PUT
+Path: /api/v1/auth/api/password
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Update Admin Password
+Description: API endpoint to update admin password
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 162
+Method: GET
+Path: /api/v1/auth/api/status
+Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
+Summary: Admin Auth Status
+Description: API endpoint to check if admin is authenticated
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 163
+Method: GET
+Path: /api/auth/login
+Category/Tags: legacy-auth, legacy-auth
+Summary: Admin Login Page
+Description: Show admin login page - redirect to unified login with admin tab selected
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 164
+Method: POST
+Path: /api/auth/login
+Category/Tags: legacy-auth, legacy-auth
+Summary: Admin Login
+Description: Handle admin login - redirect to API endpoint
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 165
+Method: GET
+Path: /api/auth/logout
+Category/Tags: legacy-auth, legacy-auth
+Summary: Admin Logout
+Description: Handle admin logout - redirect to API endpoint
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 166
+Method: GET
+Path: /api/auth/api/profile
+Category/Tags: legacy-auth, legacy-auth
+Summary: Get Admin Profile
+Description: API endpoint to get admin profile data
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 167
+Method: PUT
+Path: /api/auth/api/profile
+Category/Tags: legacy-auth, legacy-auth
+Summary: Update Admin Profile
+Description: API endpoint to update admin profile
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 168
+Method: PUT
+Path: /api/auth/api/username
+Category/Tags: legacy-auth, legacy-auth
+Summary: Update Admin Username
+Description: API endpoint to update admin username
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 169
+Method: PUT
+Path: /api/auth/api/password
+Category/Tags: legacy-auth, legacy-auth
+Summary: Update Admin Password
+Description: API endpoint to update admin password
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 170
+Method: GET
+Path: /api/auth/api/status
+Category/Tags: legacy-auth, legacy-auth
+Summary: Admin Auth Status
+Description: API endpoint to check if admin is authenticated
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 171
+Method: GET
+Path: /admin
+Category/Tags: legacy-direct-routes
+Summary: Admin Root No Slash
+Description: Redirect root admin path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 172
+Method: GET
+Path: /admin/
+Category/Tags: legacy-direct-routes
+Summary: Admin Root With Slash
+Description: Redirect root admin path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 173
+Method: GET
+Path: /organizer
+Category/Tags: legacy-direct-routes
+Summary: Organizer Root No Slash
+Description: Redirect root organizer path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 174
+Method: GET
+Path: /organizer/
+Category/Tags: legacy-direct-routes
+Summary: Organizer Root With Slash
+Description: Redirect root organizer path to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 175
+Method: GET
+Path: /organizer/dashboard
+Category/Tags: legacy-direct-routes
+Summary: Organizer Dashboard
+Description: Redirect to organizer dashboard
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 176
+Method: GET
+Path: /organizer/events
+Category/Tags: legacy-direct-routes
+Summary: Organizer Events
+Description: Redirect to organizer events page
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 177
+Method: GET
+Path: /api/health
+Category/Tags: No category
+Summary: Health Check
+Description: Simple health check endpoint to test API connectivity
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 178
+Method: GET
+Path: /api/debug/session
+Category/Tags: No category
+Summary: Debug Session
+Description: Debug endpoint to check session state
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 179
+Method: POST
+Path: /api/debug/set-session
+Category/Tags: No category
+Summary: Set Test Session
+Description: Test endpoint to manually set session data
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 180
+Method: GET
+Path: /api/debug/get-session
+Category/Tags: No category
+Summary: Get Test Session
+Description: Test endpoint to read session data
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 181
+Method: GET
+Path: /
+Category/Tags: No category
+Summary: Read Root
+Description: Redirect root to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: text/html
+    Schema: {
+    "type": "string"
+}
+
+============================================================
+ENDPOINT 182
+Method: GET
+Path: /favicon.ico
+Category/Tags: No category
+Summary: Favicon
+Description: Serve the favicon
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 183
+Method: GET
+Path: /admin/login
+Category/Tags: No category
+Summary: Admin Login Redirect
+Description: Redirect old admin login URL to new auth login URL
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 184
+Method: POST
+Path: /admin/login
+Category/Tags: No category
+Summary: Admin Login Post Redirect
+Description: Redirect old admin login POST URL to new auth login URL
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 185
+Method: GET
+Path: /login
+Category/Tags: No category
+Summary: Login Redirect
+Description: Redirect /login to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 186
+Method: GET
+Path: /event-categories
+Category/Tags: No category
+Summary: Event Categories
+Description: Redirect event categories to React frontend
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 187
+Method: GET
+Path: /health/scheduler
+Category/Tags: No category
+Summary: Scheduler Health
+Description: Check the health of the dynamic event scheduler
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 188
+Method: GET
+Path: /logo/{filename}
+Category/Tags: No category
+Summary: Serve Logo
+Description: Serve logo files from the uploads/assets/logo directory
+Parameters:
+  - Name: filename
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 189
+Method: GET
+Path: /signature/{path}
+Category/Tags: No category
+Summary: Serve Signature
+Description: Serve signature files from the uploads/assets/signature directory
+Parameters:
+  - Name: path
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
