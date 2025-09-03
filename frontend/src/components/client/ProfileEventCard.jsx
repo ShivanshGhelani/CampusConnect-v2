@@ -357,7 +357,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
                     (reg.registration?.registration_type === "team_leader" || reg.registration?.is_team_leader) && (
                       <button
                         onClick={() => onCancelRegistration && onCancelRegistration(reg.event_id, reg.event.event_name)}
-                        className="w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all duration-200"
+                        className="w-full inline-flex sm:flex-1 items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all duration-200"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

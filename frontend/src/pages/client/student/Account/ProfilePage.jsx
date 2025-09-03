@@ -476,7 +476,10 @@ function ProfilePage() {
   return (
     <div className="min-h-screen lg:bg-gradient-to-br lg:from-slate-50 lg:to-blue-50">
       {/* Mobile/Tablet Layout - Edge to Edge */}
-      <div className="lg:hidden bg-white min-h-screen fixed inset-0 z-10 overflow-y-auto">
+      <div
+        className="lg:hidden bg-white fixed inset-0 z-10 overflow-y-auto w-full min-h-[100dvh]"
+        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         {/* Profile Header - Mobile/Tablet */}
         {loading || !profileData ? (
           <div className="bg-white animate-pulse pt-26">
@@ -746,6 +749,116 @@ function ProfilePage() {
             </div>
           </div>
         </div>
+  {/* Mobile Cancel Registration Modal (rendered within mobile layout to ensure visibility) */}
+        {showCancelModal && (
+          <div
+            className="lg:hidden fixed inset-0 bg-green-500/90 z-[99999] flex flex-col w-full h-[100dvh] overscroll-y-none"
+            style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            {/* Mobile Header */}
+            <div
+              className="flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10"
+              style={{ paddingTop: 'env(safe-area-inset-top)' }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Cancel Registration</h2>
+                  <p className="text-xs text-gray-600">Mobile View</p>
+                </div>
+              </div>
+              <button
+                onClick={closeCancelModal}
+                disabled={cancellingRegistration}
+                className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Mobile Content */}
+            <div className="flex-1 min-h-0 flex flex-col justify-center p-6 pb-24 bg-white overflow-y-auto">
+              <div className="text-center">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg">
+                  <svg className="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Cancel Registration</h3>
+                <p className="text-slate-600 mb-8 leading-relaxed px-4">
+                  Are you sure you want to cancel your registration for <strong className="text-slate-900">"{currentEventName}"</strong>? This action cannot be undone.
+                </p>
+                <div className="space-y-3 px-4">
+                  <button
+                    onClick={handleCancelRegistration}
+                    disabled={cancellingRegistration}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {cancellingRegistration ? 'Cancelling...' : 'Yes, Cancel Registration'}
+                  </button>
+                  <button
+                    onClick={closeCancelModal}
+                    disabled={cancellingRegistration}
+                    className="w-full px-6 py-4 text-slate-600 hover:text-slate-800 transition-colors font-semibold rounded-xl hover:bg-slate-50 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Keep Registration
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile QR Code Modal - edge-to-edge */}
+        {showQRCodeModal && selectedQRData && (
+          <div className="lg:hidden fixed inset-x-0 z-[99999] flex flex-col bg-white w-full overflow-hidden" 
+               style={{ 
+                 top: '104px', // TopBanner (40px) + Navigation (64px) = 104px
+                 bottom: '72px', // Bottom navigation height (h-18 = 72px)
+                 height: 'calc(100vh - 176px)' // 104px (top) + 72px (bottom) = 176px
+               }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white z-10 min-h-[60px] flex-shrink-0">
+            
+              <div className="flex-1 min-w-0 pr-3">
+                <h3 className="text-base font-semibold text-gray-900 leading-tight">Attendance QR Code</h3>
+                <p className="text-xs text-gray-600 mt-0.5 truncate">
+                  {selectedQRData?.eventName}
+                </p>
+              </div>
+              <button
+                onClick={closeQRCodeModal}
+                className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <div className="p-4 sm:p-6 flex flex-col items-center justify-start">
+                <div className="w-full max-w-sm">
+                  <QRCodeDisplay
+                    registrationData={selectedQRData?.registration}
+                    eventData={selectedQRData?.event}
+                    size="large"
+                    showDownload={true}
+                    showDetails={true}
+                    style="blue"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Desktop Layout */}
@@ -1059,7 +1172,7 @@ function ProfilePage() {
 
         {/* Cancel Registration Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="hidden sm:flex fixed inset-0 bg-black/50 items-center justify-center z-[99999] p-4">
             <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200">
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg">
@@ -1085,10 +1198,14 @@ function ProfilePage() {
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {cancellingRegistration ? 'Cancelling...' : 'Yes, Cancel'}
-                  </button>              </div>
-              </div>          </div>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
+
+  {/* Removed duplicate mobile cancel modal previously rendered outside mobile layout */}
 
         {/* Event Detail Modal */}
         {showEventDetailModal && selectedEventDetail && (
@@ -1485,9 +1602,9 @@ function ProfilePage() {
           teamId={selectedTeamDetail?.teamId}
           teamData={selectedTeamDetail}
         />
-        {/* QR Code Modal */}
+        {/* QR Code Modal (Desktop) */}
         {showQRCodeModal && selectedQRData && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="hidden lg:flex fixed inset-0 bg-black/50 backdrop-blur-sm bg-opacity-50 items-center justify-center p-4 z-[99999]">
             <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">

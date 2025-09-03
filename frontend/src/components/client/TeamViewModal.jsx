@@ -466,19 +466,27 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-xl">
+    <div className="fixed z-50 lg:inset-0 lg:bg-black/50 lg:backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:p-4"
+         style={{
+           // Mobile positioning
+           top: '104px',
+           left: '0',
+           right: '0',
+           bottom: '72px'
+         }}
+    >
+      <div className="bg-white w-full h-full lg:rounded-xl lg:w-full lg:max-w-2xl lg:max-h-[80vh] lg:h-auto overflow-hidden shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Team Overview</h2>
-            <p className="text-sm text-gray-600 mt-1">
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200">
+          <div className="flex-1 min-w-0 pr-3 lg:pr-0">
+            <h2 className="text-base lg:text-lg font-semibold text-gray-900 leading-tight">Team Overview</h2>
+            <p className="text-xs lg:text-sm text-gray-600 mt-0.5 lg:mt-1 truncate">
               {teamRegistration?.team?.team_name || teamData?.teamName || 'Team Details'} - {teamRegistration?.event?.event_name || teamData?.eventName}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="w-10 h-10 lg:w-auto lg:h-auto lg:p-2 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
           >
             <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -488,7 +496,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
         {/* Notification */}
         {notification.show && (
-          <div className={`absolute top-4 right-4 z-10 px-4 py-2 rounded-lg shadow-lg ${
+          <div className={`absolute top-2 right-2 lg:top-4 lg:right-4 z-10 px-3 lg:px-4 py-2 rounded-lg shadow-lg text-sm ${
             notification.type === 'success' 
               ? 'bg-green-50 text-green-700 border border-green-200' 
               : 'bg-red-50 text-red-700 border border-red-200'
@@ -505,7 +513,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         )}
 
         {/* Content */}
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="h-full lg:max-h-[60vh] overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
