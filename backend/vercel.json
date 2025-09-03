@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.11",
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "src": "/favicon.ico", "dest": "/api/index.py" },
+    { "src": "/health(.*)", "dest": "/api/index.py" },
+    { "src": "/(.*)", "status": 404 }
+  ]
+}

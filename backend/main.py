@@ -21,8 +21,9 @@ logger = setup_logger(logging.INFO)
 # Create FastAPI app
 app = FastAPI()
 
-# Configure CORS for frontend communication - UPDATED FOR DEPLOYMENT
 import os
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+IS_VERCEL = os.getenv("VERCEL", "0") == "1" or os.getenv("VERCEL_ENV") is not None
 
 # CORS configuration - Allow multiple origins for different deployment scenarios
 ALLOWED_ORIGINS = [
@@ -33,8 +34,7 @@ ALLOWED_ORIGINS = [
     # Production frontend (Vercel)
     "https://campusconnect-self.vercel.app",
     
-    # Additional Vercel preview deployments (if any)
-    "https://*.vercel.app",
+    # Additional Vercel preview deployments (explicitly add via env)
     
     # Ngrok development (for testing)
     "https://jaguar-giving-awfully.ngrok-free.app",
@@ -44,6 +44,10 @@ ALLOWED_ORIGINS = [
 additional_origins = os.getenv("ADDITIONAL_CORS_ORIGINS", "")
 if additional_origins:
     ALLOWED_ORIGINS.extend([origin.strip() for origin in additional_origins.split(",")])
+
+# Ensure FRONTEND_URL is allowed
+if FRONTEND_URL and FRONTEND_URL not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(FRONTEND_URL)
 
 print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 
@@ -95,7 +99,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             )
         else:
             # For any other protected routes, redirect to React frontend login
-            return RedirectResponse(url="http://localhost:3000/login", status_code=302)
+            return RedirectResponse(url=f"{FRONTEND_URL}/login", status_code=302)
     
     # Prepare enhanced error context
     from datetime import datetime
@@ -180,25 +184,28 @@ async def startup_db_client():
     global scheduler_task
     await Database.connect_db()
     
-    # Initialize communication service (includes SMTP connection pool)
-    from services.communication.email_service import communication_service
-    logger.info("Communication service initialized for high-performance email delivery")
-    
-    # Initialize dynamic event scheduler with background task
-    await start_dynamic_scheduler()
-    print("Started Dynamic Event Scheduler - updates triggered by event timing")
-    
-    # Communication service is already initialized
-    print("Communication Email Service - ready for email delivery")
-    
-    # Create a background task to keep scheduler alive
-    import asyncio
-    from utils.dynamic_event_scheduler import dynamic_scheduler
-    scheduler_task = asyncio.create_task(keep_scheduler_alive())
-      # Verify scheduler is running
-    from utils.dynamic_event_scheduler import get_scheduler_status
-    status = await get_scheduler_status()
-    print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
+    if not IS_VERCEL:
+        # Initialize communication service (includes SMTP connection pool)
+        from services.communication.email_service import communication_service
+        logger.info("Communication service initialized for high-performance email delivery")
+
+        # Initialize dynamic event scheduler with background task
+        await start_dynamic_scheduler()
+        print("Started Dynamic Event Scheduler - updates triggered by event timing")
+
+        # Communication service is already initialized
+        print("Communication Email Service - ready for email delivery")
+
+        # Create a background task to keep scheduler alive
+        import asyncio
+        from utils.dynamic_event_scheduler import dynamic_scheduler
+        scheduler_task = asyncio.create_task(keep_scheduler_alive())
+        # Verify scheduler is running
+        from utils.dynamic_event_scheduler import get_scheduler_status
+        status = await get_scheduler_status()
+        print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
+    else:
+        print("Running on Vercel - background scheduler and SMTP pool disabled for serverless")
 
 async def keep_scheduler_alive():
     """Background task to monitor and restart scheduler if needed"""
@@ -222,12 +229,12 @@ async def keep_scheduler_alive():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     global scheduler_task
-    if scheduler_task:
-        scheduler_task.cancel()
-    await stop_dynamic_scheduler()
-    
-    # Communication service cleanup happens automatically
-    print("Communication service cleanup completed")
+    if not IS_VERCEL:
+        if scheduler_task:
+            scheduler_task.cancel()
+        await stop_dynamic_scheduler()
+        # Communication service cleanup happens automatically
+        print("Communication service cleanup completed")
     
     await Database.close_db()
     print("Database connections closed")
@@ -290,7 +297,7 @@ async def get_test_session(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Redirect root to React frontend"""
-    return RedirectResponse(url="http://localhost:3000", status_code=302)
+    return RedirectResponse(url=f"{FRONTEND_URL}", status_code=302)
 
 @app.get("/favicon.ico")
 async def favicon():
@@ -319,12 +326,12 @@ async def admin_login_post_redirect():
 @app.get("/login")
 async def login_redirect():
     """Redirect /login to React frontend"""
-    return RedirectResponse(url="http://localhost:3000/login", status_code=301)
+    return RedirectResponse(url=f"{FRONTEND_URL}/login", status_code=301)
 
 @app.get("/event-categories")
 async def event_categories():
     """Redirect event categories to React frontend"""
-    return RedirectResponse(url="http://localhost:3000/events", status_code=301)
+    return RedirectResponse(url=f"{FRONTEND_URL}/events", status_code=301)
 
 @app.get("/health/scheduler")
 async def scheduler_health():
