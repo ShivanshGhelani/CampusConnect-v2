@@ -78,6 +78,38 @@ function EventDetail() {
       dayWithSuffix: `${day}${suffix} ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
     };
   };
+
+  // Function to calculate and format event duration
+  const calculateDuration = (startDateString, endDateString) => {
+    if (!startDateString || !endDateString) return null;
+
+    const startDate = new Date(startDateString);
+    const endDate = new Date(endDateString);
+
+    // Calculate the difference in milliseconds
+    const diffInMs = endDate.getTime() - startDate.getTime();
+
+    // Convert to hours
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+
+    // If duration is 36 hours or less, show in hours
+    if (diffInHours <= 36) {
+      const hours = Math.round(diffInHours);
+      if (hours === 1) {
+        return '1 hour';
+      } else if (hours < 1) {
+        const minutes = Math.round(diffInMs / (1000 * 60));
+        return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+      } else {
+        return `${hours} hours`;
+      }
+    } else {
+      // If duration is more than 36 hours, show in days
+      const diffInDays = Math.round(diffInHours / 24);
+      return diffInDays === 1 ? '1 day' : `${diffInDays} days`;
+    }
+  };
+
   const getStatusInfo = () => {
     if (!event) return { bgClass: 'bg-gray-50', textClass: 'text-gray-600', label: 'EVENT', iconPath: 'M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z' };
 
@@ -551,6 +583,9 @@ function EventDetail() {
                   <div className="flex-1">
                     <p className="text-xs md:text-sm text-blue-200">Duration</p>
                     <p className="font-semibold text-xs sm:text-sm md:text-base">
+                      {calculateDuration(event.start_date || event.start_datetime, event.end_date || event.end_datetime)}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-blue-300/80 mt-0.5">
                       {startDate.short} - {endDate.short}
                     </p>
                   </div>
@@ -892,9 +927,7 @@ function EventDetail() {
                       {registrationStart ? (
                         <>
                           <div className="font-medium">{registrationStart.dayWithSuffix}</div>
-                          {event.registration_start_time && (
-                            <div className="text-gray-500 text-xs">{event.registration_start_time || registrationStart.time}</div>
-                          )}
+                          <div className="text-gray-500 text-xs"> at {event.registration_start_time || registrationStart.time}</div>
                         </>
                       ) : (
                         <span className="text-gray-400">TBA</span>
@@ -946,9 +979,7 @@ function EventDetail() {
                       {registrationEnd ? (
                         <>
                           <div className="font-medium">{registrationEnd.dayWithSuffix}</div>
-                          {event.registration_end_time && (
-                            <div className="text-gray-500 text-xs">{event.registration_end_time || registrationEnd.time}</div>
-                          )}
+                          <div className="text-gray-500 text-xs">at {event.registration_end_time || registrationEnd.time}</div>
                         </>
                       ) : (
                         <span className="text-gray-400">TBA</span>
@@ -999,9 +1030,7 @@ function EventDetail() {
                       {startDate ? (
                         <>
                           <div className="font-medium">{startDate.dayWithSuffix}</div>
-                          {event.start_time && (
-                            <div className="text-gray-500 text-xs">{event.start_time || startDate.time}</div>
-                          )}
+                          <div className="text-gray-500 text-xs">at {event.start_time || startDate.time}</div>
                         </>
                       ) : (
                         <span className="text-gray-400">TBA</span>
@@ -1055,9 +1084,8 @@ function EventDetail() {
                       {endDate ? (
                         <>
                           <div className="font-medium">{endDate.dayWithSuffix}</div>
-                          {event.end_time && (
-                            <div className="text-gray-500 text-xs">{event.end_time || endDate.time}</div>
-                          )}
+                          {console.log("event: ", event)}
+                          <div className="text-gray-500 text-xs">at {event.end_time || endDate.time}</div>
                         </>
                       ) : (
                         <span className="text-gray-400">TBA</span>
@@ -1103,14 +1131,14 @@ function EventDetail() {
                   </div>
                   <div className="mt-2 text-center">
                     <div className="text-xs font-semibold text-gray-800 whitespace-nowrap">
-                      Certificate Available
+                      Certificate Availability
                     </div>
                     <div className="mt-1 text-xs text-gray-600">
                       {event.certificate_end_date ? (
                         <>
                           <div className="font-medium">{formatDate(event.certificate_end_date)?.dayWithSuffix}</div>
-                          {event.certificate_available_time && (
-                            <div className="text-gray-500 text-xs">{event.certificate_available_time}</div>
+                          {event.certificate_end_date && (
+                            <div className="text-gray-500 text-xs">until {formatDate(event.certificate_end_date)?.time}</div>
                           )}
                         </>
                       ) : (

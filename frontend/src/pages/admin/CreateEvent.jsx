@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
-import DateTimePicker from '../../components/common/DateTimePicker';
 import DateRangePicker from '../../components/common/DateRangePicker';
-import ClockPicker from '../../components/common/ClockPicker';
 import AttendancePreview from '../../components/AttendancePreview';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
@@ -13,7 +11,6 @@ import MultiSelect from '../../components/ui/MultiSelect';
 import dropdownOptionsService from '../../services/dropdownOptionsService';
 import unifiedStorage from '../../services/unifiedStorage';
 import { addEventToScheduler } from '../../utils/eventSchedulerUtils';
-
 // Helper for step progress
 const steps = [
   'Basic Info',
@@ -198,7 +195,12 @@ function CreateEvent() {
   // Function to save form data to localStorage
   const saveFormToStorage = (formData, step) => {
     try {
-      localStorage.setItem('createEventForm', JSON.stringify(formData));
+      // Include customAttendanceStrategy in the saved data
+      const dataToSave = {
+        ...formData,
+        customAttendanceStrategy: customAttendanceStrategy
+      };
+      localStorage.setItem('createEventForm', JSON.stringify(dataToSave));
       localStorage.setItem('createEventCurrentStep', step.toString());
     } catch (error) {
       console.log('Error saving form to localStorage:', error);
@@ -264,6 +266,7 @@ function CreateEvent() {
     max_participants: '',
     min_participants: '1',
     attendance_mandatory: true,
+    customAttendanceStrategy: null, // Add attendance strategy to form state
     is_certificate_based: false,
     certificate_templates: {},
     event_poster: null,
@@ -375,6 +378,14 @@ function CreateEvent() {
       });
     };
   }, [eventCreatorSession]);
+
+  // Initialize customAttendanceStrategy from localStorage
+  useEffect(() => {
+    const savedForm = loadFormFromStorage();
+    if (savedForm?.customAttendanceStrategy) {
+      setCustomAttendanceStrategy(savedForm.customAttendanceStrategy);
+    }
+  }, []); // Run only once on mount
 
   // Inactivity timer - check every minute for logout
   useEffect(() => {
@@ -620,12 +631,44 @@ function CreateEvent() {
         custom_text: ''
       }));
     }
+    
+    // Reset registration mode to individual when target audience is faculty
+    if (form.target_audience === 'faculty' && form.registration_mode === 'team') {
+      setForm(prev => ({
+        ...prev,
+        registration_mode: 'individual'
+      }));
+    }
   }, [form.target_audience]);
+
+  // Reset paid/sponsored registration types to free (feature not available yet)
+  useEffect(() => {
+    if (form.registration_type === 'paid' || form.registration_type === 'sponsored') {
+      setForm(prev => ({
+        ...prev,
+        registration_type: 'free'
+      }));
+    }
+  }, [form.registration_type]);
 
   // Save form data to localStorage whenever form or currentStep changes
   useEffect(() => {
     saveFormToStorage(form, currentStep);
   }, [form, currentStep]);
+
+  // Also save when customAttendanceStrategy changes
+  useEffect(() => {
+    if (customAttendanceStrategy !== null) {
+      saveFormToStorage(form, currentStep);
+    }
+  }, [customAttendanceStrategy]);
+
+  // Sync customAttendanceStrategy with form data on load
+  useEffect(() => {
+    if (form.customAttendanceStrategy && !customAttendanceStrategy) {
+      setCustomAttendanceStrategy(form.customAttendanceStrategy);
+    }
+  }, [form.customAttendanceStrategy]);
 
   // Handle checkbox changes with explicit state updates
   const handleCheckboxChange = (name, checked) => {
@@ -975,6 +1018,21 @@ function CreateEvent() {
     const isValid = Object.keys(stepErrors).length === 0;
     return isValid;
   };
+
+  // Handle attendance strategy changes
+  const handleAttendanceStrategyChange = (strategy) => {
+    setCustomAttendanceStrategy(strategy);
+    // Also update the form state for persistence
+    setForm(prev => ({
+      ...prev,
+      customAttendanceStrategy: strategy
+    }));
+  };
+
+  // Handle custom data changes from AttendancePreview
+  const handleCustomDataChange = useCallback((customData) => {
+    setCustomAttendanceStrategy(customData);
+  }, []);
 
   // Navigation with validation
   const nextStep = () => {
@@ -2566,8 +2624,8 @@ function CreateEvent() {
                       <Dropdown
                         options={[
                           { value: "free", label: "Free Registration" },
-                          { value: "paid", label: "Paid Registration" },
-                          { value: "sponsored", label: "Sponsored Event" }
+                          { value: "paid", label: "Paid Registration (Feature coming soon)", disabled: true },
+                          { value: "sponsored", label: "Sponsored Event (Feature coming soon)", disabled: true }
                         ]}
                         value={form.registration_type}
                         onChange={(value) => handleChange({ target: { name: 'registration_type', value } })}
@@ -2575,7 +2633,7 @@ function CreateEvent() {
                         required
                         error={errors.registration_type}
                       />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether the event is free, paid, or sponsored</p>
+                      <p className="helper-text text-xs text-gray-500 mt-1">Currently only free registration is available. Paid and sponsored options coming soon.</p>
                       {errors.registration_type && <p className="text-xs text-red-500">{errors.registration_type}</p>}
                     </div>
                     <div>
@@ -2583,7 +2641,11 @@ function CreateEvent() {
                       <Dropdown
                         options={[
                           { value: "individual", label: "Individual Registration" },
-                          { value: "team", label: "Team Registration" }
+                          { 
+                            value: "team", 
+                            label: form.target_audience === 'faculty' ? "Team Registration (Not available)" : "Team Registration",
+                            disabled: form.target_audience === 'faculty'
+                          }
                         ]}
                         value={form.registration_mode}
                         onChange={(value) => handleChange({ target: { name: 'registration_mode', value } })}
@@ -2591,7 +2653,12 @@ function CreateEvent() {
                         required
                         error={errors.registration_mode}
                       />
-                      <p className="helper-text text-xs text-gray-500 mt-1">Choose whether participants register individually or as teams</p>
+                      <p className="helper-text text-xs text-gray-500 mt-1">
+                        {form.target_audience === 'faculty' 
+                          ? 'Faculty events support individual registration only'
+                          : 'Choose whether participants register individually or as teams'
+                        }
+                      </p>
                       {errors.registration_mode && <p className="text-xs text-red-500">{errors.registration_mode}</p>}
                     </div>
                   </div>
@@ -3116,10 +3183,13 @@ function CreateEvent() {
                     </h3>
 
                     <AttendancePreview
+                      key="attendance-preview"
                       eventData={form}
-                      onStrategyChange={setCustomAttendanceStrategy}
+                      onStrategyChange={handleAttendanceStrategyChange}
                       showCustomization={showAttendanceCustomization}
                       onToggleCustomization={() => setShowAttendanceCustomization(!showAttendanceCustomization)}
+                      initialCustomData={customAttendanceStrategy}
+                      onCustomDataChange={handleCustomDataChange}
                     />
                   </>
                 )}
