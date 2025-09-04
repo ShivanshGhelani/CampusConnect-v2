@@ -9,6 +9,7 @@ import MessageBox from '../../../../components/client/MessageBox';
 import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
 import { clientAPI } from '../../../../api/client';
+import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
 import api from '../../../../api/base';
 
 function ProfilePage() {
@@ -102,7 +103,7 @@ function ProfilePage() {
     };
   }, [profileData]);
 
-  // Also listen for changes to the user from AuthContext
+  // Also listen for changes to the user from AuthContext (minimal updates only)
   useEffect(() => {
     if (user && profileData && user.full_name !== profileData.full_name) {
       console.log('📱 ProfilePage: User context changed, updating profile data');
@@ -111,42 +112,57 @@ function ProfilePage() {
         ...user
       }));
     }
-  }, [user?.full_name, user?.email, user?.mobile_no, user?.department, user?.semester]);
+  }, [user?.enrollment_no, profileData?.enrollment_no]); // OPTIMIZED: Only depend on stable IDs
 
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);        // Fetch complete profile data
-        const profileResponse = await api.get('/api/v1/client/profile/info');
-        if (profileResponse.data.success) {
-          const profile = profileResponse.data.profile || {};
-          setProfileData(profile);
+        setLoading(true);
+        
+        // OPTIMIZED: Check for immediate cache hit first
+        console.log('📱 ProfilePage: Checking cache for student data...');
+        let data = getAnyCache('student');
+        
+        if (!data) {
+          console.log('📱 ProfilePage: No cache found, fetching with cache system...');
+          // OPTIMIZED: Use global cache to prevent duplicate API calls
+          data = await fetchProfileWithCache('student', user?.enrollment_no, api);
+        } else {
+          console.log('📱 ProfilePage: Using immediate cache hit!');
         }
-
-        // Fetch event history
-        const historyResponse = await api.get('/api/v1/client/profile/event-history');
-        if (historyResponse.data.success) {
-          setEventHistory(historyResponse.data.event_history || []);
-        }
-
-        // Fetch dashboard stats
-        const statsResponse = await api.get('/api/v1/client/profile/dashboard-stats');
-        if (statsResponse.data.success) {
-          setDashboardStats(statsResponse.data.stats || {});
+        
+        console.log('📱 ProfilePage: Received profile data:', data);
+        
+        if (data && data.success) {
+          const { profile, stats, event_history } = data;
+          
+          console.log('📱 ProfilePage: Setting profile data:', { profile, stats, event_history });
+          
+          // Update all state with the combined response
+          setProfileData(profile || {});
+          setDashboardStats(stats || {});
+          setEventHistory(event_history || []);
+        } else {
+          console.error('📱 ProfilePage: Data fetch failed or no success:', data);
         }
 
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        console.error('Error fetching complete profile data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    // Only fetch if user exists and we haven't fetched profile data yet (prevent duplicate calls)
+    if (user?.enrollment_no && !profileData?.enrollment_no) {
+      console.log('📱 ProfilePage: Fetching profile data for:', user.enrollment_no);
       fetchData();
+    } else if (profileData?.enrollment_no) {
+      console.log('📱 ProfilePage: Profile data already available, skipping fetch');
+      setLoading(false); // Ensure loading is false if data is already available
     }
-  }, [user]);
+  }, [user?.enrollment_no, user?.name]); // Wait for user to be fully loaded before fetching
 
   // Convert event history to match the existing format for compatibility
   const registrations = eventHistory.map(item => {

@@ -18,17 +18,18 @@ from .team_tools import router as team_tools_router
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/info")
-async def get_profile_info(student: Student = Depends(require_student_login_hybrid)):
-    """Get current student profile information - FIXED for field mapping"""
+@router.get("/complete-profile")
+async def get_complete_profile(student: Student = Depends(require_student_login_hybrid)):
+    """Get complete profile information including stats and event history in one call - OPTIMIZED"""
     try:
-        logger.info(f"Profile info requested for student: {student.enrollment_no}")
+        logger.info(f"Complete profile requested for student: {student.enrollment_no}")
+        
         # Get complete student data from database
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
             return {"success": False, "message": "Student profile not found"}
         
-        # FIXED: Handle field mapping between backend and frontend
+        # Build profile data (same as /info endpoint but optimized)
         def get_mobile_number():
             """Get mobile number from various possible field names"""
             return (student_data.get('mobile_no') or 
@@ -44,55 +45,346 @@ async def get_profile_info(student: Student = Depends(require_student_login_hybr
                 return date_value.isoformat().split('T')[0]  # Return only date part
             return str(date_value)
         
-        # Remove sensitive information and ensure all fields are JSON serializable
         profile_data = {
             "enrollment_no": student_data.get('enrollment_no', ''),
             "enrollment_number": student_data.get('enrollment_no', ''),  # Alternative field name
             "full_name": student_data.get('full_name', ''),
             "email": student_data.get('email', ''),
-            
-            # FIXED: Handle multiple possible field names for mobile
             "mobile_no": get_mobile_number(),
             "phone_number": get_mobile_number(),  # Provide both for compatibility
-            
             "department": student_data.get('department', ''),
             "semester": student_data.get('semester', ''),
             "year_of_admission": student_data.get('year_of_admission', ''),
-            
-            # FIXED: Proper date formatting
             "date_of_birth": format_date_field(student_data.get('date_of_birth')),
-            
             "gender": student_data.get('gender', ''),
             "address": student_data.get('address', ''),
             "parent_mobile": student_data.get('parent_mobile', ''),
             "emergency_contact": student_data.get('emergency_contact', ''),
-            
-            # Metadata fields
             "profile_created_at": student_data.get('created_at', '').isoformat() if hasattr(student_data.get('created_at', ''), 'isoformat') else student_data.get('created_at', ''),
             "last_updated": student_data.get('updated_at', '').isoformat() if hasattr(student_data.get('updated_at', ''), 'isoformat') else student_data.get('updated_at', ''),
             "is_active": student_data.get('is_active', True),
             "avatar_url": student_data.get('avatar_url', None)
         }
         
-        # Debug logging to track field availability
-        missing_critical_fields = []
-        for field in ['mobile_no', 'gender', 'date_of_birth']:
-            if not profile_data.get(field):
-                missing_critical_fields.append(field)
+        # Get event participations - FIXED: event_participations is a list
+        event_participations = student_data.get('event_participations', [])
         
-        if missing_critical_fields:
-            logger.warning(f"Missing critical profile fields for student {student.enrollment_no}: {missing_critical_fields}")
+        # Build dashboard stats and event history simultaneously for efficiency
+        stats = {
+            "total_registrations": len(event_participations),
+            "attendance_marked": 0,
+            "feedback_submitted": 0,
+            "certificates_earned": 0,
+            "individual_registrations": 0,
+            "team_registrations": 0,
+            "recent_activities": []
+        }
+        
+        event_history = []
+        
+        # Process all participations in one pass for efficiency
+        for participation in event_participations:
+            event_id = participation.get('event_id')
+            
+            # Count statistics
+            if participation.get('attendance_id'):
+                stats["attendance_marked"] += 1
+            if participation.get('feedback_id'):
+                stats["feedback_submitted"] += 1
+            if participation.get('certificate_id'):
+                stats["certificates_earned"] += 1
+            
+            # Count registration types
+            reg_type = participation.get('registration_type', 'individual')
+            if reg_type in ['team_leader', 'team_participant']:
+                stats["team_registrations"] += 1
+            else:
+                stats["individual_registrations"] += 1
+            
+            # Collect recent activities
+            activities = []
+            if participation.get('registration_date'):
+                activities.append({
+                    "type": "registration",
+                    "event_id": event_id,
+                    "timestamp": participation.get('registration_date'),
+                    "description": f"Registered for event"
+                })
+            if participation.get('attendance_marked_at'):
+                activities.append({
+                    "type": "attendance",
+                    "event_id": event_id,
+                    "timestamp": participation.get('attendance_marked_at'),
+                    "description": f"Attended event"
+                })
+            if participation.get('feedback_submitted_at'):
+                activities.append({
+                    "type": "feedback",
+                    "event_id": event_id,
+                    "timestamp": participation.get('feedback_submitted_at'),
+                    "description": f"Submitted feedback"
+                })
+            
+            stats["recent_activities"].extend(activities)
+            
+            # Build event history entry (only if we need the event data)
+            if event_id:
+                event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                if event:
+                    history_item = {
+                        "event_id": event_id,
+                        "event_name": event.get('event_name', ''),
+                        "event_date": event.get('start_datetime', ''),
+                        "venue": event.get('venue', ''),
+                        "category": event.get('category', ''),
+                        "status": event.get('status', ''),
+                        "sub_status": event.get('sub_status', ''),
+                        "registration_data": {
+                            "registration_id": participation.get('registration_id'),
+                            "registration_type": participation.get('registration_type', 'individual'),
+                            "registration_date": participation.get('registration_date'),
+                            "team_name": participation.get('team_name') or participation.get('student_data', {}).get('team_name'),
+                            "team_registration_id": participation.get('team_registration_id'),
+                            "is_team_leader": participation.get('is_team_leader', False)
+                        },
+                        "participation_status": {
+                            "attended": bool(participation.get('attendance_id')),
+                            "attendance_id": participation.get('attendance_id'),
+                            "attendance_date": participation.get('attendance_marked_at'),
+                            "feedback_submitted": bool(participation.get('feedback_id')),
+                            "feedback_id": participation.get('feedback_id'),
+                            "feedback_date": participation.get('feedback_submitted_at'),
+                            "certificate_earned": bool(participation.get('certificate_id')),
+                            "certificate_id": participation.get('certificate_id')
+                        }
+                    }
+                    event_history.append(history_item)
+        
+        # Sort activities and history by timestamp
+        def get_activity_sort_key(x):
+            timestamp = x.get('timestamp', datetime.min)
+            if isinstance(timestamp, str):
+                try:
+                    if timestamp:
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    else:
+                        return datetime.min.replace(tzinfo=timezone.utc)
+                except:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+            elif hasattr(timestamp, 'year'):
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                return timestamp
+            else:
+                return datetime.min.replace(tzinfo=timezone.utc)
+        
+        def get_event_sort_key(x):
+            date_val = x.get('event_date', '')
+            if isinstance(date_val, str):
+                try:
+                    if date_val:
+                        dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    else:
+                        return datetime.min.replace(tzinfo=timezone.utc)
+                except:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+            elif hasattr(date_val, 'year'):
+                if date_val.tzinfo is None:
+                    date_val = date_val.replace(tzinfo=timezone.utc)
+                return date_val
+            else:
+                return datetime.min.replace(tzinfo=timezone.utc)
+        
+        stats["recent_activities"].sort(key=get_activity_sort_key, reverse=True)
+        stats["recent_activities"] = stats["recent_activities"][:10]  # Limit to last 10
+        
+        event_history.sort(key=get_event_sort_key, reverse=True)
+        
+        # Calculate participation rates
+        if stats["total_registrations"] > 0:
+            stats["attendance_rate"] = round(
+                (stats["attendance_marked"] / stats["total_registrations"]) * 100, 1
+            )
+            stats["feedback_rate"] = round(
+                (stats["feedback_submitted"] / stats["total_registrations"]) * 100, 1
+            )
+        else:
+            stats["attendance_rate"] = 0
+            stats["feedback_rate"] = 0
+        
+        logger.info(f"Complete profile data retrieved for {student.enrollment_no}: {len(event_history)} events, {len(stats['recent_activities'])} activities")
         
         return {
             "success": True,
-            "message": "Profile information retrieved successfully",
+            "message": "Complete profile information retrieved successfully",
             "profile": profile_data,
-            "student": profile_data  # Alternative response structure for compatibility
+            "stats": stats,
+            "event_history": event_history
         }
         
     except Exception as e:
-        logger.error(f"Error getting profile info: {str(e)}")
-        return {"success": False, "message": f"Error retrieving profile: {str(e)}"}
+        logger.error(f"Error getting complete profile: {str(e)}")
+        return {"success": False, "message": f"Error retrieving complete profile: {str(e)}"}
+
+@router.get("/faculty/complete-profile")
+async def get_faculty_complete_profile(faculty: Faculty = Depends(require_faculty_login_hybrid)):
+    """Get complete faculty profile information including stats and event history in one call - OPTIMIZED"""
+    try:
+        logger.info(f"Complete faculty profile requested for: {faculty.employee_id}")
+        
+        # Get complete faculty data from database
+        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
+        if not faculty_data:
+            return {"success": False, "message": "Faculty profile not found"}
+        
+        # Check both possible field names for event participations
+        event_participations = (
+            faculty_data.get('event_participations', []) or 
+            faculty_data.get('event_participation', [])
+        )
+        
+        # Build profile data
+        profile_data = {
+            "employee_id": faculty_data.get('employee_id', ''),
+            "full_name": faculty_data.get('full_name', ''),
+            "email": faculty_data.get('email', ''),
+            "contact_no": faculty_data.get('contact_no', ''),
+            "department": faculty_data.get('department', ''),
+            "designation": faculty_data.get('designation', ''),
+            "qualification": faculty_data.get('qualification', ''),
+            "specialization": faculty_data.get('specialization', ''),
+            "experience_years": faculty_data.get('experience_years', ''),
+            "seating": faculty_data.get('seating', ''),
+            "gender": faculty_data.get('gender', ''),
+            "date_of_birth": faculty_data.get('date_of_birth', ''),
+            "date_of_joining": faculty_data.get('date_of_joining', ''),
+            "avatar_url": faculty_data.get('avatar_url'),
+            "profile_created_at": faculty_data.get('created_at', '').isoformat() if hasattr(faculty_data.get('created_at', ''), 'isoformat') else faculty_data.get('created_at', ''),
+            "last_updated": faculty_data.get('updated_at', '').isoformat() if hasattr(faculty_data.get('updated_at', ''), 'isoformat') else faculty_data.get('updated_at', ''),
+            "is_active": faculty_data.get('is_active', True),
+            "event_participation": event_participations
+        }
+        
+        # Process event participations for stats and history
+        if event_participations and isinstance(event_participations[0], dict):
+            participation_count = len(event_participations)
+            event_ids = [p.get('event_id') for p in event_participations if p.get('event_id')]
+            participations_dict = {p.get('event_id'): p for p in event_participations if p.get('event_id')}
+        else:
+            participation_count = len(event_participations)
+            event_ids = event_participations
+            participations_dict = {}
+        
+        # Build dashboard stats
+        stats = {
+            "total_events_participated": participation_count,
+            "total_registrations": participation_count,
+            "attendance_marked": participation_count,
+            "feedback_submitted": 0,
+            "certificates_earned": participation_count,
+            "individual_registrations": participation_count,
+            "team_registrations": 0,
+            "recent_activities": []
+        }
+        
+        # Build event history
+        event_history = []
+        
+        # Process each event participation for history
+        for event_id in event_ids[-10:]:  # Limit to last 10 for performance
+            try:
+                event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+                if not event:
+                    continue
+                
+                # Get faculty registration for this event
+                registration = await DatabaseOperations.find_one(
+                    "faculty_registrations",
+                    {
+                        "faculty.employee_id": faculty.employee_id,
+                        "event.event_id": event_id
+                    }
+                )
+                
+                participation_data = participations_dict.get(event_id, {})
+                
+                history_item = {
+                    "event_id": event_id,
+                    "event_name": event.get("event_name", "Unknown Event"),
+                    "event_date": event.get("start_datetime"),
+                    "venue": event.get("venue", "TBD"),
+                    "category": event.get("event_type", "Unknown"),
+                    "status": event.get("status", "unknown"),
+                    "sub_status": event.get("sub_status", "unknown"),
+                    "registration_data": {
+                        "registration_id": (
+                            participation_data.get("registration_id") or
+                            registration.get("registration_id", "N/A") if registration else "N/A"
+                        ),
+                        "registration_type": (
+                            participation_data.get("registration_type") or
+                            registration.get("registration", {}).get("registration_type", "individual") if registration else "individual"
+                        ),
+                        "registration_date": (
+                            participation_data.get("registration_date") or
+                            registration.get("registration", {}).get("registered_at") if registration else None
+                        ),
+                        "status": (
+                            participation_data.get("status") or
+                            registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
+                        )
+                    },
+                    "participation_status": participation_data.get("status", "registered")
+                }
+                
+                event_history.append(history_item)
+                
+                # Add to recent activities
+                stats["recent_activities"].append({
+                    "event_id": event_id,
+                    "event_name": event.get("event_name", "Unknown Event"),
+                    "event_type": event.get("event_type", "Unknown"),
+                    "status": "participated",
+                    "date": event.get("start_datetime", datetime.now()).isoformat() if event.get("start_datetime") else datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error processing event {event_id} for faculty {faculty.employee_id}: {e}")
+                continue
+        
+        # Sort event history by date (most recent first)
+        def get_sort_key(item):
+            event_date = item.get("event_date")
+            if event_date:
+                try:
+                    return datetime.fromisoformat(str(event_date).replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    return datetime.min
+            return datetime.min
+        
+        event_history.sort(key=get_sort_key, reverse=True)
+        stats["recent_activities"].sort(key=lambda x: x.get("date", ""), reverse=True)
+        
+        logger.info(f"Complete faculty profile data retrieved for {faculty.employee_id}: {len(event_history)} events, {len(stats['recent_activities'])} activities")
+        
+        return {
+            "success": True,
+            "message": "Complete faculty profile information retrieved successfully",
+            "profile": profile_data,
+            "stats": stats,
+            "event_history": event_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting complete faculty profile: {str(e)}")
+        return {"success": False, "message": f"Error retrieving complete faculty profile: {str(e)}"}
+
 
 @router.put("/update")
 async def update_profile(request: Request, student: Student = Depends(require_student_login_hybrid)):
@@ -137,52 +429,6 @@ async def update_profile(request: Request, student: Student = Depends(require_st
         logger.error(f"Error updating profile: {str(e)}")
         return {"success": False, "message": f"Error updating profile: {str(e)}"}
 
-@router.get("/faculty/info")
-async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_login_hybrid)):
-    """Get current faculty profile information"""
-    try:
-        # Get complete faculty data from database
-        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
-        if not faculty_data:
-            return {"success": False, "message": "Faculty profile not found"}
-        
-        # FIXED: Check both possible field names for event participations
-        event_participations = (
-            faculty_data.get('event_participations', []) or 
-            faculty_data.get('event_participation', [])
-        )
-        
-        # Remove sensitive information
-        profile_data = {
-            "employee_id": faculty_data.get('employee_id', ''),
-            "full_name": faculty_data.get('full_name', ''),
-            "email": faculty_data.get('email', ''),
-            "contact_no": faculty_data.get('contact_no', ''),
-            "department": faculty_data.get('department', ''),
-            "designation": faculty_data.get('designation', ''),
-            "qualification": faculty_data.get('qualification', ''),
-            "specialization": faculty_data.get('specialization', ''),
-            "experience_years": faculty_data.get('experience_years', ''),
-            "seating": faculty_data.get('seating', ''),
-            "gender": faculty_data.get('gender', ''),
-            "date_of_birth": faculty_data.get('date_of_birth', ''),
-            "date_of_joining": faculty_data.get('date_of_joining', ''),
-            "avatar_url": faculty_data.get('avatar_url'),  # Include avatar URL
-            "profile_created_at": faculty_data.get('created_at', '').isoformat() if hasattr(faculty_data.get('created_at', ''), 'isoformat') else faculty_data.get('created_at', ''),
-            "last_updated": faculty_data.get('updated_at', '').isoformat() if hasattr(faculty_data.get('updated_at', ''), 'isoformat') else faculty_data.get('updated_at', ''),
-            "is_active": faculty_data.get('is_active', True),
-            "event_participation": event_participations  # Use the corrected field
-        }
-        
-        return {
-            "success": True,
-            "message": "Faculty profile information retrieved successfully",
-            "profile": profile_data
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting faculty profile info: {str(e)}")
-        return {"success": False, "message": f"Error retrieving profile: {str(e)}"}
 
 @router.put("/faculty/update")
 async def update_faculty_profile(request: Request, faculty: Faculty = Depends(get_current_faculty_optional)):
@@ -255,220 +501,7 @@ async def update_faculty_profile(request: Request, faculty: Faculty = Depends(ge
         logger.error(f"Error updating faculty profile: {str(e)}")
         return {"success": False, "message": f"Error updating profile: {str(e)}"}
 
-@router.get("/dashboard-stats")
-async def get_dashboard_stats(student: Student = Depends(require_student_login_hybrid)):
-    """Get dashboard statistics for the student"""
-    try:
-        # Get student data
-        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
-        if not student_data:
-            return {"success": False, "message": "Student not found"}
-        
-        # Analyze event participations - FIXED: event_participations is a list, not dict
-        event_participations = student_data.get('event_participations', [])
-        
-        stats = {
-            "total_registrations": len(event_participations),
-            "attendance_marked": 0,
-            "feedback_submitted": 0,
-            "certificates_earned": 0,
-            "individual_registrations": 0,
-            "team_registrations": 0,
-            "recent_activities": []
-        }
-        
-        # Calculate statistics
-        for participation in event_participations:  # FIXED: iterate over list directly
-            # Count attendance
-            if participation.get('attendance_id'):
-                stats["attendance_marked"] += 1
-            
-            # Count feedback
-            if participation.get('feedback_id'):
-                stats["feedback_submitted"] += 1
-            
-            # Count certificates
-            if participation.get('certificate_id'):
-                stats["certificates_earned"] += 1
-            
-            # Count registration types
-            reg_type = participation.get('registration_type', 'individual')
-            if reg_type in ['team_leader', 'team_participant']:
-                stats["team_registrations"] += 1
-            else:
-                stats["individual_registrations"] += 1
-            
-            # Collect recent activities
-            activities = []
-            event_id = participation.get('event_id')  # Get event_id from participation
-            if participation.get('registration_date'):  # FIXED: field name
-                activities.append({
-                    "type": "registration",
-                    "event_id": event_id,
-                    "timestamp": participation.get('registration_date'),  # FIXED: field name
-                    "description": f"Registered for event"
-                })
-            
-            if participation.get('attendance_marked_at'):
-                activities.append({
-                    "type": "attendance",
-                    "event_id": event_id,
-                    "timestamp": participation.get('attendance_marked_at'),
-                    "description": f"Attended event"
-                })
-            
-            if participation.get('feedback_submitted_at'):
-                activities.append({
-                    "type": "feedback",
-                    "event_id": event_id,
-                    "timestamp": participation.get('feedback_submitted_at'),
-                    "description": f"Submitted feedback"
-                })
-            
-            stats["recent_activities"].extend(activities)
-        
-        # Sort recent activities by timestamp (most recent first)
-        def get_activity_sort_key(x):
-            timestamp = x.get('timestamp', datetime.min)
-            if isinstance(timestamp, str):
-                try:
-                    if timestamp:
-                        # Parse ISO string and make it timezone-aware (UTC)
-                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                        if dt.tzinfo is None:
-                            # If somehow still naive, assume UTC
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        return dt
-                    else:
-                        # Return timezone-aware datetime.min
-                        return datetime.min.replace(tzinfo=timezone.utc)
-                except:
-                    return datetime.min.replace(tzinfo=timezone.utc)
-            elif hasattr(timestamp, 'year'):  # datetime object
-                # Ensure it's timezone-aware
-                if timestamp.tzinfo is None:
-                    timestamp = timestamp.replace(tzinfo=timezone.utc)
-                return timestamp
-            else:
-                return datetime.min.replace(tzinfo=timezone.utc)
-        
-        stats["recent_activities"].sort(key=get_activity_sort_key, reverse=True)
-        
-        # Limit to last 10 activities
-        stats["recent_activities"] = stats["recent_activities"][:10]
-        
-        # Calculate participation rate
-        if stats["total_registrations"] > 0:
-            stats["attendance_rate"] = round(
-                (stats["attendance_marked"] / stats["total_registrations"]) * 100, 1
-            )
-            stats["feedback_rate"] = round(
-                (stats["feedback_submitted"] / stats["total_registrations"]) * 100, 1
-            )
-        else:
-            stats["attendance_rate"] = 0
-            stats["feedback_rate"] = 0
-        
-        return {
-            "success": True,
-            "message": "Dashboard statistics retrieved successfully",
-            "stats": stats
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting dashboard stats: {str(e)}")
-        return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}
 
-@router.get("/event-history")
-async def get_event_history(student: Student = Depends(require_student_login_hybrid)):
-    """Get complete event participation history for the student"""
-    try:
-        # Get student data
-        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
-        if not student_data:
-            return {"success": False, "message": "Student not found"}
-        
-        # Get event participations - FIXED: event_participations is a list, not dict
-        event_participations = student_data.get('event_participations', [])
-        
-        if not event_participations:
-            return {
-                "success": True,
-                "message": "No event participation history found",
-                "event_history": []
-            }
-        
-        # Get event details for each participation
-        event_history = []
-        for participation in event_participations:  # FIXED: iterate over list directly
-            event_id = participation.get('event_id')
-            # Get event details
-            event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-            if event:
-                history_item = {
-                    "event_id": event_id,
-                    "event_name": event.get('event_name', ''),
-                    "event_date": event.get('start_datetime', ''),
-                    "venue": event.get('venue', ''),
-                    "category": event.get('category', ''),
-                    "status": event.get('status', ''),
-                    "sub_status": event.get('sub_status', ''),
-                    "registration_data": {
-                        "registration_id": participation.get('registration_id'),
-                        "registration_type": participation.get('registration_type', 'individual'),
-                        "registration_date": participation.get('registration_date'),  # FIXED: field name
-                        "team_name": participation.get('team_name') or participation.get('student_data', {}).get('team_name'),
-                        "team_registration_id": participation.get('team_registration_id'),
-                        "is_team_leader": participation.get('is_team_leader', False)
-                    },
-                    "participation_status": {
-                        "attended": bool(participation.get('attendance_id')),
-                        "attendance_id": participation.get('attendance_id'),
-                        "attendance_date": participation.get('attendance_marked_at'),
-                        "feedback_submitted": bool(participation.get('feedback_id')),
-                        "feedback_id": participation.get('feedback_id'),
-                        "feedback_date": participation.get('feedback_submitted_at'),
-                        "certificate_earned": bool(participation.get('certificate_id')),
-                        "certificate_id": participation.get('certificate_id')
-                    }
-                }
-                event_history.append(history_item)
-        
-        # Sort by event date (most recent first)
-        def get_sort_key(x):
-            date_val = x.get('event_date', '')
-            if isinstance(date_val, str):
-                try:
-                    if date_val:
-                        # Parse ISO string and make it timezone-aware (UTC)
-                        dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
-                        if dt.tzinfo is None:
-                            # If somehow still naive, assume UTC
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        return dt
-                    else:
-                        return datetime.min.replace(tzinfo=timezone.utc)
-                except:
-                    return datetime.min.replace(tzinfo=timezone.utc)
-            elif hasattr(date_val, 'year'):  # datetime object
-                # Ensure it's timezone-aware
-                if date_val.tzinfo is None:
-                    date_val = date_val.replace(tzinfo=timezone.utc)
-                return date_val
-            else:
-                return datetime.min.replace(tzinfo=timezone.utc)
-        
-        event_history.sort(key=get_sort_key, reverse=True)
-        
-        return {
-            "success": True,
-            "message": f"Retrieved {len(event_history)} event participation records",
-            "event_history": event_history
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting event history: {str(e)}")
-        return {"success": False, "message": f"Error retrieving event history: {str(e)}"}
 
 @router.post("/change-password")
 async def change_password(request: Request, student: Student = Depends(require_student_login_hybrid)):
@@ -524,189 +557,6 @@ async def change_password(request: Request, student: Student = Depends(require_s
         logger.error(f"Error changing password: {str(e)}")
         return {"success": False, "message": f"Error changing password: {str(e)}"}
 
-@router.get("/faculty/dashboard-stats")
-async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty_login_hybrid)):
-    """Get dashboard statistics for faculty"""
-    try:
-        # Get faculty data
-        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
-        if not faculty_data:
-            return {"success": False, "message": "Faculty not found"}
-        
-        # FIXED: Check both possible field names for event participations
-        # Try both 'event_participations' (plural) and 'event_participation' (singular)
-        event_participation = (
-            faculty_data.get('event_participations', []) or 
-            faculty_data.get('event_participation', [])
-        )
-        
-        # If it's a list of objects with event_id, extract the event_ids for counting
-        if event_participation and isinstance(event_participation[0], dict):
-            participation_count = len(event_participation)
-            event_ids = [p.get('event_id') for p in event_participation if p.get('event_id')]
-        else:
-            participation_count = len(event_participation)
-            event_ids = event_participation
-        
-        stats = {
-            "total_events_participated": participation_count,
-            "total_registrations": participation_count,  # For compatibility with frontend
-            "attendance_marked": participation_count,   # Assuming faculty attended events they participated in
-            "feedback_submitted": 0,  # Could be extended based on faculty feedback system
-            "certificates_earned": participation_count,  # Assuming faculty get certificates
-            "individual_registrations": participation_count,
-            "team_registrations": 0,  # Faculty typically don't do team registrations
-            "recent_activities": []
-        }
-        
-        # Get recent activities (limit to last 5 events)
-        if event_ids:
-            # Get event details for recent activities
-            recent_event_ids = event_ids[-5:] if len(event_ids) > 5 else event_ids  # Last 5 events
-            for event_id in recent_event_ids:
-                try:
-                    event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-                    if event:
-                        stats["recent_activities"].append({
-                            "event_id": event_id,
-                            "event_name": event.get("event_name", "Unknown Event"),
-                            "event_type": event.get("event_type", "Unknown"),
-                            "status": "participated",
-                            "date": event.get("start_datetime", datetime.now()).isoformat() if event.get("start_datetime") else datetime.now().isoformat()
-                        })
-                except Exception as e:
-                    logger.warning(f"Error getting event details for {event_id}: {e}")
-                    continue
-        
-        return {
-            "success": True,
-            "message": "Faculty dashboard stats retrieved successfully",
-            "stats": stats
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting faculty dashboard stats: {str(e)}")
-        return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}
-
-@router.get("/faculty/event-history")
-async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_login_hybrid)):
-    """Get complete event participation history for the faculty"""
-    try:
-        # Get faculty data from database
-        faculty_data = await DatabaseOperations.find_one("faculties", {"employee_id": faculty.employee_id})
-        if not faculty_data:
-            return {
-                "success": False,
-                "message": "Faculty not found",
-                "event_history": []
-            }
-        
-        # FIXED: Check both possible field names for event participations
-        # Try both 'event_participations' (plural) and 'event_participation' (singular)
-        event_participations = (
-            faculty_data.get('event_participations', []) or 
-            faculty_data.get('event_participation', [])
-        )
-        
-        # If it's a list of objects with event_id, extract the event_ids
-        if event_participations and isinstance(event_participations[0], dict):
-            event_ids = []
-            participations_dict = {}
-            for participation in event_participations:
-                if isinstance(participation, dict) and 'event_id' in participation:
-                    event_id = participation['event_id']
-                    event_ids.append(event_id)
-                    participations_dict[event_id] = participation
-            event_participations = event_ids
-        else:
-            participations_dict = {}
-        
-        if not event_participations:
-            return {
-                "success": True,
-                "message": "No event participation history found",
-                "event_history": []
-            }
-        
-        event_history = []
-        
-        # Process each event participation
-        for event_id in event_participations:
-            try:
-                # Get event details
-                event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-                if not event:
-                    continue
-                
-                # Get faculty registration for this event from faculty_registrations collection
-                registration = await DatabaseOperations.find_one(
-                    "faculty_registrations",
-                    {
-                        "faculty.employee_id": faculty.employee_id,
-                        "event.event_id": event_id
-                    }
-                )
-                
-                # Get participation data if available
-                participation_data = participations_dict.get(event_id, {})
-                
-                # Create history item with similar structure to student event history
-                history_item = {
-                    "event_id": event_id,
-                    "event_name": event.get("event_name", "Unknown Event"),
-                    "event_date": event.get("start_datetime"),
-                    "venue": event.get("venue", "TBD"),
-                    "category": event.get("event_type", "Unknown"),
-                    "status": event.get("status", "unknown"),
-                    "sub_status": event.get("sub_status", "unknown"),
-                    "registration_data": {
-                        "registration_id": (
-                            participation_data.get("registration_id") or
-                            registration.get("registration_id", "N/A") if registration else "N/A"
-                        ),
-                        "registration_type": (
-                            participation_data.get("registration_type") or
-                            registration.get("registration", {}).get("registration_type", "individual") if registration else "individual"
-                        ),
-                        "registration_date": (
-                            participation_data.get("registration_date") or
-                            registration.get("registration", {}).get("registered_at") if registration else None
-                        ),
-                        "status": (
-                            participation_data.get("status") or
-                            registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
-                        )
-                    },
-                    "participation_status": participation_data.get("status", "registered")
-                }
-                
-                event_history.append(history_item)
-                
-            except Exception as e:
-                logger.warning(f"Error processing event {event_id} for faculty {faculty.employee_id}: {e}")
-                continue
-        
-        # Sort by event date (most recent first)
-        def get_sort_key(item):
-            event_date = item.get("event_date")
-            if event_date:
-                try:
-                    return datetime.fromisoformat(str(event_date).replace('Z', '+00:00'))
-                except (ValueError, AttributeError):
-                    return datetime.min
-            return datetime.min
-        
-        event_history.sort(key=get_sort_key, reverse=True)
-        
-        return {
-            "success": True,
-            "message": f"Retrieved {len(event_history)} event participation records",
-            "event_history": event_history
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting faculty event history: {str(e)}")
-        return {"success": False, "message": f"Error retrieving event history: {str(e)}"}
 
 
 @router.get("/team-details/{event_id}/{team_id}")

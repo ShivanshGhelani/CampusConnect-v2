@@ -183,9 +183,14 @@ export const clientAPI = {
   getCertificates: () => api.get('/api/v1/client/certificates/available'),
   downloadCertificate: (certificateId) => api.get(`/api/v1/client/certificates/download/${certificateId}`),
   
-  // Profile - FIXED: Use correct endpoint for complete profile data
+  // Profile - OPTIMIZED: Combined endpoint to reduce API calls
+  getCompleteProfile: () => api.get('/api/v1/client/profile/complete-profile'), // NEW: All profile data in one call
+  
+  // Legacy endpoints (kept for backward compatibility)
   getProfile: () => api.get('/api/v1/client/profile/info'),
-  getDashboardStats: () => api.get('/api/v1/client/profile/dashboard-stats'), // Separate endpoint for stats
+  getDashboardStats: () => api.get('/api/v1/client/profile/dashboard-stats'),
+  getEventHistory: () => api.get('/api/v1/client/profile/event-history'),
+  
   updateProfile: (profileData) => api.put('/api/v1/client/profile/update', profileData),
   
   // Team Registration Details - Enhanced for QR code generation

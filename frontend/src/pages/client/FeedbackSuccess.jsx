@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import certificateGenerateService from '../../services/certificateGenerateService.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { getCachedProfile, fetchProfileWithCache } from '../../utils/profileCache';
 
 const FeedbackSuccess = () => {
   const { eventId } = useParams();
@@ -86,12 +87,20 @@ const FeedbackSuccess = () => {
         console.log('⚠️ No registration found for this event');
       }
 
-      // Fetch user profile
+      // Fetch user profile - OPTIMIZED: Use cached profile data
       try {
-        const userResponse = await clientAPI.getProfile();
-        if (userResponse.data.success) {
-          setUser(userResponse.data.user);
-          console.log('👤 User profile loaded:', userResponse.data.user);
+        // First check cache for fast loading
+        const cachedProfile = getCachedProfile();
+        if (cachedProfile?.profile) {
+          setUser(cachedProfile.profile);
+          console.log('👤 User profile loaded from cache:', cachedProfile.profile);
+        } else {
+          // Fallback to API with cache
+          const profileData = await fetchProfileWithCache();
+          if (profileData?.profile) {
+            setUser(profileData.profile);
+            console.log('👤 User profile loaded from API:', profileData.profile);
+          }
         }
       } catch (userError) {
         console.log('User profile not available:', userError);

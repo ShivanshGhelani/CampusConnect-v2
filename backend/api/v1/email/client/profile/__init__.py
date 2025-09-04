@@ -15,6 +15,201 @@ from typing import Union
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+@router.get("/complete-profile")
+async def get_complete_profile(student: Student = Depends(require_student_login)):
+    """Get complete profile information including stats and event history in one call"""
+    try:
+        # Get complete student data from database
+        student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
+        if not student_data:
+            return {"success": False, "message": "Student profile not found"}
+        
+        # Build profile data (same as /info endpoint)
+        profile_data = {
+            "enrollment_no": student_data.get('enrollment_no', ''),
+            "full_name": student_data.get('full_name', ''),
+            "email": student_data.get('email', ''),
+            "mobile_no": student_data.get('mobile_no', ''),
+            "department": student_data.get('department', ''),
+            "semester": student_data.get('semester', ''),
+            "year_of_admission": student_data.get('year_of_admission', ''),
+            "date_of_birth": student_data.get('date_of_birth', ''),
+            "gender": student_data.get('gender', ''),
+            "address": student_data.get('address', ''),
+            "parent_mobile": student_data.get('parent_mobile', ''),
+            "emergency_contact": student_data.get('emergency_contact', ''),
+            "profile_created_at": student_data.get('created_at', '').isoformat() if hasattr(student_data.get('created_at', ''), 'isoformat') else student_data.get('created_at', ''),
+            "last_updated": student_data.get('updated_at', '').isoformat() if hasattr(student_data.get('updated_at', ''), 'isoformat') else student_data.get('updated_at', ''),
+            "is_active": student_data.get('is_active', True),
+            "avatar_url": student_data.get('avatar_url', None)
+        }
+        
+        # Get event participations for stats and history
+        event_participations = student_data.get('event_participations', {})
+        
+        # Build dashboard stats (same as /dashboard-stats endpoint)
+        stats = {
+            "total_registrations": len(event_participations),
+            "attendance_marked": 0,
+            "feedback_submitted": 0,
+            "certificates_earned": 0,
+            "individual_registrations": 0,
+            "team_registrations": 0,
+            "recent_activities": []
+        }
+        
+        # Calculate statistics and build event history simultaneously
+        event_history = []
+        
+        for event_id, participation in event_participations.items():
+            # Count attendance
+            if participation.get('attendance_id'):
+                stats["attendance_marked"] += 1
+            
+            # Count feedback
+            if participation.get('feedback_id'):
+                stats["feedback_submitted"] += 1
+            
+            # Count certificates
+            if participation.get('certificate_id'):
+                stats["certificates_earned"] += 1
+            
+            # Count registration types
+            reg_type = participation.get('registration_type', 'individual')
+            if reg_type in ['team_leader', 'team_participant']:
+                stats["team_registrations"] += 1
+            else:
+                stats["individual_registrations"] += 1
+            
+            # Collect recent activities
+            activities = []
+            if participation.get('registration_datetime'):
+                activities.append({
+                    "type": "registration",
+                    "event_id": event_id,
+                    "timestamp": participation.get('registration_datetime'),
+                    "description": f"Registered for event"
+                })
+            
+            if participation.get('attendance_marked_at'):
+                activities.append({
+                    "type": "attendance",
+                    "event_id": event_id,
+                    "timestamp": participation.get('attendance_marked_at'),
+                    "description": f"Attended event"
+                })
+            
+            if participation.get('feedback_submitted_at'):
+                activities.append({
+                    "type": "feedback",
+                    "event_id": event_id,
+                    "timestamp": participation.get('feedback_submitted_at'),
+                    "description": f"Submitted feedback"
+                })
+            
+            stats["recent_activities"].extend(activities)
+            
+            # Build event history entry
+            event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+            if event:
+                history_item = {
+                    "event_id": event_id,
+                    "event_name": event.get('event_name', ''),
+                    "event_date": event.get('start_datetime', ''),
+                    "venue": event.get('venue', ''),
+                    "category": event.get('category', ''),
+                    "status": event.get('status', ''),
+                    "sub_status": event.get('sub_status', ''),
+                    "registration_data": {
+                        "registration_id": participation.get('registration_id'),
+                        "registration_type": participation.get('registration_type', 'individual'),
+                        "registration_date": participation.get('registration_datetime'),
+                        "team_name": participation.get('student_data', {}).get('team_name'),
+                        "team_registration_id": participation.get('team_registration_id')
+                    },
+                    "participation_status": {
+                        "attended": bool(participation.get('attendance_id')),
+                        "attendance_id": participation.get('attendance_id'),
+                        "attendance_date": participation.get('attendance_marked_at'),
+                        "feedback_submitted": bool(participation.get('feedback_id')),
+                        "feedback_id": participation.get('feedback_id'),
+                        "feedback_date": participation.get('feedback_submitted_at'),
+                        "certificate_earned": bool(participation.get('certificate_id')),
+                        "certificate_id": participation.get('certificate_id')
+                    }
+                }
+                event_history.append(history_item)
+        
+        # Sort activities and history by timestamp
+        def get_activity_sort_key(x):
+            timestamp = x.get('timestamp', datetime.min)
+            if isinstance(timestamp, str):
+                try:
+                    if timestamp:
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    else:
+                        return datetime.min.replace(tzinfo=timezone.utc)
+                except:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+            elif hasattr(timestamp, 'year'):
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                return timestamp
+            else:
+                return datetime.min.replace(tzinfo=timezone.utc)
+        
+        def get_event_sort_key(x):
+            date_val = x.get('event_date', '')
+            if isinstance(date_val, str):
+                try:
+                    if date_val:
+                        dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    else:
+                        return datetime.min.replace(tzinfo=timezone.utc)
+                except:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+            elif hasattr(date_val, 'year'):
+                if date_val.tzinfo is None:
+                    date_val = date_val.replace(tzinfo=timezone.utc)
+                return date_val
+            else:
+                return datetime.min.replace(tzinfo=timezone.utc)
+        
+        stats["recent_activities"].sort(key=get_activity_sort_key, reverse=True)
+        stats["recent_activities"] = stats["recent_activities"][:10]  # Limit to last 10
+        
+        event_history.sort(key=get_event_sort_key, reverse=True)
+        
+        # Calculate participation rates
+        if stats["total_registrations"] > 0:
+            stats["attendance_rate"] = round(
+                (stats["attendance_marked"] / stats["total_registrations"]) * 100, 1
+            )
+            stats["feedback_rate"] = round(
+                (stats["feedback_submitted"] / stats["total_registrations"]) * 100, 1
+            )
+        else:
+            stats["attendance_rate"] = 0
+            stats["feedback_rate"] = 0
+        
+        return {
+            "success": True,
+            "message": "Complete profile information retrieved successfully",
+            "profile": profile_data,
+            "stats": stats,
+            "event_history": event_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting complete profile: {str(e)}")
+        return {"success": False, "message": f"Error retrieving complete profile: {str(e)}"}
+
 @router.get("/info")
 async def get_profile_info(student: Student = Depends(require_student_login)):
     """Get current student profile information"""

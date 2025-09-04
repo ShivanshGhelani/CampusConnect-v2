@@ -46,22 +46,13 @@ if additional_origins:
 # Use frontend URL from settings
 FRONTEND_URL = settings.FRONTEND_URL
 
-print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
-print(f"Frontend URL for redirects: {FRONTEND_URL}")
-
 # Manual CORS handler (replacing CORS middleware to avoid conflicts)
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
     origin = request.headers.get("origin")
-    print(f"🔍 CORS DEBUG - Origin: {origin}")
-    print(f"🔍 CORS DEBUG - Method: {request.method}")
-    print(f"🔍 CORS DEBUG - URL: {request.url}")
-    print(f"🔍 CORS DEBUG - Allowed origins: {ALLOWED_ORIGINS}")
-    print(f"🔍 CORS DEBUG - Origin in allowed: {origin in ALLOWED_ORIGINS}")
     
     # Handle preflight requests
     if request.method == "OPTIONS":
-        print(f"🔍 CORS DEBUG - Handling OPTIONS preflight")
         if origin in ALLOWED_ORIGINS:
             response = Response()
             response.headers["Access-Control-Allow-Origin"] = origin
@@ -69,7 +60,6 @@ async def add_cors_headers(request: Request, call_next):
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
             response.headers["Access-Control-Allow-Headers"] = "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with, ngrok-skip-browser-warning"
             response.headers["Access-Control-Max-Age"] = "86400"
-            print(f"✅ CORS DEBUG - Set preflight headers for origin: {origin}")
             return response
     
     # Process actual request
@@ -77,36 +67,23 @@ async def add_cors_headers(request: Request, call_next):
     
     # Add CORS headers for allowed origins
     if origin in ALLOWED_ORIGINS:
-        print(f"✅ CORS DEBUG - Adding CORS headers for allowed origin: {origin}")
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with, ngrok-skip-browser-warning"
-    else:
-        print(f"❌ CORS DEBUG - Origin not allowed: {origin}")
     
     # Force override any existing CORS headers that might be wildcards
     if 'access-control-allow-origin' in response.headers:
         if response.headers['access-control-allow-origin'] == '*' and origin in ALLOWED_ORIGINS:
-            print(f"🔧 CORS DEBUG - Overriding wildcard '*' with specific origin: {origin}")
             response.headers["Access-Control-Allow-Origin"] = origin
-    
-    # Debug: Check final response headers
-    cors_headers = {k: v for k, v in response.headers.items() if 'access-control' in k.lower()}
-    print(f"🔍 CORS DEBUG - Final response headers: {cors_headers}")
     
     return response
 
 # Configure JSON encoder for the entire application
 json._default_encoder = CustomJSONEncoder()
 
-# Add session middleware for student authentication - FIXED FOR CROSS-ORIGIN
-print("Configuring session middleware for cross-origin requests (Vercel -> ngrok)...")
-
-# Configure for cross-origin HTTPS requests
+# Add session middleware for student authentication
 session_secret = os.getenv("SESSION_SECRET_KEY", "development-secret-key-for-cors-debugging")
-print(f"Using session secret (first 10 chars): {session_secret[:10]}...")
-print("Session config: same_site='none', https_only=True (required for cross-origin)")
 
 app.add_middleware(
     SessionMiddleware, 
@@ -222,9 +199,9 @@ async def startup_db_client():
     global scheduler_task
     await Database.connect_db()
     
-    # Initialize communication service (includes SMTP connection pool)
-    from services.communication.email_service import communication_service
-    logger.info("Communication service initialized for high-performance email delivery")
+    # Communication service will be initialized automatically when first accessed (singleton)
+    # No need to explicitly initialize it here
+    logger.info("Communication service ready for high-performance email delivery")
     
     # Initialize dynamic event scheduler with background task
     await start_dynamic_scheduler()

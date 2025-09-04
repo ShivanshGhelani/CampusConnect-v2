@@ -9,6 +9,7 @@ import MessageBox from '../../../../components/client/MessageBox';
 import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
 import api from '../../../../api/base';
+import { fetchProfileWithCache } from '../../../../utils/profileCache';
 
 function FacultyProfilePage() {
   const { user } = useAuth();
@@ -115,39 +116,15 @@ function FacultyProfilePage() {
       try {
         setLoading(true);
 
-        // Fetch complete faculty profile data
-        const profileResponse = await api.get('/api/v1/client/profile/faculty/info');
-        if (profileResponse.data.success) {
-          const profile = profileResponse.data.profile || {};
-          setProfileData(profile);
-        }
-
-        // Fetch faculty event history
-        try {
-          const historyResponse = await api.get('/api/v1/client/profile/faculty/event-history');
-          if (historyResponse.data.success) {
-            setEventHistory(historyResponse.data.event_history || []);
-          }
-        } catch (error) {
-          console.log('Faculty event history not available yet');
-          setEventHistory([]);
-        }
-
-        // Fetch faculty dashboard stats
-        try {
-          const statsResponse = await api.get('/api/v1/client/profile/faculty/dashboard-stats');
-          if (statsResponse.data.success) {
-            setDashboardStats(statsResponse.data.stats || {});
-          }
-        } catch (error) {
-          // If faculty dashboard stats endpoint is not available, use default values
-          console.log('Faculty dashboard stats not available, using defaults');
-          setDashboardStats({
-            total_registrations: 0,
-            attendance_marked: 0,
-            feedback_submitted: 0,
-            certificates_earned: 0
-          });
+        // OPTIMIZED: Use global cache to prevent duplicate API calls
+        const data = await fetchProfileWithCache('faculty', user?.employee_id, api);
+        
+        if (data && data.success) {
+          const { profile, stats, event_history } = data;
+          
+          setProfileData(profile || {});
+          setDashboardStats(stats || {});
+          setEventHistory(event_history || []);
         }
 
       } catch (error) {
@@ -160,7 +137,7 @@ function FacultyProfilePage() {
     if (user && user.user_type === 'faculty') {
       fetchData();
     }
-  }, [user]);
+  }, [user?.employee_id]); // Only depend on employee_id for consistency
 
   // Convert event history to match the existing format for compatibility
   const registrations = eventHistory.map(item => ({
@@ -328,16 +305,12 @@ function FacultyProfilePage() {
       const response = await api.delete(`/api/v1/client/registration/cancel/${currentEventId}`);
 
       if (response.data.success) {
-        // Refresh event history
-        const historyResponse = await api.get('/api/v1/client/profile/faculty/event-history');
-        if (historyResponse.data.success) {
-          setEventHistory(historyResponse.data.event_history || []);
-        }
-
-        // Refresh dashboard stats
-        const statsResponse = await api.get('/api/v1/client/profile/faculty/dashboard-stats');
-        if (statsResponse.data.success) {
-          setDashboardStats(statsResponse.data.stats || {});
+        // OPTIMIZED: Single API call to refresh data after cancellation
+        const refreshResponse = await api.get('/api/v1/client/profile/faculty/complete-profile');
+        if (refreshResponse.data.success) {
+          const { stats, event_history } = refreshResponse.data;
+          setEventHistory(event_history || []);
+          setDashboardStats(stats || {});
         }
 
         closeCancelModal();

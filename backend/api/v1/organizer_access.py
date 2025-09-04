@@ -206,8 +206,6 @@ async def get_organizer_access_status(request: Request, faculty: Faculty = Depen
 async def access_organizer_portal(request: Request, faculty: Faculty = Depends(require_faculty_login)):
     """Faculty member accesses organizer portal (creates admin session)"""
     try:
-        logger.info(f"Faculty {faculty.employee_id} attempting to access organizer portal")
-        
         # Check if faculty has organizer access (either is_organizer flag or organizer_permissions)
         has_organizer_access = (
             getattr(faculty, 'is_organizer', False) or 
@@ -215,7 +213,6 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         )
         
         if not has_organizer_access:
-            logger.warning(f"Faculty {faculty.employee_id} does not have organizer access")
             return JSONResponse(
                 content={
                     "success": False,
@@ -225,8 +222,6 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
             )
         
         # Create organizer admin session for authenticated faculty
-        logger.info(f"Creating organizer admin session for authenticated faculty {faculty.employee_id}")
-        
         # Convert faculty to AdminUser format for organizer portal
         admin_data = {
             "fullname": faculty.full_name,
@@ -283,9 +278,6 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
                 user_data=admin_session_data,
                 remember_me=True  # Use remember_me for organizer sessions
             )
-            logger.info(f"Generated admin tokens for organizer {faculty.employee_id}")
-        
-        logger.info(f"Successfully authenticated {faculty.employee_id} as organizer admin")
         
         response_data = {
             "success": True,

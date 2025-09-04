@@ -10,6 +10,7 @@ import { sessionAvatarCache } from '../services/sessionAvatarCache';
 
 // Import data cache manager to clear caches on logout
 import { DataCacheManager } from '../utils/dataFilteringUtils';
+import { clearProfileCache, setCachedProfile } from '../utils/profileCache';
 
 // Auth context
 const AuthContext = createContext();
@@ -246,21 +247,35 @@ export function AuthProvider({ children }) {
           console.log('✅ Stored refresh token');
         }
         
-        // Store complete profile data for students (simple sessionStorage approach)
+        // Pre-populate profile cache for students (optimized approach)
         if (userType === 'student' && response.data.user?.enrollment_no) {
           try {
-            console.log('🔄 Fetching complete profile data on login...');
-            const profileResponse = await clientAPI.getProfile();
+            console.log('🔄 Pre-populating profile cache on login...');
+            const profileResponse = await clientAPI.getCompleteProfile();
             
             if (profileResponse.data.success) {
-              const completeProfile = profileResponse.data.student || profileResponse.data.profile;
-              if (completeProfile) {
-                console.log('✅ Complete profile data stored in session');
-                sessionStorage.setItem('complete_profile', JSON.stringify(completeProfile));
+              const { profile, stats, event_history } = profileResponse.data;
+              if (profile) {
+                console.log('✅ Complete profile data cached on login');
+                // Cache the data using the profile cache system
+                setCachedProfile('student', {
+                  success: true,
+                  profile,
+                  stats,
+                  event_history
+                });
+                
+                // Also store in session storage as fallback
+                sessionStorage.setItem('complete_profile', JSON.stringify({
+                  profile,
+                  stats,
+                  event_history,
+                  fetched_at: Date.now()
+                }));
               }
             }
           } catch (profileError) {
-            console.warn('⚠️ Failed to fetch profile data on login:', profileError);
+            console.warn('⚠️ Failed to pre-populate profile cache on login:', profileError);
             // Don't fail login if profile fetch fails
           }
         }
@@ -349,6 +364,14 @@ export function AuthProvider({ children }) {
       console.log('✅ All avatar caches cleared on logout');
     } catch (error) {
       console.error('Failed to clear avatar cache:', error);
+    }
+    
+    // Clear profile cache to prevent showing previous user's profile data
+    try {
+      clearProfileCache(); // Clear both student and faculty caches
+      console.log('✅ Profile cache cleared on logout');
+    } catch (error) {
+      console.error('Failed to clear profile cache:', error);
     }
     
     // Clear data cache manager to prevent cross-user data leaks
@@ -441,7 +464,6 @@ export function AuthProvider({ children }) {
     
     // CRITICAL FIX: Store the admin tokens returned from organizer portal
     if (organizerData.access_token) {
-      console.log('🔄 Replacing faculty token with admin token for organizer portal');
       localStorage.setItem('access_token', organizerData.access_token);
       if (organizerData.refresh_token) {
         localStorage.setItem('refresh_token', organizerData.refresh_token);

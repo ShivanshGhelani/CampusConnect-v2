@@ -13,30 +13,18 @@ logger = logging.getLogger(__name__)
 
 async def get_current_admin(request: Request) -> AdminUser:
     """Get current authenticated admin from session or token (hybrid auth)"""
-    logger.info("get_current_admin called - trying token auth first")
-    logger.info(f"Request cookies: {dict(request.cookies)}")
-    logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
-    
-    # Debug: Check Authorization header
-    auth_header = request.headers.get("Authorization")
-    logger.info(f"Authorization header: {auth_header}")
     
     # First try token-based authentication
     try:
         admin_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='admin')
         if admin_from_token and isinstance(admin_from_token, AdminUser):
-            logger.info(f"Token auth successful for admin: {admin_from_token.username}")
             return admin_from_token
-        else:
-            logger.info("Token auth returned None or non-AdminUser object")
-    except Exception as e:
-        logger.info(f"Token auth failed with exception: {str(e)}")
+    except Exception:
+        pass
     
     # Fallback to session-based authentication
-    logger.info("Trying session-based authentication")
     admin_data = request.session.get('admin')  # Changed from 'admin_user' to 'admin'
     if not admin_data:
-        logger.error("No admin data in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
@@ -52,7 +40,7 @@ async def get_current_admin(request: Request) -> AdminUser:
                     admin_data[key] = None
         
         return AdminUser(**admin_data)
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid session data"
@@ -91,36 +79,22 @@ async def refresh_admin_session(request: Request) -> AdminUser:
 
 async def get_current_student(request: Request) -> Student:
     """Get currently logged in student from session or token (hybrid auth)"""
-    logger.info("get_current_student called - trying token auth first")
-    logger.info(f"Request cookies: {dict(request.cookies)}")
-    logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
-    
-    # Debug: Check Authorization header
-    auth_header = request.headers.get("Authorization")
-    logger.info(f"Authorization header: {auth_header}")
     
     # First try token-based authentication
     try:
         student_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='student')
         if student_from_token and isinstance(student_from_token, Student):
-            logger.info(f"Token auth successful for student: {student_from_token.enrollment_no}")
             return student_from_token
-        else:
-            logger.info("Token auth returned None or non-Student object")
-    except Exception as e:
-        logger.info(f"Token auth failed: {str(e)}")
+    except Exception:
+        pass
     
     # Fallback to session-based authentication
-    logger.info("Trying session-based authentication")
     student_data = request.session.get("student")
     if not student_data:
-        logger.error("No student data in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Student not logged in"
         )
-    
-    logger.info(f"Found student data in session for: {student_data.get('enrollment_no', 'unknown')}")
     
     # Convert ISO datetime strings back to datetime objects
     for key, value in student_data.items():
@@ -141,30 +115,18 @@ async def get_current_student_optional(request: Request) -> Optional[Student]:
 
 async def get_current_faculty(request: Request) -> Faculty:
     """Get currently logged in faculty from session or token (hybrid auth)"""
-    logger.info("get_current_faculty called - trying token auth first")
-    logger.info(f"Request cookies: {dict(request.cookies)}")
-    logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
-    
-    # Debug: Check Authorization header
-    auth_header = request.headers.get("Authorization")
-    logger.info(f"Authorization header: {auth_header}")
     
     # First try token-based authentication
     try:
         faculty_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='faculty')
         if faculty_from_token and isinstance(faculty_from_token, Faculty):
-            logger.info(f"Token auth successful for faculty: {faculty_from_token.employee_id}")
             return faculty_from_token
-        else:
-            logger.info("Token auth returned None or non-Faculty object")
-    except Exception as e:
-        logger.info(f"Token auth failed with exception: {str(e)}")
+    except Exception:
+        pass
     
     # Fallback to session-based authentication
-    logger.info("Trying session-based authentication")
     faculty_data = request.session.get("faculty")
     if not faculty_data:
-        logger.error("No faculty data in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Faculty not logged in"
@@ -349,17 +311,11 @@ async def get_optional_faculty(request: Request) -> Optional[Faculty]:
 
 async def get_current_student_hybrid(request: Request):
     """Hybrid authentication - tries token first, then session fallback"""
-    logger.info("get_current_student_hybrid called")
     try:
-        result = await get_current_student(request)
-        logger.info(f"Hybrid auth successful for student: {result.enrollment_no}")
-        return result
-    except HTTPException as e:
-        logger.error(f"Hybrid auth failed with HTTPException: {e.status_code} - {e.detail}")
+        return await get_current_student(request)
+    except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Hybrid auth failed with Exception: {str(e)} - {type(e).__name__}")
-        logger.error(f"Exception traceback: {e.__class__.__module__}.{e.__class__.__name__}")
+    except Exception:
         raise
 
 async def require_student_login_hybrid(request: Request):

@@ -7,6 +7,7 @@ import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
 import TextInput from '../../../../components/ui/TextInput';
 import dropdownOptionsService from '../../../../services/dropdownOptionsService';
+import { fetchProfileWithCache, getCachedProfile } from '../../../../utils/profileCache';
 
 // Hardcoded options for genders
 const GENDER_OPTIONS = [
@@ -123,9 +124,17 @@ function FacultyProfileEdit() {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/v1/client/profile/faculty/info');
-        if (response.data.success) {
-          const profile = response.data.profile;
+        
+        // OPTIMIZED: Try cached data first, then fetch if needed
+        let profileData = getCachedProfile('faculty', user?.employee_id);
+        
+        if (!profileData) {
+          // No cached data, fetch using cache system
+          profileData = await fetchProfileWithCache('faculty', user?.employee_id, api);
+        }
+        
+        if (profileData && profileData.success) {
+          const profile = profileData.profile;
           
           // Transform gender to match frontend options (capitalize first letter)
           const transformGender = (gender) => {

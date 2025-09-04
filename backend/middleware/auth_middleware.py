@@ -149,14 +149,6 @@ class AuthMiddleware:
         backend_url = settings.BACKEND_URL
         is_https = backend_url.startswith("https://") or is_production
         
-        # Debug logging for cookie settings
-        print(f"🍪 COOKIE DEBUG - Environment: {settings.ENVIRONMENT}")
-        print(f"🍪 COOKIE DEBUG - Backend URL: {backend_url}")
-        print(f"🍪 COOKIE DEBUG - is_production: {is_production}")
-        print(f"🍪 COOKIE DEBUG - is_https: {is_https}")
-        print(f"🍪 COOKIE DEBUG - Cookie secure: {is_https}")
-        print(f"🍪 COOKIE DEBUG - Cookie samesite: {'none' if is_https else 'lax'}")
-        
         # Set access token cookie (expires with token)
         response.set_cookie(
             key="access_token",

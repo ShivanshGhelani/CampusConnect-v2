@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { fetchEventWithCache, getAnyEventCache } from '../../utils/eventCache';
 
 function EventDetail() {
   const { eventId } = useParams();
@@ -16,31 +17,48 @@ function EventDetail() {
   const [attendanceMarked, setAttendanceMarked] = useState(false);
 
   useEffect(() => {
-    fetchEventDetails();
-    // Reset state when eventId changes
-    setFeedbackSubmitted(false);
-    setAttendanceMarked(false);
-  }, [eventId]);
+    // Only fetch if eventId exists and is different from current event
+    if (eventId && (!event || event.event_id !== eventId)) {
+      console.log('🎯 EventDetail: Fetching details for event:', eventId);
+      fetchEventDetails();
+      // Reset state when eventId changes
+      setFeedbackSubmitted(false);
+      setAttendanceMarked(false);
+    } else if (event && event.event_id === eventId) {
+      console.log('🎯 EventDetail: Event already loaded, skipping fetch');
+      setIsLoading(false);
+    }
+  }, [eventId]); // Only depend on eventId
 
   const fetchEventDetails = async () => {
     try {
       setIsLoading(true);
       setError('');
 
-      const response = await clientAPI.getEventDetails(eventId);
+      // OPTIMIZED: Check for immediate cache hit first
+      console.log('🎯 EventDetail: Checking cache for event:', eventId);
+      let eventData = getAnyEventCache(eventId);
+      
+      if (!eventData) {
+        console.log('🎯 EventDetail: No cache found, fetching with cache system...');
+        // OPTIMIZED: Use global cache to prevent duplicate API calls
+        eventData = await fetchEventWithCache(eventId, clientAPI);
+      } else {
+        console.log('🎯 EventDetail: Using immediate cache hit!');
+      }
 
-      if (response.data.success) {
-        setEvent(response.data.event);
+      if (eventData && eventData.success) {
+        setEvent(eventData.event);
 
         // Debug: Log the event data to console to check organizers and contacts
-        console.log('Event data received:', response.data.event);
-        console.log('Organizers:', response.data.event.organizers);
-        console.log('Contacts:', response.data.event.contacts);
+        console.log('Event data received:', eventData.event);
+        console.log('Organizers:', eventData.event.organizers);
+        console.log('Contacts:', eventData.event.contacts);
 
         // Check registration status if user is authenticated
         if (isAuthenticated) {
           // This would be an API call to check if user is registered
-          // setRegistrationStatus(response.data.registrationStatus);
+          // setRegistrationStatus(eventData.registrationStatus);
         }
       } else {
         setError('Failed to load event details');

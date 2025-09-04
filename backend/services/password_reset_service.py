@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from core.logger import get_logger
 from config.database import Database
 from config.settings import FRONTEND_URL
-from services.communication.email_service import CommunicationService
+from services.communication.email_service import communication_service
 
 try:
     import redis
@@ -18,7 +18,8 @@ logger = get_logger(__name__)
 
 class PasswordResetService:
     def __init__(self):
-        self.email_service = CommunicationService()
+        # Use the global communication service instance to avoid duplicate initialization
+        self.email_service = communication_service
         self.token_expiry_minutes = 10  # Token expires in 10 minutes
         self.redis_client = None
         
