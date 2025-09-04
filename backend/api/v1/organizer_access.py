@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from typing import Optional, List
 from datetime import datetime
 import logging
+import os
 
 from models.faculty import Faculty
 from models.admin_user import AdminUser, AdminRole
@@ -84,34 +85,46 @@ class OrganizerAccessManager:
 @router.get("")
 async def organizer_root_no_slash(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect root organizer path to React frontend"""
+    # Get frontend URL from environment
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
     if admin.role != AdminRole.ORGANIZER_ADMIN:
         raise HTTPException(status_code=403, detail="Organizer access required")
     
-    return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
+    return RedirectResponse(url=f"{frontend_url}/organizer", status_code=303)
 
 @router.get("/")
 async def organizer_root_with_slash(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect root organizer path to React frontend"""
+    # Get frontend URL from environment  
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
     if admin.role != AdminRole.ORGANIZER_ADMIN:
         raise HTTPException(status_code=403, detail="Organizer access required")
     
-    return RedirectResponse(url="http://localhost:3000/organizer", status_code=303)
+    return RedirectResponse(url=f"{frontend_url}/organizer", status_code=303)
 
 @router.get("/dashboard")
 async def organizer_dashboard(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect to organizer dashboard"""
+    # Get frontend URL from environment
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
     if admin.role != AdminRole.ORGANIZER_ADMIN:
         raise HTTPException(status_code=403, detail="Organizer access required")
     
-    return RedirectResponse(url="http://localhost:3000/organizer/dashboard", status_code=303)
+    return RedirectResponse(url=f"{frontend_url}/organizer/dashboard", status_code=303)
 
 @router.get("/events")
 async def organizer_events(request: Request, admin: AdminUser = Depends(require_admin)):
     """Redirect to organizer events page"""
+    # Get frontend URL from environment
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    
     if admin.role != AdminRole.ORGANIZER_ADMIN:
         raise HTTPException(status_code=403, detail="Organizer access required")
     
-    return RedirectResponse(url="http://localhost:3000/organizer/events", status_code=303)
+    return RedirectResponse(url=f"{frontend_url}/organizer/events", status_code=303)
 
 # Organizer Access Management Endpoints (from unified_organizer.py)
 @router.post("/request-access")

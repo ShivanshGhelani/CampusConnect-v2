@@ -2,7 +2,7 @@ import warnings
 import json
 import logging
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,21 +23,19 @@ app = FastAPI()
 
 # Configure CORS for frontend communication - UPDATED FOR DEPLOYMENT
 import os
+from config.settings import get_settings
+
+# Get settings
+settings = get_settings()
 
 # CORS configuration - Allow multiple origins for different deployment scenarios
 ALLOWED_ORIGINS = [
     # Local development
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    
-    # Production frontend (Vercel)
+    # Production deployments
+    "https://campusconnectldrp.vercel.app",
     "https://campusconnect-self.vercel.app",
-    
-    # Additional Vercel preview deployments (if any)
-    "https://*.vercel.app",
-    
-    # Ngrok development (for testing)
-    "https://jaguar-giving-awfully.ngrok-free.app",
 ]
 
 # Get additional origins from environment variables
@@ -45,16 +43,59 @@ additional_origins = os.getenv("ADDITIONAL_CORS_ORIGINS", "")
 if additional_origins:
     ALLOWED_ORIGINS.extend([origin.strip() for origin in additional_origins.split(",")])
 
-print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+# Use frontend URL from settings
+FRONTEND_URL = settings.FRONTEND_URL
 
-# Add CORS middleware with specific origins (required for credentials)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,  # Specific origins (not "*") for credentials
-    allow_credentials=True,         # This requires specific origins
-    allow_methods=["*"],            # Allow all methods
-    allow_headers=["*"],            # Allow all headers
-)
+print(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+print(f"Frontend URL for redirects: {FRONTEND_URL}")
+
+# Manual CORS handler (replacing CORS middleware to avoid conflicts)
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    origin = request.headers.get("origin")
+    print(f"🔍 CORS DEBUG - Origin: {origin}")
+    print(f"🔍 CORS DEBUG - Method: {request.method}")
+    print(f"🔍 CORS DEBUG - URL: {request.url}")
+    print(f"🔍 CORS DEBUG - Allowed origins: {ALLOWED_ORIGINS}")
+    print(f"🔍 CORS DEBUG - Origin in allowed: {origin in ALLOWED_ORIGINS}")
+    
+    # Handle preflight requests
+    if request.method == "OPTIONS":
+        print(f"🔍 CORS DEBUG - Handling OPTIONS preflight")
+        if origin in ALLOWED_ORIGINS:
+            response = Response()
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with, ngrok-skip-browser-warning"
+            response.headers["Access-Control-Max-Age"] = "86400"
+            print(f"✅ CORS DEBUG - Set preflight headers for origin: {origin}")
+            return response
+    
+    # Process actual request
+    response = await call_next(request)
+    
+    # Add CORS headers for allowed origins
+    if origin in ALLOWED_ORIGINS:
+        print(f"✅ CORS DEBUG - Adding CORS headers for allowed origin: {origin}")
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with, ngrok-skip-browser-warning"
+    else:
+        print(f"❌ CORS DEBUG - Origin not allowed: {origin}")
+    
+    # Force override any existing CORS headers that might be wildcards
+    if 'access-control-allow-origin' in response.headers:
+        if response.headers['access-control-allow-origin'] == '*' and origin in ALLOWED_ORIGINS:
+            print(f"🔧 CORS DEBUG - Overriding wildcard '*' with specific origin: {origin}")
+            response.headers["Access-Control-Allow-Origin"] = origin
+    
+    # Debug: Check final response headers
+    cors_headers = {k: v for k, v in response.headers.items() if 'access-control' in k.lower()}
+    print(f"🔍 CORS DEBUG - Final response headers: {cors_headers}")
+    
+    return response
 
 # Configure JSON encoder for the entire application
 json._default_encoder = CustomJSONEncoder()
@@ -95,7 +136,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             )
         else:
             # For any other protected routes, redirect to React frontend login
-            return RedirectResponse(url="http://localhost:3000/login", status_code=302)
+            # Use frontend URL from settings
+            return RedirectResponse(url=f"{FRONTEND_URL}/login", status_code=302)
     
     # Prepare enhanced error context
     from datetime import datetime
@@ -290,7 +332,7 @@ async def get_test_session(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Redirect root to React frontend"""
-    return RedirectResponse(url="http://localhost:3000", status_code=302)
+    return RedirectResponse(url=FRONTEND_URL, status_code=302)
 
 @app.get("/favicon.ico")
 async def favicon():
@@ -319,12 +361,12 @@ async def admin_login_post_redirect():
 @app.get("/login")
 async def login_redirect():
     """Redirect /login to React frontend"""
-    return RedirectResponse(url="http://localhost:3000/login", status_code=301)
+    return RedirectResponse(url=f"{FRONTEND_URL}/login", status_code=301)
 
 @app.get("/event-categories")
 async def event_categories():
     """Redirect event categories to React frontend"""
-    return RedirectResponse(url="http://localhost:3000/events", status_code=301)
+    return RedirectResponse(url=f"{FRONTEND_URL}/events", status_code=301)
 
 @app.get("/health/scheduler")
 async def scheduler_health():

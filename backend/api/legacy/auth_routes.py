@@ -7,14 +7,18 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from dependencies.auth import get_current_admin
 from models.admin_user import AdminUser
 import logging
+import os
 
 router = APIRouter(prefix="/auth", tags=["legacy-auth"])
 logger = logging.getLogger(__name__)
 
+# Get frontend URL from environment
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 @router.get("/login")
 async def admin_login_page(request: Request):
     """Show admin login page - redirect to unified login with admin tab selected"""
-    return RedirectResponse(url="http://localhost:3000/login?tab=admin", status_code=303)
+    return RedirectResponse(url=f"{FRONTEND_URL}/auth/login?tab=admin", status_code=303)
 
 @router.post("/login")
 async def admin_login(request: Request):

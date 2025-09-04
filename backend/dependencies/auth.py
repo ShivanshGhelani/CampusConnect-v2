@@ -5,10 +5,20 @@ from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from models.faculty import Faculty
 from core.permissions import PermissionManager, require_super_admin
+from middleware.auth_middleware import AuthMiddleware
 from typing import Optional, Union
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def get_current_admin(request: Request) -> AdminUser:
-    """Get current authenticated admin from session"""
+    """Get current authenticated admin from session or token (hybrid auth)"""
+    # First try token-based authentication
+    admin_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='admin')
+    if admin_from_token and isinstance(admin_from_token, AdminUser):
+        return admin_from_token
+    
+    # Fallback to session-based authentication
     admin_data = request.session.get('admin')  # Changed from 'admin_user' to 'admin'
     if not admin_data:
         raise HTTPException(
@@ -64,7 +74,13 @@ async def refresh_admin_session(request: Request) -> AdminUser:
     return admin
 
 async def get_current_student(request: Request) -> Student:
-    """Get currently logged in student from session"""
+    """Get currently logged in student from session or token (hybrid auth)"""
+    # First try token-based authentication
+    student_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='student')
+    if student_from_token and isinstance(student_from_token, Student):
+        return student_from_token
+    
+    # Fallback to session-based authentication
     student_data = request.session.get("student")
     if not student_data:
         raise HTTPException(
@@ -90,7 +106,13 @@ async def get_current_student_optional(request: Request) -> Optional[Student]:
         return None
 
 async def get_current_faculty(request: Request) -> Faculty:
-    """Get currently logged in faculty from session"""
+    """Get currently logged in faculty from session or token (hybrid auth)"""
+    # First try token-based authentication
+    faculty_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='faculty')
+    if faculty_from_token and isinstance(faculty_from_token, Faculty):
+        return faculty_from_token
+    
+    # Fallback to session-based authentication
     faculty_data = request.session.get("faculty")
     if not faculty_data:
         raise HTTPException(
@@ -274,3 +296,26 @@ async def get_optional_student(request: Request) -> Optional[Student]:
 async def get_optional_faculty(request: Request) -> Optional[Faculty]:
     """Get currently logged in faculty from session, return None if not logged in"""
     return await get_current_faculty_optional(request)
+
+async def get_current_student_hybrid(request: Request):
+    """Hybrid authentication - tries token first, then session fallback"""
+    logger.info("get_current_student_hybrid called")
+    try:
+        result = await get_current_student(request)
+        logger.info(f"Hybrid auth successful for student: {result.enrollment_no}")
+        return result
+    except Exception as e:
+        logger.error(f"Hybrid auth failed: {str(e)}")
+        raise
+
+async def require_student_login_hybrid(request: Request):
+    """Hybrid dependency to require student authentication (token or session)"""
+    return await get_current_student_hybrid(request)
+
+async def get_current_faculty_hybrid(request: Request):
+    """Hybrid authentication for faculty - tries token first, then session fallback"""
+    return await get_current_faculty(request)
+
+async def require_faculty_login_hybrid(request: Request):
+    """Hybrid dependency to require faculty authentication (token or session)"""
+    return await get_current_faculty_hybrid(request)

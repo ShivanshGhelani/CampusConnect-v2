@@ -23,6 +23,7 @@ const api = axios.create({
   withCredentials: true,  // Required for session cookies across domains
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',  // Skip ngrok browser warning
   },
 });
 
@@ -35,6 +36,10 @@ api.interceptors.request.use(
     
     // Ensure credentials are always sent for session-based auth
     config.withCredentials = true;
+    
+    // Add ngrok bypass header for all requests
+    config.headers['ngrok-skip-browser-warning'] = 'true';
+    
     return config;
   },
   (error) => {
@@ -58,7 +63,7 @@ api.interceptors.response.use(
       // Check if user is on admin dashboard and redirect appropriately
       const currentPath = window.location.pathname;
       if (currentPath.startsWith('/admin')) {
-        // Redirect admin to admin login
+        // Redirect admin to admin login - use window.location to navigate within SPA
         window.location.href = '/auth/login?tab=admin&reason=session_expired';
       } else if (currentPath.startsWith('/faculty')) {
         // Redirect faculty to faculty login

@@ -139,14 +139,21 @@ class AuthMiddleware:
             refresh_token: Refresh token to set (optional)
             expires_in: Access token expiration in seconds
         """
+        import os
+        
+        # Determine if we're in production (cross-origin) mode or using HTTPS
+        is_production = os.getenv("ENVIRONMENT") == "production"
+        backend_url = os.getenv("BACKEND_URL", "")
+        is_https = backend_url.startswith("https://") or is_production
+        
         # Set access token cookie (expires with token)
         response.set_cookie(
             key="access_token",
             value=access_token,
             max_age=expires_in,
             httponly=True,
-            secure=True,  # Set to True in production with HTTPS
-            samesite="lax"
+            secure=is_https,  # Secure if HTTPS (includes ngrok)
+            samesite="none" if is_https else "lax"  # Cross-origin for HTTPS, lax for local HTTP
         )
         
         # Set refresh token cookie (30 days if provided)
@@ -156,15 +163,28 @@ class AuthMiddleware:
                 value=refresh_token,
                 max_age=30 * 24 * 3600,  # 30 days
                 httponly=True,
-                secure=True,  # Set to True in production with HTTPS
-                samesite="lax"
+                secure=is_https,  # Secure if HTTPS (includes ngrok)
+                samesite="none" if is_https else "lax"  # Cross-origin for HTTPS, lax for local HTTP
             )
     
     @staticmethod
     def clear_token_cookies(response):
         """Clear authentication token cookies"""
-        response.delete_cookie(key="access_token", httponly=True, samesite="lax")
-        response.delete_cookie(key="refresh_token", httponly=True, samesite="lax")
+        import os
+        is_production = os.getenv("ENVIRONMENT") == "production"
+        
+        response.delete_cookie(
+            key="access_token", 
+            httponly=True, 
+            secure=is_production,
+            samesite="none" if is_production else "lax"
+        )
+        response.delete_cookie(
+            key="refresh_token", 
+            httponly=True, 
+            secure=is_production,
+            samesite="none" if is_production else "lax"
+        )
 
 
 # Dependency functions that can be used in FastAPI routes

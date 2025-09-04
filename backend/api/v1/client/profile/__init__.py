@@ -6,7 +6,7 @@ import logging
 import traceback
 from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException, Depends
-from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login
+from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login, require_student_login_hybrid, get_current_student_hybrid, require_faculty_login_hybrid
 from models.student import Student, StudentUpdate
 from models.faculty import Faculty, FacultyUpdate
 from database.operations import DatabaseOperations
@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/info")
-async def get_profile_info(student: Student = Depends(require_student_login)):
+async def get_profile_info(student: Student = Depends(require_student_login_hybrid)):
     """Get current student profile information - FIXED for field mapping"""
     try:
+        logger.info(f"Profile info requested for student: {student.enrollment_no}")
         # Get complete student data from database
         student_data = await DatabaseOperations.find_one("students", {"enrollment_no": student.enrollment_no})
         if not student_data:
@@ -94,7 +95,7 @@ async def get_profile_info(student: Student = Depends(require_student_login)):
         return {"success": False, "message": f"Error retrieving profile: {str(e)}"}
 
 @router.put("/update")
-async def update_profile(request: Request, student: Student = Depends(require_student_login)):
+async def update_profile(request: Request, student: Student = Depends(require_student_login_hybrid)):
     """Update student profile information"""
     try:
         data = await request.json()        # Define updatable fields
@@ -137,7 +138,7 @@ async def update_profile(request: Request, student: Student = Depends(require_st
         return {"success": False, "message": f"Error updating profile: {str(e)}"}
 
 @router.get("/faculty/info")
-async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_login)):
+async def get_faculty_profile_info(faculty: Faculty = Depends(require_faculty_login_hybrid)):
     """Get current faculty profile information"""
     try:
         # Get complete faculty data from database
@@ -255,7 +256,7 @@ async def update_faculty_profile(request: Request, faculty: Faculty = Depends(ge
         return {"success": False, "message": f"Error updating profile: {str(e)}"}
 
 @router.get("/dashboard-stats")
-async def get_dashboard_stats(student: Student = Depends(require_student_login)):
+async def get_dashboard_stats(student: Student = Depends(require_student_login_hybrid)):
     """Get dashboard statistics for the student"""
     try:
         # Get student data
@@ -379,7 +380,7 @@ async def get_dashboard_stats(student: Student = Depends(require_student_login))
         return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}
 
 @router.get("/event-history")
-async def get_event_history(student: Student = Depends(require_student_login)):
+async def get_event_history(student: Student = Depends(require_student_login_hybrid)):
     """Get complete event participation history for the student"""
     try:
         # Get student data
@@ -470,7 +471,7 @@ async def get_event_history(student: Student = Depends(require_student_login)):
         return {"success": False, "message": f"Error retrieving event history: {str(e)}"}
 
 @router.post("/change-password")
-async def change_password(request: Request, student: Student = Depends(require_student_login)):
+async def change_password(request: Request, student: Student = Depends(require_student_login_hybrid)):
     """Change student password"""
     try:
         data = await request.json()
@@ -524,7 +525,7 @@ async def change_password(request: Request, student: Student = Depends(require_s
         return {"success": False, "message": f"Error changing password: {str(e)}"}
 
 @router.get("/faculty/dashboard-stats")
-async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty_login)):
+async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty_login_hybrid)):
     """Get dashboard statistics for faculty"""
     try:
         # Get faculty data
@@ -588,7 +589,7 @@ async def get_faculty_dashboard_stats(faculty: Faculty = Depends(require_faculty
         return {"success": False, "message": f"Error retrieving dashboard stats: {str(e)}"}
 
 @router.get("/faculty/event-history")
-async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_login)):
+async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_login_hybrid)):
     """Get complete event participation history for the faculty"""
     try:
         # Get faculty data from database
@@ -712,7 +713,7 @@ async def get_faculty_event_history(faculty: Faculty = Depends(require_faculty_l
 async def get_team_details(
     event_id: str, 
     team_id: str, 
-    student: Student = Depends(require_student_login)
+    student: Student = Depends(require_student_login_hybrid)
 ):
     """Get detailed team member information for a specific team and event"""
     try:
@@ -786,7 +787,7 @@ async def get_team_details(
 
 
 @router.get("/test-auth")
-async def test_auth(student: Student = Depends(require_student_login)):
+async def test_auth(student: Student = Depends(require_student_login_hybrid)):
     """Simple test endpoint to check if student authentication works"""
     return {
         "success": True,
@@ -1113,7 +1114,7 @@ async def get_team_info(
 @router.get("/team-registration-details/{event_id}")
 async def get_team_registration_details(
     event_id: str,
-    student: Student = Depends(require_student_login)
+    student: Student = Depends(require_student_login_hybrid)
 ):
     """Get complete team registration details from student_registrations collection for QR code generation"""
     try:
