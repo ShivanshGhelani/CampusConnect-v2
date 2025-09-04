@@ -439,22 +439,33 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user_data', JSON.stringify(adminUser));
     localStorage.setItem('user_type', 'admin');
     
+    // CRITICAL FIX: Store the admin tokens returned from organizer portal
+    if (organizerData.access_token) {
+      console.log('🔄 Replacing faculty token with admin token for organizer portal');
+      localStorage.setItem('access_token', organizerData.access_token);
+      if (organizerData.refresh_token) {
+        localStorage.setItem('refresh_token', organizerData.refresh_token);
+      }
+    }
+    
     // Force refresh from backend to ensure session sync
     try {
       const response = await authAPI.adminStatus();
       if (response && response.data.authenticated) {
+        // Only update user data, don't overwrite tokens
+        const updatedUser = { ...adminUser, ...response.data.user };
         dispatch({
           type: authActions.LOGIN_SUCCESS,
           payload: {
-            user: response.data.user,
+            user: updatedUser,
             userType: 'admin',
           },
         });
-        localStorage.setItem('user_data', JSON.stringify(response.data.user));
-        localStorage.setItem('user_type', 'admin');
+        localStorage.setItem('user_data', JSON.stringify(updatedUser));
       }
     } catch (error) {
       console.error('Failed to sync admin status after transition:', error);
+      // Don't throw - the transition already succeeded
     }
   };
 

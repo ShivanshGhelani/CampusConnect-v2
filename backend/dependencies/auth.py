@@ -13,14 +13,30 @@ logger = logging.getLogger(__name__)
 
 async def get_current_admin(request: Request) -> AdminUser:
     """Get current authenticated admin from session or token (hybrid auth)"""
+    logger.info("get_current_admin called - trying token auth first")
+    logger.info(f"Request cookies: {dict(request.cookies)}")
+    logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
+    
+    # Debug: Check Authorization header
+    auth_header = request.headers.get("Authorization")
+    logger.info(f"Authorization header: {auth_header}")
+    
     # First try token-based authentication
-    admin_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='admin')
-    if admin_from_token and isinstance(admin_from_token, AdminUser):
-        return admin_from_token
+    try:
+        admin_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='admin')
+        if admin_from_token and isinstance(admin_from_token, AdminUser):
+            logger.info(f"Token auth successful for admin: {admin_from_token.username}")
+            return admin_from_token
+        else:
+            logger.info("Token auth returned None or non-AdminUser object")
+    except Exception as e:
+        logger.info(f"Token auth failed with exception: {str(e)}")
     
     # Fallback to session-based authentication
+    logger.info("Trying session-based authentication")
     admin_data = request.session.get('admin')  # Changed from 'admin_user' to 'admin'
     if not admin_data:
+        logger.error("No admin data in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
@@ -79,6 +95,10 @@ async def get_current_student(request: Request) -> Student:
     logger.info(f"Request cookies: {dict(request.cookies)}")
     logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
     
+    # Debug: Check Authorization header
+    auth_header = request.headers.get("Authorization")
+    logger.info(f"Authorization header: {auth_header}")
+    
     # First try token-based authentication
     try:
         student_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='student')
@@ -121,14 +141,30 @@ async def get_current_student_optional(request: Request) -> Optional[Student]:
 
 async def get_current_faculty(request: Request) -> Faculty:
     """Get currently logged in faculty from session or token (hybrid auth)"""
+    logger.info("get_current_faculty called - trying token auth first")
+    logger.info(f"Request cookies: {dict(request.cookies)}")
+    logger.info(f"Session data keys: {list(request.session.keys()) if hasattr(request, 'session') else 'No session'}")
+    
+    # Debug: Check Authorization header
+    auth_header = request.headers.get("Authorization")
+    logger.info(f"Authorization header: {auth_header}")
+    
     # First try token-based authentication
-    faculty_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='faculty')
-    if faculty_from_token and isinstance(faculty_from_token, Faculty):
-        return faculty_from_token
+    try:
+        faculty_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='faculty')
+        if faculty_from_token and isinstance(faculty_from_token, Faculty):
+            logger.info(f"Token auth successful for faculty: {faculty_from_token.employee_id}")
+            return faculty_from_token
+        else:
+            logger.info("Token auth returned None or non-Faculty object")
+    except Exception as e:
+        logger.info(f"Token auth failed with exception: {str(e)}")
     
     # Fallback to session-based authentication
+    logger.info("Trying session-based authentication")
     faculty_data = request.session.get("faculty")
     if not faculty_data:
+        logger.error("No faculty data in session")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Faculty not logged in"

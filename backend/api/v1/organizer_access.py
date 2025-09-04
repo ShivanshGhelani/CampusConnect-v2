@@ -271,21 +271,58 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
         # Store in session
         request.session["admin"] = admin_session_data
         
+        # Generate admin tokens for cross-device compatibility
+        from utils.token_manager import TokenManager
+        token_manager = TokenManager()
+        
+        admin_tokens = {}
+        if token_manager.is_available():
+            admin_tokens = token_manager.generate_tokens(
+                user_id=faculty.employee_id,
+                user_type='admin',
+                user_data=admin_session_data,
+                remember_me=True  # Use remember_me for organizer sessions
+            )
+            logger.info(f"Generated admin tokens for organizer {faculty.employee_id}")
+        
         logger.info(f"Successfully authenticated {faculty.employee_id} as organizer admin")
         
-        return JSONResponse(
-            content={
-                "success": True,
-                "message": "Successfully authenticated as organizer",
-                "redirect_url": "/admin/events",
-                "data": {
-                    "organizer_name": faculty.full_name,
-                    "employee_id": faculty.employee_id,
-                    "role": "organizer_admin",
-                    "assigned_events": getattr(faculty, 'assigned_events', [])
-                }
+        response_data = {
+            "success": True,
+            "message": "Successfully authenticated as organizer",
+            "redirect_url": "/admin/events",
+            "data": {
+                "organizer_name": faculty.full_name,
+                "employee_id": faculty.employee_id,
+                "role": "organizer_admin",
+                "assigned_events": getattr(faculty, 'assigned_events', [])
             }
-        )
+        }
+        
+        # Add token information if available
+        if admin_tokens:
+            response_data["auth_type"] = "token"
+            response_data["expires_in"] = admin_tokens.get("expires_in", 3600)
+            # Include tokens in response for cross-device Bearer auth support
+            response_data["access_token"] = admin_tokens.get("access_token")
+            response_data["refresh_token"] = admin_tokens.get("refresh_token")
+        else:
+            response_data["auth_type"] = "session"
+        
+        # Create response
+        response = JSONResponse(content=response_data)
+        
+        # Set admin token cookies if tokens were generated
+        if admin_tokens:
+            from middleware.auth_middleware import AuthMiddleware
+            AuthMiddleware.set_token_cookies(
+                response,
+                access_token=admin_tokens["access_token"],
+                refresh_token=admin_tokens.get("refresh_token"),
+                expires_in=admin_tokens.get("expires_in", 3600)
+            )
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error accessing organizer portal: {str(e)}", exc_info=True)
