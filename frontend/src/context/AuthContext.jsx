@@ -236,6 +236,16 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user_data', JSON.stringify(response.data.user));
         localStorage.setItem('user_type', userType);
         
+        // Store tokens for cross-device compatibility (Bearer auth fallback)
+        if (response.data.access_token) {
+          localStorage.setItem('access_token', response.data.access_token);
+          console.log('✅ Stored access token for Bearer auth fallback');
+        }
+        if (response.data.refresh_token) {
+          localStorage.setItem('refresh_token', response.data.refresh_token);
+          console.log('✅ Stored refresh token');
+        }
+        
         // Store complete profile data for students (simple sessionStorage approach)
         if (userType === 'student' && response.data.user?.enrollment_no) {
           try {

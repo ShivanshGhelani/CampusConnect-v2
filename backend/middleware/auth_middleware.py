@@ -139,12 +139,23 @@ class AuthMiddleware:
             refresh_token: Refresh token to set (optional)
             expires_in: Access token expiration in seconds
         """
-        import os
+        from config.settings import get_settings
+        
+        # Get settings
+        settings = get_settings()
         
         # Determine if we're in production (cross-origin) mode or using HTTPS
-        is_production = os.getenv("ENVIRONMENT") == "production"
-        backend_url = os.getenv("BACKEND_URL", "")
+        is_production = settings.ENVIRONMENT == "production"
+        backend_url = settings.BACKEND_URL
         is_https = backend_url.startswith("https://") or is_production
+        
+        # Debug logging for cookie settings
+        print(f"🍪 COOKIE DEBUG - Environment: {settings.ENVIRONMENT}")
+        print(f"🍪 COOKIE DEBUG - Backend URL: {backend_url}")
+        print(f"🍪 COOKIE DEBUG - is_production: {is_production}")
+        print(f"🍪 COOKIE DEBUG - is_https: {is_https}")
+        print(f"🍪 COOKIE DEBUG - Cookie secure: {is_https}")
+        print(f"🍪 COOKIE DEBUG - Cookie samesite: {'none' if is_https else 'lax'}")
         
         # Set access token cookie (expires with token)
         response.set_cookie(
@@ -153,7 +164,8 @@ class AuthMiddleware:
             max_age=expires_in,
             httponly=True,
             secure=is_https,  # Secure if HTTPS (includes ngrok)
-            samesite="none" if is_https else "lax"  # Cross-origin for HTTPS, lax for local HTTP
+            samesite="none" if is_https else "lax",  # Cross-origin for HTTPS, lax for local HTTP
+            domain=None  # Let browser decide domain - important for cross-device ngrok access
         )
         
         # Set refresh token cookie (30 days if provided)
@@ -164,26 +176,30 @@ class AuthMiddleware:
                 max_age=30 * 24 * 3600,  # 30 days
                 httponly=True,
                 secure=is_https,  # Secure if HTTPS (includes ngrok)
-                samesite="none" if is_https else "lax"  # Cross-origin for HTTPS, lax for local HTTP
+                samesite="none" if is_https else "lax",  # Cross-origin for HTTPS, lax for local HTTP
+                domain=None  # Let browser decide domain - important for cross-device ngrok access
             )
     
     @staticmethod
     def clear_token_cookies(response):
         """Clear authentication token cookies"""
-        import os
-        is_production = os.getenv("ENVIRONMENT") == "production"
+        from config.settings import get_settings
+        
+        settings = get_settings()
+        is_production = settings.ENVIRONMENT == "production"
+        is_https = settings.BACKEND_URL.startswith("https://") or is_production
         
         response.delete_cookie(
             key="access_token", 
             httponly=True, 
-            secure=is_production,
-            samesite="none" if is_production else "lax"
+            secure=is_https,
+            samesite="none" if is_https else "lax"
         )
         response.delete_cookie(
             key="refresh_token", 
             httponly=True, 
-            secure=is_production,
-            samesite="none" if is_production else "lax"
+            secure=is_https,
+            samesite="none" if is_https else "lax"
         )
 
 

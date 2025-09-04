@@ -386,6 +386,9 @@ async def student_login_api(request: Request, login_data: StudentLoginRequest):
         # Add token information if available
         if tokens:
             response_data["expires_in"] = tokens.get("expires_in", 3600)
+            # Include tokens in response for cross-device Bearer auth support
+            response_data["access_token"] = tokens.get("access_token")
+            response_data["refresh_token"] = tokens.get("refresh_token")
         
         # Create response
         response = JSONResponse(content=response_data)

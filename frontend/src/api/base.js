@@ -40,6 +40,13 @@ api.interceptors.request.use(
     // Add ngrok bypass header for all requests
     config.headers['ngrok-skip-browser-warning'] = 'true';
     
+    // Add Bearer token if available in localStorage (for cross-device compatibility)
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+      console.log('Added Bearer token to request');
+    }
+    
     return config;
   },
   (error) => {
@@ -56,7 +63,9 @@ api.interceptors.response.use(
     // Handle common errors
     if (error.response?.status === 401) {
       // Unauthorized - clear auth data and redirect to login
-      // For session-based auth, clear localStorage but don't manually clear cookies
+      // Clear both localStorage tokens and user data for hybrid auth
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
       
