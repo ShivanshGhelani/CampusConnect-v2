@@ -11,6 +11,8 @@ from config.database import Database
 from utils.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
 from core.json_encoder import CustomJSONEncoder
 from core.logger import setup_logger
+from middleware.logging_middleware import LoggingMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Suppress bcrypt version warning globally
 warnings.filterwarnings("ignore", message=".*error reading bcrypt version.*")
@@ -20,6 +22,10 @@ logger = setup_logger(logging.INFO)
 
 # Create FastAPI app
 app = FastAPI()
+app.add_middleware(LoggingMiddleware)  # Add logging middleware
+
+instrumentator = Instrumentator().instrument(app)
+instrumentator.expose(app, endpoint="/metrics")
 
 # Configure CORS for frontend communication - UPDATED FOR DEPLOYMENT
 import os
@@ -179,17 +185,17 @@ async def internal_server_error_handler(request: Request, exc):
     
     return response
 
-# Include routes - Now all consolidated in API structure
-from api import router as api_router
-from api.legacy.direct_routes import router as legacy_direct_router
-from api.v1.storage import router as storage_router
-from api.v1.registrations import router as registrations_router
+# Include routes - Now all consolidated in APP structure
+from app import router as api_router
+# Removed: from app.legacy.direct_routes import router as legacy_direct_router  # Frontend should handle routing
+from app.v1.storage import router as storage_router
+from app.v1.registrations import router as registrations_router
 
 # Mount routes in correct order (most specific first)
 app.include_router(registrations_router, prefix="/api/v1")  # Registration routes at /api/v1/registrations/...
 app.include_router(storage_router) # Storage routes at /api/v1/storage/...
 app.include_router(api_router)     # API routes at /api/... (includes all admin, auth, email, organizer functionality)
-app.include_router(legacy_direct_router)  # Legacy direct routes at / (admin, organizer, etc.)
+# Removed: app.include_router(legacy_direct_router)  # Frontend should handle routing instead
 
 # Global variable to keep scheduler task alive
 scheduler_task = None

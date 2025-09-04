@@ -15,17 +15,8 @@ router = APIRouter(prefix="/registrations", tags=["registrations"])
 # REMOVED: Redundant /individual/{event_id} endpoint 
 # Frontend uses /api/v1/client/registration/register instead
 
-@router.get("/status/{event_id}")
-async def get_registration_status(
-    event_id: str,
-    current_user=Depends(get_current_student)
-):
-    """Get registration status for current student"""
-    result = await event_registration_service.get_registration_status(
-        enrollment_no=current_user.enrollment_no,
-        event_id=event_id
-    )
-    return result
+# REMOVED: Duplicate registration status endpoint 
+# Use /api/v1/client/registration/status/{event_id} instead
 
 @router.post("/attendance/{event_id}/mark")
 async def mark_attendance(

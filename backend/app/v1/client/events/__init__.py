@@ -54,6 +54,173 @@ def serialize_event(event):
     
     return serialized
 
+@router.get("/unified")
+async def get_events_unified(
+    mode: str = Query("list", description="Mode: list, search, upcoming, categories"),
+    status: str = Query("all", description="Filter by event status: all, upcoming, ongoing, completed"),
+    category: str = Query(None, description="Filter by event category"),
+    q: str = Query(None, description="Search query (required for search mode)"),
+    page: int = Query(1, description="Page number for pagination"),
+    limit: int = Query(10, description="Number of events per page"),
+    force_refresh: bool = Query(False, description="Force refresh cache"),
+    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
+):
+    """UNIFIED endpoint for all event operations: list, search, upcoming, categories"""
+    try:
+        # Handle categories mode specially
+        if mode == "categories":
+            events = await DatabaseOperations.find_many("events", {})
+            categories = set()
+            for event in events:
+                category_val = event.get('category')
+                if category_val:
+                    categories.add(category_val)
+            
+            return {
+                "success": True,
+                "message": f"Found {len(categories)} categories",
+                "categories": sorted(list(categories)),
+                "mode": "categories"
+            }
+        
+        # Handle search mode validation
+        if mode == "search" and (not q or len(q.strip()) < 2):
+            return {"success": False, "message": "Search query must be at least 2 characters long"}
+        
+        # Get events data with caching
+        cached_events = None
+        if REDIS_CACHE_AVAILABLE and event_cache and not force_refresh:
+            try:
+                cached_events = event_cache.get_events()
+                if cached_events:
+                    logger.info(f"Using cached events data from Redis")
+            except Exception as e:
+                logger.warning(f"Redis cache retrieval failed: {e}")
+        
+        if not cached_events:
+            logger.info(f"Fetching fresh events data for status: {status}")
+            if status == "all":
+                events = await EventStatusManager.get_available_events("all")
+            else:
+                events = await EventStatusManager.get_available_events(status)
+            
+            if REDIS_CACHE_AVAILABLE and event_cache and status == "all":
+                try:
+                    event_cache.set_events(events)
+                    logger.info(f"Cached {len(events)} events in Redis")
+                except Exception as e:
+                    logger.warning(f"Redis cache storage failed: {e}")
+        else:
+            events = cached_events
+        
+        # Filter by target audience
+        if current_user:
+            user_type = "student" if isinstance(current_user, Student) else "faculty"
+            events = [
+                event for event in events 
+                if event.get('target_audience') in [user_type, 'both']
+            ]
+            logger.info(f"Filtered events for logged-in {user_type}: {len(events)} events")
+        else:
+            events = [
+                event for event in events 
+                if event.get('target_audience') == 'student'
+            ]
+            logger.info(f"Filtered events for non-logged users (student events only): {len(events)} events")
+        
+        # Apply mode-specific filtering
+        if mode == "search":
+            search_query = q.lower().strip()
+            filtered_events = []
+            for event in events:
+                event_name = event.get('event_name', '').lower()
+                event_description = event.get('description', '').lower()
+                event_category = event.get('category', '').lower()
+                
+                if (search_query in event_name or 
+                    search_query in event_description or 
+                    search_query in event_category):
+                    filtered_events.append(event)
+            events = filtered_events
+        
+        elif mode == "upcoming":
+            events = [event for event in events if event.get('status') == 'upcoming']
+            events.sort(key=lambda x: x.get('start_datetime', ''))
+            if mode == "upcoming" and limit > 50:  # Limit upcoming to reasonable amount
+                limit = 50
+        
+        # Filter by category if specified
+        if category:
+            events = [event for event in events if event.get('category', '').lower() == category.lower()]        
+        
+        # Add registration status for logged-in users
+        if current_user:
+            if isinstance(current_user, Student):
+                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
+                if student_data:
+                    event_participations = student_data.get('event_participations', {})
+                    for event in events:
+                        event_id = event.get('event_id')
+                        if event_id in event_participations:
+                            participation = event_participations[event_id]
+                            event['user_registration_status'] = {
+                                "registered": True,
+                                "registration_id": participation.get('registration_id'),
+                                "registration_type": participation.get('registration_type', 'individual'),
+                                "attendance_marked": bool(participation.get('attendance_id')),
+                                "feedback_submitted": bool(participation.get('feedback_id')),
+                                "certificate_available": bool(participation.get('certificate_id'))
+                            }
+                        else:
+                            event['user_registration_status'] = {"registered": False}
+                else:
+                    for event in events:
+                        event['user_registration_status'] = {"registered": False}
+            elif isinstance(current_user, Faculty):
+                for event in events:
+                    event['user_registration_status'] = {"registered": False}
+        
+        # Pagination
+        total_events = len(events)
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        paginated_events = events[start_idx:end_idx]
+        
+        # Serialize events
+        serialized_events = [serialize_event(event) for event in paginated_events]
+        
+        # Cache information
+        cache_info = {}
+        if REDIS_CACHE_AVAILABLE and event_cache:
+            try:
+                cache_info = event_cache.get_cache_info()
+            except Exception as e:
+                cache_info = {"error": str(e)}
+        
+        return {
+            "success": True,
+            "message": f"Retrieved {len(serialized_events)} events ({mode} mode)",
+            "mode": mode,
+            "events": serialized_events,
+            "search_query": q if mode == "search" else None,
+            "pagination": {
+                "current_page": page,
+                "total_pages": (total_events + limit - 1) // limit,
+                "total_events": total_events,
+                "events_per_page": limit,
+                "has_next": end_idx < total_events,
+                "has_previous": page > 1
+            },
+            "cache_info": cache_info,
+            "from_cache": bool(cached_events)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in unified events endpoint: {str(e)}")
+        return {"success": False, "message": f"Error retrieving events: {str(e)}"}
+
+# LEGACY ENDPOINTS - Redirect to unified endpoint for backward compatibility
+
 @router.get("/list")
 async def get_events_list(
     status: str = Query("all", description="Filter by event status: all, upcoming, ongoing, completed"),

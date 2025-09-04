@@ -1,27 +1,16 @@
-Total API Endpoints: 185
+Total API Endpoints: 173
 
 ============================================================
 ENDPOINT 1
 Method: GET
-Path: /api/v1/registrations/status/{event_id}
-Category/Tags: api-v1, event-registrations-api, registrations
-Summary: Get Registration Status
-Description: Get registration status for current student
-Parameters:
-  - Name: event_id
-    In: path
-    Required: True
-    Type: string
-    Description: No description
+Path: /metrics
+Category/Tags: No category
+Summary: Metrics
+Description: Endpoint that serves Prometheus metrics.
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
     Schema: {}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
 
 ============================================================
 ENDPOINT 2
@@ -289,42 +278,6 @@ Responses:
 
 ============================================================
 ENDPOINT 13
-Method: GET
-Path: /api/v1/auth/admin/status
-Category/Tags: api-v1, auth-api
-Summary: Get Admin Status
-Description: Legacy admin status endpoint (backwards compatibility)
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 14
-Method: GET
-Path: /api/v1/auth/student/status
-Category/Tags: api-v1, auth-api
-Summary: Get Student Status
-Description: Legacy student status endpoint (backwards compatibility)
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 15
-Method: GET
-Path: /api/v1/auth/faculty/status
-Category/Tags: api-v1, auth-api
-Summary: Get Faculty Status
-Description: Legacy faculty status endpoint (backwards compatibility)
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 16
 Method: POST
 Path: /api/v1/auth/admin/login
 Category/Tags: api-v1, auth-api
@@ -346,7 +299,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 17
+ENDPOINT 14
 Method: POST
 Path: /api/v1/auth/admin/logout
 Category/Tags: api-v1, auth-api
@@ -358,7 +311,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 18
+ENDPOINT 15
 Method: POST
 Path: /api/v1/auth/student/login
 Category/Tags: api-v1, auth-api
@@ -380,7 +333,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 19
+ENDPOINT 16
 Method: POST
 Path: /api/v1/auth/faculty/login
 Category/Tags: api-v1, auth-api
@@ -402,7 +355,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 20
+ENDPOINT 17
 Method: POST
 Path: /api/v1/auth/student/logout
 Category/Tags: api-v1, auth-api
@@ -414,7 +367,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 21
+ENDPOINT 18
 Method: POST
 Path: /api/v1/auth/faculty/logout
 Category/Tags: api-v1, auth-api
@@ -426,7 +379,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 22
+ENDPOINT 19
 Method: POST
 Path: /api/v1/auth/refresh-token
 Category/Tags: api-v1, auth-api
@@ -448,7 +401,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 23
+ENDPOINT 20
 Method: POST
 Path: /api/v1/auth/student/register
 Category/Tags: api-v1, auth-api
@@ -470,7 +423,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 24
+ENDPOINT 21
 Method: POST
 Path: /api/v1/auth/faculty/register
 Category/Tags: api-v1, auth-api
@@ -492,7 +445,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 25
+ENDPOINT 22
 Method: POST
 Path: /api/v1/auth/validate-field
 Category/Tags: api-v1, auth-api
@@ -504,7 +457,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 26
+ENDPOINT 23
 Method: POST
 Path: /api/v1/auth/forgot-password/student
 Category/Tags: api-v1, auth-api, Password Reset
@@ -528,7 +481,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 27
+ENDPOINT 24
 Method: POST
 Path: /api/v1/auth/forgot-password/faculty
 Category/Tags: api-v1, auth-api, Password Reset
@@ -552,7 +505,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 28
+ENDPOINT 25
 Method: GET
 Path: /api/v1/auth/validate-reset-token/{token}
 Category/Tags: api-v1, auth-api, Password Reset
@@ -577,7 +530,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 29
+ENDPOINT 26
 Method: POST
 Path: /api/v1/auth/reset-password/{token}
 Category/Tags: api-v1, auth-api, Password Reset
@@ -607,7 +560,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 30
+ENDPOINT 27
 Method: GET
 Path: /api/v1/auth/status
 Category/Tags: api-v1, auth-api
@@ -634,7 +587,60 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 31
+ENDPOINT 28
+Method: GET
+Path: /api/v1/client/events/unified
+Category/Tags: api-v1, client-api, client-events-api
+Summary: Get Events Unified
+Description: UNIFIED endpoint for all event operations: list, search, upcoming, categories
+Parameters:
+  - Name: mode
+    In: query
+    Required: False
+    Type: string
+    Description: Mode: list, search, upcoming, categories
+  - Name: status
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event status: all, upcoming, ongoing, completed
+  - Name: category
+    In: query
+    Required: False
+    Type: string
+    Description: Filter by event category
+  - Name: q
+    In: query
+    Required: False
+    Type: string
+    Description: Search query (required for search mode)
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number for pagination
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of events per page
+  - Name: force_refresh
+    In: query
+    Required: False
+    Type: boolean
+    Description: Force refresh cache
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 29
 Method: GET
 Path: /api/v1/client/events/list
 Category/Tags: api-v1, client-api, client-events-api
@@ -677,7 +683,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 32
+ENDPOINT 30
 Method: GET
 Path: /api/v1/client/events/details/{event_id}
 Category/Tags: api-v1, client-api, client-events-api
@@ -700,7 +706,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 33
+ENDPOINT 31
 Method: GET
 Path: /api/v1/client/events/timeline/{event_id}
 Category/Tags: api-v1, client-api, client-events-api
@@ -723,7 +729,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 34
+ENDPOINT 32
 Method: GET
 Path: /api/v1/client/events/categories
 Category/Tags: api-v1, client-api, client-events-api
@@ -735,7 +741,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 35
+ENDPOINT 33
 Method: GET
 Path: /api/v1/client/events/search
 Category/Tags: api-v1, client-api, client-events-api
@@ -778,7 +784,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 36
+ENDPOINT 34
 Method: GET
 Path: /api/v1/client/events/upcoming
 Category/Tags: api-v1, client-api, client-events-api
@@ -801,7 +807,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 37
+ENDPOINT 35
 Method: GET
 Path: /api/v1/client/profile/complete-profile
 Category/Tags: api-v1, client-api, client-profile-api
@@ -813,7 +819,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 38
+ENDPOINT 36
 Method: GET
 Path: /api/v1/client/profile/faculty/complete-profile
 Category/Tags: api-v1, client-api, client-profile-api
@@ -825,7 +831,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 39
+ENDPOINT 37
 Method: PUT
 Path: /api/v1/client/profile/update
 Category/Tags: api-v1, client-api, client-profile-api
@@ -837,7 +843,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 40
+ENDPOINT 38
 Method: PUT
 Path: /api/v1/client/profile/faculty/update
 Category/Tags: api-v1, client-api, client-profile-api
@@ -849,7 +855,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 41
+ENDPOINT 39
 Method: POST
 Path: /api/v1/client/profile/change-password
 Category/Tags: api-v1, client-api, client-profile-api
@@ -861,7 +867,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 42
+ENDPOINT 40
 Method: GET
 Path: /api/v1/client/profile/team-details/{event_id}/{team_id}
 Category/Tags: api-v1, client-api, client-profile-api
@@ -889,7 +895,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 43
+ENDPOINT 41
 Method: GET
 Path: /api/v1/client/profile/test-auth
 Category/Tags: api-v1, client-api, client-profile-api
@@ -901,7 +907,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 44
+ENDPOINT 42
 Method: GET
 Path: /api/v1/client/profile/team-info-debug/{event_id}/{team_id}
 Category/Tags: api-v1, client-api, client-profile-api
@@ -929,7 +935,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 45
+ENDPOINT 43
 Method: GET
 Path: /api/v1/client/profile/team-info/{event_id}/{team_id}
 Category/Tags: api-v1, client-api, client-profile-api
@@ -957,7 +963,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 46
+ENDPOINT 44
 Method: GET
 Path: /api/v1/client/profile/team-registration-details/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api
@@ -980,7 +986,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 47
+ENDPOINT 45
 Method: POST
 Path: /api/v1/client/profile/team-tools/create-task/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1008,7 +1014,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 48
+ENDPOINT 46
 Method: GET
 Path: /api/v1/client/profile/team-tools/tasks/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1036,7 +1042,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 49
+ENDPOINT 47
 Method: PUT
 Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/submit
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1069,7 +1075,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 50
+ENDPOINT 48
 Method: PUT
 Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/review
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1102,7 +1108,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 51
+ENDPOINT 49
 Method: PUT
 Path: /api/v1/client/profile/team-tools/task/{event_id}/{task_id}/complete
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1130,7 +1136,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 52
+ENDPOINT 50
 Method: POST
 Path: /api/v1/client/profile/team-tools/assign-role/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1158,7 +1164,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 53
+ENDPOINT 51
 Method: GET
 Path: /api/v1/client/profile/team-tools/roles/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1181,7 +1187,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 54
+ENDPOINT 52
 Method: POST
 Path: /api/v1/client/profile/team-tools/post-message/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1209,7 +1215,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 55
+ENDPOINT 53
 Method: GET
 Path: /api/v1/client/profile/team-tools/messages/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1242,7 +1248,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 56
+ENDPOINT 54
 Method: POST
 Path: /api/v1/client/profile/team-tools/generate-report/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1270,7 +1276,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 57
+ENDPOINT 55
 Method: GET
 Path: /api/v1/client/profile/team-tools/team-overview/{event_id}
 Category/Tags: api-v1, client-api, client-profile-api, Team Management
@@ -1293,7 +1299,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 58
+ENDPOINT 56
 Method: POST
 Path: /api/v1/client/registration/register
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1316,7 +1322,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 59
+ENDPOINT 57
 Method: GET
 Path: /api/v1/client/registration/status/{event_id}
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1339,7 +1345,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 60
+ENDPOINT 58
 Method: GET
 Path: /api/v1/client/registration/event/{event_id}/status
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1362,7 +1368,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 61
+ENDPOINT 59
 Method: DELETE
 Path: /api/v1/client/registration/cancel/{event_id}
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1385,7 +1391,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 62
+ENDPOINT 60
 Method: GET
 Path: /api/v1/client/registration/my-registrations
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1397,7 +1403,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 63
+ENDPOINT 61
 Method: GET
 Path: /api/v1/client/registration/lookup/faculty/{employee_id}
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1420,7 +1426,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 64
+ENDPOINT 62
 Method: GET
 Path: /api/v1/client/registration/lookup/student/{enrollment_no}
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1443,7 +1449,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 65
+ENDPOINT 63
 Method: GET
 Path: /api/v1/client/registration/lookup/student/{enrollment_no}/eligibility/{event_id}
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1471,7 +1477,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 66
+ENDPOINT 64
 Method: GET
 Path: /api/v1/client/registration/invitations
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1494,7 +1500,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 67
+ENDPOINT 65
 Method: POST
 Path: /api/v1/client/registration/invitations/{invitation_id}/respond
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1524,7 +1530,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 68
+ENDPOINT 66
 Method: GET
 Path: /api/v1/client/registration/team/{team_registration_id}/details
 Category/Tags: api-v1, client-api, client-registration-api
@@ -1547,7 +1553,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 69
+ENDPOINT 67
 Method: GET
 Path: /api/v1/client/feedback/form/{event_id}
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1570,7 +1576,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 70
+ENDPOINT 68
 Method: POST
 Path: /api/v1/client/feedback/submit
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1582,7 +1588,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 71
+ENDPOINT 69
 Method: GET
 Path: /api/v1/client/feedback/eligibility/{event_id}
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1605,7 +1611,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 72
+ENDPOINT 70
 Method: GET
 Path: /api/v1/client/feedback/test-health
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1617,7 +1623,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 73
+ENDPOINT 71
 Method: GET
 Path: /api/v1/client/feedback/test-form/{event_id}
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1640,7 +1646,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 74
+ENDPOINT 72
 Method: POST
 Path: /api/v1/client/feedback/test-submit
 Category/Tags: api-v1, client-api, client-feedback-api
@@ -1662,7 +1668,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 75
+ENDPOINT 73
 Method: GET
 Path: /api/v1/admin/events/faculty-organizers
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1708,7 +1714,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 76
+ENDPOINT 74
 Method: GET
 Path: /api/v1/admin/events/faculty-organizers/{employee_id}/assigned-events
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1737,7 +1743,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 77
+ENDPOINT 75
 Method: POST
 Path: /api/v1/admin/events/create
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1759,7 +1765,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 78
+ENDPOINT 76
 Method: PUT
 Path: /api/v1/admin/events/update/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1782,7 +1788,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 79
+ENDPOINT 77
 Method: GET
 Path: /api/v1/admin/events/list
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1820,7 +1826,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 80
+ENDPOINT 78
 Method: GET
 Path: /api/v1/admin/events/pending-approval
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1848,7 +1854,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 81
+ENDPOINT 79
 Method: GET
 Path: /api/v1/admin/events/details/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1871,7 +1877,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 82
+ENDPOINT 80
 Method: GET
 Path: /api/v1/admin/events/stats
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1894,7 +1900,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 83
+ENDPOINT 81
 Method: GET
 Path: /api/v1/admin/events/registrations/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1927,7 +1933,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 84
+ENDPOINT 82
 Method: POST
 Path: /api/v1/admin/events/bulk-update-status
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1939,7 +1945,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 85
+ENDPOINT 83
 Method: GET
 Path: /api/v1/admin/events/attendance/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1972,7 +1978,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 86
+ENDPOINT 84
 Method: POST
 Path: /api/v1/admin/events/export/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -1995,7 +2001,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 87
+ENDPOINT 85
 Method: GET
 Path: /api/v1/admin/events/debug-event/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2018,7 +2024,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 88
+ENDPOINT 86
 Method: DELETE
 Path: /api/v1/admin/events/delete/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2044,7 +2050,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 89
+ENDPOINT 87
 Method: POST
 Path: /api/v1/admin/events/trigger-pending-notifications
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2060,7 +2066,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 90
+ENDPOINT 88
 Method: POST
 Path: /api/v1/admin/events/approve/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2083,7 +2089,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 91
+ENDPOINT 89
 Method: POST
 Path: /api/v1/admin/events/decline/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2106,7 +2112,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 92
+ENDPOINT 90
 Method: POST
 Path: /api/v1/admin/events/feedback/create/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2129,7 +2135,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 93
+ENDPOINT 91
 Method: GET
 Path: /api/v1/admin/events/feedback/form/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2152,7 +2158,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 94
+ENDPOINT 92
 Method: GET
 Path: /api/v1/admin/events/feedback/responses/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2185,7 +2191,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 95
+ENDPOINT 93
 Method: GET
 Path: /api/v1/admin/events/feedback/analytics/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2208,7 +2214,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 96
+ENDPOINT 94
 Method: DELETE
 Path: /api/v1/admin/events/feedback/delete/{event_id}
 Category/Tags: api-v1, admin-api, admin-events-api
@@ -2231,7 +2237,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 97
+ENDPOINT 95
 Method: GET
 Path: /api/v1/admin/assets/list
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2264,7 +2270,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 98
+ENDPOINT 96
 Method: GET
 Path: /api/v1/admin/assets/statistics
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2276,7 +2282,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 99
+ENDPOINT 97
 Method: POST
 Path: /api/v1/admin/assets/upload
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2298,7 +2304,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 100
+ENDPOINT 98
 Method: GET
 Path: /api/v1/admin/assets/details/{asset_id}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2321,7 +2327,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 101
+ENDPOINT 99
 Method: GET
 Path: /api/v1/admin/assets/short-url/{asset_id}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2344,7 +2350,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 102
+ENDPOINT 100
 Method: GET
 Path: /api/v1/admin/assets/image-tag/{asset_id}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2367,7 +2373,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 103
+ENDPOINT 101
 Method: DELETE
 Path: /api/v1/admin/assets/delete/{asset_id}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2390,7 +2396,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 104
+ENDPOINT 102
 Method: GET
 Path: /api/v1/admin/assets/s/{short_code}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2413,7 +2419,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 105
+ENDPOINT 103
 Method: GET
 Path: /api/v1/admin/assets/view/{token}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2436,7 +2442,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 106
+ENDPOINT 104
 Method: GET
 Path: /api/v1/admin/assets/secure/{access_token}
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2459,7 +2465,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 107
+ENDPOINT 105
 Method: GET
 Path: /api/v1/admin/assets/dashboard
 Category/Tags: api-v1, admin-api, admin-assets-api
@@ -2482,7 +2488,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 108
+ENDPOINT 106
 Method: GET
 Path: /api/v1/admin/venues/
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2500,7 +2506,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 109
+ENDPOINT 107
 Method: POST
 Path: /api/v1/admin/venues/
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2526,7 +2532,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 110
+ENDPOINT 108
 Method: GET
 Path: /api/v1/admin/venues/list
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2544,7 +2550,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 111
+ENDPOINT 109
 Method: GET
 Path: /api/v1/admin/venues/all
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2562,7 +2568,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 112
+ENDPOINT 110
 Method: GET
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2587,7 +2593,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 113
+ENDPOINT 111
 Method: PUT
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2619,7 +2625,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 114
+ENDPOINT 112
 Method: DELETE
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2646,7 +2652,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 115
+ENDPOINT 113
 Method: POST
 Path: /api/v1/admin/venues/{venue_id}/restore
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2673,7 +2679,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 116
+ENDPOINT 114
 Method: DELETE
 Path: /api/v1/admin/venues/{venue_id}/permanent
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2700,7 +2706,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 117
+ENDPOINT 115
 Method: GET
 Path: /api/v1/admin/users/list
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2743,7 +2749,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 118
+ENDPOINT 116
 Method: POST
 Path: /api/v1/admin/users/list
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2767,7 +2773,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 119
+ENDPOINT 117
 Method: PUT
 Path: /api/v1/admin/users/list
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2791,7 +2797,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 120
+ENDPOINT 118
 Method: DELETE
 Path: /api/v1/admin/users/list/{user_id}
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2819,7 +2825,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 121
+ENDPOINT 119
 Method: PATCH
 Path: /api/v1/admin/users/restore/{user_id}
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2847,7 +2853,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 122
+ENDPOINT 120
 Method: DELETE
 Path: /api/v1/admin/users/hard-delete/{user_id}
 Category/Tags: api-v1, admin-api, admin-users-api
@@ -2875,7 +2881,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 123
+ENDPOINT 121
 Method: POST
 Path: /api/v1/admin/attendance-preview/preview-strategy
 Category/Tags: api-v1, admin-api, admin-attendance-preview-api
@@ -2898,7 +2904,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 124
+ENDPOINT 122
 Method: POST
 Path: /api/v1/admin/attendance-preview/validate-custom-strategy
 Category/Tags: api-v1, admin-api, admin-attendance-preview-api
@@ -2921,7 +2927,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 125
+ENDPOINT 123
 Method: GET
 Path: /api/v1/admin/participation/event/{event_id}/participants
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -2964,7 +2970,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 126
+ENDPOINT 124
 Method: POST
 Path: /api/v1/admin/participation/attendance/mark
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -2988,7 +2994,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 127
+ENDPOINT 125
 Method: POST
 Path: /api/v1/admin/participation/attendance/bulk-mark
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3012,7 +3018,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 128
+ENDPOINT 126
 Method: POST
 Path: /api/v1/admin/participation/certificate/issue
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3036,7 +3042,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 129
+ENDPOINT 127
 Method: GET
 Path: /api/v1/admin/participation/student/{enrollment_no}/participations
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3074,7 +3080,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 130
+ENDPOINT 128
 Method: GET
 Path: /api/v1/admin/participation/statistics/event/{event_id}
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3097,7 +3103,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 131
+ENDPOINT 129
 Method: GET
 Path: /api/v1/admin/dashboard/recent-activity
 Category/Tags: api-v1, admin-api
@@ -3123,7 +3129,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 132
+ENDPOINT 130
 Method: GET
 Path: /api/v1/admin/dashboard/activity-summary
 Category/Tags: api-v1, admin-api
@@ -3135,7 +3141,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 133
+ENDPOINT 131
 Method: GET
 Path: /api/v1/admin/analytics/overview
 Category/Tags: api-v1, admin-api
@@ -3158,7 +3164,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 134
+ENDPOINT 132
 Method: GET
 Path: /api/v1/email/health
 Category/Tags: api-v1, email-api, email-api
@@ -3170,7 +3176,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 135
+ENDPOINT 133
 Method: GET
 Path: /api/v1/email/stats
 Category/Tags: api-v1, email-api, email-api
@@ -3182,7 +3188,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 136
+ENDPOINT 134
 Method: POST
 Path: /api/v1/email/circuit-breaker/reset
 Category/Tags: api-v1, email-api, email-api
@@ -3194,7 +3200,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 137
+ENDPOINT 135
 Method: POST
 Path: /api/v1/email/test
 Category/Tags: api-v1, email-api, email-api
@@ -3222,10 +3228,10 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 138
+ENDPOINT 136
 Method: GET
 Path: /api/v1/organizer
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Category/Tags: api-v1, organizer-access-api, organizer-access
 Summary: Organizer Root No Slash
 Description: Redirect root organizer path to React frontend
 Responses:
@@ -3234,10 +3240,10 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 139
+ENDPOINT 137
 Method: GET
 Path: /api/v1/organizer/
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Category/Tags: api-v1, organizer-access-api, organizer-access
 Summary: Organizer Root With Slash
 Description: Redirect root organizer path to React frontend
 Responses:
@@ -3246,10 +3252,10 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 140
+ENDPOINT 138
 Method: GET
 Path: /api/v1/organizer/dashboard
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Category/Tags: api-v1, organizer-access-api, organizer-access
 Summary: Organizer Dashboard
 Description: Redirect to organizer dashboard
 Responses:
@@ -3258,10 +3264,10 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 141
+ENDPOINT 139
 Method: GET
 Path: /api/v1/organizer/events
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
+Category/Tags: api-v1, organizer-access-api, organizer-access
 Summary: Organizer Events
 Description: Redirect to organizer events page
 Responses:
@@ -3270,7 +3276,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 142
+ENDPOINT 140
 Method: POST
 Path: /api/v1/organizer/request-access
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3282,7 +3288,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 143
+ENDPOINT 141
 Method: GET
 Path: /api/v1/organizer/access-status
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3294,7 +3300,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 144
+ENDPOINT 142
 Method: POST
 Path: /api/v1/organizer/access-portal
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3306,7 +3312,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 145
+ENDPOINT 143
 Method: POST
 Path: /api/v1/organizer/admin/grant-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3345,7 +3351,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 146
+ENDPOINT 144
 Method: POST
 Path: /api/v1/organizer/admin/revoke-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3368,7 +3374,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 147
+ENDPOINT 145
 Method: GET
 Path: /api/v1/organizer/admin/requests
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3380,7 +3386,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 148
+ENDPOINT 146
 Method: GET
 Path: /api/v1/organizer/dashboard-stats
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3392,31 +3398,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 149
-Method: GET
-Path: /api/v1/admin
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
-Summary: Admin Root No Slash
-Description: Redirect root admin path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 150
-Method: GET
-Path: /api/v1/admin/
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-direct-routes, legacy-direct-routes
-Summary: Admin Root With Slash
-Description: Redirect root admin path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 151
+ENDPOINT 147
 Method: GET
 Path: /api/v1/auth/login
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3428,7 +3410,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 152
+ENDPOINT 148
 Method: POST
 Path: /api/v1/auth/login
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3440,7 +3422,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 153
+ENDPOINT 149
 Method: GET
 Path: /api/v1/auth/logout
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3452,7 +3434,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 154
+ENDPOINT 150
 Method: GET
 Path: /api/v1/auth/api/profile
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3464,7 +3446,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 155
+ENDPOINT 151
 Method: PUT
 Path: /api/v1/auth/api/profile
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3476,7 +3458,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 156
+ENDPOINT 152
 Method: PUT
 Path: /api/v1/auth/api/username
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3488,7 +3470,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 157
+ENDPOINT 153
 Method: PUT
 Path: /api/v1/auth/api/password
 Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
@@ -3500,19 +3482,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 158
-Method: GET
-Path: /api/v1/auth/api/status
-Category/Tags: api-v1, legacy-compatibility-api, legacy-compatibility, legacy-auth-routes, legacy-auth
-Summary: Admin Auth Status
-Description: API endpoint to check if admin is authenticated
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 159
+ENDPOINT 154
 Method: GET
 Path: /api/auth/login
 Category/Tags: legacy-auth, legacy-auth
@@ -3524,7 +3494,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 160
+ENDPOINT 155
 Method: POST
 Path: /api/auth/login
 Category/Tags: legacy-auth, legacy-auth
@@ -3536,7 +3506,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 161
+ENDPOINT 156
 Method: GET
 Path: /api/auth/logout
 Category/Tags: legacy-auth, legacy-auth
@@ -3548,7 +3518,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 162
+ENDPOINT 157
 Method: GET
 Path: /api/auth/api/profile
 Category/Tags: legacy-auth, legacy-auth
@@ -3560,7 +3530,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 163
+ENDPOINT 158
 Method: PUT
 Path: /api/auth/api/profile
 Category/Tags: legacy-auth, legacy-auth
@@ -3572,7 +3542,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 164
+ENDPOINT 159
 Method: PUT
 Path: /api/auth/api/username
 Category/Tags: legacy-auth, legacy-auth
@@ -3584,7 +3554,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 165
+ENDPOINT 160
 Method: PUT
 Path: /api/auth/api/password
 Category/Tags: legacy-auth, legacy-auth
@@ -3596,91 +3566,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 166
-Method: GET
-Path: /api/auth/api/status
-Category/Tags: legacy-auth, legacy-auth
-Summary: Admin Auth Status
-Description: API endpoint to check if admin is authenticated
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 167
-Method: GET
-Path: /admin
-Category/Tags: legacy-direct-routes
-Summary: Admin Root No Slash
-Description: Redirect root admin path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 168
-Method: GET
-Path: /admin/
-Category/Tags: legacy-direct-routes
-Summary: Admin Root With Slash
-Description: Redirect root admin path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 169
-Method: GET
-Path: /organizer
-Category/Tags: legacy-direct-routes
-Summary: Organizer Root No Slash
-Description: Redirect root organizer path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 170
-Method: GET
-Path: /organizer/
-Category/Tags: legacy-direct-routes
-Summary: Organizer Root With Slash
-Description: Redirect root organizer path to React frontend
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 171
-Method: GET
-Path: /organizer/dashboard
-Category/Tags: legacy-direct-routes
-Summary: Organizer Dashboard
-Description: Redirect to organizer dashboard
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 172
-Method: GET
-Path: /organizer/events
-Category/Tags: legacy-direct-routes
-Summary: Organizer Events
-Description: Redirect to organizer events page
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-
-============================================================
-ENDPOINT 173
+ENDPOINT 161
 Method: GET
 Path: /api/health
 Category/Tags: No category
@@ -3692,7 +3578,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 174
+ENDPOINT 162
 Method: GET
 Path: /api/debug/session
 Category/Tags: No category
@@ -3704,7 +3590,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 175
+ENDPOINT 163
 Method: POST
 Path: /api/debug/set-session
 Category/Tags: No category
@@ -3716,7 +3602,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 176
+ENDPOINT 164
 Method: GET
 Path: /api/debug/get-session
 Category/Tags: No category
@@ -3728,7 +3614,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 177
+ENDPOINT 165
 Method: GET
 Path: /
 Category/Tags: No category
@@ -3742,7 +3628,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 178
+ENDPOINT 166
 Method: GET
 Path: /favicon.ico
 Category/Tags: No category
@@ -3754,7 +3640,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 179
+ENDPOINT 167
 Method: GET
 Path: /admin/login
 Category/Tags: No category
@@ -3766,7 +3652,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 180
+ENDPOINT 168
 Method: POST
 Path: /admin/login
 Category/Tags: No category
@@ -3778,7 +3664,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 181
+ENDPOINT 169
 Method: GET
 Path: /login
 Category/Tags: No category
@@ -3790,7 +3676,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 182
+ENDPOINT 170
 Method: GET
 Path: /event-categories
 Category/Tags: No category
@@ -3802,7 +3688,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 183
+ENDPOINT 171
 Method: GET
 Path: /health/scheduler
 Category/Tags: No category
@@ -3814,7 +3700,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 184
+ENDPOINT 172
 Method: GET
 Path: /logo/{filename}
 Category/Tags: No category
@@ -3837,7 +3723,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 185
+ENDPOINT 173
 Method: GET
 Path: /signature/{path}
 Category/Tags: No category
