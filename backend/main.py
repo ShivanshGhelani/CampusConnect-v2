@@ -273,45 +273,6 @@ async def health_check(request: Request):
         "cors_configured": True
     }
 
-# Debug endpoint to check session state
-@app.get("/api/debug/session")
-async def debug_session(request: Request):
-    """Debug endpoint to check session state"""
-    session_data = dict(request.session)
-    return {
-        "session_keys": list(session_data.keys()),
-        "has_admin": "admin" in session_data,
-        "has_student": "student" in session_data,
-        "has_faculty": "faculty" in session_data,
-        "cookies": dict(request.cookies),
-        "headers": dict(request.headers)
-    }
-
-# Test endpoint to manually set session
-@app.post("/api/debug/set-session")
-async def set_test_session(request: Request):
-    """Test endpoint to manually set session data"""
-    from datetime import datetime
-    
-    request.session["test_key"] = "test_value"
-    request.session["timestamp"] = datetime.utcnow().isoformat()
-    
-    return {
-        "success": True,
-        "message": "Test session data set",
-        "session_keys": list(request.session.keys())
-    }
-
-# Test endpoint to read session
-@app.get("/api/debug/get-session")
-async def get_test_session(request: Request):
-    """Test endpoint to read session data"""
-    session_data = dict(request.session)
-    return {
-        "session_data": session_data,
-        "cookies": dict(request.cookies)
-    }
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Redirect root to React frontend"""
@@ -330,22 +291,7 @@ async def favicon():
         from fastapi.responses import Response
         return Response(status_code=204)
 
-# Add missing routes
-@app.get("/admin/login")
-async def admin_login_redirect():
-    """Redirect old admin login URL to new auth login URL"""
-    return RedirectResponse(url="/auth/login", status_code=301)
-
-@app.post("/admin/login")
-async def admin_login_post_redirect():
-    """Redirect old admin login POST URL to new auth login URL"""
-    return RedirectResponse(url="/auth/login", status_code=307)  # 307 preserves POST method
-
-@app.get("/login")
-async def login_redirect():
-    """Redirect /login to React frontend"""
-    return RedirectResponse(url=f"{FRONTEND_URL}/login", status_code=301)
-
+# Unified login redirects - PHASE 3B CONSOLIDATION
 @app.get("/event-categories")
 async def event_categories():
     """Redirect event categories to React frontend"""

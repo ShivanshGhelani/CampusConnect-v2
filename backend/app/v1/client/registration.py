@@ -202,8 +202,8 @@ async def get_registration_status_alt(
     event_id: str,
     current_user=Depends(get_current_user)
 ):
-    """Get registration status for current user (alternative URL pattern)"""
-    # This is just a duplicate of the above to match frontend expectations
+    """LEGACY: Redirect to main status endpoint - Get registration status (alternative URL pattern)"""
+    logger.info(f"PHASE 4A: Redirecting /event/{event_id}/status to /status/{event_id}")
     return await get_registration_status(event_id, current_user)
 
 @router.delete("/cancel/{event_id}")

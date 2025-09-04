@@ -1,12 +1,11 @@
 """
-Team Management Tools API - PHASE 3A CONSOLIDATED
-=================================================
-UNIFIED team management system with 2 consolidated endpoints:
-1. GET /team/{event_id}/unified - All team data retrieval with modes
-2. POST /team/{event_id}/actions - All team actions (create, assign, submit, review, etc.)
+PHASE 3A: UNIFIED TEAM MANAGEMENT API - COMPLETE CONSOLIDATION
+==============================================================
+Consolidates ALL team management endpoints into 2 unified endpoints:
+1. GET /api/v1/client/profile/team/{event_id}/unified - All team data retrieval
+2. POST /api/v1/client/profile/team/{event_id}/actions - All team actions
 
-Replaces 15 original endpoints with 2 unified endpoints (-13 endpoint reduction)
-Consolidates: task management, role assignment, messaging, reporting, team info
+REPLACES: team_tools.py (11 endpoints) + profile team endpoints (4 endpoints) = 15 TOTAL
 """
 
 import logging
@@ -1139,5 +1138,6 @@ async def _get_student_role(event_id: str, student_data: dict):
     # Placeholder implementation
     return "member"
 
-# ===== END OF CONSOLIDATED TEAM MANAGEMENT IMPLEMENTATION =====
-# Phase 3A Achievement: 15 endpoints → 2 endpoints (-13 reduction)
+# ===== END OF UNIFIED TEAM MANAGEMENT IMPLEMENTATION =====
+# Phase 3A complete: 15 original endpoints → 2 unified endpoints (-13 endpoints)
+# Consolidation achieved: team_tools.py (11) + profile team endpoints (4) = 15 → 2

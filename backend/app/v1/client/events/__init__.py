@@ -219,7 +219,7 @@ async def get_events_unified(
         logger.error(f"Error in unified events endpoint: {str(e)}")
         return {"success": False, "message": f"Error retrieving events: {str(e)}"}
 
-# LEGACY ENDPOINTS - Redirect to unified endpoint for backward compatibility
+# PHASE 4A: LEGACY ENDPOINTS - Redirect to unified endpoint for backward compatibility
 
 @router.get("/list")
 async def get_events_list(
@@ -230,123 +230,17 @@ async def get_events_list(
     force_refresh: bool = Query(False, description="Force refresh cache"),
     current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Get paginated list of events with optional filters and Redis caching, filtered by user type"""
-    try:
-        # Try to get from Redis cache first (if not forcing refresh and caching is available)
-        cached_events = None
-        if REDIS_CACHE_AVAILABLE and event_cache and not force_refresh:
-            try:
-                cached_events = event_cache.get_events()
-                if cached_events:
-                    logger.info(f"Using cached events data from Redis")
-            except Exception as e:
-                logger.warning(f"Redis cache retrieval failed: {e}")
-        
-        # Get fresh data if no cache hit
-        if not cached_events:
-            logger.info(f"Fetching fresh events data for status: {status}")
-            # Get events using EventStatusManager
-            if status == "all":
-                events = await EventStatusManager.get_available_events("all")
-            else:
-                events = await EventStatusManager.get_available_events(status)
-            
-            # Cache the fresh data in Redis (for better performance on subsequent requests)
-            if REDIS_CACHE_AVAILABLE and event_cache and status == "all":
-                try:
-                    event_cache.set_events(events)
-                    logger.info(f"Cached {len(events)} events in Redis")
-                except Exception as e:
-                    logger.warning(f"Redis cache storage failed: {e}")
-        else:
-            events = cached_events
-        
-        # Filter by target audience based on current user type
-        if current_user:
-            user_type = "student" if isinstance(current_user, Student) else "faculty"
-            events = [
-                event for event in events 
-                if event.get('target_audience') in [user_type, 'both']
-            ]
-            logger.info(f"Filtered events for logged-in {user_type}: {len(events)} events")
-        else:
-            # For non-logged in users, show only student events (public events)
-            events = [
-                event for event in events 
-                if event.get('target_audience') == 'student'
-            ]
-            logger.info(f"Filtered events for non-logged users (student events only): {len(events)} events")
-        
-        # Filter by category if specified
-        if category:
-            events = [event for event in events if event.get('category', '').lower() == category.lower()]        
-        
-        # Add registration status for logged-in users
-        if current_user:
-            if isinstance(current_user, Student):
-                student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
-                if student_data:
-                    event_participations = student_data.get('event_participations', {})
-                    for event in events:
-                        event_id = event.get('event_id')
-                        if event_id in event_participations:
-                            participation = event_participations[event_id]
-                            event['user_registration_status'] = {
-                                "registered": True,
-                                "registration_id": participation.get('registration_id'),
-                                "registration_type": participation.get('registration_type', 'individual'),
-                                "attendance_marked": bool(participation.get('attendance_id')),
-                                "feedback_submitted": bool(participation.get('feedback_id')),
-                                "certificate_available": bool(participation.get('certificate_id'))
-                            }
-                        else:
-                            event['user_registration_status'] = {"registered": False}
-                else:
-                    # Student not found in database, mark all as not registered
-                    for event in events:
-                        event['user_registration_status'] = {"registered": False}
-            elif isinstance(current_user, Faculty):
-                # For faculty, we might add similar tracking in the future
-                # For now, just mark all events as not registered (faculty don't register for events)
-                for event in events:
-                    event['user_registration_status'] = {"registered": False}
-        
-        # Pagination
-        total_events = len(events)
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_events = events[start_idx:end_idx]
-        
-        # Serialize events to handle ObjectIds and datetime objects
-        serialized_events = [serialize_event(event) for event in paginated_events]
-        
-        # Add cache information to response
-        cache_info = {}
-        if REDIS_CACHE_AVAILABLE and event_cache:
-            try:
-                cache_info = event_cache.get_cache_info()
-            except Exception as e:
-                cache_info = {"error": str(e)}
-        
-        return {
-            "success": True,
-            "message": f"Retrieved {len(serialized_events)} events",
-            "events": serialized_events,
-            "pagination": {
-                "current_page": page,
-                "total_pages": (total_events + limit - 1) // limit,
-                "total_events": total_events,
-                "events_per_page": limit,
-                "has_next": end_idx < total_events,
-                "has_previous": page > 1
-            },
-            "cache_info": cache_info,
-            "from_cache": bool(cached_events)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting events list: {str(e)}")
-        return {"success": False, "message": f"Error retrieving events: {str(e)}"}
+    """LEGACY: Redirect to unified endpoint - Get paginated list of events"""
+    logger.info(f"PHASE 4A: Redirecting /list to /unified endpoint")
+    return await get_events_unified(
+        mode="list",
+        status=status,
+        category=category,
+        page=page,
+        limit=limit,
+        force_refresh=force_refresh,
+        current_user=current_user
+    )
 
 @router.get("/details/{event_id}")
 async def get_event_details(event_id: str, student: Student = Depends(get_current_student_optional)):
@@ -444,26 +338,9 @@ async def get_event_timeline(event_id: str):
 
 @router.get("/categories")
 async def get_event_categories():
-    """Get list of all event categories"""
-    try:
-        # Get all events to extract unique categories
-        events = await DatabaseOperations.find_many("events", {})
-        
-        categories = set()
-        for event in events:
-            category = event.get('category')
-            if category:
-                categories.add(category)
-        
-        return {
-            "success": True,
-            "message": f"Found {len(categories)} categories",
-            "categories": sorted(list(categories))
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting event categories: {str(e)}")
-        return {"success": False, "message": f"Error retrieving categories: {str(e)}"}
+    """LEGACY: Redirect to unified endpoint - Get list of all event categories"""
+    logger.info(f"PHASE 4A: Redirecting /categories to /unified endpoint")
+    return await get_events_unified(mode="categories")
 
 @router.get("/search")
 async def search_events(
@@ -474,152 +351,27 @@ async def search_events(
     limit: int = Query(10, description="Number of events per page"),
     current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Search events by name, description, or category with target audience filtering"""
-    try:
-        if not q or len(q.strip()) < 2:
-            return {"success": False, "message": "Search query must be at least 2 characters long"}
-        
-        # Get events based on status filter
-        if status == "all":
-            events = await EventStatusManager.get_available_events("all")
-        else:
-            events = await EventStatusManager.get_available_events(status)
-        
-        # Filter by target audience based on current user type
-        if current_user:
-            user_type = "student" if isinstance(current_user, Student) else "faculty"
-            events = [
-                event for event in events 
-                if event.get('target_audience') in [user_type, 'both']
-            ]
-        else:
-            # For non-logged in users, show only student events (public events)
-            events = [
-                event for event in events 
-                if event.get('target_audience') == 'student'
-            ]
-        
-        # Search in event name, description, and category
-        search_query = q.lower().strip()
-        matching_events = []
-        
-        for event in events:
-            event_name = event.get('event_name', '').lower()
-            event_description = event.get('description', '').lower()
-            event_category = event.get('category', '').lower()
-            
-            if (search_query in event_name or 
-                search_query in event_description or 
-                search_query in event_category):
-                matching_events.append(event)
-        
-        # Filter by category if specified
-        if category:
-            matching_events = [
-                event for event in matching_events 
-                if event.get('category', '').lower() == category.lower()
-            ]
-        
-        # Add registration status for logged-in students
-        if current_user and isinstance(current_user, Student):
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
-            if student_data:
-                event_participations = student_data.get('event_participations', {})
-                for event in matching_events:
-                    event_id = event.get('event_id')
-                    if event_id in event_participations:
-                        participation = event_participations[event_id]
-                        event['user_registration_status'] = {
-                            "registered": True,
-                            "registration_id": participation.get('registration_id'),
-                            "registration_type": participation.get('registration_type', 'individual'),
-                            "attendance_marked": bool(participation.get('attendance_id')),
-                            "feedback_submitted": bool(participation.get('feedback_id')),
-                            "certificate_available": bool(participation.get('certificate_id'))
-                        }
-                    else:
-                        event['user_registration_status'] = {"registered": False}
-        
-        # Pagination
-        total_events = len(matching_events)
-        start_idx = (page - 1) * limit
-        end_idx = start_idx + limit
-        paginated_events = matching_events[start_idx:end_idx]
-        
-        return {
-            "success": True,
-            "message": f"Found {total_events} events matching '{q}'",
-            "events": paginated_events,
-            "search_query": q,
-            "pagination": {
-                "current_page": page,
-                "total_pages": (total_events + limit - 1) // limit,
-                "total_events": total_events,
-                "events_per_page": limit,
-                "has_next": end_idx < total_events,
-                "has_previous": page > 1
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error searching events: {str(e)}")
-        return {"success": False, "message": f"Error searching events: {str(e)}"}
+    """LEGACY: Redirect to unified endpoint - Search events by name, description, or category"""
+    logger.info(f"PHASE 4A: Redirecting /search to /unified endpoint")
+    return await get_events_unified(
+        mode="search",
+        q=q,
+        status=status,
+        category=category,
+        page=page,
+        limit=limit,
+        current_user=current_user
+    )
 
 @router.get("/upcoming")
 async def get_upcoming_events(
     limit: int = Query(5, description="Number of upcoming events to retrieve"),
     current_user: Union[Student, Faculty, None] = Depends(get_current_user)
 ):
-    """Get upcoming events (quick access endpoint) with target audience filtering"""
-    try:
-        # Get upcoming events
-        events = await EventStatusManager.get_available_events("upcoming")
-        
-        # Filter by target audience based on current user type
-        if current_user:
-            user_type = "student" if isinstance(current_user, Student) else "faculty"
-            events = [
-                event for event in events 
-                if event.get('target_audience') in [user_type, 'both']
-            ]
-            logger.info(f"Filtered upcoming events for logged-in {user_type}: {len(events)} events")
-        else:
-            # For non-logged in users, show only student events (public events)
-            events = [
-                event for event in events 
-                if event.get('target_audience') == 'student'
-            ]
-            logger.info(f"Filtered upcoming events for non-logged users (student events only): {len(events)} events")
-        
-        # Sort by start date
-        events.sort(key=lambda x: x.get('start_datetime', ''))
-        
-        # Limit results
-        limited_events = events[:limit]
-        
-        # Add registration status for logged-in users
-        if current_user and isinstance(current_user, Student):
-            student_data = await DatabaseOperations.find_one("students", {"enrollment_no": current_user.enrollment_no})
-            if student_data:
-                event_participations = student_data.get('event_participations', {})
-                for event in limited_events:
-                    event_id = event.get('event_id')
-                    if event_id in event_participations:
-                        participation = event_participations[event_id]
-                        event['user_registration_status'] = {
-                            "registered": True,
-                            "registration_type": participation.get('registration_type', 'individual'),
-                            "attendance_marked": bool(participation.get('attendance_id'))
-                        }
-                    else:
-                        event['user_registration_status'] = {"registered": False}
-        
-        return {
-            "success": True,
-            "message": f"Retrieved {len(limited_events)} upcoming events",
-            "events": limited_events
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting upcoming events: {str(e)}")
-        return {"success": False, "message": f"Error retrieving upcoming events: {str(e)}"}
+    """LEGACY: Redirect to unified endpoint - Get upcoming events (quick access endpoint)"""
+    logger.info(f"PHASE 4A: Redirecting /upcoming to /unified endpoint")
+    return await get_events_unified(
+        mode="upcoming",
+        limit=limit,
+        current_user=current_user
+    )

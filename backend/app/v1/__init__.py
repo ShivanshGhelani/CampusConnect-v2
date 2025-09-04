@@ -11,7 +11,7 @@ from .email import router as email_router
 # from .dynamic_attendance import router as dynamic_attendance_router  # Temporarily disabled - needs refactoring
 # from .attendance_customization import router as attendance_customization_router  # Temporarily disabled - needs refactoring
 from .registrations import router as registrations_router
-from ..legacy import router as legacy_router  # Backward compatibility routes
+# Removed: from ..legacy import router as legacy_router  # Legacy routes eliminated
 # from .venues import router as venues_router
 
 router = APIRouter()
@@ -32,8 +32,8 @@ router.include_router(organizer_access_router, tags=["organizer-access-api"])
 # Professional Event Registration & Attendance System
 router.include_router(registrations_router, tags=["event-registrations-api"])
 
-# Backward Compatibility Routes
-router.include_router(legacy_router, tags=["legacy-compatibility-api"])
+# Legacy Compatibility Routes - REMOVED (legacy cleanup complete)
+# router.include_router(legacy_router, tags=["legacy-compatibility-api"])  # Eliminated all legacy routes
 
 # router.include_router(venues_router, prefix="/venues", tags=["venues-api"])
 

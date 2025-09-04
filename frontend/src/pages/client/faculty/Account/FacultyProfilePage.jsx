@@ -236,19 +236,41 @@ function FacultyProfilePage() {
     try {
       // Fetch team details if team_registration_id is available
       if (teamDetail.teamId) {
-        const response = await api.get(`/api/v1/client/profile/team-details/${teamDetail.eventId}/${teamDetail.teamId}`);
+        // PHASE 3A: Use unified team data endpoint
+        const response = await api.get(`/api/v1/client/profile/team/${teamDetail.eventId}/unified`, {
+          params: { mode: 'details', team_id: teamDetail.teamId }
+        });
+        
         if (response.data.success) {
           setSelectedTeamDetail({
             ...teamDetail,
-            teamMembers: response.data.data.team_members || [],
-            teamName: response.data.data.team_name || teamDetail.teamName || 'Unknown Team'
+            teamMembers: response.data.team_data?.members || [],
+            teamName: response.data.team_data?.team_name || teamDetail.teamName || 'Unknown Team'
           });
         } else {
-          setSelectedTeamDetail({
-            ...teamDetail,
-            teamMembers: [],
-            error: 'Unable to load team details'
-          });
+          // Fallback to legacy endpoint
+          try {
+            const legacyResponse = await api.get(`/api/v1/client/profile/team-details/${teamDetail.eventId}/${teamDetail.teamId}`);
+            if (legacyResponse.data.success) {
+              setSelectedTeamDetail({
+                ...teamDetail,
+                teamMembers: legacyResponse.data.data.team_members || [],
+                teamName: legacyResponse.data.data.team_name || teamDetail.teamName || 'Unknown Team'
+              });
+            } else {
+              setSelectedTeamDetail({
+                ...teamDetail,
+                teamMembers: [],
+                error: 'Unable to load team details'
+              });
+            }
+          } catch (legacyError) {
+            setSelectedTeamDetail({
+              ...teamDetail,
+              teamMembers: [],
+              error: 'Unable to load team details'
+            });
+          }
         }
       } else {
         setSelectedTeamDetail({

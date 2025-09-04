@@ -109,12 +109,19 @@ async def check_feedback_eligibility(
 
 @router.get("/test-health")
 async def test_health():
-    """Simple health check for test endpoints"""
-    return {"status": "ok", "message": "Test feedback API is working"}
+    """PHASE 4A: REMOVE IN PRODUCTION - Simple health check for test endpoints"""
+    logger.warning(f"PHASE 4A: /test-health endpoint should be removed in production")
+    return {
+        "status": "ok", 
+        "message": "Test feedback API is working - REMOVE IN PRODUCTION",
+        "phase_4a_note": "This test endpoint will be removed in production deployment"
+    }
 
 @router.get("/test-form/{event_id}")
 async def get_test_feedback_form(event_id: str):
-    """Get feedback form for testing purposes (no authentication required)"""
+    """PHASE 4A: REMOVE IN PRODUCTION - Get feedback form for testing purposes (no authentication required)"""
+    logger.warning(f"PHASE 4A: /test-form endpoint should be removed in production")
+    
     try:
         logger.info(f"Getting test feedback form for event: {event_id}")
         
@@ -157,7 +164,8 @@ async def get_test_feedback_form(event_id: str):
             "event": {
                 "event_id": event["event_id"],
                 "event_name": event["event_name"]
-            }
+            },
+            "phase_4a_note": "REMOVE IN PRODUCTION - This test endpoint bypasses authentication"
         }
         
         logger.info(f"Successfully retrieved feedback form for {event_id}")
@@ -178,7 +186,9 @@ async def submit_test_feedback(
     student_enrollment: str = Form(...),
     responses: str = Form(...)
 ):
-    """Submit test feedback for an event (test mode only - no authentication required)"""
+    """PHASE 4A: REMOVE IN PRODUCTION - Submit test feedback for an event (test mode only - no authentication required)"""
+    logger.warning(f"PHASE 4A: /test-submit endpoint should be removed in production")
+    
     try:
         # Parse the responses JSON
         try:
@@ -198,6 +208,7 @@ async def submit_test_feedback(
         
         if result["success"]:
             logger.info(f"Test feedback submitted for event {event_id} by {student_enrollment}")
+            result["phase_4a_note"] = "REMOVE IN PRODUCTION - This test endpoint bypasses authentication"
             return JSONResponse(status_code=200, content=result)
         else:
             raise HTTPException(

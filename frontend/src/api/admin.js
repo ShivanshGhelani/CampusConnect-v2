@@ -151,10 +151,6 @@ export const adminAPI = {
   getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
   getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
   
-  // Debug endpoints (development only)
-  getDebugSession: () => api.get('/api/debug/session'), // Direct debug endpoint
-  setTestSession: (sessionData) => api.post('/api/debug/set-session', sessionData), // Direct debug endpoint
-  
   // Notification Management (using existing optimized endpoints)
   sendNotification: (notificationData) => api.post('/api/v1/admin/users/list', { 
     action: 'send_notification', 

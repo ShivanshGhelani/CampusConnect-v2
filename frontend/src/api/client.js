@@ -125,38 +125,153 @@ export const clientAPI = {
   // Get team by member registration ID
   getTeamByMemberRegistration: (eventId, memberRegistrationId) => api.get(`/api/v1/client/registration/event/${eventId}/team-by-member/${memberRegistrationId}`),
   
-  // ===== TEAM MANAGEMENT TOOLS API =====
+  // ===== PHASE 3A: UNIFIED TEAM MANAGEMENT API =====
   
-  // Task Management
-  createTask: (eventId, taskData) => api.post(`/api/v1/client/profile/team-tools/create-task/${eventId}`, taskData),
+  // NEW: Unified Team Data Retrieval
+  getUnifiedTeamData: (eventId, mode = 'overview', options = {}) => {
+    const params = { mode, ...options };
+    return api.get(`/api/v1/client/profile/team/${eventId}/unified`, { params });
+  },
   
-  getTeamTasks: (eventId, status = null) => api.get(`/api/v1/client/profile/team-tools/tasks/${eventId}`, {
+  // NEW: Unified Team Actions
+  executeTeamAction: (eventId, actionData) => 
+    api.post(`/api/v1/client/profile/team/${eventId}/actions`, actionData),
+
+  // ===== LEGACY TEAM MANAGEMENT TOOLS API (Backward Compatible) =====
+  
+  // Task Management - Updated to use unified endpoints
+  createTask: (eventId, taskData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'create_task',
+    title: taskData.title,
+    description: taskData.description,
+    priority: taskData.priority || 'medium',
+    deadline: taskData.deadline,
+    assigned_to: taskData.assigned_to,
+    category: taskData.category || 'general'
+  }),
+  
+  getTeamTasks: (eventId, status = null) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'tasks', status }
+  }),
+  
+  submitTask: (eventId, taskId, submissionData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'submit_task',
+    task_id: taskId,
+    submission_link: submissionData.submission_link,
+    submission_notes: submissionData.submission_notes
+  }),
+  
+  reviewTask: (eventId, taskId, reviewData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'review_task',
+    task_id: taskId,
+    review_status: reviewData.review_status,
+    review_feedback: reviewData.review_feedback,
+    reviewer_notes: reviewData.reviewer_notes
+  }),
+  
+  completeTask: (eventId, taskId, reviewData = {}) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'complete_task',
+    task_id: taskId,
+    ...reviewData
+  }),
+  
+  // Role Assignment - Updated to use unified endpoints
+  assignRole: (eventId, roleData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'assign_role',
+    member_enrollment: roleData.member_enrollment,
+    role: roleData.role,
+    permissions: roleData.permissions,
+    description: roleData.description
+  }),
+  
+  getTeamRoles: (eventId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'roles' }
+  }),
+  
+  // Team Communication - Updated to use unified endpoints  
+  postMessage: (eventId, messageData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'post_message',
+    content: messageData.content,
+    priority: messageData.priority || 'normal',
+    mentions: messageData.mentions,
+    category: messageData.category || 'general'
+  }),
+  
+  getTeamMessages: (eventId, limit = 50, skip = 0) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'messages', limit, skip }
+  }),
+  
+  // Report Generation - Updated to use unified endpoints
+  generateReport: (eventId, reportData) => api.post(`/api/v1/client/profile/team/${eventId}/actions`, {
+    action: 'generate_report',
+    report_type: reportData.report_type,
+    date_range: reportData.date_range,
+    include_tasks: reportData.include_tasks !== false,
+    include_messages: reportData.include_messages !== false
+  }),
+  
+  // Team Overview - Updated to use unified endpoints  
+  getTeamOverview: (eventId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'overview' }
+  }),
+
+  // ===== LEGACY TEAM MANAGEMENT TOOLS API (FALLBACK - will be removed in Phase 4) =====
+  
+  // Keep original endpoints as fallback for now
+  createTaskLegacy: (eventId, taskData) => api.post(`/api/v1/client/profile/team-tools/create-task/${eventId}`, taskData),
+  
+  getTeamTasksLegacy: (eventId, status = null) => api.get(`/api/v1/client/profile/team-tools/tasks/${eventId}`, {
     params: status ? { status } : {}
   }),
   
-  submitTask: (eventId, taskId, submissionData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/submit`, submissionData),
+  submitTaskLegacy: (eventId, taskId, submissionData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/submit`, submissionData),
   
-  reviewTask: (eventId, taskId, reviewData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/review`, reviewData),
+  reviewTaskLegacy: (eventId, taskId, reviewData) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/review`, reviewData),
   
-  completeTask: (eventId, taskId, reviewData = {}) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/complete`, reviewData),
+  completeTaskLegacy: (eventId, taskId, reviewData = {}) => api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/complete`, reviewData),
   
   // Role Assignment
-  assignRole: (eventId, roleData) => api.post(`/api/v1/client/profile/team-tools/assign-role/${eventId}`, roleData),
+  assignRoleLegacy: (eventId, roleData) => api.post(`/api/v1/client/profile/team-tools/assign-role/${eventId}`, roleData),
   
-  getTeamRoles: (eventId) => api.get(`/api/v1/client/profile/team-tools/roles/${eventId}`),
+  getTeamRolesLegacy: (eventId) => api.get(`/api/v1/client/profile/team-tools/roles/${eventId}`),
   
   // Team Communication
-  postMessage: (eventId, messageData) => api.post(`/api/v1/client/profile/team-tools/post-message/${eventId}`, messageData),
+  postMessageLegacy: (eventId, messageData) => api.post(`/api/v1/client/profile/team-tools/post-message/${eventId}`, messageData),
   
-  getTeamMessages: (eventId, limit = 50, skip = 0) => api.get(`/api/v1/client/profile/team-tools/messages/${eventId}`, {
+  getTeamMessagesLegacy: (eventId, limit = 50, skip = 0) => api.get(`/api/v1/client/profile/team-tools/messages/${eventId}`, {
     params: { limit, skip }
   }),
   
   // Report Generation
-  generateReport: (eventId, reportData) => api.post(`/api/v1/client/profile/team-tools/generate-report/${eventId}`, reportData),
+  generateReportLegacy: (eventId, reportData) => api.post(`/api/v1/client/profile/team-tools/generate-report/${eventId}`, reportData),
   
-  // Team Overview
-  getTeamOverview: (eventId) => api.get(`/api/v1/client/profile/team-tools/team-overview/${eventId}`),
+  // Team Overview  
+  getTeamOverviewLegacy: (eventId) => api.get(`/api/v1/client/profile/team-tools/team-overview/${eventId}`),
+
+  // ===== UNIFIED TEAM DETAILS API (Phase 3A) =====
+  
+  // Team Details - Updated to use unified endpoints
+  getTeamDetails: (eventId, teamId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'details', team_id: teamId }
+  }),
+  
+  getTeamInfo: (eventId, teamId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'info', team_id: teamId }
+  }),
+  
+  getTeamDebugInfo: (eventId, teamId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'debug', team_id: teamId }  
+  }),
+  
+  getTeamRegistrationDetails: (eventId) => api.get(`/api/v1/client/profile/team/${eventId}/unified`, {
+    params: { mode: 'registration' }
+  }),
+
+  // ===== LEGACY TEAM DETAILS API (FALLBACK - will be removed in Phase 4) =====
+  
+  getTeamDetailsLegacy: (eventId, teamId) => api.get(`/api/v1/client/profile/team-details/${eventId}/${teamId}`),
+  getTeamInfoLegacy: (eventId, teamId) => api.get(`/api/v1/client/profile/team-info/${eventId}/${teamId}`),
+  getTeamRegistrationDetailsLegacy: (eventId) => api.get(`/api/v1/client/profile/team-registration-details/${eventId}`),
   
   // Attendance - Updated endpoints
   markAttendance: (eventId, attendanceData) => api.post('/api/v1/client/attendance/mark', { 

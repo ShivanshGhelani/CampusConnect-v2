@@ -1,6 +1,7 @@
 version: "3.9"
 
 services:
+  # 🔹 Prometheus
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -9,6 +10,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
+  # 🔹 Grafana
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -17,3 +19,51 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+
+  # 🔹 Redis (Broker + Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # 🔹 Celery Worker
+  celery_worker:
+    build: .   # adjust to your FastAPI backend folder
+    container_name: celery_worker
+    command: celery -A services.celery_app worker --loglevel=INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+  # 🔹 Celery Beat (optional scheduler)
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery -A services.celery_app beat --loglevel=INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+  # 🔹 Flower Dashboard (Celery Monitoring)
+  flower:
+    image: mher/flower
+    container_name: flower
+    command: flower --broker=redis://redis:6379/0 --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery_worker
+
+

@@ -12,8 +12,8 @@ from models.faculty import Faculty, FacultyUpdate
 from database.operations import DatabaseOperations
 from typing import Union
 
-# Import team tools router
-from .team_tools import router as team_tools_router
+# Import team tools router (LEGACY - DISABLED IN PHASE 3A)
+# from .team_tools import router as team_tools_router
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -559,221 +559,33 @@ async def change_password(request: Request, student: Student = Depends(require_s
 
 
 
+# PHASE 4A: LEGACY TEAM ENDPOINTS - Redirect to unified team endpoints
+# These endpoints are replaced by the Phase 3A unified team management system
+
 @router.get("/team-details/{event_id}/{team_id}")
 async def get_team_details(
     event_id: str, 
     team_id: str, 
     student: Student = Depends(require_student_login_hybrid)
 ):
-    """Get detailed team member information for a specific team and event"""
-    try:
-        # Get the event to verify it exists
-        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event:
-            return {"success": False, "message": "Event not found"}
-        
-        # Find all students who have this event in their participations with the matching team_id
-        students = await DatabaseOperations.find_many("students", {
-            f"event_participations.{event_id}.team_registration_id": team_id
-        })
-        
-        if not students:
-            return {"success": False, "message": "No team members found for this team"}
-        
-        # Get team member details
-        team_members = []
-        team_name = None
-        
-        for student_doc in students:
-            # Get participation data for this student and event
-            participation_data = student_doc.get("event_participations", {}).get(event_id, {})
-            
-            if participation_data.get("team_registration_id") == team_id:
-                # Get team name from the first student (all should have the same team name)
-                if not team_name:
-                    team_name = participation_data.get("student_data", {}).get("team_name", "Unknown Team")
-                
-                member_info = {
-                    "enrollment_no": student_doc.get("enrollment_no", "Unknown"),
-                    "full_name": student_doc.get("full_name", "Unknown"),
-                    "registration_id": participation_data.get("registration_id", "N/A"),
-                    "registration_type": participation_data.get("registration_type", "team_member"),
-                    "team_registration_id": team_id,
-                    "attendance": {
-                        "marked": bool(participation_data.get("attendance_id")),
-                        "attendance_id": participation_data.get("attendance_id"),
-                        "attendance_date": participation_data.get("attendance_marked_at")
-                    },
-                    "feedback": {
-                        "submitted": bool(participation_data.get("feedback_id")),
-                        "feedback_id": participation_data.get("feedback_id")
-                    },
-                    "certificate": {
-                        "earned": bool(participation_data.get("certificate_id")),
-                        "certificate_id": participation_data.get("certificate_id")
-                    }
-                }
-                team_members.append(member_info)
-        
-        # Sort team members: team leader first, then team members
-        team_members.sort(key=lambda x: (x["registration_type"] not in ["team_leader", "team"], x["full_name"]))
-        
-        return {
-            "success": True,
-            "message": "Team details retrieved successfully",
-            "data": {
-                "team_name": team_name or "Unknown Team",
-                "team_id": team_id,
-                "event_id": event_id,
-                "event_name": event.get("event_name", ""),
-                "total_members": len(team_members),
-                "members": team_members
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting team details: {str(e)}")
-        return {"success": False, "message": f"Error retrieving team details: {str(e)}"}
+    """LEGACY: Redirect to unified team endpoint - Get detailed team member information"""
+    logger.info(f"PHASE 4A: Redirecting /team-details to unified team endpoint")
+    # Redirect to unified team data endpoint
+    from .team_tools import get_unified_team_data
+    return await get_unified_team_data(event_id, mode="info", student_data={"enrollment_no": student.enrollment_no})
 
 
 @router.get("/test-auth")
 async def test_auth(student: Student = Depends(require_student_login_hybrid)):
-    """Simple test endpoint to check if student authentication works"""
+    """PHASE 4A: REMOVED IN PRODUCTION - Test endpoint for authentication verification"""
+    logger.warning(f"PHASE 4A: /test-auth endpoint should be removed in production")
     return {
         "success": True,
-        "message": "Student authentication working",
+        "message": "Student authentication working - REMOVE IN PRODUCTION",
         "student_enrollment": student.enrollment_no,
-        "student_name": student.full_name
+        "student_name": student.full_name,
+        "phase_4a_note": "This endpoint will be removed in production deployment"
     }
-
-@router.get("/team-info-debug/{event_id}/{team_id}")
-async def get_team_info_debug(event_id: str, team_id: str):
-    """Debug version without authentication requirement"""
-    try:
-        logger.info(f"Getting team info (debug) for event {event_id}, team {team_id}")
-        
-        # Get the event to verify it exists
-        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event:
-            logger.warning(f"Event {event_id} not found")
-            return {"success": False, "message": "Event not found"}
-        
-        # Get team information from event registrations
-        registrations = event.get('registrations', {})
-        team_registration = None
-        team_leader_data = None
-        
-        logger.info(f"Found {len(registrations)} registrations for event {event_id}")
-        
-        # Find the team leader's registration to get team name
-        for reg_id, reg_data in registrations.items():
-            if (reg_data and 
-                reg_data.get('registration_type') == 'team' and
-                reg_data.get('team_registration_id') == team_id):
-                team_registration = reg_data
-                team_leader_data = reg_data.get('student_data', {})
-                logger.info(f"Found team leader registration {reg_id}")
-                break
-        
-        if not team_registration:
-            logger.warning(f"Team registration not found for team {team_id}")
-            return {"success": False, "message": "Team registration not found"}
-        
-        team_name = team_leader_data.get('team_name', 'Unknown Team')
-        logger.info(f"Team name: {team_name}")
-        
-        # Get all team members from the leader's team_members array
-        team_members_array = team_leader_data.get('team_members', [])
-        logger.info(f"Found {len(team_members_array)} team members in array")
-        
-        # Build complete team member list including leader
-        team_members = []
-        
-        # Add team leader first
-        leader_info = {
-            "enrollment_no": team_leader_data.get("enrollment_no", "Unknown"),
-            "full_name": team_leader_data.get("full_name", "Unknown"),
-            "registration_id": team_registration.get("registration_id", "N/A"),
-            "registration_type": "team_leader",
-            "team_registration_id": team_id,
-            "email": team_leader_data.get("email", ""),
-            "phone": team_leader_data.get("mobile_no", ""),
-            "course": team_leader_data.get("department", ""),
-            "semester": team_leader_data.get("semester", ""),
-            "attendance": {
-                "marked": False,
-                "attendance_id": None,
-                "attendance_date": None
-            },
-            "feedback": {
-                "submitted": False,
-                "feedback_id": None
-            },
-            "certificate": {
-                "earned": False,
-                "certificate_id": None
-            }
-        }
-        team_members.append(leader_info)
-        
-        # Add team members
-        for member in team_members_array:
-            if member and member.get('enrollment_no'):
-                # Find the member's individual registration for registration_id
-                member_reg_id = "N/A"
-                for reg_id, reg_data in registrations.items():
-                    if (reg_data and 
-                        reg_data.get('student_data', {}).get('enrollment_no') == member.get('enrollment_no') and
-                        reg_data.get('registration_type') == 'team_member'):
-                        member_reg_id = reg_data.get('registration_id', reg_id)
-                        break
-                
-                member_info = {
-                    "enrollment_no": member.get("enrollment_no", "Unknown"),
-                    "full_name": member.get("full_name", "Unknown"),
-                    "registration_id": member_reg_id,
-                    "registration_type": "team_member",
-                    "team_registration_id": team_id,
-                    "email": member.get("email", ""),
-                    "phone": member.get("phone", ""),
-                    "course": member.get("course", ""),
-                    "semester": member.get("semester", ""),
-                    "attendance": {
-                        "marked": False,
-                        "attendance_id": None,
-                        "attendance_date": None
-                    },
-                    "feedback": {
-                        "submitted": False,
-                        "feedback_id": None
-                    },
-                    "certificate": {
-                        "earned": False,
-                        "certificate_id": None
-                    }
-                }
-                team_members.append(member_info)
-        
-        response = {
-            "success": True,
-            "message": "Team details retrieved successfully (debug mode)",
-            "data": {
-                "team_name": team_name,
-                "team_id": team_id,
-                "event_id": event_id,
-                "event_name": event.get("event_name", ""),
-                "total_members": len(team_members),
-                "members": team_members
-            }
-        }
-        
-        logger.info(f"Successfully retrieved team info for {team_id}: {len(team_members)} members")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error getting team info (debug): {str(e)}")
-        traceback.print_exc()
-        return {"success": False, "message": f"Error retrieving team info: {str(e)}"}
 
 @router.get("/team-info/{event_id}/{team_id}")
 async def get_team_info(
@@ -781,280 +593,49 @@ async def get_team_info(
     team_id: str, 
     request: Request
 ):
-    """Get detailed team member information - modified to handle auth issues"""
+    """LEGACY: Redirect to unified team endpoint - Get detailed team member information"""
+    logger.info(f"PHASE 4A: Redirecting /team-info to unified team endpoint")
+    
+    # Try to get student from session for auth context
     try:
-        # Try to get student from session, but don't fail if not present
-        student = None
-        try:
-            from dependencies.auth import get_current_student
-            student = await get_current_student(request)
-            logger.info(f"Student authenticated: {student.enrollment_no}")
-        except Exception as auth_error:
-            logger.warning(f"Authentication failed, proceeding without student context: {auth_error}")
-        
-        logger.info(f"Getting team info for event {event_id}, team {team_id}")
-        
-        # Get the event to verify it exists
-        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event:
-            logger.warning(f"Event {event_id} not found")
-            return {"success": False, "message": "Event not found"}
-        
-        # Get team information from event registrations
-        registrations = event.get('registrations', {})
-        team_registration = None
-        team_leader_data = None
-        
-        logger.info(f"Found {len(registrations)} registrations for event {event_id}")
-        
-        # Find the team leader's registration to get team name
-        for reg_id, reg_data in registrations.items():
-            if (reg_data and 
-                reg_data.get('registration_type') in ['team', 'team_leader'] and
-                reg_data.get('team_registration_id') == team_id):
-                team_registration = reg_data
-                team_leader_data = reg_data.get('student_data', {})
-                logger.info(f"Found team leader registration {reg_id}")
-                break
-        
-        if not team_registration:
-            logger.warning(f"Team registration not found for team {team_id}")
-            return {"success": False, "message": "Team registration not found"}
-        
-        team_name = team_leader_data.get('team_name', 'Unknown Team')
-        logger.info(f"Team name: {team_name}")
-        
-        # Get all team members from the leader's team_members array
-        team_members_array = team_leader_data.get('team_members', [])
-        logger.info(f"Found {len(team_members_array)} team members in array")
-        
-        # Also get team members from separate registrations (normalized structure)
-        separate_team_members = []
-        for reg_id, reg_data in registrations.items():
-            if (reg_data and 
-                reg_data.get('registration_type') == 'team_member' and
-                reg_data.get('team_registration_id') == team_id):
-                separate_team_members.append({
-                    "reg_id": reg_id,
-                    "data": reg_data
-                })
-        logger.info(f"Found {len(separate_team_members)} team members as separate registrations")
-        
-        # Build complete team member list including leader
-        team_members = []
-        
-        # Add team leader first
-        leader_info = {
-            "enrollment_no": team_leader_data.get("enrollment_no", "Unknown"),
-            "full_name": team_leader_data.get("full_name", "Unknown"),
-            "registration_id": team_registration.get("registration_id", "N/A"),
-            "registration_type": "team_leader",
-            "team_registration_id": team_id,
-            "email": team_leader_data.get("email", ""),
-            "phone": team_leader_data.get("mobile_no", ""),
-            "course": team_leader_data.get("department", ""),
-            "semester": team_leader_data.get("semester", ""),
-            "attendance": {
-                "marked": False,
-                "attendance_id": None,
-                "attendance_date": None
-            },
-            "feedback": {
-                "submitted": False,
-                "feedback_id": None
-            },
-            "certificate": {
-                "earned": False,
-                "certificate_id": None
-            }
-        }
-        team_members.append(leader_info)
-        
-        # Add team members
-        for member in team_members_array:
-            if member and member.get('enrollment_no'):
-                # Find the member's individual registration for registration_id
-                member_reg_id = "N/A"
-                for reg_id, reg_data in registrations.items():
-                    if (reg_data and 
-                        reg_data.get('student_data', {}).get('enrollment_no') == member.get('enrollment_no') and
-                        reg_data.get('registration_type') == 'team_member'):
-                        member_reg_id = reg_data.get('registration_id', reg_id)
-                        break
-                
-                member_info = {
-                    "enrollment_no": member.get("enrollment_no", "Unknown"),
-                    "full_name": member.get("full_name", "Unknown"),
-                    "registration_id": member_reg_id,
-                    "registration_type": "team_member",
-                    "team_registration_id": team_id,
-                    "email": member.get("email", ""),
-                    "phone": member.get("phone", ""),
-                    "course": member.get("course", ""),
-                    "semester": member.get("semester", ""),
-                    "attendance": {
-                        "marked": False,
-                        "attendance_id": None,
-                        "attendance_date": None
-                    },
-                    "feedback": {
-                        "submitted": False,
-                        "feedback_id": None
-                    },
-                    "certificate": {
-                        "earned": False,
-                        "certificate_id": None
-                    }
-                }
-                team_members.append(member_info)
-        
-        # Add team members from separate registrations (normalized structure)
-        for member_reg in separate_team_members:
-            reg_data = member_reg["data"]
-            student_data = reg_data.get("student_data", {})
-            
-            member_info = {
-                "enrollment_no": student_data.get("enrollment_no", "Unknown"),
-                "full_name": student_data.get("full_name", "Unknown"),
-                "registration_id": reg_data.get("registration_id", member_reg["reg_id"]),
-                "registration_type": "team_member",
-                "team_registration_id": team_id,
-                "email": student_data.get("email", ""),
-                "phone": student_data.get("mobile_no", ""),
-                "course": student_data.get("department", ""),
-                "semester": student_data.get("semester", ""),
-                "attendance": {
-                    "marked": False,
-                    "attendance_id": None,
-                    "attendance_date": None
-                },
-                "feedback": {
-                    "submitted": False,
-                    "feedback_id": None
-                },
-                "certificate": {
-                    "earned": False,
-                    "certificate_id": None
-                }
-            }
-            team_members.append(member_info)
-        
-        response = {
-            "success": True,
-            "message": "Team details retrieved successfully",
-            "data": {
-                "team_name": team_name,
-                "team_id": team_id,
-                "event_id": event_id,
-                "event_name": event.get("event_name", ""),
-                "total_members": len(team_members),
-                "members": team_members
-            },
-            "auth_status": "authenticated" if student else "guest"
-        }
-        
-        logger.info(f"Successfully retrieved team info for {team_id}: {len(team_members)} members")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error getting team info: {str(e)}")
-        traceback.print_exc()
-        return {"success": False, "message": f"Error retrieving team info: {str(e)}"}
+        from dependencies.auth import get_current_student
+        student = await get_current_student(request)
+        student_data = {"enrollment_no": student.enrollment_no}
+    except Exception:
+        # If auth fails, use guest mode
+        student_data = {"enrollment_no": "guest"}
+    
+    # Redirect to unified team data endpoint
+    from .team_tools import get_unified_team_data
+    result = await get_unified_team_data(event_id, mode="info", student_data=student_data)
+    
+    # Add legacy compatibility note
+    result["legacy_note"] = "PHASE 4A: This endpoint redirects to unified team management"
+    result["unified_endpoint"] = f"/api/v1/client/profile/team/{event_id}/unified?mode=info"
+    
+    return result
 
 @router.get("/team-registration-details/{event_id}")
 async def get_team_registration_details(
     event_id: str,
     student: Student = Depends(require_student_login_hybrid)
 ):
-    """Get complete team registration details from student_registrations collection for QR code generation"""
-    try:
-        logger.info(f"Fetching team registration details for event {event_id}, student {student.enrollment_no}")
-        
-        # Find the team registration in student_registrations collection
-        team_registration = await DatabaseOperations.find_one(
-            "student_registrations",
-            {
-                "$or": [
-                    # Student is team leader (stored in team.team_leader)
-                    {
-                        "event.event_id": event_id,
-                        "registration_type": "team",
-                        "team.team_leader": student.enrollment_no
-                    },
-                    # Student is team member (in team_members array)
-                    {
-                        "event.event_id": event_id,
-                        "registration_type": "team",
-                        "team_members.student.enrollment_no": student.enrollment_no
-                    }
-                ]
-            }
-        )
-        
-        if not team_registration:
-            return {
-                "success": False,
-                "message": "No team registration found for this event",
-                "team_registration": None
-            }
-        
-        # Extract team information
-        team_data = team_registration.get("team", {})
-        team_members = team_registration.get("team_members", [])
-        
-        # Format team member data for QR code generation
-        formatted_members = []
-        for member in team_members:
-            student_info = member.get("student", {})
-            formatted_member = {
-                "enrollment_no": student_info.get("enrollment_no", ""),
-                "name": student_info.get("name", ""),
-                "email": student_info.get("email", ""),
-                "phone": student_info.get("phone", ""),
-                "department": student_info.get("department", ""),
-                "semester": student_info.get("semester", ""),
-                "is_team_leader": member.get("is_team_leader", False),
-                "registration_id": member.get("registration_id", "")
-            }
-            formatted_members.append(formatted_member)
-        
-        # Format the complete team data
-        complete_team_data = {
-            "team_registration_id": team_registration.get("registration_id", ""),
-            "team_name": team_data.get("team_name", ""),
-            "team_leader": team_data.get("team_leader", ""),
-            "team_size": len(formatted_members),
-            "members": formatted_members,
-            "event": {
-                "event_id": event_id,
-                "event_name": team_registration.get("event", {}).get("event_name", ""),
-                "start_datetime": team_registration.get("event", {}).get("start_datetime", ""),
-                "end_datetime": team_registration.get("event", {}).get("end_datetime", "")
-            },
-            "registration_details": {
-                "created_at": team_registration.get("created_at", ""),
-                "updated_at": team_registration.get("updated_at", ""),
-                "status": team_data.get("status", "confirmed")
-            }
-        }
-        
-        logger.info(f"Successfully retrieved complete team data for {team_data.get('team_name', 'Unknown')} with {len(formatted_members)} members")
-        
-        return {
-            "success": True,
-            "message": "Team registration details retrieved successfully",
-            "team_registration": complete_team_data
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting team registration details: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False, 
-            "message": f"Error retrieving team registration details: {str(e)}",
-            "team_registration": None
-        }
+    """LEGACY: Redirect to unified team endpoint - Get complete team registration details"""
+    logger.info(f"PHASE 4A: Redirecting /team-registration-details to unified team endpoint")
+    
+    # Redirect to unified team data endpoint with registration mode
+    from .team_tools import get_unified_team_data
+    result = await get_unified_team_data(event_id, mode="full", student_data={"enrollment_no": student.enrollment_no})
+    
+    # Add legacy compatibility note
+    result["legacy_note"] = "PHASE 4A: This endpoint redirects to unified team management"
+    result["unified_endpoint"] = f"/api/v1/client/profile/team/{event_id}/unified?mode=full"
+    
+    return result
 
-# Include team management tools
-router.include_router(team_tools_router, prefix="/team-tools", tags=["Team Management"])
+# Include team management tools (LEGACY - DISABLED IN PHASE 3A)
+# router.include_router(team_tools_router, prefix="/team-tools", tags=["Team Management"])
+
+# PHASE 3A: Include consolidated team management - REPLACES old team_tools.py (11 endpoints eliminated)
+from .team_tools import router as team_tools_router
+router.include_router(team_tools_router, prefix="", tags=["Team Management"])

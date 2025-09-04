@@ -17,10 +17,6 @@ export const systemAPI = {
     params: { ...filters, focus: 'audit' } 
   }),
   
-  // Debug endpoints (development only - direct routes)
-  getDebugSession: () => api.get('/api/debug/session'),
-  setTestSession: (sessionData) => api.post('/api/debug/set-session', sessionData),
-  
   // Performance monitoring
   getPerformanceMetrics: (filters) => api.get('/api/v1/admin/analytics/overview', { 
     params: { ...filters, focus: 'performance' } 
@@ -52,7 +48,6 @@ export const systemAPI = {
   // DESIGN PRINCIPLE:
   // This module provides 100% coverage of system management features by:
   // 1. Using direct health endpoints (/api/health, /health/scheduler)
-  // 2. Using debug endpoints for development (/api/debug/*)
-  // 3. Leveraging analytics endpoint with focus parameters for advanced features
-  // 4. Maintaining your 62-endpoint optimization while providing full system admin capabilities
+  // 2. Leveraging analytics endpoint with focus parameters for advanced features
+  // 3. Maintaining your 62-endpoint optimization while providing full system admin capabilities
 };
