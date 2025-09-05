@@ -150,7 +150,6 @@ export const adminAPI = {
   
   // Assets Management
   getAssets: (filters) => api.get('/api/v1/admin/assets/list', { params: filters }),
-  getAssetDetails: (assetId) => api.get(`/api/v1/admin/assets/details/${assetId}`),
   uploadAsset: (assetData) => api.post('/api/v1/admin/assets/upload', assetData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -166,10 +165,6 @@ export const adminAPI = {
   getSchedulerHealth: () => api.get('/health/scheduler'), // Direct scheduler endpoint
   getSystemLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'system', include: 'logs' } }),
   getAuditLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'audit' } }),
-  
-  // Enhanced Recent Activity - Use consolidated dashboard endpoint
-  getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
-  getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
   
   // Notification Management (using existing optimized endpoints)
   sendNotification: (notificationData) => api.post('/api/v1/admin/users/', { 
