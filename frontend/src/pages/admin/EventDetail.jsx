@@ -211,7 +211,7 @@ function EventDetail() {
       const [eventResponse, statsResponse, recentRegsResponse, attendanceStatsResponse] = await Promise.all([
         adminAPI.getEvent(eventId),
         adminAPI.getEventStats(eventId).catch(() => ({ data: { success: false } })),
-        adminAPI.getEventRegistrations(eventId, { limit: 5 }).catch(() => ({ data: { success: false } })),
+        adminAPI.getParticipants(eventId, { limit: 5 }).catch(() => ({ data: { success: false } })),
         adminAPI.getAttendanceStatistics(eventId).then(response => {
           // Add timestamp to verify fresh data
           if (response.data) {
@@ -275,14 +275,15 @@ function EventDetail() {
             if (reg.user_type === 'faculty') {
               // Faculty individual registration
               return {
-                full_name: reg.faculty_data?.full_name || reg.full_name,
-                name: reg.faculty_data?.full_name || reg.full_name,
-                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
-                email: reg.faculty_data?.email || reg.email,
-                department: reg.faculty_data?.department || reg.department,
-                designation: reg.faculty_data?.designation || reg.designation,
+                full_name: reg.faculty?.name || reg.full_name,
+                name: reg.faculty?.name || reg.full_name,
+                employee_id: reg.faculty?.employee_id || reg.employee_id,
+                email: reg.faculty?.email || reg.email,
+                department: reg.faculty?.department || reg.department,
+                designation: reg.faculty?.designation || reg.designation,
                 registration_date: reg.registration_date,
-                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
+                mobile_no: reg.faculty?.contact_no || reg.contact_no,
+                contact_no: reg.faculty?.contact_no || reg.contact_no,
                 registration_type: 'individual',
                 user_type: 'faculty',
 
@@ -290,42 +291,44 @@ function EventDetail() {
             } else {
               // Student individual registration
               return {
-                full_name: reg.student_data?.full_name || reg.full_name,
-                name: reg.student_data?.full_name || reg.full_name,
-                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
-                email: reg.student_data?.email || reg.email,
-                department: reg.student_data?.department || reg.department,
-                semester: reg.student_data?.semester || reg.semester,
+                full_name: reg.additional_data?.full_name || reg.full_name,
+                name: reg.additional_data?.full_name || reg.full_name,
+                enrollment_no: reg.additional_data?.enrollment_no || reg.enrollment_no,
+                email: reg.additional_data?.email || reg.email,
+                department: reg.additional_data?.department || reg.department,
+                semester: reg.additional_data?.semester || reg.semester,
                 registration_date: reg.registration_date,
-                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
+                mobile_no: reg.additional_data?.mobile_no || reg.mobile_no,
                 registration_type: 'individual',
                 user_type: 'student'
               };
             }
           } else if (reg.registration_type === 'team') {
             // For team registrations in recent list
-            // Use team_members directly from backend (already includes leader at index 0)
+            // Use team_members from additional_data
             const teamMembers = [];
             const isStudentTeam = reg.user_type !== 'faculty';
+            const additionalData = reg.additional_data || {};
 
-            // Use team_members array directly (backend already has leader at index 0)
-            if (reg.team_members && Array.isArray(reg.team_members)) {
-              reg.team_members.forEach(member => {
+            // Use team_members array from additional_data 
+            if (additionalData.team_members && Array.isArray(additionalData.team_members)) {
+              additionalData.team_members.forEach(member => {
                 teamMembers.push({
-                  full_name: member.full_name,
+                  full_name: member.name || member.full_name,
                   enrollment_no: isStudentTeam ? member.enrollment_no : null,
                   employee_id: !isStudentTeam ? member.employee_id : null,
                   email: member.email,
-                  department: member.department,
-                  semester: isStudentTeam ? member.semester : null,
-                  designation: !isStudentTeam ? member.designation : null
+                  department: member.department || additionalData.department,
+                  semester: isStudentTeam ? member.semester || additionalData.semester : null,
+                  designation: !isStudentTeam ? member.designation : null,
+                  mobile_no: member.mobile_no
                 });
               });
             }
 
             return {
-              team_name: reg.team_name,
-              name: teamMembers.length > 0 ? teamMembers[0].full_name : 'Team Leader',
+              team_name: additionalData.team_name || reg.team_name,
+              name: teamMembers.length > 0 ? teamMembers[0].full_name : (additionalData.full_name || 'Team Leader'),
               registration_date: reg.registration_date,
               member_count: teamMembers.length,
               team_members: teamMembers,
@@ -409,85 +412,80 @@ function EventDetail() {
   const fetchAllRegistrations = async () => {
     try {
       setModalLoading(true);
-      const response = await adminAPI.getEventRegistrations(eventId);
+      const response = await adminAPI.getParticipants(eventId);
 
       if (response.data.success) {
         // Handle new unified API response structure
-        const registrations = response.data.registrations || [];
+        const participants = response.data.participants || [];
 
-        // Transform registrations to match expected frontend structure
-        const transformedRegistrations = registrations.map(reg => {
-          if (reg.registration_type === 'individual') {
-            if (reg.user_type === 'faculty') {
+        // Transform participants to match expected frontend structure
+        // For modal, expand teams into individual members
+        const transformedParticipants = [];
+        
+        participants.forEach(participant => {
+          if (participant.registration_type === 'individual') {
+            if (participant.participant_type === 'faculty') {
               // Faculty individual registration
-              return {
-                full_name: reg.faculty_data?.full_name || reg.full_name,
-                name: reg.faculty_data?.full_name || reg.full_name,
-                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
-                email: reg.faculty_data?.email || reg.email,
-                department: reg.faculty_data?.department || reg.department,
-                designation: reg.faculty_data?.designation || reg.designation,
-                registration_date: reg.registration_date,
-                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
-                phone: reg.faculty_data?.mobile_no || reg.mobile_no,
-                registration_id: reg.registration_id,
+              transformedParticipants.push({
+                full_name: participant.full_name || participant.name,
+                name: participant.full_name || participant.name,
+                employee_id: participant.employee_id,
+                email: participant.email,
+                department: participant.department,
+                designation: participant.designation,
+                registration_date: participant.registration_date,
+                mobile_no: participant.phone,
+                contact_no: participant.phone,
+                phone: participant.phone,
+                registration_id: participant.registration_id,
                 registration_type: 'individual',
                 user_type: 'faculty'
-              };
+              });
             } else {
               // Student individual registration
-              return {
-                full_name: reg.student_data?.full_name || reg.full_name,
-                name: reg.student_data?.full_name || reg.full_name,
-                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
-                email: reg.student_data?.email || reg.email,
-                department: reg.student_data?.department || reg.department,
-                semester: reg.student_data?.semester || reg.semester,
-                registration_date: reg.registration_date,
-                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
-                phone: reg.student_data?.mobile_no || reg.mobile_no,
-                registration_id: reg.registration_id,
+              transformedParticipants.push({
+                full_name: participant.full_name || participant.name,
+                name: participant.full_name || participant.name,
+                enrollment_no: participant.enrollment_no,
+                email: participant.email,
+                department: participant.department,
+                semester: participant.semester,
+                registration_date: participant.registration_date,
+                mobile_no: participant.phone,
+                phone: participant.phone,
+                registration_id: participant.registration_id,
                 registration_type: 'individual',
                 user_type: 'student'
-              };
+              });
             }
-          } else if (reg.registration_type === 'team') {
-            // For team registrations, use team_members directly from backend
-            // Backend already has leader at index 0 with is_team_leader: true
-            const teamMembers = [];
-            const isStudentTeam = reg.user_type !== 'faculty';
-
-            // Use team_members array directly (backend already has leader at index 0)
-            if (reg.team_members && Array.isArray(reg.team_members)) {
-              reg.team_members.forEach(member => {
-                teamMembers.push({
-                  full_name: member.full_name,
-                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
-                  employee_id: !isStudentTeam ? member.employee_id : null,
+          } else if (participant.registration_type === 'team') {
+            // For teams in modal, create individual entries for each team member
+            if (participant.team_members && Array.isArray(participant.team_members)) {
+              participant.team_members.forEach((member, memberIndex) => {
+                transformedParticipants.push({
+                  full_name: member.full_name || member.name,
+                  name: member.full_name || member.name,
+                  enrollment_no: participant.participant_type === 'student' ? member.enrollment_no : null,
+                  employee_id: participant.participant_type === 'faculty' ? member.employee_id : null,
                   email: member.email,
-                  department: member.department,
-                  semester: isStudentTeam ? member.semester : null,
-                  designation: !isStudentTeam ? member.designation : null,
-                  registration_type: member.is_team_leader ? 'team_leader' : 'team_member'
+                  department: member.department || participant.department,
+                  semester: participant.participant_type === 'student' ? member.semester : null,
+                  designation: participant.participant_type === 'faculty' ? member.designation : null,
+                  registration_date: participant.registration_date,
+                  mobile_no: member.phone || member.mobile_no,
+                  phone: member.phone || member.mobile_no,
+                  team_name: participant.team_name,
+                  is_team_leader: memberIndex === 0, // First member is leader
+                  registration_id: participant.registration_id,
+                  registration_type: 'team_member', // Mark as team member for display
+                  user_type: participant.participant_type || 'student'
                 });
               });
             }
-
-            return {
-              team_name: reg.team_name,
-              registration_date: reg.registration_date,
-              registration_id: reg.registration_id,
-              member_count: teamMembers.length,
-              team_members: teamMembers,  // Use team_members consistently
-              registration_type: 'team',
-              user_type: reg.user_type || 'student'
-            };
           }
-
-          return reg; // fallback
         });
 
-        setAllRegistrations(transformedRegistrations);
+        setAllRegistrations(transformedParticipants);
       } else {
         setAllRegistrations([]);
       }
@@ -502,22 +500,22 @@ function EventDetail() {
   const fetchAttendees = async () => {
     try {
       setModalLoading(true);
-      // Get registrations with attendance details instead of just attendance
-      const response = await adminAPI.getEventRegistrationsWithAttendance(eventId);
+      // Get participants with attendance details using unified endpoint
+      const response = await adminAPI.getParticipants(eventId, { include_attendance: true });
 
       if (response.data.success) {
-        // The API returns data in response.data.data.registrations structure
-        const allRegistrations = response.data.data?.registrations || [];
+        // The API returns participants in response.data.participants structure
+        const allParticipants = response.data.participants || [];
 
         // For now, let's show all attendees to debug the issue
-        // Filter for students who have BOTH virtual and physical attendance (present status)
-        const presentStudents = allRegistrations.filter(reg => {
-          const hasVirtual = reg.virtual_attendance_id;
-          const hasPhysical = reg.physical_attendance_id;
-          const isPresent = reg.final_attendance_status === 'present';
+        // Filter for participants who have BOTH virtual and physical attendance (present status)
+        const presentParticipants = allParticipants.filter(participant => {
+          const hasVirtual = participant.virtual_attendance_id;
+          const hasPhysical = participant.physical_attendance_id;
+          const isPresent = participant.final_attendance_status === 'present';
           return isPresent || (hasVirtual && hasPhysical);
         });
-        setAttendeesList(presentStudents);
+        setAttendeesList(presentParticipants);
       } else {
         console.error('API response not successful:', response.data);
         setAttendeesList([]);
@@ -630,6 +628,7 @@ function EventDetail() {
       (reg.name && reg.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.email && reg.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.enrollment_no && reg.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (reg.employee_id && reg.employee_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.team_name && reg.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const statusMatch = statusFilter === 'all' ||
@@ -1320,18 +1319,33 @@ function EventDetail() {
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
                         <div key={index} className="grid grid-cols-7 gap-2 px-3 py-3 items-center hover:bg-gray-50 text-sm text-gray-800 border-b last:border-0">
                           <div className="col-span-1 truncate flex items-center gap-2">
-                            {reg.full_name || reg.name || 'N/A'}
-
+                            {reg.registration_type === 'team' ? (
+                              <span className="flex items-center gap-1">
+                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.196-2.121M9 3a4 4 0 014 4v.07a6.951 6.951 0 00-3.36 6.07M9 3a4 4 0 00-4 4v.07A6.951 6.951 0 0014 13.07M9 3h.01M9 3v.07M14 13.07V13a4 4 0 00-4-4M14 13.07V13a4 4 0 014 4v.07M9 6.93a4 4 0 014 4v.07M9 6.93a4 4 0 00-4 4v.07" />
+                                </svg>
+                                {reg.team_name}
+                              </span>
+                            ) : (
+                              reg.full_name || reg.name || 'N/A'
+                            )}
                           </div>
                           <div className="col-span-1 font-mono truncate">
-                            {reg.user_type === 'faculty' ? (reg.employee_id || 'N/A') : (reg.enrollment_no || 'N/A')}
+                            {reg.registration_type === 'team' ? (
+                              reg.team_leader_enrollment || 'N/A'
+                            ) : (
+                              reg.user_type === 'faculty' ? (reg.employee_id || 'N/A') : (reg.enrollment_no || 'N/A')
+                            )}
                           </div>
                           <div className="col-span-1">{reg.department || 'N/A'}</div>
                           <div className="col-span-1 text-xs">
-                            {reg.user_type === 'faculty'
-                              ? (reg.designation || 'Faculty')
-                              : formatOrdinalNumber(reg.semester) || 'N/A'
-                            }
+                            {reg.registration_type === 'team' ? (
+                              `Leader: ${reg.team_leader || 'N/A'} • ${reg.member_count} members`
+                            ) : (
+                              reg.user_type === 'faculty'
+                                ? (reg.designation || 'Faculty')
+                                : formatOrdinalNumber(reg.semester) || 'N/A'
+                            )}
                           </div>
                           <div className="col-span-2 truncate flex flex-col gap-2">
                             <span className='flex flex-row gap-2.5'>
@@ -1345,10 +1359,7 @@ function EventDetail() {
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                               </svg>
-
-                              {
-                                (reg.mobile_no) || (reg.contact_no)
-                              }
+                              {reg.mobile_no || reg.contact_no || 'N/A'}
                             </span>
                           </div>
                           <div className="col-span-1 text-xs text-gray-500">{formatCompactDateTime(reg.registration_date) || 'N/A'}</div>
@@ -2197,8 +2208,22 @@ function EventDetail() {
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal" title={reg.full_name || reg.name}>
-                                      {reg.full_name || reg.name}
-
+                                      <div className="flex items-center gap-2">
+                                        {reg.registration_type === 'team_member' && (
+                                          <i className="fas fa-users text-blue-500 text-xs"></i>
+                                        )}
+                                        <span>{reg.full_name || reg.name}</span>
+                                        {reg.is_team_leader && (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Leader
+                                          </span>
+                                        )}
+                                      </div>
+                                      {reg.team_name && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Team: {reg.team_name}
+                                        </div>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="w-[15%] px-3 py-3 text-sm text-gray-700 font-mono border-r border-gray-100">
@@ -2213,16 +2238,18 @@ function EventDetail() {
                                   </td>
                                   <td className="w-[8%] px-2 py-3 text-xs text-gray-700 font-medium border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal">
-                                      {reg.user_type === 'faculty' ? reg.designation : formatOrdinalNumber(reg.semester)}
+                                      {reg.user_type === 'faculty' 
+                                        ? reg.designation || 'Faculty'
+                                        : formatOrdinalNumber(reg.semester)
+                                      }
                                     </div>
                                   </td>
                                   <td className="w-[28%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal flex flex-col gap-2" title={reg.email}>
                                       {(reg.email || '').trim()}
-                                      <span className="text-xs text-gray-500 font-mono" title={reg.mobile_no}>
-                                        {reg.mobile_no}
+                                      <span className="text-xs text-gray-500 font-mono" title={reg.mobile_no || reg.contact_no}>
+                                        {reg.mobile_no || reg.contact_no || 'N/A'}
                                       </span>
-
                                     </div>
                                   </td>
                                   <td className="w-[11%] px-2 py-3 text-xs text-gray-700">

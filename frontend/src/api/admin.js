@@ -28,7 +28,9 @@ export const adminAPI = {
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
   
   // Updated to use new participation API
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  getEventRegistrations: (eventId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
+    params: { event_id: eventId, ...filters } 
+  }),
   getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
   
   // Event Approval Management
@@ -136,15 +138,13 @@ export const adminAPI = {
   restoreVenue: (venueId) => api.post(`/api/v1/admin/venues/${venueId}/restore`),
   deleteVenuePermanently: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}/permanent`),
   
-  // Certificate Templates Management - UPDATED: Now available
+  // Certificate Templates Management - Streamlined to 4 essential endpoints
   getCertificateTemplatesList: (filters) => api.get('/api/v1/admin/certificate-templates/', { params: filters }),
   uploadCertificateTemplate: (templateData) => api.post('/api/v1/admin/certificate-templates/upload', templateData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  getCertificateTemplateStatistics: () => api.get('/api/v1/admin/certificate-templates/statistics'),
-  previewCertificateTemplate: (templateId) => api.get(`/api/v1/admin/certificate-templates/${templateId}/preview`),
   migrateCertificateTemplates: () => api.post('/api/v1/admin/certificate-templates/migrate'),
   deleteCertificateTemplate: (templateId) => api.delete(`/api/v1/admin/certificate-templates/${templateId}`),
   
@@ -207,13 +207,23 @@ export const adminAPI = {
   
   issueStudentCertificate: (certificateData) => api.post('/api/v1/admin/participation/certificate/issue', certificateData),
   
-  getStudentParticipations: (enrollmentNo, filters) => api.get(`/api/v1/admin/participation/student/${enrollmentNo}/participations`, { params: filters }),
+  // UNIFIED PARTICIPATION ENDPOINTS - Consolidated from multiple endpoints
+  getParticipants: (eventId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
+    params: { event_id: eventId, ...filters } 
+  }),
   
-  getEventStatistics: (eventId) => api.get(`/api/v1/admin/participation/statistics/event/${eventId}`),
+  getStudentParticipations: (enrollmentNo, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
+    params: { enrollment_no: enrollmentNo, ...filters } 
+  }),
   
-  // UPDATED: Event Registration Management - CONSOLIDATED
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
-  getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  getFacultyParticipations: (employeeId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
+    params: { employee_id: employeeId, ...filters } 
+  }),
+
+  // Specific endpoint for attendance data
+  getEventRegistrationsWithAttendance: (eventId) => api.get('/api/v1/admin/participation/participants', { 
+    params: { event_id: eventId, include_attendance: true } 
+  }),
 
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
