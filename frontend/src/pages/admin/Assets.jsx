@@ -5,7 +5,7 @@ import { Dropdown } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
 
 const Assets = () => {
-  // State management
+  // State management - Streamlined
   const [assets, setAssets] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState('');
   const [selectedSubType, setSelectedSubType] = useState('');
@@ -20,13 +20,10 @@ const Assets = () => {
   const [previewAsset, setPreviewAsset] = useState(null);
   const [galleryFilter, setGalleryFilter] = useState('all');
   const [statistics, setStatistics] = useState(null);
-  const [shortUrls, setShortUrls] = useState({});
-  const [imageTags, setImageTags] = useState({});
 
   // Effects
   useEffect(() => {
-    loadAssets();
-    loadStatistics();
+    loadAssetsData();
   }, []);
 
   useEffect(() => {
@@ -39,75 +36,26 @@ const Assets = () => {
     }
   }, [error, success]);
 
-  // Generate secure display URLs for assets
-  useEffect(() => {
-    assets.forEach(asset => {
-      if (!shortUrls[asset.id]) {
-        getShortUrl(asset.id);
-      }
-    });
-  }, [assets]);
-
-  // Data loading functions
-  const loadAssets = async () => {
+  // Data loading functions - Streamlined to single call
+  const loadAssetsData = async () => {
     try {
-      const response = await adminAPI.getAssets();
+      const response = await adminAPI.getAssetsData();
       if (response.data && response.data.success) {
-        setAssets(response.data.assets || []);
+        setAssets(response.data.data.assets || []);
+        setStatistics(response.data.data.statistics);
       } else {
         setAssets([]);
+        setStatistics(null);
       }
     } catch (error) {
-      console.error('Error loading assets:', error);
-      setError('Failed to load assets');
+      console.error('Error loading assets data:', error);
+      setError('Failed to load assets data');
       setAssets([]);
+      setStatistics(null);
     }
   };
 
-  const loadStatistics = async () => {
-    try {
-      const response = await adminAPI.getAssetStatistics();
-      if (response.data && response.data.success) {
-        setStatistics(response.data.statistics);
-      }
-    } catch (error) {
-      console.error('Error loading statistics:', error);
-    }
-  };
 
-  // Get short URL for asset
-  const getShortUrl = async (assetId) => {
-    if (shortUrls[assetId]) return shortUrls[assetId];
-    
-    try {
-      const response = await adminAPI.getAssetShortUrl(assetId);
-      if (response.data && response.data.success) {
-        const shortUrl = response.data.short_url;
-        setShortUrls(prev => ({ ...prev, [assetId]: shortUrl }));
-        return shortUrl;
-      }
-    } catch (error) {
-      console.error('Error getting short URL:', error);
-    }
-    return null;
-  };
-
-  // Get image tag for asset
-  const getImageTag = async (assetId) => {
-    if (imageTags[assetId]) return imageTags[assetId];
-    
-    try {
-      const response = await adminAPI.getAssetImageTag(assetId);
-      if (response.data && response.data.success) {
-        const imageTag = response.data.image_tag;
-        setImageTags(prev => ({ ...prev, [assetId]: imageTag }));
-        return imageTag;
-      }
-    } catch (error) {
-      console.error('Error getting image tag:', error);
-    }
-    return null;
-  };
 
   // File handling functions
   const handleFileSelect = (event) => {
@@ -198,8 +146,7 @@ const Assets = () => {
       if (response.data && response.data.success) {
         setSuccess('Asset uploaded successfully!');
         resetForm();
-        loadAssets();
-        loadStatistics();
+        loadAssetsData(); // Use the new consolidated function
       } else {
         setError(response.data?.message || 'Upload failed');
       }
@@ -211,19 +158,25 @@ const Assets = () => {
     }
   };
 
-  // Delete function
-  const handleDelete = async (assetId) => {
-    if (!window.confirm('Are you sure you want to delete this asset?')) {
+  // Delete function - Enhanced with soft/hard delete options
+  const handleDelete = async (assetId, permanent = false) => {
+    const confirmMessage = permanent 
+      ? 'Are you sure you want to permanently delete this asset? This action cannot be undone.'
+      : 'Are you sure you want to delete this asset?';
+    
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     try {
-      const response = await adminAPI.deleteAsset(assetId);
+      const response = await adminAPI.deleteAsset(assetId, permanent);
       
       if (response.data && response.data.success) {
-        setSuccess('Asset deleted successfully!');
-        loadAssets();
-        loadStatistics();
+        const message = permanent 
+          ? 'Asset permanently deleted successfully!' 
+          : 'Asset deleted successfully!';
+        setSuccess(message);
+        loadAssetsData(); // Use the new consolidated function
         if (previewAsset && previewAsset.id === assetId) {
           setPreviewModalOpen(false);
           setPreviewAsset(null);
@@ -246,60 +199,6 @@ const Assets = () => {
     setSelectedDepartment('');
   };
 
-  // Copy to clipboard function
-  const copyToClipboard = async (text, type = 'text') => {
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setSuccess(`${type} copied to clipboard!`);
-      } catch (err) {
-        fallbackCopyTextToClipboard(text, type);
-      }
-    } else {
-      fallbackCopyTextToClipboard(text, type);
-    }
-  };
-
-  const fallbackCopyTextToClipboard = (text, type = 'text') => {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-      document.execCommand('copy');
-      setSuccess(`${type} copied to clipboard!`);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      setError(`Failed to copy ${type} to clipboard`);
-    } finally {
-      document.body.removeChild(textArea);
-    }
-  };
-
-  // Copy handlers for short URL and image tag
-  const handleCopyShortUrl = async (assetId) => {
-    const shortUrl = await getShortUrl(assetId);
-    if (shortUrl) {
-      copyToClipboard(shortUrl, 'Short URL');
-    } else {
-      setError('Failed to generate short URL');
-    }
-  };
-
-  const handleCopyImageTag = async (assetId) => {
-    const imageTag = await getImageTag(assetId);
-    if (imageTag) {
-      copyToClipboard(imageTag, 'Image tag');
-    } else {
-      setError('Failed to generate image tag');
-    }
-  };
-
   // Utility functions
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -317,9 +216,6 @@ const Assets = () => {
   const openAssetPreview = (asset) => {
     setPreviewAsset(asset);
     setPreviewModalOpen(true);
-    // Preload short URL and image tag
-    getShortUrl(asset.id);
-    getImageTag(asset.id);
   };
 
   // Custom CSS styles matching the backend template
@@ -512,47 +408,16 @@ const Assets = () => {
                             <i className="fas fa-times"></i>
                           </button>
                           <img 
-                            src={shortUrls[asset.id] || asset.file_url} 
+                            src={asset.file_url} 
                             alt={asset.name}
                             className="max-w-full max-h-15 rounded mb-2 object-contain block mx-auto"
                             style={{ maxHeight: '60px' }}
-                            onError={(e) => {
-                              // Fallback to loading secure URL if direct URL fails
-                              if (!shortUrls[asset.id]) {
-                                getShortUrl(asset.id).then(url => {
-                                  if (url) e.target.src = url;
-                                });
-                              }
-                            }}
                           />
                           <div className="text-xs font-medium text-gray-700 truncate" title={asset.original_filename}>
                             {asset.name}
                           </div>
                           <div className="text-xs text-gray-500">
                             {asset.asset_type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
-                          </div>
-                          {/* Quick copy buttons */}
-                          <div className="flex gap-1 mt-1">
-                            <button
-                              className="bg-blue-500 text-white text-xs px-1 py-0.5 rounded hover:bg-blue-600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyShortUrl(asset.id);
-                              }}
-                              title="Copy short URL"
-                            >
-                              <i className="fas fa-link"></i>
-                            </button>
-                            <button
-                              className="bg-green-500 text-white text-xs px-1 py-0.5 rounded hover:bg-green-600"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyImageTag(asset.id);
-                              }}
-                              title="Copy image tag"
-                            >
-                              <i className="fas fa-code"></i>
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -883,17 +748,9 @@ const Assets = () => {
                   onClick={() => openAssetPreview(asset)}
                 >
                   <img
-                    src={shortUrls[asset.id] || asset.file_url}
+                    src={asset.file_url}
                     alt={asset.name}
                     className="max-w-full max-h-20 rounded mb-3 object-contain mx-auto"
-                    onError={(e) => {
-                      // Fallback to loading secure URL if direct URL fails
-                      if (!shortUrls[asset.id]) {
-                        getShortUrl(asset.id).then(url => {
-                          if (url) e.target.src = url;
-                        });
-                      }
-                    }}
                   />
                   <div className="text-xs font-medium text-gray-700 truncate" title={asset.name}>
                     {asset.name}
@@ -901,29 +758,6 @@ const Assets = () => {
                   <div className="text-xs text-gray-500">
                     {asset.asset_type}{asset.signature_type ? ` - ${asset.signature_type}` : ''}
                     {asset.department && asset.department !== 'college' ? ` (${asset.department})` : ''}
-                  </div>
-                  {/* Copy buttons */}
-                  <div className="flex gap-1 mt-2 justify-center">
-                    <button
-                      className="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyShortUrl(asset.id);
-                      }}
-                      title="Copy short URL"
-                    >
-                      <i className="fas fa-link mr-1"></i>URL
-                    </button>
-                    <button
-                      className="bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyImageTag(asset.id);
-                      }}
-                      title="Copy image tag"
-                    >
-                      <i className="fas fa-code mr-1"></i>Tag
-                    </button>
                   </div>
                 </div>
               ))}
@@ -950,17 +784,9 @@ const Assets = () => {
           <div className="max-h-[70vh] overflow-y-auto">
             <div className="text-center bg-gray-50 rounded-lg p-8 mb-4">
               <img
-                src={shortUrls[previewAsset.id] || previewAsset.file_url}
+                src={previewAsset.file_url}
                 alt="Asset Preview"
                 className="max-w-full max-h-72 rounded-lg shadow-lg object-contain mx-auto"
-                onError={(e) => {
-                  // Fallback to loading secure URL if direct URL fails
-                  if (!shortUrls[previewAsset.id]) {
-                    getShortUrl(previewAsset.id).then(url => {
-                      if (url) e.target.src = url;
-                    });
-                  }
-                }}
               />
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
@@ -978,43 +804,6 @@ const Assets = () => {
                   <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
                     {previewAsset.file_url}
                   </code>
-                  <button
-                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 flex-shrink-0"
-                    onClick={() => copyToClipboard(previewAsset.file_url, 'File URL')}
-                    title="Copy file URL"
-                  >
-                    <i className="fas fa-copy"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span className="font-semibold text-gray-700 text-sm">Short URL:</span>
-                <div className="flex items-center gap-2 max-w-xs">
-                  <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
-                    {shortUrls[previewAsset.id] || 'Loading...'}
-                  </code>
-                  <button
-                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 flex-shrink-0"
-                    onClick={() => handleCopyShortUrl(previewAsset.id)}
-                    title="Copy short URL"
-                  >
-                    <i className="fas fa-link"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-200">
-                <span className="font-semibold text-gray-700 text-sm">Image Tag:</span>
-                <div className="flex items-center gap-2 max-w-xs">
-                  <code className="bg-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700 break-all flex-1">
-                    {imageTags[previewAsset.id] || 'Loading...'}
-                  </code>
-                  <button
-                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 flex-shrink-0"
-                    onClick={() => handleCopyImageTag(previewAsset.id)}
-                    title="Copy image tag"
-                  >
-                    <i className="fas fa-code"></i>
-                  </button>
                 </div>
               </div>
               <div className="flex justify-between py-2 border-b border-gray-200">
@@ -1037,6 +826,10 @@ const Assets = () => {
                 <span className="font-semibold text-gray-700 text-sm">Size:</span>
                 <span className="text-gray-600 text-sm">{formatFileSize(previewAsset.file_size)}</span>
               </div>
+              <div className="flex justify-between py-2 border-b border-gray-200">
+                <span className="font-semibold text-gray-700 text-sm">Created By:</span>
+                <span className="text-gray-600 text-sm">{previewAsset.created_by}</span>
+              </div>
               <div className="flex justify-between py-2">
                 <span className="font-semibold text-gray-700 text-sm">Created:</span>
                 <span className="text-gray-600 text-sm">{formatDate(previewAsset.created_at)}</span>
@@ -1045,11 +838,22 @@ const Assets = () => {
             <div className="flex gap-2 justify-end pt-4 border-t">
               <button
                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-                onClick={() => {
-                  handleDelete(previewAsset.id);
-                }}
+                onClick={() => handleDelete(previewAsset.id)}
               >
                 <i className="fas fa-trash mr-2"></i>Delete Asset
+              </button>
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = previewAsset.secure_url || previewAsset.file_url;
+                  link.download = previewAsset.original_filename || previewAsset.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              >
+                <i className="fas fa-download mr-2"></i>Download Asset
               </button>
               <button
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"

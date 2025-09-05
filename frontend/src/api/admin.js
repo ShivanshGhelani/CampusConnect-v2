@@ -148,17 +148,16 @@ export const adminAPI = {
   migrateCertificateTemplates: () => api.post('/api/v1/admin/certificate-templates/migrate'),
   deleteCertificateTemplate: (templateId) => api.delete(`/api/v1/admin/certificate-templates/${templateId}`),
   
-  // Assets Management
-  getAssets: (filters) => api.get('/api/v1/admin/assets/list', { params: filters }),
-  uploadAsset: (assetData) => api.post('/api/v1/admin/assets/upload', assetData, {
+  // Assets Management - Streamlined to 3 essential endpoints
+  getAssetsData: (filters) => api.get('/api/v1/admin/assets/', { params: filters }),
+  uploadAsset: (assetData) => api.post('/api/v1/admin/assets/', assetData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  deleteAsset: (assetId) => api.delete(`/api/v1/admin/assets/delete/${assetId}`),
-  getAssetShortUrl: (assetId) => api.get(`/api/v1/admin/assets/short-url/${assetId}`),
-  getAssetImageTag: (assetId) => api.get(`/api/v1/admin/assets/image-tag/${assetId}`),
-  getAssetStatistics: () => api.get('/api/v1/admin/assets/statistics'),
+  deleteAsset: (assetId, permanent = false) => api.delete(`/api/v1/admin/assets/${assetId}`, { 
+    params: { permanent } 
+  }),
   
   // System Management (using existing optimized endpoints with system parameters)
   getSystemHealth: () => api.get('/api/health'), // Direct health endpoint (not /api/v1/)
