@@ -12,6 +12,9 @@ import {
   generateSessionId,
   idValidators
 } from '../../../../utils/idGenerator';
+// Import cache utilities for optimized data loading
+import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
+import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
@@ -99,7 +102,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     }
   }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
 
-  // Load event details and initialize form
+  // Load event details using cached data
   useEffect(() => {
     const loadEventDetails = async () => {
       if (!eventId) {
@@ -109,16 +112,21 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       }
 
       try {
-        const response = await clientAPI.getEventDetails(eventId);
-
-
-        // Correctly access the event data from the API response
-        const eventData = response.data.success ? response.data.event : response.data;
-
-
+        console.log('📋 Loading event data from cache...');
+        let eventData = getAnyEventCache(eventId);
+        
+        if (!eventData) {
+          console.log('⚠️ Event not in cache, fetching from API...');
+          // Fallback to API if not cached (should rarely happen)
+          const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
+          eventData = cachedEventData?.event || cachedEventData;
+        } else {
+          console.log('✅ Using cached event data (no API call needed)');
+          eventData = eventData.event || eventData;
+        }
 
         if (!eventData) {
-          throw new Error('Event data not found in response');
+          throw new Error('Event data not found');
         }
 
         setEvent(eventData);
@@ -126,8 +134,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         // Check if URL indicates team registration or use event setting
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';
-
-
 
         setIsTeamRegistration(shouldUseTeamMode);
         setTeamSizeMin(eventData.team_size_min || 2);
@@ -141,6 +147,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
           initializeParticipants(minParticipants);
         }
 
+        console.log('✅ Event details loaded successfully using cached data');
+
       } catch (error) {
         console.error('Error loading event:', error);
         setError('Failed to load event details');
@@ -152,10 +160,32 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     loadEventDetails();
   }, [eventId, location.pathname, forceTeamMode]);
 
-  // Separate useEffect for user data initialization (FIXES AUTO-FETCH ISSUE)
+  // Use cached profile data for form initialization (OPTIMIZED - NO API CALLS)
   useEffect(() => {
     if (user) {
+      console.log('📝 Initializing faculty form with cached profile data...');
 
+      // Get cached profile data (should already be loaded from login)
+      const cachedProfile = getAnyCache('faculty');
+      let profileData = user; // fallback to AuthContext user
+      
+      if (cachedProfile?.profile) {
+        console.log('✅ Using cached faculty profile data');
+        profileData = cachedProfile.profile;
+      } else {
+        console.log('📋 Using AuthContext user data (cached profile not found)');
+        // Try to fetch from session storage as backup
+        try {
+          const sessionProfile = sessionStorage.getItem('complete_profile');
+          if (sessionProfile) {
+            const parsedProfile = JSON.parse(sessionProfile);
+            profileData = parsedProfile;
+            console.log('📋 Using session storage profile data');
+          }
+        } catch (e) {
+          console.warn('Could not parse session profile data');
+        }
+      }
 
       // Utility function to resolve contact number from various field names
       const resolveContactNumber = (userData) => {
@@ -168,31 +198,20 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         return '';
       };
 
-      // Get session storage data as fallback (same pattern as StudentEventRegistration)
-      let sessionProfile = null;
-      try {
-        const sessionData = sessionStorage.getItem('complete_profile');
-        if (sessionData) {
-          sessionProfile = JSON.parse(sessionData);
-        }
-      } catch (e) {
-        console.warn('Could not parse session profile data');
-      }
-
-      const sourceData = sessionProfile || user;
-      const contactNumber = resolveContactNumber(sourceData);
+      const contactNumber = resolveContactNumber(profileData);
 
       const newFormData = {
         ...formData,
-        full_name: sourceData.full_name || '',
-        employee_id: sourceData.employee_id || '',  // Changed from faculty_id
-        email: sourceData.email || '',
+        full_name: profileData.full_name || '',
+        employee_id: profileData.employee_id || '',  // Changed from faculty_id
+        email: profileData.email || '',
         contact_no: contactNumber,  // FIXED: Use resolved contact number
-        department: sourceData.department || ''
+        department: profileData.department || ''
         // REMOVED: designation field (not needed per user request)
       };
 
       setFormData(newFormData);
+      console.log('✅ Faculty form initialized with cached data (no API calls needed)');
     }
   }, [user, user?.contact_no, user?.phone_number, user?.full_name, user?.email]);
 
@@ -438,7 +457,11 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-gray-600">Loading registration form...</p>
+            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
+          </div>
         </div>
       </Layout>
     );

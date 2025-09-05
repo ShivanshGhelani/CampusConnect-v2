@@ -11,6 +11,9 @@ import {
   generateSessionId,
   idValidators 
 } from '../../../../utils/idGenerator';
+// Import cache utilities for optimized data loading
+import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
+import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
@@ -148,7 +151,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setParticipantCount(count);
   }, []);
 
-  // CLEAN & OPTIMIZED: Simple data loading using existing AuthContext
+  // OPTIMIZED: Use cached profile and event data instead of API calls
   useEffect(() => {
     const loadData = async () => {
       console.log('🔄 useEffect triggered with dependencies:', {
@@ -165,16 +168,45 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       }
       
       dataLoadingRef.current = true;
-      console.log('🚀 Loading registration data (optimized - single API call)...');
+      console.log('🚀 Loading registration data using cached profile and event...');
       
       try {
-        // Step 1: Use AuthContext user data (already complete from login)
-        console.log('✅ Using AuthContext profile data (already available)');
+        // Step 1: Get cached profile data (should already be loaded from login)
+        console.log('✅ Using cached profile data (no API call needed)');
+        const cachedProfile = getAnyCache('student');
+        let profileData = user; // fallback to AuthContext user
         
-        // Step 2: Load event data (only API call we need)
-        console.log('📋 Loading event data...');
-        const eventResponse = await clientAPI.getEventDetails(eventId);
-        const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
+        if (cachedProfile?.profile) {
+          console.log('📋 Found complete cached profile data');
+          profileData = cachedProfile.profile;
+        } else {
+          console.log('📋 Using AuthContext user data (cached profile not found)');
+          // Try to fetch from session storage as backup
+          try {
+            const sessionProfile = sessionStorage.getItem('complete_profile');
+            if (sessionProfile) {
+              const parsedProfile = JSON.parse(sessionProfile);
+              profileData = parsedProfile;
+              console.log('📋 Using session storage profile data');
+            }
+          } catch (e) {
+            console.warn('Could not parse session profile data');
+          }
+        }
+
+        // Step 2: Get cached event data (should already be loaded from EventDetail)
+        console.log('📋 Loading event data from cache...');
+        let eventData = getAnyEventCache(eventId);
+        
+        if (!eventData) {
+          console.log('⚠️ Event not in cache, fetching from API...');
+          // Fallback to API if not cached (should rarely happen)
+          const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
+          eventData = cachedEventData?.event || cachedEventData;
+        } else {
+          console.log('✅ Using cached event data (no API call needed)');
+          eventData = eventData.event || eventData;
+        }
         
         if (!eventData) {
           throw new Error('Event data not found');
@@ -220,23 +252,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           initializeParticipants(minParticipants);
         }
 
-        // Step 5: Initialize form with complete profile data
-        console.log('📝 Initializing form with user data...');
-        
-        // Get complete profile from session storage (set during login)
-        let completeProfile = null;
-        try {
-          const sessionProfile = sessionStorage.getItem('complete_profile');
-          if (sessionProfile) {
-            completeProfile = JSON.parse(sessionProfile);
-            console.log('✅ Using complete profile from session storage');
-          }
-        } catch (e) {
-          console.warn('Could not parse session profile data');
-        }
-        
-        // Use complete profile if available, otherwise use AuthContext user
-        const sourceData = completeProfile || user;
+        // Step 5: Initialize form with cached profile data (NO API CALL)
+        console.log('📝 Initializing form with cached profile data...');
         
         const transformGender = (gender) => {
           if (!gender) return '';
@@ -244,14 +261,14 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
 
         const formInitData = {
-          full_name: sourceData.full_name || '',
-          enrollment_no: sourceData.enrollment_no || sourceData.enrollment_number || '',
-          email: sourceData.email || '',
-          mobile_no: sourceData.mobile_no || sourceData.phone_number || '',
-          department: sourceData.department || '',
-          semester: sourceData.semester || '',
-          gender: transformGender(sourceData.gender) || '',
-          date_of_birth: sourceData.date_of_birth ? formatDateForInput(sourceData.date_of_birth) : '',
+          full_name: profileData.full_name || '',
+          enrollment_no: profileData.enrollment_no || profileData.enrollment_number || '',
+          email: profileData.email || '',
+          mobile_no: profileData.mobile_no || profileData.phone_number || '',
+          department: profileData.department || '',
+          semester: profileData.semester || '',
+          gender: transformGender(profileData.gender) || '',
+          date_of_birth: profileData.date_of_birth ? formatDateForInput(profileData.date_of_birth) : '',
           team_name: '',
           participants: []
         };
@@ -279,7 +296,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             initializeParticipants(minParticipants);
           }
 
-          console.log('✅ Registration form loaded successfully (1 API call only)');
+          console.log('✅ Registration form loaded successfully (using cached data - no API calls needed)');
         } else {
           console.log('❌ Component unmounted, skipping state updates');
         }
@@ -924,7 +941,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           <div className="text-center">
             <LoadingSpinner size="lg" />
             <p className="mt-4 text-gray-600">Loading registration form...</p>
-            <p className="mt-2 text-sm text-gray-500">Optimized loading - just one moment!</p>
+            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
           </div>
         </div>
       </Layout>

@@ -2,8 +2,13 @@
 import api from './base';
 
 export const adminAPI = {
-  // Analytics - CORRECTED to use actual backend endpoints
-  getDashboardStats: () => api.get('/api/v1/admin/analytics/overview'),
+  // UPDATED: Use consolidated dashboard endpoint instead of separate calls
+  getDashboardStats: (period = 'month', activityLimit = 20) => 
+    api.get('/api/v1/admin/dashboard/complete', { 
+      params: { period, activity_limit: activityLimit } 
+    }),
+  
+  // Legacy endpoints (now redirect to consolidated dashboard but kept for compatibility)
   getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
   getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
   getEventsAnalytics: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'events' } }),
@@ -73,39 +78,47 @@ export const adminAPI = {
     return response;
   },
   
-  // User Management - CONSOLIDATED
-  getUsers: (filters) => api.get('/api/v1/admin/users/list', { params: filters }),
-  // Get all students with filtering and pagination
-  getStudents: async (params = {}) => {
-    // Add user_type=student to the parameters
-    const queryParams = {
-      ...params,
-      user_type: 'student'
-    };
-    return await api.get('/api/v1/admin/users/list', { params: queryParams });
-  },
-  getStudentDetails: (enrollmentNo) => api.get('/api/v1/admin/users/list', { params: { user_id: enrollmentNo, user_type: 'student' } }),
-  updateStudent: (enrollmentNo, studentData) => api.put('/api/v1/admin/users/list', { user_id: enrollmentNo, ...studentData }),
-  createStudent: (studentData) => api.post('/api/v1/admin/users/list', { ...studentData, user_type: 'student' }),
-  updateStudentStatus: (studentId, statusData) => {
-    const requestData = { user_id: studentId, user_type: 'student', ...statusData };
-    return api.put('/api/v1/admin/users/list', requestData);
-  },
+  // ===================================================================
+  // USER MANAGEMENT - CONSOLIDATED & OPTIMIZED (3 core endpoints + 2 compatibility)
+  // ===================================================================
   
-  // Faculty Management
-  getFaculty: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'faculty' } }),
-  updateFacultyStatus: (facultyId, statusData) => {
-    const requestData = { user_id: facultyId, user_type: 'faculty', ...statusData };
-    return api.put('/api/v1/admin/users/list', requestData);
-  },
+  // Main Users Endpoint (replaces all other user listing endpoints)
+  getUsers: (filters) => api.get('/api/v1/admin/users/', { params: filters }),
   
-  // Admin User Management
-  getAdminUsers: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'admin' } }),
-  createAdminUser: (adminData) => api.post('/api/v1/admin/users/list', { ...adminData, user_type: 'admin' }),
-  updateAdminUser: (username, adminData) => api.put('/api/v1/admin/users/list', { user_id: username, user_type: 'admin', ...adminData }),
-  deleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/list/${adminId}?user_type=admin`),
-  restoreAdminUser: (adminId) => api.patch(`/api/v1/admin/users/restore/${adminId}?user_type=admin`),
-  hardDeleteAdminUser: (adminId) => api.delete(`/api/v1/admin/users/hard-delete/${adminId}?user_type=admin`),
+  // Consolidated User Type Getters - all use same endpoint with different filters
+  getStudents: (params = {}) => api.get('/api/v1/admin/users/', { params: { ...params, user_type: 'student' } }),
+  getFaculty: (filters = {}) => api.get('/api/v1/admin/users/', { params: { ...filters, user_type: 'faculty' } }),
+  getAdminUsers: (filters = {}) => api.get('/api/v1/admin/users/', { params: { ...filters, user_type: 'admin', include_inactive: true } }),
+  
+  // Single user details (uses same endpoint with user_id parameter)
+  getStudentDetails: (enrollmentNo) => api.get('/api/v1/admin/users/', { params: { user_id: enrollmentNo, user_type: 'student' } }),
+  getUserDetails: (userId, userType) => api.get('/api/v1/admin/users/', { params: { user_id: userId, user_type: userType } }),
+  
+  // Create Users (supports single and bulk creation)
+  createUser: (userData) => api.post('/api/v1/admin/users/', userData),
+  createStudent: (studentData) => api.post('/api/v1/admin/users/', { ...studentData, user_type: 'student' }),
+  createAdminUser: (adminData) => api.post('/api/v1/admin/users/', { ...adminData, user_type: 'admin' }),
+  
+  // Update Users
+  updateUser: (userId, userData) => api.put('/api/v1/admin/users/', { user_id: userId, ...userData }),
+  updateStudent: (enrollmentNo, studentData) => api.put('/api/v1/admin/users/', { user_id: enrollmentNo, user_type: 'student', ...studentData }),
+  updateStudentStatus: (studentId, statusData) => api.put('/api/v1/admin/users/', { user_id: studentId, user_type: 'student', ...statusData }),
+  updateFacultyStatus: (facultyId, statusData) => api.put('/api/v1/admin/users/', { user_id: facultyId, user_type: 'faculty', ...statusData }),
+  updateAdminUser: (username, adminData) => api.put('/api/v1/admin/users/', { user_id: username, user_type: 'admin', ...adminData }),
+  
+  // CONSOLIDATED Status Management (delete/restore/permanent_delete) - Uses new PATCH /status endpoint
+  deleteUser: (userId, userType) => api.patch(`/api/v1/admin/users/${userId}/status?user_type=${userType}&action=permanent_delete`), // Hard delete for students/faculty
+  deleteStudent: (studentId) => api.patch(`/api/v1/admin/users/${studentId}/status?user_type=student&action=permanent_delete`),
+  deleteFaculty: (facultyId) => api.patch(`/api/v1/admin/users/${facultyId}/status?user_type=faculty&action=permanent_delete`),
+  deleteAdminUser: (adminId) => api.patch(`/api/v1/admin/users/${adminId}/status?user_type=admin&action=delete`), // Soft delete for admin users
+  
+  // Restore Users  
+  restoreUser: (userId, userType) => api.patch(`/api/v1/admin/users/${userId}/status?user_type=${userType}&action=restore`),
+  restoreAdminUser: (adminId) => api.patch(`/api/v1/admin/users/${adminId}/status?user_type=admin&action=restore`),
+  
+  // Hard Delete (permanent - Super Admin only)
+  hardDeleteUser: (userId, userType) => api.patch(`/api/v1/admin/users/${userId}/status?user_type=${userType}&action=permanent_delete`),
+  hardDeleteAdminUser: (adminId) => api.patch(`/api/v1/admin/users/${adminId}/status?user_type=admin&action=permanent_delete`),
   
   // Profile Management - FIXED to use correct auth endpoints
   getProfile: () => api.get('/api/auth/api/profile'),
@@ -113,8 +126,8 @@ export const adminAPI = {
   updateUsername: (usernameData) => api.put('/api/auth/api/username', usernameData),
   updatePassword: (passwordData) => api.put('/api/auth/api/password', passwordData),
   
-  // Venue Management - CORRECTED to use actual backend endpoints
-  getVenues: (filters) => api.get('/api/v1/admin/venues/list', { params: filters }),
+  // Venue Management - UPDATED: Use correct backend endpoints
+  getVenues: (filters) => api.get('/api/v1/admin/venues/', { params: filters }),
   getAllVenues: (filters) => api.get('/api/v1/admin/venues/all', { params: filters }),
   getVenue: (venueId) => api.get(`/api/v1/admin/venues/${venueId}`),
   createVenue: (venueData) => api.post('/api/v1/admin/venues/', venueData),
@@ -123,8 +136,15 @@ export const adminAPI = {
   restoreVenue: (venueId) => api.post(`/api/v1/admin/venues/${venueId}/restore`),
   deleteVenuePermanently: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}/permanent`),
   
-  // Certificate Templates Management
+  // Certificate Templates Management - UPDATED: Now available
   getCertificateTemplatesList: (filters) => api.get('/api/v1/admin/certificate-templates/', { params: filters }),
+  uploadCertificateTemplate: (templateData) => api.post('/api/v1/admin/certificate-templates/upload', templateData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  getCertificateTemplateStatistics: () => api.get('/api/v1/admin/certificate-templates/statistics'),
+  previewCertificateTemplate: (templateId) => api.get(`/api/v1/admin/certificate-templates/${templateId}/preview`),
   migrateCertificateTemplates: () => api.post('/api/v1/admin/certificate-templates/migrate'),
   deleteCertificateTemplate: (templateId) => api.delete(`/api/v1/admin/certificate-templates/${templateId}`),
   
@@ -147,12 +167,12 @@ export const adminAPI = {
   getSystemLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'system', include: 'logs' } }),
   getAuditLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'audit' } }),
   
-  // Enhanced Recent Activity - NEW ENDPOINT
+  // Enhanced Recent Activity - Use consolidated dashboard endpoint
   getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
   getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
   
   // Notification Management (using existing optimized endpoints)
-  sendNotification: (notificationData) => api.post('/api/v1/admin/users/list', { 
+  sendNotification: (notificationData) => api.post('/api/v1/admin/users/', { 
     action: 'send_notification', 
     ...notificationData 
   }),
@@ -197,17 +217,9 @@ export const adminAPI = {
   
   getEventStatistics: (eventId) => api.get(`/api/v1/admin/participation/statistics/event/${eventId}`),
   
-  // UPDATED: Event Registration Management - Fixed to use correct admin events endpoint
-  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/events/registrations/${eventId}`, { params: filters }),
-  
-  // LEGACY SUPPORT: Keep existing registration endpoints for backward compatibility
-  getStudents: async (params = {}) => {
-    const queryParams = {
-      ...params,
-      user_type: 'student'
-    };
-    return await api.get('/api/v1/admin/users/list', { params: queryParams });
-  },
+  // UPDATED: Event Registration Management - CONSOLIDATED
+  getEventRegistrations: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
+  getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
 
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints

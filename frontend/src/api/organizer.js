@@ -40,7 +40,7 @@ export const organizerAPI = {
   }),
   
   // User management for organizers (reuse existing optimized admin endpoints)
-  getStudents: (filters) => api.get('/api/v1/admin/users/list', { params: { ...filters, user_type: 'student' } }),
+  getStudents: (filters) => api.get('/api/v1/admin/users/', { params: { ...filters, user_type: 'student' } }),
   
   // Utility functions
   checkOrganizerPermissions: () => api.get('/api/v1/auth/status', { params: { user_type: 'faculty' } }),

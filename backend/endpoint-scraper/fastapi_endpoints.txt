@@ -1,4 +1,4 @@
-Total API Endpoints: 148
+Total API Endpoints: 157
 
 ============================================================
 ENDPOINT 1
@@ -2255,6 +2255,122 @@ Responses:
 ============================================================
 ENDPOINT 98
 Method: GET
+Path: /api/v1/admin/certificate-templates/
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: List Certificate Templates Root
+Description: List certificate templates from database (root endpoint for frontend compatibility)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 99
+Method: GET
+Path: /api/v1/admin/certificate-templates/dashboard
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: List Certificate Templates
+Description: List certificate templates from database
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 100
+Method: GET
+Path: /api/v1/admin/certificate-templates/statistics
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: Get Certificate Template Statistics
+Description: Get certificate template statistics from database
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 101
+Method: POST
+Path: /api/v1/admin/certificate-templates/upload
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: Upload Certificate Template
+Description: Upload a new certificate HTML template to database and storage
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_upload_certificate_template_api_v1_admin_certificate_templates_upload_post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 102
+Method: DELETE
+Path: /api/v1/admin/certificate-templates/{template_id}
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: Delete Certificate Template
+Description: Delete a certificate template from database
+Parameters:
+  - Name: template_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 103
+Method: GET
+Path: /api/v1/admin/certificate-templates/{template_id}/preview
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: Preview Certificate Template
+Description: Get certificate template content for preview
+Parameters:
+  - Name: template_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 104
+Method: POST
+Path: /api/v1/admin/certificate-templates/migrate
+Category/Tags: api-v1, admin-api, admin-certificate-templates-api
+Summary: Migrate Existing Templates
+Description: Migrate existing template files to database
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 105
+Method: GET
 Path: /api/v1/admin/venues/
 Category/Tags: api-v1, admin-api, admin-venues-api
 Summary: Get Venues
@@ -2286,7 +2402,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 99
+ENDPOINT 106
 Method: POST
 Path: /api/v1/admin/venues/
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2312,39 +2428,25 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 100
+ENDPOINT 107
 Method: GET
-Path: /api/v1/admin/venues/list
+Path: /api/v1/admin/venues/all
 Category/Tags: api-v1, admin-api, admin-venues-api
-Summary: Get Venues List
-Description: Get venues list (alias for main endpoint - frontend compatibility)
-
-This is an alias endpoint that redirects to the main venues endpoint
-with the same parameters for backward compatibility.
-Parameters:
-  - Name: include_inactive
-    In: query
-    Required: False
-    Type: boolean
-    Description: Include inactive venues in results
+Summary: Get All Venues
+Description: Get all venues including inactive ones (frontend compatibility)
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
     Schema: {
-    "type": "array",
     "items": {
         "$ref": "#/components/schemas/Venue"
     },
-    "title": "Response Get Venues List Api V1 Admin Venues List Get"
-}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
+    "type": "array",
+    "title": "Response Get All Venues Api V1 Admin Venues All Get"
 }
 
 ============================================================
-ENDPOINT 101
+ENDPOINT 108
 Method: GET
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2369,7 +2471,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 102
+ENDPOINT 109
 Method: PUT
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
@@ -2401,12 +2503,12 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 103
+ENDPOINT 110
 Method: DELETE
 Path: /api/v1/admin/venues/{venue_id}
 Category/Tags: api-v1, admin-api, admin-venues-api
-Summary: Delete Venue
-Description: Delete a venue (admin only) - soft delete by setting is_active to False
+Summary: Delete Venue Compatibility
+Description: [COMPATIBILITY] Redirect to consolidated status endpoint
 Parameters:
   - Name: venue_id
     In: path
@@ -2419,256 +2521,8 @@ Responses:
     Schema: {
     "type": "object",
     "additionalProperties": true,
-    "title": "Response Delete Venue Api V1 Admin Venues  Venue Id  Delete"
+    "title": "Response Delete Venue Compatibility Api V1 Admin Venues  Venue Id  Delete"
 }
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 104
-Method: POST
-Path: /api/v1/admin/venues/{venue_id}/restore
-Category/Tags: api-v1, admin-api, admin-venues-api
-Summary: Restore Venue
-Description: Restore a soft-deleted venue (admin only)
-Parameters:
-  - Name: venue_id
-    In: path
-    Required: True
-    Type: string
-    Description: No description
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {
-    "type": "object",
-    "additionalProperties": true,
-    "title": "Response Restore Venue Api V1 Admin Venues  Venue Id  Restore Post"
-}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 105
-Method: DELETE
-Path: /api/v1/admin/venues/{venue_id}/permanent
-Category/Tags: api-v1, admin-api, admin-venues-api
-Summary: Permanently Delete Venue
-Description: Permanently delete a venue from database (admin only) - IRREVERSIBLE
-Parameters:
-  - Name: venue_id
-    In: path
-    Required: True
-    Type: string
-    Description: No description
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {
-    "type": "object",
-    "additionalProperties": true,
-    "title": "Response Permanently Delete Venue Api V1 Admin Venues  Venue Id  Permanent Delete"
-}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 106
-Method: GET
-Path: /api/v1/admin/users/list
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Get Users
-Description: Get users with comprehensive filtering and search options.
-
-Unified endpoint for all user listing needs:
-- Pagination support with page/limit
-- Filter by user type (student/faculty/admin)
-- Include inactive/soft-deleted users optionally
-- Search by name, ID, email, etc.
-- Fetch specific user by ID
-Parameters:
-  - Name: user_type
-    In: query
-    Required: False
-    Type: None
-    Description: Filter by user type
-  - Name: page
-    In: query
-    Required: False
-    Type: integer
-    Description: Page number for pagination
-  - Name: limit
-    In: query
-    Required: False
-    Type: integer
-    Description: Items per page
-  - Name: include_inactive
-    In: query
-    Required: False
-    Type: boolean
-    Description: Include soft-deleted users
-  - Name: user_id
-    In: query
-    Required: False
-    Type: None
-    Description: Specific user ID to fetch
-  - Name: search
-    In: query
-    Required: False
-    Type: None
-    Description: Search users by name or ID
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 107
-Method: POST
-Path: /api/v1/admin/users/list
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Create User
-Description: Create a new user (Super Admin only).
-
-Unified user creation endpoint supporting:
-- Student creation with enrollment_no
-- Faculty creation with employee_id  
-- Admin creation with username
-- Bulk operations via array of user objects
-Request Body:
-  MIME Type: application/json
-  Schema: {
-    "type": "object",
-    "additionalProperties": true,
-    "title": "User Data"
-}
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 108
-Method: PUT
-Path: /api/v1/admin/users/list
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Update User
-Description: Update an existing user
-Request Body:
-  MIME Type: application/json
-  Schema: {
-    "type": "object",
-    "additionalProperties": true,
-    "title": "User Data"
-}
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 109
-Method: GET
-Path: /api/v1/admin/users/
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Get Users
-Description: Get users with comprehensive filtering and search options.
-
-Unified endpoint for all user listing needs:
-- Pagination support with page/limit
-- Filter by user type (student/faculty/admin)
-- Include inactive/soft-deleted users optionally
-- Search by name, ID, email, etc.
-- Fetch specific user by ID
-Parameters:
-  - Name: user_type
-    In: query
-    Required: False
-    Type: None
-    Description: Filter by user type
-  - Name: page
-    In: query
-    Required: False
-    Type: integer
-    Description: Page number for pagination
-  - Name: limit
-    In: query
-    Required: False
-    Type: integer
-    Description: Items per page
-  - Name: include_inactive
-    In: query
-    Required: False
-    Type: boolean
-    Description: Include soft-deleted users
-  - Name: user_id
-    In: query
-    Required: False
-    Type: None
-    Description: Specific user ID to fetch
-  - Name: search
-    In: query
-    Required: False
-    Type: None
-    Description: Search users by name or ID
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
-  HTTP 422: Validation Error
-    MIME Type: application/json
-    Schema: {
-    "$ref": "#/components/schemas/HTTPValidationError"
-}
-
-============================================================
-ENDPOINT 110
-Method: POST
-Path: /api/v1/admin/users/
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Create User
-Description: Create a new user (Super Admin only).
-
-Unified user creation endpoint supporting:
-- Student creation with enrollment_no
-- Faculty creation with employee_id  
-- Admin creation with username
-- Bulk operations via array of user objects
-Request Body:
-  MIME Type: application/json
-  Schema: {
-    "type": "object",
-    "additionalProperties": true,
-    "title": "User Data"
-}
-Responses:
-  HTTP 200: Successful Response
-    MIME Type: application/json
-    Schema: {}
   HTTP 422: Validation Error
     MIME Type: application/json
     Schema: {
@@ -2677,26 +2531,35 @@ Responses:
 
 ============================================================
 ENDPOINT 111
-Method: DELETE
-Path: /api/v1/admin/users/list/{user_id}
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Delete User
-Description: Delete a user (Super Admin only) - soft delete by setting is_active to False
+Method: PATCH
+Path: /api/v1/admin/venues/{venue_id}/status
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Manage Venue Status
+Description: CONSOLIDATED: Manage venue status - delete, restore, or permanently delete
+
+Actions:
+- delete: Soft delete (set is_active=false)
+- restore: Restore soft-deleted venue (set is_active=true)  
+- permanent_delete: Permanently remove from database (IRREVERSIBLE)
 Parameters:
-  - Name: user_id
+  - Name: venue_id
     In: path
     Required: True
     Type: string
     Description: No description
-  - Name: user_type
+  - Name: action
     In: query
     Required: True
     Type: string
-    Description: No description
+    Description: Action: delete, restore, or permanent_delete
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
-    Schema: {}
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Manage Venue Status Api V1 Admin Venues  Venue Id  Status Patch"
+}
   HTTP 422: Validation Error
     MIME Type: application/json
     Schema: {
@@ -2705,26 +2568,25 @@ Responses:
 
 ============================================================
 ENDPOINT 112
-Method: PATCH
-Path: /api/v1/admin/users/restore/{user_id}
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Restore User
-Description: Restore a soft-deleted user (Super Admin only) - set is_active to True
+Method: POST
+Path: /api/v1/admin/venues/{venue_id}/restore
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Restore Venue Compatibility
+Description: [COMPATIBILITY] Redirect to consolidated status endpoint
 Parameters:
-  - Name: user_id
+  - Name: venue_id
     In: path
-    Required: True
-    Type: string
-    Description: No description
-  - Name: user_type
-    In: query
     Required: True
     Type: string
     Description: No description
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
-    Schema: {}
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Restore Venue Compatibility Api V1 Admin Venues  Venue Id  Restore Post"
+}
   HTTP 422: Validation Error
     MIME Type: application/json
     Schema: {
@@ -2734,25 +2596,24 @@ Responses:
 ============================================================
 ENDPOINT 113
 Method: DELETE
-Path: /api/v1/admin/users/hard-delete/{user_id}
-Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Hard Delete User
-Description: Permanently delete a user (Super Admin only) - removes from database completely
+Path: /api/v1/admin/venues/{venue_id}/permanent
+Category/Tags: api-v1, admin-api, admin-venues-api
+Summary: Permanent Delete Venue Compatibility
+Description: [COMPATIBILITY] Redirect to consolidated status endpoint
 Parameters:
-  - Name: user_id
+  - Name: venue_id
     In: path
-    Required: True
-    Type: string
-    Description: No description
-  - Name: user_type
-    In: query
     Required: True
     Type: string
     Description: No description
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
-    Schema: {}
+    Schema: {
+    "type": "object",
+    "additionalProperties": true,
+    "title": "Response Permanent Delete Venue Compatibility Api V1 Admin Venues  Venue Id  Permanent Delete"
+}
   HTTP 422: Validation Error
     MIME Type: application/json
     Schema: {
@@ -2761,35 +2622,44 @@ Responses:
 
 ============================================================
 ENDPOINT 114
-Method: PUT
-Path: /api/v1/admin/users/users/
+Method: GET
+Path: /api/v1/admin/users/
 Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Update Users
-Description: UPDATE users - supports both single and bulk updates
+Summary: Get Users
+Description: CONSOLIDATED: Get users with comprehensive filtering and search options.
 
-Body formats:
-- Single update: {"user_id": "...", "update_data": {...}}
-- Bulk update: [{"user_id": "...", "update_data": {...}}, ...]
-
-Supported user types: students, faculty, admin_users
-Request Body:
-  MIME Type: application/json
-  Schema: {
-    "anyOf": [
-        {
-            "additionalProperties": true,
-            "type": "object"
-        },
-        {
-            "items": {
-                "additionalProperties": true,
-                "type": "object"
-            },
-            "type": "array"
-        }
-    ],
-    "title": "User Updates"
-}
+This is now the ONLY user listing endpoint. All other listing endpoints redirect here.
+Parameters:
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: Filter by user type - REQUIRED
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: Page number for pagination
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Items per page
+  - Name: include_inactive
+    In: query
+    Required: False
+    Type: boolean
+    Description: Include soft-deleted users
+  - Name: user_id
+    In: query
+    Required: False
+    Type: None
+    Description: Specific user ID to fetch
+  - Name: search
+    In: query
+    Required: False
+    Type: None
+    Description: Search users by name or ID
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
@@ -2803,33 +2673,29 @@ Responses:
 ============================================================
 ENDPOINT 115
 Method: POST
-Path: /api/v1/admin/users/users/
+Path: /api/v1/admin/users/
 Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Create Users
-Description: CREATE users - supports both single and bulk creation
+Summary: Create User
+Description: CONSOLIDATED: Create users - supports both single and bulk creation
 
-Body formats:
-- Single user: {"user_type": "student", "enrollment_no": "...", ...}
-- Bulk users: [{"user_type": "student", "enrollment_no": "..."}, {...}]
-
-Supported user_types: student, faculty, admin_user
+This is now the ONLY user creation endpoint. All other creation endpoints redirect here.
 Request Body:
   MIME Type: application/json
   Schema: {
     "anyOf": [
         {
-            "additionalProperties": true,
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true
         },
         {
+            "type": "array",
             "items": {
-                "additionalProperties": true,
-                "type": "object"
-            },
-            "type": "array"
+                "type": "object",
+                "additionalProperties": true
+            }
         }
     ],
-    "title": "Users Data"
+    "title": "User Data"
 }
 Responses:
   HTTP 200: Successful Response
@@ -2843,23 +2709,19 @@ Responses:
 
 ============================================================
 ENDPOINT 116
-Method: DELETE
-Path: /api/v1/admin/users/users/
+Method: PUT
+Path: /api/v1/admin/users/
 Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Delete Users
-Description: DELETE users - supports both single and bulk deletion
+Summary: Update User
+Description: CONSOLIDATED: Update users - single endpoint for all user updates
 
-Body formats:
-- Single delete: "user_id_string"
-- Bulk delete: ["user_id_1", "user_id_2", ...]
-
-Options:
-- user_type: Specify collection (optional, will auto-detect if not provided)
-- soft_delete: If true, marks as inactive instead of permanent deletion
+This is now the ONLY user update endpoint. All other update endpoints redirect here.
 Request Body:
   MIME Type: application/json
   Schema: {
-    "$ref": "#/components/schemas/Body_delete_users_api_v1_admin_users_users__delete"
+    "type": "object",
+    "additionalProperties": true,
+    "title": "User Data"
 }
 Responses:
   HTTP 200: Successful Response
@@ -2873,35 +2735,27 @@ Responses:
 
 ============================================================
 ENDPOINT 117
-Method: PATCH
-Path: /api/v1/admin/users/users/
+Method: DELETE
+Path: /api/v1/admin/users/{user_id}
 Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Update Users
-Description: UPDATE users - supports both single and bulk updates
-
-Body formats:
-- Single update: {"user_id": "...", "update_data": {...}}
-- Bulk update: [{"user_id": "...", "update_data": {...}}, ...]
-
-Supported user types: students, faculty, admin_users
-Request Body:
-  MIME Type: application/json
-  Schema: {
-    "anyOf": [
-        {
-            "additionalProperties": true,
-            "type": "object"
-        },
-        {
-            "items": {
-                "additionalProperties": true,
-                "type": "object"
-            },
-            "type": "array"
-        }
-    ],
-    "title": "User Updates"
-}
+Summary: Delete User Compatibility
+Description: [COMPATIBILITY] Redirect to consolidated status management endpoint
+Parameters:
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: No description
+  - Name: permanent
+    In: query
+    Required: False
+    Type: boolean
+    Description: Permanent deletion - default True for admin interface
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
@@ -2914,21 +2768,21 @@ Responses:
 
 ============================================================
 ENDPOINT 118
-Method: GET
-Path: /api/v1/admin/users/users/list
+Method: PATCH
+Path: /api/v1/admin/users/{user_id}/restore
 Category/Tags: api-v1, admin-api, admin-users-api
-Summary: Get Users List Alias
-Description: [COMPATIBILITY] Redirect to unified GET /users/ endpoint
+Summary: Restore User Compatibility
+Description: [COMPATIBILITY] Redirect to consolidated status management endpoint
 Parameters:
-  - Name: limit
-    In: query
-    Required: False
-    Type: integer
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
     Description: No description
-  - Name: offset
+  - Name: user_type
     In: query
-    Required: False
-    Type: integer
+    Required: True
+    Type: string
     Description: No description
 Responses:
   HTTP 200: Successful Response
@@ -2942,6 +2796,44 @@ Responses:
 
 ============================================================
 ENDPOINT 119
+Method: PATCH
+Path: /api/v1/admin/users/{user_id}/status
+Category/Tags: api-v1, admin-api, admin-users-api
+Summary: Manage User Status
+Description: CONSOLIDATED: Manage user status - delete, restore, or permanently delete
+
+Actions:
+- delete: Soft delete (set is_active=false)
+- restore: Restore soft-deleted user (set is_active=true)
+- permanent_delete: Permanently remove from database (IRREVERSIBLE)
+Parameters:
+  - Name: user_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: user_type
+    In: query
+    Required: True
+    Type: string
+    Description: No description
+  - Name: action
+    In: query
+    Required: True
+    Type: string
+    Description: Action: delete, restore, or permanent_delete
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 120
 Method: POST
 Path: /api/v1/admin/attendance-preview/preview-strategy
 Category/Tags: api-v1, admin-api, admin-attendance-preview-api
@@ -2964,7 +2856,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 120
+ENDPOINT 121
 Method: POST
 Path: /api/v1/admin/attendance-preview/validate-custom-strategy
 Category/Tags: api-v1, admin-api, admin-attendance-preview-api
@@ -2987,7 +2879,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 121
+ENDPOINT 122
 Method: GET
 Path: /api/v1/admin/participation/event/{event_id}/participants
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3030,7 +2922,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 122
+ENDPOINT 123
 Method: POST
 Path: /api/v1/admin/participation/attendance/mark
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3054,7 +2946,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 123
+ENDPOINT 124
 Method: POST
 Path: /api/v1/admin/participation/attendance/bulk-mark
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3078,7 +2970,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 124
+ENDPOINT 125
 Method: POST
 Path: /api/v1/admin/participation/certificate/issue
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3102,7 +2994,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 125
+ENDPOINT 126
 Method: GET
 Path: /api/v1/admin/participation/student/{enrollment_no}/participations
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3140,7 +3032,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 126
+ENDPOINT 127
 Method: GET
 Path: /api/v1/admin/participation/statistics/event/{event_id}
 Category/Tags: api-v1, admin-api, admin-participation-management-api
@@ -3163,7 +3055,126 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 127
+ENDPOINT 128
+Method: GET
+Path: /api/v1/admin/event-registration/event/{event_id}
+Category/Tags: api-v1, admin-api, admin-event-registration-api, admin-event-registration
+Summary: Get Event Registrations
+Description: Get event registrations with pagination (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: page
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 129
+Method: GET
+Path: /api/v1/admin/event-registration/attendance/stats/{event_id}
+Category/Tags: api-v1, admin-api, admin-event-registration-api, admin-event-registration
+Summary: Get Attendance Statistics
+Description: Get attendance statistics for an event (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 130
+Method: GET
+Path: /api/v1/admin/analytics/overview
+Category/Tags: api-v1, admin-api
+Summary: Get Analytics Overview
+Description: Legacy analytics endpoint - redirects to consolidated dashboard
+Parameters:
+  - Name: focus
+    In: query
+    Required: False
+    Type: string
+    Description: Focus area: events, students, registrations, certificates, system, audit, notifications
+  - Name: export
+    In: query
+    Required: False
+    Type: boolean
+    Description: Export data format
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 131
+Method: GET
+Path: /api/v1/admin/dashboard/recent-activity
+Category/Tags: api-v1, admin-api
+Summary: Get Recent Activity Legacy
+Description: Legacy recent activity endpoint - redirects to consolidated dashboard
+Parameters:
+  - Name: limit
+    In: query
+    Required: False
+    Type: integer
+    Description: Recent activity limit
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 132
+Method: GET
+Path: /api/v1/admin/dashboard/activity-summary
+Category/Tags: api-v1, admin-api
+Summary: Get Activity Summary Legacy
+Description: Legacy activity summary endpoint - redirects to consolidated dashboard
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 133
 Method: GET
 Path: /api/v1/admin/dashboard/complete
 Category/Tags: api-v1, admin-api
@@ -3198,7 +3209,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 128
+ENDPOINT 134
 Method: GET
 Path: /api/v1/email/health
 Category/Tags: api-v1, email-api, email-api
@@ -3210,7 +3221,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 129
+ENDPOINT 135
 Method: GET
 Path: /api/v1/email/stats
 Category/Tags: api-v1, email-api, email-api
@@ -3222,7 +3233,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 130
+ENDPOINT 136
 Method: POST
 Path: /api/v1/email/circuit-breaker/reset
 Category/Tags: api-v1, email-api, email-api
@@ -3234,7 +3245,76 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 131
+ENDPOINT 137
+Method: GET
+Path: /api/v1/attendance/config/{event_id}
+Category/Tags: api-v1, attendance-api, attendance
+Summary: Get Attendance Config
+Description: Get attendance configuration for an event (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 138
+Method: GET
+Path: /api/v1/attendance/sessions/{event_id}/active
+Category/Tags: api-v1, attendance-api, attendance
+Summary: Get Active Attendance Sessions
+Description: Get active attendance sessions for an event (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 139
+Method: GET
+Path: /api/v1/attendance/analytics/{event_id}
+Category/Tags: api-v1, attendance-api, attendance
+Summary: Get Attendance Analytics
+Description: Get attendance analytics for an event (Admin only)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 140
 Method: GET
 Path: /api/v1/organizer
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3246,7 +3326,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 132
+ENDPOINT 141
 Method: GET
 Path: /api/v1/organizer/
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3258,7 +3338,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 133
+ENDPOINT 142
 Method: GET
 Path: /api/v1/organizer/dashboard
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3270,7 +3350,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 134
+ENDPOINT 143
 Method: GET
 Path: /api/v1/organizer/events
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3282,7 +3362,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 135
+ENDPOINT 144
 Method: POST
 Path: /api/v1/organizer/request-access
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3294,7 +3374,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 136
+ENDPOINT 145
 Method: GET
 Path: /api/v1/organizer/access-status
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3306,7 +3386,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 137
+ENDPOINT 146
 Method: POST
 Path: /api/v1/organizer/access-portal
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3318,7 +3398,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 138
+ENDPOINT 147
 Method: POST
 Path: /api/v1/organizer/admin/grant-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3357,7 +3437,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 139
+ENDPOINT 148
 Method: POST
 Path: /api/v1/organizer/admin/revoke-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3380,7 +3460,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 140
+ENDPOINT 149
 Method: GET
 Path: /api/v1/organizer/admin/requests
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3392,7 +3472,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 141
+ENDPOINT 150
 Method: GET
 Path: /api/v1/organizer/dashboard-stats
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -3404,7 +3484,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 142
+ENDPOINT 151
 Method: GET
 Path: /api/health
 Category/Tags: No category
@@ -3416,7 +3496,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 143
+ENDPOINT 152
 Method: GET
 Path: /
 Category/Tags: No category
@@ -3430,7 +3510,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 144
+ENDPOINT 153
 Method: GET
 Path: /favicon.ico
 Category/Tags: No category
@@ -3442,7 +3522,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 145
+ENDPOINT 154
 Method: GET
 Path: /event-categories
 Category/Tags: No category
@@ -3454,7 +3534,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 146
+ENDPOINT 155
 Method: GET
 Path: /health/scheduler
 Category/Tags: No category
@@ -3466,7 +3546,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 147
+ENDPOINT 156
 Method: GET
 Path: /logo/{filename}
 Category/Tags: No category
@@ -3489,7 +3569,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 148
+ENDPOINT 157
 Method: GET
 Path: /signature/{path}
 Category/Tags: No category
