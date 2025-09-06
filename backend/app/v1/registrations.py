@@ -2,13 +2,14 @@
 Professional Event Registration & Attendance API
 ================================================
 Clean API endpoints for event registration and attendance operations.
+Student/Client-facing endpoints only.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 from services.event_registration_service import event_registration_service
 from services.event_attendance_service import event_attendance_service
-from dependencies.auth import get_current_student, get_current_admin
+from dependencies.auth import get_current_student
 
 router = APIRouter(prefix="/registrations", tags=["registrations"])
 
@@ -24,7 +25,7 @@ async def mark_attendance(
     attendance_data: Dict[str, Any],
     current_user=Depends(get_current_student)
 ):
-    """Mark attendance for current student"""
+    """Mark attendance for current student (Student-facing endpoint)"""
     enrollment_no = current_user.enrollment_no
     
     # Get registration to determine strategy
@@ -47,26 +48,6 @@ async def mark_attendance(
     
     return result
 
-@router.get("/event/{event_id}/registrations")
-async def get_event_registrations(
-    event_id: str,
-    current_user=Depends(get_current_admin)
-):
-    """Get all registrations for an event (admin only)"""
-    result = await event_registration_service.get_event_registrations(event_id=event_id)
-    return result
+# REMOVED: /event/{event_id}/registrations - This is admin functionality
+# Use /api/v1/admin/participation/participants instead
 
-@router.get("/event/{event_id}/recent")
-async def get_recent_registrations(
-    event_id: str,
-    limit: int = 10
-):
-    """Get recent registrations for an event (public endpoint for EventDetail.jsx)"""
-    # Import the enhanced service for recent registrations
-    from scripts.enhanced_registration_service import enhanced_registration_service
-    
-    result = await enhanced_registration_service.get_recent_registrations(
-        event_id=event_id,
-        limit=limit
-    )
-    return result

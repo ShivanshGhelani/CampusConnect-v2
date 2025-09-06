@@ -1,22 +1,19 @@
 // Admin API endpoints - Split into separate chunk
-import api from './base';
+import axios from "axios";
+import api from "./base.js";
+import { 
+  fetchActiveVenuesForSelection, 
+  fetchAllVenuesForManagement, 
+  invalidateVenueCache,
+  updateVenueCacheAfterOperation 
+} from '../utils/venueCache.js';
 
 export const adminAPI = {
-  // UPDATED: Use consolidated dashboard endpoint instead of separate calls
+  // CONSOLIDATED: Single optimized dashboard endpoint (replaces 3+ individual calls)
   getDashboardStats: (period = 'month', activityLimit = 20) => 
     api.get('/api/v1/admin/dashboard/complete', { 
       params: { period, activity_limit: activityLimit } 
     }),
-  
-  // Legacy endpoints (now redirect to consolidated dashboard but kept for compatibility)
-  getRecentActivity: (limit = 20) => api.get('/api/v1/admin/dashboard/recent-activity', { params: { limit } }),
-  getActivitySummary: () => api.get('/api/v1/admin/dashboard/activity-summary'),
-  getEventsAnalytics: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'events' } }),
-  getStudentsAnalytics: () => api.get('/api/v1/admin/analytics/overview', { params: { focus: 'students' } }),
-  getRegistrationsAnalytics: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'registrations' } }),
-  getCertificatesAnalytics: () => api.get('/api/v1/admin/analytics/overview', { params: { focus: 'certificates' } }),
-  exportAnalyticsData: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, export: true } }),
-  getDashboardRealTimeStats: () => api.get('/api/v1/admin/analytics/overview'),
   
   // Events Management - CORRECTED to use actual backend endpoints
   getEvents: (filters) => api.get('/api/v1/admin/events/list', { params: filters }),
@@ -128,15 +125,78 @@ export const adminAPI = {
   updateUsername: (usernameData) => api.put('/api/auth/api/username', usernameData),
   updatePassword: (passwordData) => api.put('/api/auth/api/password', passwordData),
   
-  // Venue Management - UPDATED: Use correct backend endpoints
-  getVenues: (filters) => api.get('/api/v1/admin/venues/', { params: filters }),
-  getAllVenues: (filters) => api.get('/api/v1/admin/venues/all', { params: filters }),
-  getVenue: (venueId) => api.get(`/api/v1/admin/venues/${venueId}`),
-  createVenue: (venueData) => api.post('/api/v1/admin/venues/', venueData),
-  updateVenue: (venueId, venueData) => api.put(`/api/v1/admin/venues/${venueId}`, venueData),
-  deleteVenue: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}`),
-  restoreVenue: (venueId) => api.post(`/api/v1/admin/venues/${venueId}/restore`),
-  deleteVenuePermanently: (venueId) => api.delete(`/api/v1/admin/venues/${venueId}/permanent`),
+  // Venue Management - CONSOLIDATED: Single endpoint for all venue fetching
+  getVenues: async (filters = {}) => {
+    // Smart caching based on filter parameters
+    const isManagementCall = filters.include_inactive === true;
+    const isSelectionCall = !filters.include_inactive && !filters.search && !filters.venue_type;
+    
+    if (isSelectionCall) {
+      // Active venues for dropdowns (cached)
+      try {
+        return await fetchActiveVenuesForSelection(api);
+      } catch (error) {
+        console.error('Cache failed, fallback to API:', error);
+        return api.get('/api/v1/admin/venues/', { params: filters });
+      }
+    } else if (isManagementCall && !filters.search && !filters.venue_type) {
+      // All venues for management (cached)
+      try {
+        return await fetchAllVenuesForManagement(api);
+      } catch (error) {
+        console.error('Cache failed, fallback to API:', error);
+        return api.get('/api/v1/admin/venues/', { params: filters });
+      }
+    }
+    
+    // Filtered/searched venues - direct API call
+    return api.get('/api/v1/admin/venues/', { params: filters });
+  },
+  
+  // REMOVED: getAllVenues() - consolidated into getVenues()
+  
+  createVenue: async (venueData) => {
+    try {
+      const response = await api.post('/api/v1/admin/venues/', venueData);
+      if (response.data) {
+        updateVenueCacheAfterOperation(response.data.venue_id, 'create', response.data);
+      }
+      return response;
+    } catch (error) {
+      console.error('Create venue failed:', error);
+      throw error;
+    }
+  },
+  
+  updateVenue: async (venueId, venueData) => {
+    try {
+      const response = await api.put(`/api/v1/admin/venues/${venueId}`, venueData);
+      if (response.data) {
+        updateVenueCacheAfterOperation(venueId, 'update', response.data);
+      }
+      return response;
+    } catch (error) {
+      console.error('Update venue failed:', error);
+      throw error;
+    }
+  },
+  
+  // CONSOLIDATED: Single endpoint for all venue status operations
+  manageVenueStatus: async (venueId, action) => {
+    try {
+      const response = await api.patch(`/api/v1/admin/venues/${venueId}/status?action=${action}`);
+      updateVenueCacheAfterOperation(venueId, action);
+      return response;
+    } catch (error) {
+      console.error(`Venue ${action} failed:`, error);
+      throw error;
+    }
+  },
+  
+  // COMPATIBILITY: Keep old method names as wrappers
+  deleteVenue: async (venueId) => adminAPI.manageVenueStatus(venueId, 'delete'),
+  restoreVenue: async (venueId) => adminAPI.manageVenueStatus(venueId, 'restore'),
+  deleteVenuePermanently: async (venueId) => adminAPI.manageVenueStatus(venueId, 'permanent_delete'),
   
   // Certificate Templates Management - Streamlined to 4 essential endpoints
   getCertificateTemplatesList: (filters) => api.get('/api/v1/admin/certificate-templates/', { params: filters }),
@@ -159,19 +219,14 @@ export const adminAPI = {
     params: { permanent } 
   }),
   
-  // System Management (using existing optimized endpoints with system parameters)
+  // System Management (using optimized dashboard endpoint with system parameters)
   getSystemHealth: () => api.get('/api/health'), // Direct health endpoint (not /api/v1/)
   getSchedulerHealth: () => api.get('/health/scheduler'), // Direct scheduler endpoint
-  getSystemLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'system', include: 'logs' } }),
-  getAuditLogs: (filters) => api.get('/api/v1/admin/analytics/overview', { params: { ...filters, focus: 'audit' } }),
   
-  // Notification Management (using existing optimized endpoints)
+  // Notification Management (integrated into dashboard endpoint)
   sendNotification: (notificationData) => api.post('/api/v1/admin/users/', { 
     action: 'send_notification', 
     ...notificationData 
-  }),
-  getNotificationHistory: (filters) => api.get('/api/v1/admin/analytics/overview', { 
-    params: { ...filters, focus: 'notifications' } 
   }),
   
   // Organizer Management (using existing optimized organizer endpoints)

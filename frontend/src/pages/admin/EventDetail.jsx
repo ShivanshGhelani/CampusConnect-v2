@@ -7,6 +7,13 @@ import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
 import { eventPDFService } from '../../services/EventPDFService';
+import {
+  fetchAllEventDataWithCache,
+  fetchParticipantsWithCache,
+  clearAdminEventCache,
+  invalidateEventCache,
+  getAnyAdminEventCache
+} from '../../utils/adminEventCache';
 
 // Helper function to convert backend strategy types to user-friendly labels
 const getStrategyDisplayName = (strategyType) => {
@@ -186,6 +193,10 @@ function EventDetail() {
     try {
       setIsLoading(true);
       setError('');
+
+
+      clearAdminEventCache(eventId);
+
       // Clear existing data first
       setAttendanceStats(null);
       setEventStats(null);
@@ -194,6 +205,7 @@ function EventDetail() {
       await fetchEventDetails();
     } catch (error) {
       setError('Failed to refresh data');
+      console.error('❌ Refresh failed:', error);
     } finally {
       setIsLoading(false);
     }
@@ -204,36 +216,40 @@ function EventDetail() {
       setIsLoading(true);
       setError('');
 
-      // Add cache-busting timestamp to force fresh data
-      const timestamp = Date.now();
+      
 
-      // Fetch event details, statistics, recent registrations, and attendance stats
-      const [eventResponse, statsResponse, recentRegsResponse, attendanceStatsResponse] = await Promise.all([
-        adminAPI.getEvent(eventId),
-        adminAPI.getEventStats(eventId).catch(() => ({ data: { success: false } })),
-        adminAPI.getParticipants(eventId, { limit: 5 }).catch(() => ({ data: { success: false } })),
-        adminAPI.getAttendanceStatistics(eventId).then(response => {
-          // Add timestamp to verify fresh data
-          if (response.data) {
-            response.data._fetchedAt = timestamp;
-          }
-          return response;
-        }).catch(() => ({ data: { success: false } }))
-      ]);
+      // Use cached batch fetch to prevent duplicate API calls
+      const allData = await fetchAllEventDataWithCache(eventId, adminAPI, {
+        includeStats: true,
+        includeParticipants: true,
+        includeAttendanceStats: true,
+        participantFilters: { limit: 5 }
+      });
 
-      if (eventResponse.data.success) {
-        setEvent(eventResponse.data.event);
+      // Process event details
+      if (allData.event?.success) {
+        setEvent(allData.event.event);
+        
       } else {
-        throw new Error(eventResponse.data.message || 'Failed to fetch event details');
+        throw new Error(allData.event?.message || 'Failed to fetch event details');
       }
 
-      if (statsResponse.data.success) {
-        setEventStats(statsResponse.data.stats);
+      // Process stats
+      if (allData.stats?.success) {
+        setEventStats(allData.stats.stats);
+
+      } else {
+        pass; // No action needed if stats are not available
+
       }
 
-      if (attendanceStatsResponse.data && attendanceStatsResponse.data.event_id) {
-        // Validate attendance statistics data
-        const stats = attendanceStatsResponse.data;
+      // Process attendance statistics
+      if (allData.attendanceStats?.success && allData.attendanceStats.event_id) {
+        const stats = allData.attendanceStats;
+
+        // Add timestamp to track freshness
+        const timestamp = Date.now();
+        stats._fetchedAt = timestamp;
 
         // Ensure all required fields are present and valid
         const validatedStats = {
@@ -246,108 +262,92 @@ function EventDetail() {
           physical_only_count: Math.max(0, stats.physical_only_count || 0),
           absent_count: Math.max(0, stats.absent_count || 0),
           attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0)),
-          user_type: eventStats.user_type
+          user_type: allData.stats?.stats?.user_type || 'mixed'
         };
 
-        // Validate data integrity
-        const totalAccounted = validatedStats.present_count +
-          validatedStats.virtual_only_count +
-          validatedStats.physical_only_count +
-          validatedStats.absent_count;
-
         setAttendanceStats(validatedStats);
+        console.log('✅ Attendance stats loaded from cache');
+      } else {
+        console.log('⚠️ Attendance stats not available');
       }
 
-      if (recentRegsResponse.data.success) {
-        // Handle new unified API response structure for recent registrations
-        let registrations = [];
-        if (recentRegsResponse.data.registrations) {
-          registrations = Array.isArray(recentRegsResponse.data.registrations)
-            ? recentRegsResponse.data.registrations
-            : [recentRegsResponse.data.registrations];
-        } else if (recentRegsResponse.data.data && Array.isArray(recentRegsResponse.data.data)) {
-          registrations = recentRegsResponse.data.data;
-        }
+      // Process recent participants/registrations
+      if (allData.participants?.success) {
+        const participantsData = allData.participants.participants || allData.participants.registrations || [];
 
-        // Transform registrations to match expected frontend structure
-        const transformedRecentRegistrations = registrations.map(reg => {
+        // Transform participants to match expected frontend structure
+        const transformedRecentRegistrations = participantsData.map(reg => {
           if (reg.registration_type === 'individual') {
-            if (reg.user_type === 'faculty') {
-              // Faculty individual registration
+            if (reg.participant_type === 'faculty') {
               return {
-                full_name: reg.faculty?.name || reg.full_name,
-                name: reg.faculty?.name || reg.full_name,
-                employee_id: reg.faculty?.employee_id || reg.employee_id,
-                email: reg.faculty?.email || reg.email,
-                department: reg.faculty?.department || reg.department,
-                designation: reg.faculty?.designation || reg.designation,
+                full_name: reg.full_name || reg.name,
+                name: reg.full_name || reg.name,
+                employee_id: reg.employee_id,
+                email: reg.email,
+                department: reg.department,
+                designation: reg.designation,
                 registration_date: reg.registration_date,
-                mobile_no: reg.faculty?.contact_no || reg.contact_no,
-                contact_no: reg.faculty?.contact_no || reg.contact_no,
+                mobile_no: reg.phone,
+                contact_no: reg.phone,
                 registration_type: 'individual',
-                user_type: 'faculty',
-
+                user_type: 'faculty'
               };
             } else {
-              // Student individual registration
               return {
-                full_name: reg.additional_data?.full_name || reg.full_name,
-                name: reg.additional_data?.full_name || reg.full_name,
-                enrollment_no: reg.additional_data?.enrollment_no || reg.enrollment_no,
-                email: reg.additional_data?.email || reg.email,
-                department: reg.additional_data?.department || reg.department,
-                semester: reg.additional_data?.semester || reg.semester,
+                full_name: reg.full_name || reg.name,
+                name: reg.full_name || reg.name,
+                enrollment_no: reg.enrollment_no,
+                email: reg.email,
+                department: reg.department,
+                semester: reg.semester,
                 registration_date: reg.registration_date,
-                mobile_no: reg.additional_data?.mobile_no || reg.mobile_no,
+                mobile_no: reg.phone,
                 registration_type: 'individual',
                 user_type: 'student'
               };
             }
           } else if (reg.registration_type === 'team') {
-            // For team registrations in recent list
-            // Use team_members from additional_data
-            const teamMembers = [];
-            const isStudentTeam = reg.user_type !== 'faculty';
-            const additionalData = reg.additional_data || {};
+            // Handle team registrations - ensure team_members have proper structure
+            const teamMembers = reg.team_members || [];
 
-            // Use team_members array from additional_data 
-            if (additionalData.team_members && Array.isArray(additionalData.team_members)) {
-              additionalData.team_members.forEach(member => {
-                teamMembers.push({
-                  full_name: member.name || member.full_name,
-                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
-                  employee_id: !isStudentTeam ? member.employee_id : null,
-                  email: member.email,
-                  department: member.department || additionalData.department,
-                  semester: isStudentTeam ? member.semester || additionalData.semester : null,
-                  designation: !isStudentTeam ? member.designation : null,
-                  mobile_no: member.mobile_no
-                });
-              });
-            }
+            // Ensure team members have proper name fields
+            const processedTeamMembers = teamMembers.map(member => ({
+              full_name: member.name || member.full_name || 'Unknown Member',
+              name: member.name || member.full_name || 'Unknown Member',
+              enrollment_no: member.enrollment_no || '',
+              email: member.email || '',
+              department: member.department || '',
+              semester: member.semester || '',
+              phone: member.phone || member.mobile_no || '',
+              is_team_leader: member.is_team_leader || false
+            }));
 
             return {
-              team_name: additionalData.team_name || reg.team_name,
-              name: teamMembers.length > 0 ? teamMembers[0].full_name : (additionalData.full_name || 'Team Leader'),
+              full_name: reg.team_name || reg.name,
+              name: reg.team_name || reg.name,
+              team_name: reg.team_name || reg.name,
+              team_leader: reg.team_leader,
+              team_leader_enrollment: reg.team_leader_enrollment,
+              team_size: reg.team_size || teamMembers.length,
+              member_count: reg.member_count || teamMembers.length,
+              team_members: processedTeamMembers,
               registration_date: reg.registration_date,
-              member_count: teamMembers.length,
-              team_members: teamMembers,
               registration_type: 'team',
-              user_type: reg.user_type || 'student',
-              team_count: reg.team_count || 0,
-              participant_count: reg.participant_count || 0
+              user_type: reg.participant_type === 'faculty' ? 'faculty' : 'student'
             };
           }
-
-          return reg; // fallback for unknown types
+          return reg;
         });
 
         setRecentRegistrations(transformedRecentRegistrations);
+
       } else {
         setRecentRegistrations([]);
+
       }
     } catch (error) {
       setError('Failed to load event details');
+      console.error('❌ EventDetail fetch error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -389,6 +389,10 @@ function EventDetail() {
     try {
       const response = await adminAPI.deleteEvent(eventId);
       if (response.data.success) {
+        // Clear cache after successful deletion
+        clearAdminEventCache(eventId);
+
+
         navigate('/admin/events', {
           state: { message: 'Event deleted successfully' }
         });
@@ -412,16 +416,21 @@ function EventDetail() {
   const fetchAllRegistrations = async () => {
     try {
       setModalLoading(true);
-      const response = await adminAPI.getParticipants(eventId);
 
-      if (response.data.success) {
+
+      // Use cached fetch for all participants
+      const response = await fetchParticipantsWithCache(eventId, adminAPI, {});
+
+      if (response?.success) {
         // Handle new unified API response structure
-        const participants = response.data.participants || [];
+        const participants = response.participants || [];
+
 
         // Transform participants to match expected frontend structure
-        // For modal, expand teams into individual members
+        // For modal, keep teams as single entries (don't expand into individual members)
         const transformedParticipants = [];
-        
+        const seenTeams = new Set(); // Track teams to avoid duplicates
+
         participants.forEach(participant => {
           if (participant.registration_type === 'individual') {
             if (participant.participant_type === 'faculty') {
@@ -459,31 +468,48 @@ function EventDetail() {
               });
             }
           } else if (participant.registration_type === 'team') {
-            // For teams in modal, create individual entries for each team member
-            if (participant.team_members && Array.isArray(participant.team_members)) {
-              participant.team_members.forEach((member, memberIndex) => {
-                transformedParticipants.push({
-                  full_name: member.full_name || member.name,
-                  name: member.full_name || member.name,
-                  enrollment_no: participant.participant_type === 'student' ? member.enrollment_no : null,
-                  employee_id: participant.participant_type === 'faculty' ? member.employee_id : null,
-                  email: member.email,
-                  department: member.department || participant.department,
-                  semester: participant.participant_type === 'student' ? member.semester : null,
-                  designation: participant.participant_type === 'faculty' ? member.designation : null,
-                  registration_date: participant.registration_date,
-                  mobile_no: member.phone || member.mobile_no,
-                  phone: member.phone || member.mobile_no,
-                  team_name: participant.team_name,
-                  is_team_leader: memberIndex === 0, // First member is leader
-                  registration_id: participant.registration_id,
-                  registration_type: 'team_member', // Mark as team member for display
-                  user_type: participant.participant_type || 'student'
-                });
-              });
+            // Check if we've already processed this team (prevent duplicates)
+            const teamKey = participant.registration_id || participant.team_name || `team_${participant.name}`;
+            if (seenTeams.has(teamKey)) {
+
+              return; // Skip this duplicate team entry
             }
+            seenTeams.add(teamKey);
+
+            // For teams in modal, keep as single team entry (not expanded)
+            const teamMembers = participant.team_members || [];
+
+            // Ensure team members have proper structure
+            const processedTeamMembers = teamMembers.map(member => ({
+              full_name: member.name || member.full_name || 'Unknown Member',
+              name: member.name || member.full_name || 'Unknown Member',
+              enrollment_no: member.enrollment_no || '',
+              email: member.email || '',
+              department: member.department || '',
+              semester: member.semester || '',
+              phone: member.phone || member.mobile_no || '',
+              is_team_leader: member.is_team_leader || false
+            }));
+
+            transformedParticipants.push({
+              full_name: participant.team_name || participant.name,
+              name: participant.team_name || participant.name,
+              team_name: participant.team_name || participant.name,
+              team_leader: participant.team_leader,
+              team_leader_enrollment: participant.team_leader_enrollment,
+              team_size: participant.team_size || participant.member_count,
+              member_count: participant.member_count || participant.team_size,
+              team_members: processedTeamMembers,
+              registration_date: participant.registration_date,
+              registration_id: participant.registration_id,
+              registration_type: 'team',
+              user_type: participant.participant_type || 'student'
+            });
+
+
           }
         });
+
 
         setAllRegistrations(transformedParticipants);
       } else {
@@ -500,12 +526,15 @@ function EventDetail() {
   const fetchAttendees = async () => {
     try {
       setModalLoading(true);
-      // Get participants with attendance details using unified endpoint
-      const response = await adminAPI.getParticipants(eventId, { include_attendance: true });
+      
 
-      if (response.data.success) {
-        // The API returns participants in response.data.participants structure
-        const allParticipants = response.data.participants || [];
+      // Use cached fetch for participants with attendance details
+      const response = await fetchParticipantsWithCache(eventId, adminAPI, { include_attendance: true });
+
+      if (response?.success) {
+        // The API returns participants in response.participants structure
+        const allParticipants = response.participants || [];
+        
 
         // For now, let's show all attendees to debug the issue
         // Filter for participants who have BOTH virtual and physical attendance (present status)
@@ -517,7 +546,7 @@ function EventDetail() {
         });
         setAttendeesList(presentParticipants);
       } else {
-        console.error('API response not successful:', response.data);
+        console.error('API response not successful:', response);
         setAttendeesList([]);
       }
     } catch (error) {
@@ -653,7 +682,7 @@ function EventDetail() {
   const isReadOnly = false; // No longer read-only for organizer_admin
 
   // Conditional button states based on event status
-  const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started'; 
+  const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started';
   const isEventCompleted = event?.status === 'completed';
   const isSuperAdmin = user?.role === 'super_admin';
   const canTakeAttendance = isSuperAdmin || isEventStarted; // Super admin can always take attendance, others only when event is ongoing/started
@@ -1028,13 +1057,13 @@ function EventDetail() {
                         }
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {console.log(eventStats.user_type)}
+
                         {eventStats.is_team_based ?
                           `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (eventStats.user_type === 'student' ?
-                          `Students Registered`
-                          :
-                          `Participants Registered`
-                        )
+                            `Students Registered`
+                            :
+                            `Participants Registered`
+                          )
                         }
                       </p>
                     </div>
@@ -1202,7 +1231,7 @@ function EventDetail() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{eventStats?.registrations_count || 0}</span></div>
+                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{recentRegistrations.length}</span></div>
                 <button
                   onClick={handleViewAllRegistrations}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
@@ -1232,7 +1261,8 @@ function EventDetail() {
                             )}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Leader: <span className="font-medium text-gray-700">{reg.name || 'N/A'}</span> • {reg.member_count} members
+
+                            Leader: <span className="font-medium text-gray-700">{reg.team_leader || 'N/A'}</span> • {reg.member_count} members
                             {reg.user_type === 'faculty' ? ' (Faculty)' : ''}
                           </div>
                         </div>
@@ -2238,7 +2268,7 @@ function EventDetail() {
                                   </td>
                                   <td className="w-[8%] px-2 py-3 text-xs text-gray-700 font-medium border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal">
-                                      {reg.user_type === 'faculty' 
+                                      {reg.user_type === 'faculty'
                                         ? reg.designation || 'Faculty'
                                         : formatOrdinalNumber(reg.semester)
                                       }

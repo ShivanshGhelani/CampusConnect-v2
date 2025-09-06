@@ -601,17 +601,18 @@ function EditEvent() {
   // Load venues
   const loadVenues = async () => {
     try {
-      const response = await adminAPI.getVenues();
+      console.log('🔄 Loading active venues for event editing (cached)');
+      const response = await adminAPI.getVenues(); // Single endpoint - defaults to active venues only
 
-      if (response.data) {
-        // The API returns { success: true, data: [venues], message: "..." }
-        // So we need to access response.data.data, not just response.data
-        const apiData = response.data.data || response.data;
+      if (response.data || response.success) {
+        // Handle both cached and API responses
+        const apiData = response.success ? response.data : (response.data.data || response.data);
         const venueArray = Array.isArray(apiData) ? apiData : [];
         setVenues(venueArray);
         // Initialize filteredVenues with all active venues
         const activeVenues = venueArray.filter(v => v.is_active);
         setFilteredVenues(activeVenues);
+        console.log('✅ Loaded', activeVenues.length, 'active venues from cache');
       }
     } catch (error) {
       // Handle error silently

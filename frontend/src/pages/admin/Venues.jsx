@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminAPI } from '../../api/admin';
+import { invalidateVenueCache } from '../../utils/venueCache';
 import { Dropdown, SearchBox } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
 import { 
@@ -77,12 +78,12 @@ const Venues = () => {
 
   const fetchVenues = async () => {
     try {
-      const response = await adminAPI.getAllVenues(); // Changed to getAllVenues to include soft-deleted venues
+      console.log('🔄 Fetching all venues with caching optimization');
+      const response = await adminAPI.getVenues({ include_inactive: true }); // Single endpoint for all venues
       console.log('API Response:', response); // Debug log
       
-      // The API returns { success: true, data: [venues], message: "..." }
-      // So we need to access response.data.data, not just response.data
-      const venuesData = response.data?.data || response.data || [];
+      // Handle both cached and API responses
+      const venuesData = response.success ? response.data : (response.data?.data || response.data || []);
       console.log('Venues data:', venuesData); // Debug log
       setVenues(Array.isArray(venuesData) ? venuesData : []);
     } catch (error) {

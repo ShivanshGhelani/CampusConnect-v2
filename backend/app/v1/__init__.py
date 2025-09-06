@@ -4,7 +4,7 @@ Main API version 1 router
 """
 from fastapi import APIRouter
 from .client import router as client_router  # Restored - client router found
-from .admin import router as admin_router  
+from .admin import router as admin_router  # Admin folder with consolidated endpoints
 from .auth import router as auth_router
 from .organizer_access import router as organizer_access_router  # Professional organizer API
 from .email import router as email_router
@@ -20,7 +20,7 @@ router = APIRouter()
 # Include all API v1 routes
 router.include_router(auth_router, prefix="/auth", tags=["auth-api"])
 router.include_router(client_router, prefix="/client", tags=["client-api"])  # Restored - client router found
-router.include_router(admin_router, prefix="/admin", tags=["admin-api"])
+router.include_router(admin_router, prefix="/admin", tags=["admin-api"])  # Admin folder with consolidated endpoints
 router.include_router(email_router, tags=["email-api"])
 router.include_router(attendance_router, tags=["attendance-api"])  # Added attendance endpoints
 
