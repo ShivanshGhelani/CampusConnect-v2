@@ -892,13 +892,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       // Prepare data for success page
       const successData = {
         registrationData: {
-          registration_id: response.data.registration_id || response.data.registrar_id,
+          registration_id: response.data.registration_id || response.data.registrar_id || tempRegistrationId,
           registration_type: registrationData.registration_type,
           full_name: registrationData.full_name,
           enrollment_no: registrationData.enrollment_no,
           payment_status: response.data.payment_status || 'free',
           team_name: registrationData.team_name,
-          registration_id: tempRegistrationId,
           session_id: sessionId,
           team_info: isTeamRegistration ? {
             team_name: registrationData.team_name,

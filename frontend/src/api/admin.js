@@ -7,6 +7,7 @@ import {
   invalidateVenueCache,
   updateVenueCacheAfterOperation 
 } from '../utils/venueCache.js';
+import { handleEventApproval, handleEventDecline } from '../utils/eventSchedulerUtils.js';
 
 export const adminAPI = {
   // CONSOLIDATED: Single optimized dashboard endpoint (replaces 3+ individual calls)
@@ -45,14 +46,12 @@ export const adminAPI = {
         const eventData = response.data.event;
         if (eventData) {
           // Use the event data directly from approval response
-          const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
           handleEventApproval(eventId, eventData);
           
         } else {
           // Fallback: fetch event data separately
           const eventResponse = await adminAPI.getEvent(eventId);
           if (eventResponse.data.success) {
-            const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
             handleEventApproval(eventId, eventResponse.data.event);
             
           }
@@ -71,7 +70,6 @@ export const adminAPI = {
     // If decline successful, handle client-side trigger removal
     if (response.data.success) {
       try {
-        const { handleEventDecline } = await import('../utils/eventSchedulerUtils.js');
         handleEventDecline(eventId);
       } catch (error) {
         

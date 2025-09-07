@@ -87,7 +87,7 @@ function AppRoutes() {
   }
 
   return (
-    <Router>
+    <Router basename="/">
       <ScrollToTop />
       <Routes>
         <Route path='/test-mode' element={<TestMode />} />
