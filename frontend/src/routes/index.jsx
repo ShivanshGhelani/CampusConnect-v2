@@ -15,11 +15,8 @@ import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackForm from '../pages/client/FeedbackForm';
 import FeedbackSuccess from '../pages/client/FeedbackSuccess';
-import QRCodeDemo from '../pages/QRCodeDemo'; // QR Code Demo Page
-import QRTest from '../pages/QRTest'; // QR Code Test Page
-import QRTest_Updated from '../pages/QRTest_Updated'; // QR Code Test Page - Enhanced
-import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page
-import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
+import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page (Legacy - Admin/Faculty)
+import UnifiedQRScanner from '../pages/UnifiedQRScanner'; // NEW: Unified QR Scanner with Token Access
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
@@ -499,42 +496,10 @@ function AppRoutes() {
           }
         />
 
-        {/* QR Code Demo Route (for development/testing) */}
-        <Route
-          path="/demo/qr"
-          element={<QRCodeDemo />}
-        />
-        <Route
-          path="/test/qr"
-          element={<QRTest />}
-        />
-        <Route
-          path="/test/qr-enhanced"
-          element={<QRTest_Updated />}
-        />
+        {/* QR Scanner with Token Access - Public Route */}
+        <Route path="/scanner/:token" element={<UnifiedQRScanner />} />
         
-        {/* Test Mode - Overview of All Pages */}
-        <Route
-          path="/test/all-pages"
-          element={<TestMode />}
-        />
-        
-        {/* Feedback Test Page */}
-        <Route
-          path="/test/feedback-preview"
-          element={<FeedbackPreviewClient />}
-        />
-        <Route
-          path="/test/feedback"
-          element={<FeedbackPreviewClient />}
-        />
-        
-        {/* Attendance Components Showcase */}
-        <Route
-          path="/test/attendance"
-          element={<AttendanceShowcase />}
-        />
-        
+        {/* Legacy QR Scanner Routes (Admin/Faculty) */}
         <Route
           path="/admin/qr-scanner"
           element={
@@ -550,10 +515,6 @@ function AppRoutes() {
               <QRScannerPage />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/mobile/qr-scanner"
-          element={<MobileQRScanner />}
         />
         
         {/* Reusable Invitation Link System - Production Endpoints */}

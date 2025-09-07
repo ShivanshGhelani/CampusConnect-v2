@@ -117,17 +117,7 @@ const TestMode = () => {
   ];
 
   const allAttendanceComponents = [
-    'AttendanceStatsCard.jsx',
-    'AttendanceStatusBadge.jsx', 
-    'BulkMarkModal.jsx',
-    'ContinuousMonitoringPortal.jsx',
-    'DayBasedPortal.jsx',
-    'MilestoneBasedPortal.jsx',
-    'PhysicalAttendancePortal.jsx',
-    'PhysicalAttendanceTable.jsx',
-    'SessionBasedPortal.jsx',
-    'SessionViewComponents.jsx',
-    'StrategyComponents.jsx'
+    'PhysicalAttendancePortal.jsx (Unified Portal)'
   ];
 
   return (

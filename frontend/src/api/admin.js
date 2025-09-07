@@ -19,7 +19,6 @@ export const adminAPI = {
   getEvents: (filters) => api.get('/api/v1/admin/events/list', { params: filters }),
   getEvent: (eventId) => api.get(`/api/v1/admin/events/details/${eventId}`),
   getEventStats: (eventId) => api.get('/api/v1/admin/events/stats', { params: { event_id: eventId } }),
-  getAttendanceStatistics: (eventId) => api.get('/api/v1/admin/events/stats', { params: { event_id: eventId } }),
   createEvent: (eventData) => api.post('/api/v1/admin/events/create', eventData),
   updateEvent: (eventId, eventData) => api.put(`/api/v1/admin/events/update/${eventId}`, eventData),
   deleteEvent: (eventId) => api.delete(`/api/v1/admin/events/delete/${eventId}`),
@@ -263,40 +262,16 @@ export const adminAPI = {
   
 
   
-  // UPDATED: Participation Management - Fixed endpoint paths to match backend mounting
-  getEventParticipants: (eventId, options = {}) => {
-    const { limit = 10, offset = 0, ...filters } = options;
-    return api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { 
-      params: { limit, offset, ...filters } 
-    });
-  },
-  
-  markStudentAttendance: (attendanceData) => api.post('/api/v1/admin/participation/attendance/mark', attendanceData),
-  
-  bulkMarkAttendance: (eventId, attendanceList) => api.post('/api/v1/admin/participation/attendance/bulk-mark', {
-    event_id: eventId,
-    attendance_data: attendanceList
-  }),
-  
-  issueStudentCertificate: (certificateData) => api.post('/api/v1/admin/participation/certificate/issue', certificateData),
-  
-  // UNIFIED PARTICIPATION ENDPOINTS - Consolidated from multiple endpoints
-  getParticipants: (eventId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
-    params: { event_id: eventId, ...filters } 
-  }),
-  
-  getStudentParticipations: (enrollmentNo, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
-    params: { enrollment_no: enrollmentNo, ...filters } 
-  }),
-  
-  getFacultyParticipations: (employeeId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
-    params: { employee_id: employeeId, ...filters } 
-  }),
+  // UNIFIED ATTENDANCE MANAGEMENT - Only 3 essential endpoints
+  getAttendanceConfigAndParticipants: (eventId) => api.get(`/api/v1/attendance/config/${eventId}`),
+  markAttendance: (attendanceData) => api.post('/api/v1/attendance/mark', attendanceData),
+  getAttendanceAnalytics: (eventId) => api.get(`/api/v1/attendance/analytics/${eventId}`),
 
-  // Specific endpoint for attendance data
-  getEventRegistrationsWithAttendance: (eventId) => api.get('/api/v1/admin/participation/participants', { 
-    params: { event_id: eventId, include_attendance: true } 
-  }),
+  // QR SCANNER TOKEN MANAGEMENT
+  generateScannerToken: (eventId, expiresInHours = 24) => 
+    api.post(`/api/v1/attendance/generate-scanner-token/${eventId}`, null, {
+      params: { expires_in_hours: expiresInHours }
+    }),
 
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
