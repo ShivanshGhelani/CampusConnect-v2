@@ -46,7 +46,7 @@ const FeedbackPreviewClient = () => {
       
       
       // Use the actual test API endpoint
-      const response = await fetch(`http://https://campusconnectldrp.vercel.app/api/v1/client/feedback/test-form/${eventId}`);
+      const response = await fetch(`https://campusconnectldrp.vercel.app/api/v1/client/feedback/test-form/${eventId}`);
       const data = await response.json();
       
       
