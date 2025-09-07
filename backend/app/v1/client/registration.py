@@ -67,6 +67,8 @@ async def register_for_event(
             elif request.registration_type == "team":
                 if user_type == "student":
                     # Student team registration
+                    print("Processing student team registration")
+                    print(f"User ID: {user_id}, Event ID: {request.event_id}, Team Data: {request.team_data}")
                     result = await event_registration_service.register_team(
                         team_leader_enrollment=user_id,
                         event_id=request.event_id,

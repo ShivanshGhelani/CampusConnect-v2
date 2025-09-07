@@ -43,13 +43,13 @@ const FeedbackPreviewClient = () => {
       setError('');
       setSuccessMessage('');
       
-      console.log('Loading feedback form for event:', eventId);
+      
       
       // Use the actual test API endpoint
       const response = await fetch(`http://localhost:8000/api/v1/client/feedback/test-form/${eventId}`);
       const data = await response.json();
       
-      console.log('API Response:', data);
+      
       
       if (response.ok && data.success) {
         setFeedbackForm(data.feedback_form);
@@ -73,7 +73,7 @@ const FeedbackPreviewClient = () => {
       }
       
     } catch (error) {
-      console.error('Error loading feedback form:', error);
+      
       setError(`Network error: ${error.message}`);
       setFeedbackForm(null);
       setEvent(null);
@@ -181,7 +181,7 @@ const FeedbackPreviewClient = () => {
         throw new Error(result.message || 'Failed to submit feedback');
       }
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      
       setError(`Failed to submit feedback: ${error.message}`);
     } finally {
       setIsSubmitting(false);

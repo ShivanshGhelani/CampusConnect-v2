@@ -31,11 +31,11 @@ export const getCachedVenues = (activeOnly = false) => {
   const cacheKey = activeOnly ? 'active' : 'all';
   
   if (isCacheValid(cacheKey)) {
-    console.log('🎯 Venue cache hit:', cacheKey);
+    
     return venueCache[cacheKey];
   }
   
-  console.log('❌ Venue cache miss or expired:', cacheKey);
+  
   return null;
 };
 
@@ -55,7 +55,7 @@ const setCachedVenues = (venues, activeOnly = false) => {
   venueCache.isLoading = false;
   venueCache.promise = null;
   
-  console.log('💾 Cached venues:', activeOnly ? 'active only' : 'all venues', venues.length);
+  
 };
 
 // Generic fetch with cache - Updated to use single getVenues endpoint
@@ -70,12 +70,12 @@ export const fetchVenuesWithCache = async (api, includeInactive = false) => {
   
   // Prevent duplicate calls
   if (venueCache.isLoading && venueCache.promise) {
-    console.log('⏳ Waiting for ongoing venue request');
+    
     try {
       const result = await venueCache.promise;
       return result;
     } catch (error) {
-      console.error('❌ Error in ongoing venue request:', error);
+      
       throw error;
     }
   }
@@ -83,7 +83,7 @@ export const fetchVenuesWithCache = async (api, includeInactive = false) => {
   // Check for rapid successive calls
   const now = Date.now();
   if (venueCache.fetchTime && (now - venueCache.fetchTime) < DUPLICATE_CALL_THRESHOLD) {
-    console.log('🚫 Preventing rapid successive venue call');
+    
     const existing = getCachedVenues(!includeInactive);
     if (existing) return { success: true, data: existing };
     
@@ -95,7 +95,7 @@ export const fetchVenuesWithCache = async (api, includeInactive = false) => {
   
   // Make API call directly to avoid circular dependency
   const params = includeInactive ? { include_inactive: true } : {};
-  console.log('🌐 Fetching venues from API:', includeInactive ? 'all venues' : 'active only');
+  
   
   const fetchPromise = api.get('/api/v1/admin/venues/', { params })
     .then(response => {
@@ -108,7 +108,7 @@ export const fetchVenuesWithCache = async (api, includeInactive = false) => {
       }
     })
     .catch(error => {
-      console.error('❌ Venue fetch failed:', error);
+      
       venueCache.isLoading = false;
       venueCache.promise = null;
       throw error;
@@ -131,7 +131,7 @@ export const fetchAllVenuesForManagement = async (apiInstance) => {
 
 // Invalidate cache (call after CRUD operations)
 export const invalidateVenueCache = () => {
-  console.log('🗑️ Invalidating venue cache');
+  
   venueCache = {
     active: null,
     all: null,
@@ -144,14 +144,14 @@ export const invalidateVenueCache = () => {
 // Clear cache completely
 export const clearVenueCache = () => {
   invalidateVenueCache();
-  console.log('🧹 Venue cache cleared');
+  
 };
 
 // Optimistic update - update cache immediately after successful operations
 export const updateVenueCacheAfterOperation = (venueId, operation, venueData = null) => {
   if (!venueCache.all && !venueCache.active) return;
   
-  console.log('🔄 Optimistic cache update:', operation, venueId);
+  
   
   try {
     if (operation === 'create' && venueData) {
@@ -206,7 +206,7 @@ export const updateVenueCacheAfterOperation = (venueId, operation, venueData = n
       });
     }
   } catch (error) {
-    console.error('❌ Error updating venue cache:', error);
+    
     // If optimistic update fails, invalidate cache to force refresh
     invalidateVenueCache();
   }

@@ -40,7 +40,7 @@ const LiveEventDashboard = () => {
       setActiveVolunteers(stats.active_volunteer_list || []);
       setRecentScans(stats.recent_scans || []);
     } catch (error) {
-      console.error('Error loading event data:', error);
+      
     }
   };
 
@@ -84,7 +84,7 @@ const LiveEventDashboard = () => {
       setCurrentCode(newCodeData.access_code);
       setTimeRemaining(newCodeData.time_remaining_seconds);
     } catch (error) {
-      console.error('Error refreshing code:', error);
+      
       // Fallback to local generation
       setCurrentCode(generateNewCode());
       setTimeRemaining(300);

@@ -37,7 +37,7 @@ function Events() {
           return true;
         }
       } catch (error) {
-        console.error('Failed to refresh organizer session:', error);
+        
       }
     }
     return false;
@@ -172,7 +172,7 @@ function Events() {
             return;
           }
         } catch (parseError) {
-          console.warn('Failed to parse cached events:', parseError);
+          
           localStorage.removeItem(CACHE_KEY);
         }
       }
@@ -180,7 +180,7 @@ function Events() {
       // Fetch fresh data if cache is stale or missing
       await fetchEventsFromAPI();
     } catch (error) {
-      console.error('Error loading events:', error);
+      
       setError('Failed to load events');
       setIsLoading(false);
     }
@@ -213,7 +213,7 @@ function Events() {
         throw new Error(response.data.message || 'Failed to fetch events');
       }
     } catch (error) {
-      console.error('Error fetching events from API:', error);
+      
       setError('Failed to load events');
     } finally {
       setIsLoading(false);
@@ -324,7 +324,7 @@ const formatDate = (dateString) => {
         alert(`Failed to approve event: ${response.data.message}`);
       }
     } catch (error) {
-      console.error('Error approving event:', error);
+      
       alert(`Error approving event: ${error.response?.data?.detail || error.message}`);
     }
   };
@@ -349,7 +349,7 @@ const formatDate = (dateString) => {
         alert(`Failed to decline event: ${response.data.message}`);
       }
     } catch (error) {
-      console.error('Error declining event:', error);
+      
       alert(`Error declining event: ${error.response?.data?.detail || error.message}`);
     }
   };

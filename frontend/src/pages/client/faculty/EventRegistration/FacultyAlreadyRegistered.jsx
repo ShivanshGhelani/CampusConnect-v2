@@ -48,7 +48,7 @@ const FacultyAlreadyRegistered = () => {
               const teamResponse = await clientAPI.getTeamDetails(eventId);
               setTeamInfo(teamResponse.data);
             } catch (teamError) {
-              console.error('Error loading team details:', teamError);
+              
             }
           }
         } else {
@@ -57,7 +57,7 @@ const FacultyAlreadyRegistered = () => {
           return;
         }
       } catch (error) {
-        console.error('Error loading registration details:', error);
+        
         setError('Failed to load registration details');
       } finally {
         setLoading(false);

@@ -111,38 +111,38 @@ class CertificateGenerateService {
    * Fetch HTML template from URL
    */
   async fetchTemplate(templateUrl, certificateType = 'Certificate of Participation') {
-    console.log('🔗 Fetching template from:', templateUrl);
+    
     
     try {
       // Use the same simple approach as EventDetail.jsx
       const response = await fetch(templateUrl);
-      console.log(`📡 Response: ${response.status} ${response.ok ? '✅' : '❌'}`);
+      
       
       if (!response.ok) {
         // Let's check if this is a 400 error and provide more context
         if (response.status === 400) {
-          console.warn('⚠️ 400 Bad Request - This might indicate:');
-          console.warn('   - File does not exist in Supabase storage');
-          console.warn('   - Incorrect bucket name or file path');
-          console.warn('   - Bucket permissions issue');
-          console.warn('   - URL format issue');
+          
+          
+          
+          
+          
         }
         throw new Error(`Failed to load template: ${response.status} ${response.statusText}`);
       }
       
       const htmlContent = await response.text();
-      console.log(`✅ Template fetched successfully! Length: ${htmlContent.length} characters`);
+      
       
       // Validate that we got actual HTML content
       if (htmlContent && htmlContent.length > 50 && htmlContent.includes('<')) {
-        console.log(`🎯 Using REAL template for "${certificateType}"`);
+        
         return htmlContent;
       } else {
         throw new Error('Invalid HTML content received');
       }
     } catch (error) {
-      console.error('❌ Template fetch failed:', error.message);
-      console.log(`🔄 Using fallback template for "${certificateType}"...`);
+      
+      
       return this.getFallbackTemplate(certificateType);
     }
   }
@@ -269,8 +269,8 @@ class CertificateGenerateService {
    * Convert HTML to React PDF components
    */
   convertHtmlToPdfComponents(htmlContent, studentData) {
-    console.log('Converting HTML to PDF. HTML length:', htmlContent.length);
-    console.log('HTML content preview:', htmlContent.substring(0, 500));
+    
+    
     
     // Check if this is our fallback template (contains specific fallback markers)
     const isFallbackTemplate = htmlContent.includes('Certificate of Participation') && 
@@ -278,9 +278,9 @@ class CertificateGenerateService {
                               htmlContent.includes('{{full_name}}');
     
     if (isFallbackTemplate) {
-      console.log('Using fallback template layout');
+      
     } else {
-      console.log('Using fetched template layout - processing real HTML content');
+      
     }
     
     // Remove HTML tags but preserve line breaks and structure
@@ -296,11 +296,11 @@ class CertificateGenerateService {
       .replace(/\n\s+/g, '\n') // Clean up line breaks
       .trim();
 
-    console.log('Processed text content:', textContent.substring(0, 300));
+    
 
     // Split content into lines for better formatting
     const lines = textContent.split('\n').filter(line => line.trim());
-    console.log('Number of content lines:', lines.length);
+    
     
     // Try to identify the title from the HTML or processed content
     let titleLine = 'Certificate';
@@ -319,7 +319,7 @@ class CertificateGenerateService {
       }
     }
     
-    console.log('Extracted title:', titleLine);
+    
 
     return (
       <Document>
@@ -393,19 +393,19 @@ class CertificateGenerateService {
         throw new Error(`Certificate template "${certificateType}" not found for this event`);
       }
 
-      console.log(`Fetching certificate template from: ${templateUrl}`);
+      
 
       // Fetch the HTML template
       const htmlTemplate = await this.fetchTemplate(templateUrl, certificateType);
-      console.log('Fetched HTML template length:', htmlTemplate.length);
+      
 
       // Prepare student data
       const studentData = this.prepareStudentData(student, registration, event, attendance);
-      console.log('Prepared student data:', studentData);
+      
 
       // Replace placeholders
       const processedHtml = this.replacePlaceholders(htmlTemplate, studentData);
-      console.log('Processed HTML length:', processedHtml.length);
+      
 
       // Convert to PDF components
       const pdfComponents = this.convertHtmlToPdfComponents(processedHtml, studentData);
@@ -435,7 +435,7 @@ class CertificateGenerateService {
       };
 
     } catch (error) {
-      console.error('Error generating certificate:', error);
+      
       return {
         success: false,
         message: error.message || 'Failed to generate certificate'
@@ -476,12 +476,12 @@ class CertificateGenerateService {
    */
   async testTemplateUrl(templateUrl) {
     try {
-      console.log(`Testing template URL: ${templateUrl}`);
+      
       const response = await fetch(templateUrl);
-      console.log(`URL test result: ${response.status} ${response.statusText}`);
+      
       return response.ok;
     } catch (error) {
-      console.error(`URL test failed:`, error);
+      
       return false;
     }
   }
@@ -490,32 +490,32 @@ class CertificateGenerateService {
    * Debug certificate generation process
    */
   async debugCertificateGeneration(event, student, registration, attendance, certificateType) {
-    console.log('=== CERTIFICATE GENERATION DEBUG ===');
-    console.log('Event:', event);
-    console.log('Student:', student);
-    console.log('Registration:', registration);
-    console.log('Certificate Type:', certificateType);
+    
+    
+    
+    
+    
     
     const templateUrl = event?.certificate_templates?.[certificateType];
-    console.log('Template URL:', templateUrl);
+    
     
     if (templateUrl) {
       const urlWorks = await this.testTemplateUrl(templateUrl);
-      console.log('URL accessible:', urlWorks);
+      
       
       if (urlWorks) {
         const template = await this.fetchTemplate(templateUrl, certificateType);
-        console.log('Template fetched successfully, length:', template.length);
-        console.log('Template preview:', template.substring(0, 500));
+        
+        
         
         const studentData = this.prepareStudentData(student, registration, event, attendance);
         const processedHtml = this.replacePlaceholders(template, studentData);
-        console.log('Placeholders replaced, new length:', processedHtml.length);
-        console.log('Processed HTML preview:', processedHtml.substring(0, 500));
+        
+        
       }
     }
     
-    console.log('=== END DEBUG ===');
+    
   }
 }
 

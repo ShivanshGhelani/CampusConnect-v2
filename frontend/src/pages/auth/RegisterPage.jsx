@@ -125,7 +125,7 @@ function RegisterPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log('🔵 handleChange called for field:', name, 'value:', value);
+    
     let processedValue = value;
 
     // Auto-format specific fields
@@ -160,7 +160,7 @@ function RegisterPage() {
     // Trigger real-time database validation for specific fields
     const fieldsToValidateRealTime = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
     if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
-      console.log('🚀 Triggering real-time validation for:', name, 'value:', processedValue);
+      
       debouncedValidation(name, processedValue);
     }
 
@@ -287,21 +287,21 @@ function RegisterPage() {
   // Debounced real-time field validation for database checks
   const validateFieldRealTime = useCallback(
     async (fieldName, fieldValue) => {
-      console.log('🎯 validateFieldRealTime CALLED with:', { fieldName, fieldValue, activeTab });
+      
 
       // Only validate specific fields that need database checks
       const fieldsToValidate = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
       if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
-        console.log('❌ Validation skipped - field not in list or too short');
+        
         return;
       }
 
-      console.log('✅ Validation proceeding for:', fieldName);
+      
       setValidationLoading(prev => ({ ...prev, [fieldName]: true }));
 
       try {
         const response = await authAPI.validateField(fieldName, fieldValue, activeTab);
-        console.log('🔍 Validation response for', fieldName, ':', response);
+        
 
         if (response.data.success) {
           setFieldValidation(prev => ({
@@ -331,7 +331,7 @@ function RegisterPage() {
           }
         }
       } catch (error) {
-        console.error('Field validation error:', error);
+        
         // Don't show errors for network issues during real-time validation
       } finally {
         setValidationLoading(prev => ({ ...prev, [fieldName]: false }));
@@ -345,10 +345,10 @@ function RegisterPage() {
     (() => {
       const timers = {};
       return (fieldName, fieldValue) => {
-        console.log('⏰ Debouncing validation for:', fieldName, 'value:', fieldValue);
+        
         clearTimeout(timers[fieldName]);
         timers[fieldName] = setTimeout(() => {
-          console.log('✅ Executing debounced validation for:', fieldName);
+          
           validateFieldRealTime(fieldName, fieldValue);
         }, 800); // Wait 800ms after user stops typing
       };
@@ -493,7 +493,7 @@ function RegisterPage() {
       });
     } else {
       // Don't clear form data on error - let user fix the issue
-      console.error('Registration failed:', result.error);
+      
       addToast({
         type: 'error',
         title: 'Registration Failed',

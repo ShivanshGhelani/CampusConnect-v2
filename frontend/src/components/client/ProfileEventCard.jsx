@@ -77,7 +77,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
             setTeamName(response.data.team_data.team_name);
           }
         } catch (error) {
-          console.error('Error fetching team name:', error);
+          
           // Fallback to legacy endpoint
           try {
             const legacyResponse = await api.get(`/api/v1/client/profile/team-info/${reg.event_id}/${reg.registration.team_registration_id}`);
@@ -85,7 +85,7 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
               setTeamName(legacyResponse.data.data.team_name);
             }
           } catch (legacyError) {
-            console.error('Legacy endpoint also failed:', legacyError);
+            
           }
         }
       }

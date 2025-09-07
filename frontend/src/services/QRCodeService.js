@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { clientAPI } from '../api/client';
 
 /**
  * QR Code Generation Service for Event Registration
@@ -7,22 +8,118 @@ import QRCode from 'qrcode';
 class QRCodeService {
   constructor() {
     this.baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://campusconnect.edu';
+    this.apiBase = '/api'; // Backend API base path
   }
 
   /**
-   * Generate QR code data object for registration
+   * Fetch QR data from backend endpoint
+   * @param {Object} registrationData - Registration details
+   * @param {Object} eventData - Event details
+   * @returns {Promise<Object>} QR data from backend
+   */
+  async fetchQRDataFromBackend(registrationData, eventData) {
+    try {
+      // Extract event ID with more fallback options and better validation
+      const eventId = eventData?.event_id || eventData?.id || eventData?.eventId;
+      const registrationId = registrationData?.registration_id || registrationData?.registrar_id || registrationData?.reg_id;
+      
+      console.log('=== FETCHING QR DATA FROM BACKEND ===');
+      console.log('Event Data received:', JSON.stringify(eventData, null, 2));
+      console.log('Registration Data received:', JSON.stringify(registrationData, null, 2));
+      console.log('Extracted Event ID:', eventId);
+      console.log('Extracted Registration ID:', registrationId);
+      
+      // Validate required fields with detailed error messages
+      if (!eventId || eventId === 'undefined' || eventId === 'null') {
+        console.error('VALIDATION ERROR: Event ID is missing or invalid');
+        console.error('Event data keys available:', Object.keys(eventData || {}));
+        throw new Error(`Event ID is missing or invalid: ${eventId}. Available keys: ${Object.keys(eventData || {}).join(', ')}`);
+      }
+      
+      if (!registrationId || registrationId === 'undefined' || registrationId === 'null') {
+        console.error('VALIDATION ERROR: Registration ID is missing or invalid');
+        console.error('Registration data keys available:', Object.keys(registrationData || {}));
+        throw new Error(`Registration ID is missing or invalid: ${registrationId}. Available keys: ${Object.keys(registrationData || {}).join(', ')}`);
+      }
+      
+      // Determine target audience and type
+      const targetAudience = registrationData.employee_id ? 'faculty' : 'student';
+      const registrationType = (registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader') ? 'team' : 'individual';
+      
+      // For faculty, always use individual
+      const finalType = targetAudience === 'faculty' ? 'individual' : registrationType;
+      
+      console.log('Target Audience:', targetAudience);
+      console.log('Registration Type:', finalType);
+      
+      const params = {
+        target_audience: targetAudience,
+        registration_type: finalType,
+        registration_id: registrationId
+      };
+      
+      console.log('API call params:', params);
+      console.log('Calling clientAPI.getQRData with eventId:', eventId);
+      console.log('Full API URL will be: /api/v1/attendance/qr-data/' + eventId);
+      
+      const response = await clientAPI.getQRData(eventId, params);
+      
+      console.log('Raw Backend Response:', response);
+      console.log('Response data structure:', response.data);
+      // Handle nested response structure {success: true, data: {...}}
+      let qrData;
+      if (response.data && response.data.success && response.data.data) {
+        qrData = response.data.data;
+        console.log('Extracted QR data from nested structure:', qrData);
+      } else if (response.data) {
+        qrData = response.data;
+        console.log('Using direct response data:', qrData);
+      } else {
+        throw new Error('Invalid response structure from backend');
+      }
+      
+      console.log('Final Backend QR Data:', qrData);
+      console.log('=====================================');
+      
+      return qrData;
+      
+    } catch (error) {
+      console.error('Failed to fetch QR data from backend:', error);
+      console.error('Error details:', error.message);
+      console.error('Error type:', error.constructor.name);
+      console.log('Falling back to local QR data generation...');
+      
+      // Fallback to local generation
+      return this.generateQRDataFallback(registrationData, eventData);
+    }
+  }
+
+  /**
+   * Generate QR code data object for registration (NEW - uses backend)
+   * @param {Object} registrationData - Registration details
+   * @param {Object} eventData - Event details
+   * @param {Object} options - Additional options
+   * @returns {Promise<Object>} QR data object from backend
+   */
+  async generateQRData(registrationData, eventData, options = {}) {
+    // Use backend endpoint for proper data
+    return await this.fetchQRDataFromBackend(registrationData, eventData);
+  }
+
+  /**
+   * Generate QR code data object for registration (FALLBACK - old method)
    * @param {Object} registrationData - Registration details
    * @param {Object} eventData - Event details
    * @param {Object} options - Additional options
    * @returns {Object} QR data object
    */
-  generateQRData(registrationData, eventData, options = {}) {
-    console.log('=== QR CODE SERVICE DEBUG ===');
-    console.log('Registration Data:', registrationData);
-    console.log('Registration Data Keys:', Object.keys(registrationData || {}));
-    console.log('Event Data:', eventData);
-    console.log('Event Data Keys:', Object.keys(eventData || {}));
-    console.log('Options:', options);
+  generateQRDataFallback(registrationData, eventData, options = {}) {
+    
+    
+    
+    
+    
+    
     
     const isTeamRegistration = registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader';
     const isFacultyRegistration = registrationData.employee_id !== undefined;
@@ -74,8 +171,8 @@ class QRCodeService {
       version: '2.1' // Updated version for faculty support
     };
 
-    console.log('Generated QR Data:', qrData);
-    console.log('============================');
+    
+    
     
     return qrData;
   }
@@ -135,6 +232,10 @@ class QRCodeService {
    * @returns {Promise<string>} Base64 data URL
    */
   async generateQRCode(qrData, options = {}) {
+    console.log('generateQRCode: Starting QR code generation...');
+    console.log('generateQRCode: QR data received:', qrData);
+    console.log('generateQRCode: Options received:', options);
+    
     const defaultOptions = {
       errorCorrectionLevel: 'M',
       type: 'image/png',
@@ -150,12 +251,18 @@ class QRCodeService {
     const qrOptions = { ...defaultOptions, ...options };
     const qrString = JSON.stringify(qrData);
 
+    console.log('generateQRCode: QR string length:', qrString.length);
+    console.log('generateQRCode: Final options:', qrOptions);
+
     try {
+      console.log('generateQRCode: Calling QRCode.toDataURL...');
       const qrCodeDataURL = await QRCode.toDataURL(qrString, qrOptions);
+      console.log('generateQRCode: Successfully generated QR code URL');
       return qrCodeDataURL;
     } catch (error) {
-      console.error('Error generating QR code:', error);
-      throw new Error('Failed to generate QR code');
+      console.error('generateQRCode: Error generating QR code:', error);
+      console.error('generateQRCode: Error stack:', error.stack);
+      throw new Error(`Failed to generate QR code: ${error.message}`);
     }
   }
 
@@ -166,7 +273,7 @@ class QRCodeService {
    * @returns {Promise<string>} QR code data URL
    */
   async generateAttendanceQR(registrationData, eventData) {
-    const qrData = this.generateQRData(registrationData, eventData);
+    const qrData = await this.generateQRData(registrationData, eventData);
     return await this.generateQRCode(qrData);
   }
 
@@ -177,7 +284,7 @@ class QRCodeService {
    * @returns {Promise<string>} High-res QR code data URL
    */
   async generateDownloadableQR(registrationData, eventData) {
-    const qrData = this.generateQRData(registrationData, eventData);
+    const qrData = await this.generateQRData(registrationData, eventData);
     const options = {
       width: 512,
       quality: 1.0,
@@ -263,13 +370,13 @@ class QRCodeService {
       
       // Validate QR data structure - simplified validation
       if (!qrData.reg_id || !qrData.event_id || !qrData.student) {
-        console.warn('Invalid QR code - missing required fields');
+        
         return null;
       }
       
       return qrData;
     } catch (error) {
-      console.error('Error parsing QR code data:', error);
+      
       return null;
     }
   }
@@ -329,7 +436,7 @@ class QRCodeService {
    * @returns {Array} Team members array
    */
   getTeamMembers(registrationData) {
-    console.log('Getting team members from registration data:', registrationData);
+    
     
     // Handle different possible structures for team members
     let members = [];
@@ -343,11 +450,11 @@ class QRCodeService {
       members = registrationData.members;
     }
     
-    console.log('Found team members:', members);
+    
     
     // If we have enhanced team member data, use it directly (includes leader)
     if (members && members.length > 0 && members[0].enrollment_no) {
-      console.log('Using enhanced team member data directly');
+      
       return members;
     }
     
@@ -360,7 +467,7 @@ class QRCodeService {
       is_leader: true
     };
     
-    console.log('Leader data:', leaderData);
+    
     
     // Check if leader is already in the members array
     const leaderExists = members.some(member => 
@@ -373,7 +480,7 @@ class QRCodeService {
       members = [leaderData, ...members];
     }
     
-    console.log('Final team members with leader:', members);
+    
     return members;
   }
 

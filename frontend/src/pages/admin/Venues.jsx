@@ -78,16 +78,16 @@ const Venues = () => {
 
   const fetchVenues = async () => {
     try {
-      console.log('🔄 Fetching all venues with caching optimization');
+      
       const response = await adminAPI.getVenues({ include_inactive: true }); // Single endpoint for all venues
-      console.log('API Response:', response); // Debug log
+       // Debug log
       
       // Handle both cached and API responses
       const venuesData = response.success ? response.data : (response.data?.data || response.data || []);
-      console.log('Venues data:', venuesData); // Debug log
+       // Debug log
       setVenues(Array.isArray(venuesData) ? venuesData : []);
     } catch (error) {
-      console.error('Error fetching venues:', error);
+      
       setError('Failed to load venues');
       setVenues([]); // Ensure venues is always an array
     } finally {
@@ -151,7 +151,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to create venue');
       }
     } catch (error) {
-      console.error('Error creating venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to create venue');
     }
   };
@@ -185,7 +185,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to update venue');
       }
     } catch (error) {
-      console.error('Error updating venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to update venue');
     }
   };
@@ -206,7 +206,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to delete venue');
       }
     } catch (error) {
-      console.error('Error deleting venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to delete venue');
     }
   };
@@ -227,7 +227,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to restore venue');
       }
     } catch (error) {
-      console.error('Error restoring venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to restore venue');
     }
   };
@@ -253,7 +253,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to permanently delete venue');
       }
     } catch (error) {
-      console.error('Error permanently deleting venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to permanently delete venue');
     }
   };

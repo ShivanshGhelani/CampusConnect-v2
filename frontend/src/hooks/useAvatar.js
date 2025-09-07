@@ -48,7 +48,7 @@ export const useAvatar = (user, userType) => {
       return;
     }
     
-    console.log('useAvatar: Checking cached profile data for user:', userIdToFetch);
+    
     
     try {
       // OPTIMIZED: Try to get cached profile data first (no API call)
@@ -66,12 +66,12 @@ export const useAvatar = (user, userType) => {
           lastFetchTime: Date.now(),
           ongoingFetchPromise: null
         });
-        console.log('useAvatar: Used cached avatar data (no API call)');
+        
         return;
       }
       
       // Only make API call if no cached data is available
-      console.log('useAvatar: No cached data found, fetching from API...');
+      
       const data = await fetchProfileWithCache(userTypeToFetch, userIdToFetch, api);
       
       if (data && data.success && data.profile?.avatar_url) {
@@ -97,7 +97,7 @@ export const useAvatar = (user, userType) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching avatar:', error);
+      
       updateAllAvatarListeners(null);
       setGlobalAvatarState({ 
         globalAvatarUrl: null,
@@ -121,7 +121,7 @@ export const useAvatar = (user, userType) => {
       const { currentUserId: cachedUserId, isAvatarFetched: alreadyFetched, globalAvatarUrl: cachedAvatar, isFetching } = getGlobalAvatarState();
       
       if (userId !== cachedUserId) {
-        console.log('🔄 User changed detected:', { previousUser: cachedUserId, newUser: userId });
+        
         
         // Reset for new user
         setGlobalAvatarState({
@@ -157,7 +157,7 @@ export const useAvatar = (user, userType) => {
   }, [userId, stableUserType, fetchAvatarInternal]);
   
   const forceRefreshAvatar = useCallback(() => {
-    console.log('useAvatar: Force refresh requested');
+    
     setGlobalAvatarState({ isAvatarFetched: false, isFetching: false });
     if (userId && stableUserType) {
       fetchAvatarInternal(userId, stableUserType);

@@ -48,7 +48,7 @@ const Assets = () => {
         setStatistics(null);
       }
     } catch (error) {
-      console.error('Error loading assets data:', error);
+      
       setError('Failed to load assets data');
       setAssets([]);
       setStatistics(null);
@@ -151,7 +151,7 @@ const Assets = () => {
         setError(response.data?.message || 'Upload failed');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      
       setError(error.response?.data?.message || 'Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
@@ -185,7 +185,7 @@ const Assets = () => {
         setError(response.data?.message || 'Failed to delete asset');
       }
     } catch (error) {
-      console.error('Delete error:', error);
+      
       setError(error.response?.data?.message || 'Failed to delete asset');
     }
   };

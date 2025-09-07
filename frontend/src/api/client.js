@@ -295,6 +295,9 @@ export const clientAPI = {
   }),
   getAttendanceStatus: (eventId) => api.get(`/api/v1/client/attendance/status/${eventId}`),
   
+  // QR Code Data - NEW endpoint for proper QR code generation
+  getQRData: (eventId, params) => api.get(`/api/v1/attendance/qr-data/${eventId}`, { params }),
+  
   // Feedback - Keep existing
   submitFeedback: (eventId, feedbackData) => api.post('/api/v1/client/feedback/submit', { 
     event_id: eventId, 

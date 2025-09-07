@@ -51,14 +51,14 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
         const fetchStats = async () => {
             try {
                 setIsLoading(true);
-                console.log('Fetching dashboard stats...');
+                
                 const response = await adminAPI.getDashboardStats();
-                console.log('Dashboard stats response:', response.data);
+                
 
                 if (response.data) {
                     // Handle the analytics response structure from /api/v1/admin/analytics/dashboard
                     const data = response.data.analytics?.overview || response.data.data || response.data;
-                    console.log('Dashboard stats data:', data);
+                    
 
                     // Extract stats with the correct field names from backend
                     const newStats = {
@@ -72,14 +72,14 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         completedEventsCount: parseInt(data.completed_events || data.completedEvents || 0)
                     };
 
-                    console.log('Setting stats:', newStats);
+                    
                     setStats(newStats);
                     setError('');
                 } else {
                     throw new Error('No data received from server');
                 }
             } catch (error) {
-                console.error('Error fetching admin layout stats:', error);
+                
                 setError('Failed to load dashboard stats');
 
                 // Try to fetch individual counts as fallback
@@ -92,7 +92,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                     const eventsCount = eventsResponse.data?.events?.length || eventsResponse.data?.length || 0;
                     const studentsCount = studentsResponse.data?.students?.length || studentsResponse.data?.length || 0;
 
-                    console.log('Fallback stats - Events:', eventsCount, 'Students:', studentsCount);
+                    
 
                     setStats({
                         totalEvents: eventsCount,
@@ -105,7 +105,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                         completedEventsCount: 0
                     });
                 } catch (fallbackError) {
-                    console.error('Fallback stats fetch failed:', fallbackError);
+                    
                     // Set absolute fallback values
                     setStats({
                         totalEvents: 0,
@@ -172,7 +172,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
             await logout();
             navigate('/auth/login?tab=admin');
         } catch (error) {
-            console.error('Logout error:', error);
+            
         }
     };
 

@@ -42,6 +42,7 @@ ALLOWED_ORIGINS = [
     
     # Production deployments
     "https://campusconnectldrp.vercel.app",
+    "http://campusconnectldrp.vercel.app",
 ]
 
 # Get additional origins from environment variables

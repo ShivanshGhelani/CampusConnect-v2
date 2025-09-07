@@ -84,7 +84,7 @@ export const simpleAPI = {
       const response = await api.get(`/api/v1/registrations/status/${eventId}`);
       return response.data?.registered || false;
     } catch (error) {
-      console.error('Error checking registration status:', error);
+      
       return false;
     }
   },
@@ -95,7 +95,7 @@ export const simpleAPI = {
       const response = await api.get(`/api/v1/registrations/status/${eventId}`);
       return response.data?.registration || null;
     } catch (error) {
-      console.error('Error getting registration details:', error);
+      
       return null;
     }
   },
@@ -106,7 +106,7 @@ export const simpleAPI = {
       const response = await api.get(`/api/v1/registrations/status/${eventId}`);
       return response.data?.completion_status || null;
     } catch (error) {
-      console.error('Error getting completion status:', error);
+      
       return null;
     }
   },
@@ -133,7 +133,7 @@ export const simpleAPI = {
       const response = await api.get(`/api/v1/registrations/statistics/${eventId}`);
       return response.data || null;
     } catch (error) {
-      console.error('Error getting real-time status:', error);
+      
       return null;
     }
   },
@@ -141,8 +141,8 @@ export const simpleAPI = {
   // Subscribe to real-time updates (WebSocket - placeholder for future implementation)
   subscribeToUpdates: (eventId, callback) => {
     // Placeholder for WebSocket implementation
-    console.log(`Subscribing to real-time updates for event ${eventId}`);
+    
     // TODO: Implement WebSocket connection
-    return () => console.log('Unsubscribed from updates');
+    return () => 
   }
 };

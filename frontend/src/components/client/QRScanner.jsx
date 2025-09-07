@@ -64,7 +64,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       setIsScanning(true);
       
     } catch (err) {
-      console.error('Error initializing scanner:', err);
+      
       setError('Failed to initialize camera scanner. Please check camera permissions.');
     }
   };
@@ -96,14 +96,14 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       }
       
     } catch (error) {
-      console.error('Error processing scan result:', error);
+      
       setError('Error processing QR code. Please try again.');
     }
   };
 
   const onScanFailure = (error) => {
     // Don't show errors for scan failures - they're too frequent
-    // console.warn('QR scan failed:', error);
+    // 
   };
 
   // Simulate fetching attendance data with realistic timing

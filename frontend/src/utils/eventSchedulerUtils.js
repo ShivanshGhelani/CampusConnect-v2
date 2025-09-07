@@ -104,7 +104,7 @@ export class ClientEventScheduler {
    * @param {Array} events - Array of event objects
    */
   initialize(events) {
-    console.log('Initializing Client Event Scheduler...');
+    
     
     // Clear existing state
     this.triggers = [];
@@ -123,7 +123,7 @@ export class ClientEventScheduler {
     // Sort triggers by trigger time
     this.triggers.sort((a, b) => a.triggerTime - b.triggerTime);
     
-    console.log(`Initialized with ${triggersAdded} triggers from ${events.length} events`);
+    
     
     return triggersAdded;
   }
@@ -164,7 +164,7 @@ export class ClientEventScheduler {
       try {
         const triggerTime = new Date(dateValue);
         if (isNaN(triggerTime)) {
-          console.warn(`Invalid date format for ${eventId}.${dateField}: ${dateValue}`);
+          
           return;
         }
         
@@ -173,7 +173,7 @@ export class ClientEventScheduler {
           triggers.push(new ScheduledTrigger(triggerTime, eventId, triggerType));
         }
       } catch (error) {
-        console.warn(`Error parsing date for ${eventId}.${dateField}:`, error);
+        
       }
     });
     
@@ -191,7 +191,7 @@ export class ClientEventScheduler {
     this.triggers.push(...newTriggers);
     this.triggers.sort((a, b) => a.triggerTime - b.triggerTime);
     
-    console.log(`Added ${newTriggers.length} triggers for event: ${event.event_id}`);
+    
   }
 
   /**
@@ -210,7 +210,7 @@ export class ClientEventScheduler {
     this.triggers.push(...newTriggers);
     this.triggers.sort((a, b) => a.triggerTime - b.triggerTime);
     
-    console.log(`Updated ${newTriggers.length} triggers for event: ${eventId}`);
+    
   }
 
   /**
@@ -222,7 +222,7 @@ export class ClientEventScheduler {
     this.eventCache.delete(eventId);
     this.statusCallbacks.delete(eventId);
     
-    console.log(`Removed all triggers for event: ${eventId}`);
+    
   }
 
   /**
@@ -265,7 +265,7 @@ export class ClientEventScheduler {
    */
   start() {
     if (this.isRunning) {
-      console.warn('Scheduler is already running');
+      
       return;
     }
     
@@ -274,7 +274,7 @@ export class ClientEventScheduler {
       this.processScheduledTriggers();
     }, this.checkIntervalMs);
     
-    console.log('Client Event Scheduler started');
+    
   }
 
   /**
@@ -289,7 +289,7 @@ export class ClientEventScheduler {
       this.updateInterval = null;
     }
     
-    console.log('Client Event Scheduler stopped');
+    
   }
 
   /**
@@ -316,11 +316,11 @@ export class ClientEventScheduler {
    * @param {Date} currentTime - Current time
    */
   executeTrigger(trigger, currentTime) {
-    console.log(`Executing trigger: ${trigger.triggerType} for event ${trigger.eventId}`);
+    
     
     const event = this.eventCache.get(trigger.eventId);
     if (!event) {
-      console.warn(`Event ${trigger.eventId} not found in cache`);
+      
       return;
     }
     
@@ -348,7 +348,7 @@ export class ClientEventScheduler {
       
       this.notifyStatusChange(trigger.eventId, statusChange);
       
-      console.log(`Updated event ${trigger.eventId} status: ${oldStatus}/${oldSubStatus} -> ${newStatus}/${newSubStatus}`);
+      
     }
   }
 
@@ -363,7 +363,7 @@ export class ClientEventScheduler {
       try {
         callback(statusChange);
       } catch (error) {
-        console.error('Error in status change callback:', error);
+        
       }
     });
   }
@@ -498,7 +498,7 @@ export function checkEventConflict(event1, event2) {
     };
     
   } catch (error) {
-    console.error('Error checking event conflict:', error);
+    
     return null;
   }
 }
@@ -677,17 +677,17 @@ export const getSchedulerStatus = () => {
 export const addEventToSchedulerSafe = (event) => {
   // Don't add events that require approval and are still pending
   if (event.approval_required && event.event_approval_status === 'pending_approval') {
-    console.log(`⏸️ Skipping scheduler addition for pending approval event: ${event.event_id}`);
+    
     return false;
   }
   
   // Add approved events or events that don't require approval
   try {
     globalScheduler.addEvent(event);
-    console.log(`✅ Added event ${event.event_id} to scheduler (approved or no approval required)`);
+    
     return true;
   } catch (error) {
-    console.warn(`⚠️ Failed to add event ${event.event_id} to scheduler:`, error);
+    
     return false;
   }
 };
@@ -705,9 +705,9 @@ export const handleEventApproval = (eventId, approvedEventData) => {
     // Add triggers for the now-approved event
     globalScheduler.addEvent(approvedEventData);
     
-    console.log(`✅ Added triggers for approved event: ${eventId}`);
+    
   } catch (error) {
-    console.error(`❌ Failed to handle approval for event ${eventId}:`, error);
+    
   }
 };
 
@@ -719,9 +719,9 @@ export const handleEventDecline = (eventId) => {
   try {
     // Remove any triggers for declined event
     globalScheduler.removeEvent(eventId);
-    console.log(`🗑️ Removed triggers for declined event: ${eventId}`);
+    
   } catch (error) {
-    console.warn(`⚠️ Failed to remove triggers for declined event ${eventId}:`, error);
+    
   }
 };
 

@@ -11,7 +11,7 @@ let ongoingFetchPromise = null;  // NEW: Track ongoing fetch promise
 
 // Export function to reset global avatar state (for logout/user change)
 export const resetAvatarGlobalState = () => {
-  console.log('🔄 Resetting global avatar state (logout/user change)');
+  
   globalAvatarUrl = null;
   isAvatarFetched = false;
   isFetching = false;

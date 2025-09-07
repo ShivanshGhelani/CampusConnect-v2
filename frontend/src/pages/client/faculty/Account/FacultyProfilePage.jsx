@@ -8,6 +8,7 @@ import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
 import MessageBox from '../../../../components/client/MessageBox';
 import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
+import { qrCodeService } from '../../../../services/QRCodeService';
 import api from '../../../../api/base';
 import { fetchProfileWithCache } from '../../../../utils/profileCache';
 
@@ -80,7 +81,7 @@ function FacultyProfilePage() {
       const updatedUserData = event.detail;
       
       if (updatedUserData && profileData) {
-        console.log('📱 FacultyProfilePage: Received user data update, refreshing profile data');
+        
         
         // Update the profile data with the new user data
         setProfileData(prevProfileData => ({
@@ -102,7 +103,7 @@ function FacultyProfilePage() {
   // Also listen for changes to the user from AuthContext
   useEffect(() => {
     if (user && profileData && user.full_name !== profileData.full_name) {
-      console.log('📱 FacultyProfilePage: User context changed, updating profile data');
+      
       setProfileData(prevProfileData => ({
         ...prevProfileData,
         ...user
@@ -128,7 +129,7 @@ function FacultyProfilePage() {
         }
 
       } catch (error) {
-        console.error('Error fetching faculty profile data:', error);
+        
       } finally {
         setLoading(false);
       }
@@ -281,7 +282,7 @@ function FacultyProfilePage() {
       }
       setShowTeamDetailModal(true);
     } catch (error) {
-      console.error('Error fetching team details:', error);
+      
       setSelectedTeamDetail({
         ...teamDetail,
         teamMembers: [],
@@ -297,9 +298,43 @@ function FacultyProfilePage() {
   setShowMessageBox(false);
   }, []);
 
-  const openQRCodeModal = useCallback((qrData) => {
-    setSelectedQRData(qrData);
-    setShowQRCodeModal(true);
+  const openQRCodeModal = useCallback(async (qrData) => {
+    
+    
+    
+    
+    
+
+    try {
+      // Generate QR code with backend data
+      
+      
+      const registrationData = qrData.registration;
+      const eventData = qrData.event;
+      
+      // Generate QR data using backend endpoint
+      const backendQRData = await qrCodeService.generateQRData(registrationData, eventData);
+      
+      // Create enhanced QR data with backend response
+      const enhancedQRData = {
+        ...qrData,
+        backendQRData, // This contains the proper QR data from backend
+        registration: registrationData,
+        event: eventData
+      };
+
+      
+      
+      setSelectedQRData(enhancedQRData);
+      setShowQRCodeModal(true);
+      
+    } catch (error) {
+      
+      
+      // Fallback to original simple implementation
+      setSelectedQRData(qrData);
+      setShowQRCodeModal(true);
+    }
   }, []);
 
   const closeQRCodeModal = useCallback(() => {
@@ -336,13 +371,13 @@ function FacultyProfilePage() {
         }
 
         closeCancelModal();
-        console.log('Faculty registration cancelled successfully');
+        
       } else {
-        console.error('Failed to cancel faculty registration:', response.data.message);
+        
         alert('Failed to cancel registration: ' + (response.data.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error cancelling faculty registration:', error);
+      
       alert('Error cancelling registration. Please try again.');
     } finally {
       setCancellingRegistration(false);

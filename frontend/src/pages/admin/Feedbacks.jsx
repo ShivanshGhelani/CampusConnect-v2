@@ -72,7 +72,7 @@ function Feedbacks() {
           }
         }
       } catch (feedbackError) {
-        console.log('No feedback form found for this event');
+        
       }
       
       setEvent({
@@ -84,7 +84,7 @@ function Feedbacks() {
       
     } catch (error) {
       setError('Failed to load event and feedback data');
-      console.error('Error fetching data:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +112,7 @@ function Feedbacks() {
         throw new Error(response.data.message || 'Failed to delete feedback form');
       }
     } catch (error) {
-      console.error('Error deleting feedback form:', error);
+      
       alert(`Failed to delete feedback form: ${error.response?.data?.detail || error.message}`);
     }
   };
@@ -127,7 +127,7 @@ function Feedbacks() {
       // This could be implemented as a CSV/Excel export
       alert('Export functionality will be implemented here');
     } catch (error) {
-      console.error('Error exporting data:', error);
+      
       alert('Failed to export data');
     }
   };

@@ -369,7 +369,7 @@ export class FormStateManager {
       
       this.notifyListeners('autoSave', { success: true });
     } catch (error) {
-      console.error('Failed to save form to storage:', error);
+      
       this.notifyListeners('autoSave', { success: false, error });
     }
   }
@@ -388,7 +388,7 @@ export class FormStateManager {
         this.notifyListeners('sessionRestored', { sessionId: mostRecent.sessionId });
       }
     } catch (error) {
-      console.error('Failed to restore form from storage:', error);
+      
     }
   }
 
@@ -436,7 +436,7 @@ export class FormStateManager {
       try {
         callback(event, data, this.state);
       } catch (error) {
-        console.error('Listener error:', error);
+        
       }
     });
   }
@@ -756,7 +756,7 @@ export class ParticipantManager {
       try {
         callback(event, data);
       } catch (error) {
-        console.error('Participant manager listener error:', error);
+        
       }
     });
   }
@@ -1039,7 +1039,7 @@ export class UIStateManager {
       try {
         callback(event, data, this.state);
       } catch (error) {
-        console.error('UI state manager listener error:', error);
+        
       }
     });
   }

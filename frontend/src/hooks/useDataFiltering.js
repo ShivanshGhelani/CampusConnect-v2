@@ -112,7 +112,7 @@ export const useDataProcessor = (initialData = [], options = {}) => {
 
     } catch (err) {
       setError(err.message);
-      console.error('Data processing error:', err);
+      
     } finally {
       setLoading(false);
     }
@@ -350,7 +350,7 @@ export const useSearch = (data = [], searchFields = [], options = {}) => {
       setResults(searchResult.results);
       setSearchMetadata(searchResult.metadata);
     } catch (error) {
-      console.error('Search error:', error);
+      
       setResults([]);
     } finally {
       setIsSearching(false);

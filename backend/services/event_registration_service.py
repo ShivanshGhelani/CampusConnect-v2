@@ -295,7 +295,7 @@ class EventRegistrationService:
                 })
             
             # Create single team registration document
-            team_registration_id = f"TEAM_{team_name.replace(' ', '_').upper()}_{event_id}"
+            team_registration_id = team_data.get("additional_data", {}).get("temp_team_id")
             
             team_registration_doc = {
                 "registration_id": team_registration_id,
@@ -315,7 +315,6 @@ class EventRegistrationService:
                     "status": "confirmed"
                 },
                 "team_members": team_registration_details,
-                "additional_data": team_data.get("additional_data", {}),
                 "created_at": datetime.now(ZoneInfo("Asia/Kolkata")),
                 "updated_at": datetime.now(ZoneInfo("Asia/Kolkata"))
             }
@@ -1637,7 +1636,7 @@ class EventRegistrationService:
         
         # Get attendance strategy from event (this uses the 4-day intelligence system)
         attendance_strategy = await self._get_event_attendance_strategy(event_data)
-        
+        print("Student Data:", student_data)
         # Create base registration document
         registration_doc = {
             "registration_id": registration_id,
@@ -1645,14 +1644,14 @@ class EventRegistrationService:
                 "enrollment_no": student_data["enrollment_no"],
                 "name": student_data.get("full_name", student_data.get("name", "")),
                 "email": student_data.get("email", ""),
-                "phone": student_data.get("phone"),
+                "phone": student_data.get("mobile_no"),
                 "department": student_data.get("department"),
-                "year": student_data.get("year")
+                "year": additional_data.get("year")
             },
             "event": {
                 "event_id": event_data["event_id"],
                 "event_name": event_data.get("event_name", ""),
-                "event_type": event_data.get("event_type", ""),
+                "event_type": event_data.get("event_type", ""), # workshop, seminar, competition
                 "start_datetime": event_data.get("start_datetime"),
                 "end_datetime": event_data.get("end_datetime")
             },

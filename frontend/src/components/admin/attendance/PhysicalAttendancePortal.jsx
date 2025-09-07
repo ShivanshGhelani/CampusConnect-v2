@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Users, 
-  Search, 
   CheckCircle,
   Clock,
   AlertCircle,
@@ -19,12 +18,16 @@ import {
   ExternalLink,
   Copy,
   Timer,
-  Shield
+  Shield,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import AdminLayout from '../AdminLayout';
 import LoadingSpinner from '../../LoadingSpinner';
 import Modal from '../../ui/Modal';
 import Toast from '../../ui/Toast';
+import SearchBox from '../../ui/SearchBox';
+import Dropdown from '../../ui/Dropdown';
 import { adminAPI } from '../../../api/admin';
 
 const UnifiedAttendancePortal = () => {
@@ -42,12 +45,14 @@ const UnifiedAttendancePortal = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [expandedTeams, setExpandedTeams] = useState(new Set());
   
   // Scanner token state
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [scannerToken, setScannerToken] = useState(null);
   const [tokenLoading, setTokenLoading] = useState(false);
   const [tokenError, setTokenError] = useState('');
+  const [selectedSessionForToken, setSelectedSessionForToken] = useState('');
 
   useEffect(() => {
     loadAttendanceData();
@@ -75,7 +80,7 @@ const UnifiedAttendancePortal = () => {
       }
       
     } catch (err) {
-      console.error('Error loading attendance data:', err);
+      
       setError('Failed to load attendance data');
     } finally {
       setLoading(false);
@@ -88,40 +93,80 @@ const UnifiedAttendancePortal = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(participant => {
-        const student = participant.student;
-        const faculty = participant.faculty;
         const searchLower = searchTerm.toLowerCase();
         
-        if (student) {
-          return student.name?.toLowerCase().includes(searchLower) ||
-                 student.enrollment_no?.toLowerCase().includes(searchLower) ||
-                 student.email?.toLowerCase().includes(searchLower);
-        } else if (faculty) {
-          return faculty.name?.toLowerCase().includes(searchLower) ||
-                 faculty.employee_id?.toLowerCase().includes(searchLower) ||
-                 faculty.email?.toLowerCase().includes(searchLower);
+        // For team registrations, search in team name and all team members
+        if (participant.registration_type === 'team' && participant.team_members) {
+          // Search in team name
+          const teamName = participant.team?.team_name?.toLowerCase() || '';
+          if (teamName.includes(searchLower)) {
+            return true;
+          }
+          
+          // Search in team member names, emails, IDs
+          return participant.team_members.some(member => {
+            const student = member.student;
+            const faculty = member.faculty;
+            
+            if (student) {
+              return student.name?.toLowerCase().includes(searchLower) ||
+                     student.enrollment_no?.toLowerCase().includes(searchLower) ||
+                     student.email?.toLowerCase().includes(searchLower);
+            } else if (faculty) {
+              return faculty.name?.toLowerCase().includes(searchLower) ||
+                     faculty.employee_id?.toLowerCase().includes(searchLower) ||
+                     faculty.email?.toLowerCase().includes(searchLower);
+            }
+            return false;
+          });
+        } else {
+          // Individual registration search - search by full name
+          const student = participant.student;
+          const faculty = participant.faculty;
+          
+          if (student) {
+            return student.name?.toLowerCase().includes(searchLower) ||
+                   student.full_name?.toLowerCase().includes(searchLower) ||
+                   student.enrollment_no?.toLowerCase().includes(searchLower) ||
+                   student.email?.toLowerCase().includes(searchLower);
+          } else if (faculty) {
+            return faculty.name?.toLowerCase().includes(searchLower) ||
+                   faculty.full_name?.toLowerCase().includes(searchLower) ||
+                   faculty.employee_id?.toLowerCase().includes(searchLower) ||
+                   faculty.email?.toLowerCase().includes(searchLower);
+          }
+          return false;
         }
-        return false;
       });
     }
     
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(participant => {
-        const attendance = participant.attendance || {};
-        return attendance.status === statusFilter;
+        // For team registrations, check if any team member has the specified status
+        if (participant.registration_type === 'team' && participant.team_members) {
+          return participant.team_members.some(member => {
+            const attendance = member.attendance || {};
+            return attendance.status === statusFilter;
+          });
+        } else {
+          // Individual registration status check
+          const attendance = participant.attendance || {};
+          return attendance.status === statusFilter;
+        }
       });
     }
     
     setFilteredParticipants(filtered);
   };
 
-  const markAttendance = async (registrationId, attendanceType, sessionId = null) => {
+  const markAttendance = async (registrationId, attendanceType, sessionId = null, memberIndex = null) => {
     try {
       const attendanceData = {
         registration_id: registrationId,
         attendance_type: attendanceType,
         session_id: sessionId,
+        member_index: memberIndex, // For team-based marking individual members
         notes: `Marked via unified portal`
       };
       
@@ -135,7 +180,7 @@ const UnifiedAttendancePortal = () => {
         showNotification('Failed to mark attendance', 'error');
       }
     } catch (err) {
-      console.error('Error marking attendance:', err);
+      
       showNotification('Error marking attendance', 'error');
     }
   };
@@ -145,12 +190,64 @@ const UnifiedAttendancePortal = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const generateScannerToken = async (expiresInHours = 24) => {
+  // Generate search suggestions based on participants
+  const getSearchSuggestions = () => {
+    const suggestions = [];
+    
+    participants.forEach(participant => {
+      if (participant.registration_type === 'team' && participant.team_members) {
+        // Add team name
+        if (participant.team?.team_name) {
+          suggestions.push(participant.team.team_name);
+        }
+        
+        // Add team member names
+        participant.team_members.forEach(member => {
+          const profile = member.student || member.faculty;
+          if (profile?.full_name) {
+            suggestions.push(profile.full_name);
+          } else if (profile?.name) {
+            suggestions.push(profile.name);
+          }
+        });
+      } else {
+        // Individual registration
+        const profile = participant.student || participant.faculty;
+        if (profile?.full_name) {
+          suggestions.push(profile.full_name);
+        } else if (profile?.name) {
+          suggestions.push(profile.name);
+        }
+      }
+    });
+    
+    // Remove duplicates and sort
+    return [...new Set(suggestions)].sort();
+  };
+
+  const toggleTeamExpansion = (teamId) => {
+    setExpandedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamId)) {
+        newSet.delete(teamId);
+      } else {
+        newSet.add(teamId);
+      }
+      return newSet;
+    });
+  };
+
+  const generateScannerToken = async (sessionId = null, expiresInHours = null) => {
     try {
       setTokenLoading(true);
       setTokenError('');
       
-      const response = await adminAPI.generateScannerToken(eventId, expiresInHours);
+      // Build the request parameters
+      const params = new URLSearchParams();
+      if (sessionId) params.append('session_id', sessionId);
+      if (expiresInHours) params.append('expires_in_hours', expiresInHours.toString());
+      
+      const response = await adminAPI.generateScannerToken(eventId, params.toString());
       
       if (response.data.success) {
         setScannerToken(response.data.data);
@@ -159,7 +256,7 @@ const UnifiedAttendancePortal = () => {
         setTokenError('Failed to generate scanner token');
       }
     } catch (err) {
-      console.error('Error generating scanner token:', err);
+      
       setTokenError('Error generating scanner token');
     } finally {
       setTokenLoading(false);
@@ -171,7 +268,7 @@ const UnifiedAttendancePortal = () => {
       await navigator.clipboard.writeText(text);
       showNotification('Copied to clipboard!', 'success');
     } catch (err) {
-      console.error('Failed to copy:', err);
+      
       showNotification('Failed to copy to clipboard', 'error');
     }
   };
@@ -264,99 +361,277 @@ const UnifiedAttendancePortal = () => {
 
     return (
       <div className="space-y-4">
-        {filteredParticipants.map((participant) => {
-          const attendance = participant.attendance || {};
-          const isStudent = participant.participant_type === 'student';
-          const profile = isStudent ? participant.student : participant.faculty;
-          const team = participant.team;
+        {filteredParticipants.map((participant, index) => {
+          const isTeamRegistration = participant.registration_type === 'team';
+          
+          if (isTeamRegistration && participant.team_members) {
+            // Team-based registration - render expandable team card
+            const team = participant.team || {};
+            const teamMembers = participant.team_members || [];
+            const teamId = `team-${participant.registration_id}`;
+            const isExpanded = expandedTeams.has(teamId);
+            
+            return (
+              <div key={participant.registration_id} className="bg-white rounded-lg shadow border border-gray-200">
+                {/* Team Header */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-blue-500" />
+                          <span className="font-semibold text-lg text-gray-900">
+                            {team.team_name || 'Unnamed Team'}
+                          </span>
+                          <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                            Team Registration
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span>Team Size: {team.team_size || teamMembers.length}</span>
+                        <span>Leader: {teamMembers.find(m => m.is_team_leader)?.student?.full_name || teamMembers.find(m => m.is_team_leader)?.student?.name || 'Unknown'}</span>
+                        <span>Status: {team.status || 'active'}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="text-sm">
+                          Team Status: <span className="font-medium text-green-600">
+                            {team.status || 'registered'}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          Members: <span className="font-medium">{teamMembers.length}</span>
+                        </div>
+                      </div>
+                    </div>
 
-          return (
-            <div key={participant.registration_id} className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(attendance.status)}
-                      <span className="font-medium">
-                        {profile.name}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        ({isStudent ? profile.enrollment_no : profile.employee_id})
-                      </span>
+                      <button
+                        onClick={() => toggleTeamExpansion(teamId)}
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            Hide Members
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            Show Members
+                          </>
+                        )}
+                      </button>
                     </div>
-                    {team && (
-                      <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                        Team: {team.team_name}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="text-sm text-gray-600 mt-1">
-                    {profile.email} | {isStudent ? profile.department : participant.faculty.designation}
-                  </div>
-                  
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="text-sm">
-                      Status: <span className={`font-medium ${
-                        attendance.status === 'present' ? 'text-green-600' :
-                        attendance.status === 'absent' ? 'text-red-600' :
-                        attendance.status === 'partial' ? 'text-yellow-600' :
-                        'text-gray-600'
-                      }`}>
-                        {attendance.status || 'pending'}
-                      </span>
-                    </div>
-                    <div className="text-sm">
-                      Percentage: <span className="font-medium">{attendance.percentage || 0}%</span>
-                    </div>
-                    {attendance.sessions_attended > 0 && (
-                      <div className="text-sm">
-                        Sessions: {attendance.sessions_attended}/{attendance.total_sessions}
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  {config?.attendance_strategy === 'single_mark' ? (
-                    <>
-                      <button
-                        onClick={() => markAttendance(participant.registration_id, 'present')}
-                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                        disabled={attendance.status === 'present'}
-                      >
-                        Present
-                      </button>
-                      <button
-                        onClick={() => markAttendance(participant.registration_id, 'absent')}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                        disabled={attendance.status === 'absent'}
-                      >
-                        Absent
-                      </button>
-                    </>
-                  ) : (
-                    selectedSession && (
+                {/* Team Members - Expandable */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 bg-gray-50">
+                    <div className="p-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">
+                        Team Members ({teamMembers.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {teamMembers.map((member, memberIndex) => {
+                          const memberAttendance = member.attendance || {};
+                          const isStudent = member.student;
+                          const profile = isStudent ? member.student : member.faculty;
+                          
+                          return (
+                            <div key={member.registration_id} className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-1">
+                                    <div className="flex items-center gap-2">
+                                      {getStatusIcon(memberAttendance.status)}
+                                      <span className="font-medium text-gray-900">
+                                        {profile?.full_name || profile?.name || 'Unknown Name'}
+                                      </span>
+                                      <span className="text-sm text-gray-500">
+                                        ({profile?.enrollment_no || profile?.employee_id || 'No ID'})
+                                      </span>
+                                      {member.is_team_leader && (
+                                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                          Leader
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="text-sm text-gray-600 mb-2">
+                                    {profile?.email} | {profile?.department || 'No Department'}
+                                    {isStudent && profile?.semester && ` | Semester ${profile.semester}`}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4 text-sm">
+                                    <div>
+                                      Status: <span className={`font-medium ${
+                                        memberAttendance.status === 'present' ? 'text-green-600' :
+                                        memberAttendance.status === 'absent' ? 'text-red-600' :
+                                        memberAttendance.status === 'partial' ? 'text-yellow-600' :
+                                        'text-gray-600'
+                                      }`}>
+                                        {memberAttendance.status || 'pending'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      Percentage: <span className="font-medium">{memberAttendance.percentage || 0}%</span>
+                                    </div>
+                                    {memberAttendance.sessions_attended > 0 && (
+                                      <div>
+                                        Sessions: {memberAttendance.sessions_attended}/{memberAttendance.total_sessions}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Attendance Marking Buttons for Team Members */}
+                                <div className="flex gap-2">
+                                  {config?.attendance_strategy === 'single_mark' ? (
+                                    <>
+                                      <button
+                                        onClick={() => markAttendance(member.registration_id, 'present', null, memberIndex)}
+                                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
+                                        disabled={memberAttendance.status === 'present'}
+                                      >
+                                        Present
+                                      </button>
+                                      <button
+                                        onClick={() => markAttendance(member.registration_id, 'absent', null, memberIndex)}
+                                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 disabled:opacity-50"
+                                        disabled={memberAttendance.status === 'absent'}
+                                      >
+                                        Absent
+                                      </button>
+                                    </>
+                                  ) : (
+                                    selectedSession && (
+                                      <>
+                                        <button
+                                          onClick={() => markAttendance(member.registration_id, 'present', selectedSession, memberIndex)}
+                                          className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                        >
+                                          Mark Present
+                                        </button>
+                                        <button
+                                          onClick={() => markAttendance(member.registration_id, 'absent', selectedSession, memberIndex)}
+                                          className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                                        >
+                                          Mark Absent
+                                        </button>
+                                      </>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          } else {
+            // Individual registration - render normal participant card
+            const attendance = participant.attendance || {};
+            const isStudent = participant.participant_type === 'student';
+            const profile = isStudent ? participant.student : participant.faculty;
+            const team = participant.team;
+
+            return (
+              <div key={participant.registration_id} className="bg-white rounded-lg shadow p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(attendance.status)}
+                        <span className="font-medium">
+                          {profile?.full_name || profile?.name || 'Unknown Name'}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          ({isStudent ? profile?.enrollment_no : profile?.employee_id || 'No ID'})
+                        </span>
+                      </div>
+                      {team && (
+                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                          Team: {team.team_name}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-sm text-gray-600 mt-1">
+                      {profile?.email || 'No Email'} | {isStudent ? profile?.department : participant.faculty?.designation || 'No Department'}
+                    </div>
+                    
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="text-sm">
+                        Status: <span className={`font-medium ${
+                          attendance.status === 'present' ? 'text-green-600' :
+                          attendance.status === 'absent' ? 'text-red-600' :
+                          attendance.status === 'partial' ? 'text-yellow-600' :
+                          'text-gray-600'
+                        }`}>
+                          {attendance.status || 'pending'}
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        Percentage: <span className="font-medium">{attendance.percentage || 0}%</span>
+                      </div>
+                      {attendance.sessions_attended > 0 && (
+                        <div className="text-sm">
+                          Sessions: {attendance.sessions_attended}/{attendance.total_sessions}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {config?.attendance_strategy === 'single_mark' ? (
                       <>
                         <button
-                          onClick={() => markAttendance(participant.registration_id, 'present', selectedSession)}
+                          onClick={() => markAttendance(participant.registration_id, 'present')}
                           className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                          disabled={attendance.status === 'present'}
                         >
-                          Mark Present
+                          Present
                         </button>
                         <button
-                          onClick={() => markAttendance(participant.registration_id, 'absent', selectedSession)}
+                          onClick={() => markAttendance(participant.registration_id, 'absent')}
                           className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                          disabled={attendance.status === 'absent'}
                         >
-                          Mark Absent
+                          Absent
                         </button>
                       </>
-                    )
-                  )}
+                    ) : (
+                      selectedSession && (
+                        <>
+                          <button
+                            onClick={() => markAttendance(participant.registration_id, 'present', selectedSession)}
+                            className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                          >
+                            Mark Present
+                          </button>
+                          <button
+                            onClick={() => markAttendance(participant.registration_id, 'absent', selectedSession)}
+                            className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                          >
+                            Mark Absent
+                          </button>
+                        </>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
+            );
+          }
         })}
       </div>
     );
@@ -476,31 +751,51 @@ const UnifiedAttendancePortal = () => {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Search & Filter</h3>
+            <p className="text-sm text-gray-600">
+              Search by team names, individual member names, enrollment numbers, or email addresses. 
+              Filter by attendance status to quickly find specific groups.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-64">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search participants..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+              <SearchBox
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Search participants, teams, or members..."
+                searchIcon={true}
+                clearIcon={true}
+                size="lg"
+                variant="default"
+                className="w-full"
+                aria-label="Search participants"
+                showResultCount={true}
+                resultCount={filteredParticipants.length}
+                suggestions={getSearchSuggestions()}
+                showSuggestions={true}
+                debounceMs={300}
+              />
             </div>
             
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="present">Present</option>
-              <option value="absent">Absent</option>
-              <option value="partial">Partial</option>
-            </select>
+            <div className="min-w-48">
+              <Dropdown
+                value={statusFilter}
+                onChange={setStatusFilter}
+                placeholder="All Status"
+                size="md"
+                variant="default"
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'present', label: 'Present' },
+                  { value: 'absent', label: 'Absent' },
+                  { value: 'partial', label: 'Partial' }
+                ]}
+                icon={<i className="fas fa-filter text-sm"></i>}
+                clearable={false}
+              />
+            </div>
           </div>
         </div>
 
@@ -533,6 +828,7 @@ const UnifiedAttendancePortal = () => {
             setShowScannerModal(false);
             setScannerToken(null);
             setTokenError('');
+            setSelectedSessionForToken('');
           }}
           title="Generate QR Scanner Link"
           size="lg"
@@ -553,27 +849,52 @@ const UnifiedAttendancePortal = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Token Expiration
-                  </label>
-                  <select 
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) => {
-                      // Store selected value for when generating token
-                      e.target.dataset.selectedHours = e.target.value;
-                    }}
-                    defaultValue="24"
-                  >
-                    <option value="1">1 Hour</option>
-                    <option value="6">6 Hours</option>
-                    <option value="12">12 Hours</option>
-                    <option value="24">24 Hours (Recommended)</option>
-                    <option value="48">48 Hours</option>
-                    <option value="72">72 Hours</option>
-                    <option value="168">1 Week</option>
-                  </select>
-                </div>
+                {/* Session Selection for session-based events */}
+                {config?.attendance_strategy && ['session_based', 'day_based', 'milestone_based'].includes(config.attendance_strategy) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Session/Day/Milestone
+                    </label>
+                    <select 
+                      value={selectedSessionForToken}
+                      onChange={(e) => setSelectedSessionForToken(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Use manual expiration time</option>
+                      {config.attendance_config?.sessions?.map((session) => (
+                        <option key={session.session_id} value={session.session_id}>
+                          {session.session_name || session.session_id}
+                          {session.start_time && ` (${new Date(session.start_time).toLocaleString()} - ${new Date(session.end_time).toLocaleString()})`}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      If you select a session, the token will automatically expire 1 hour after the session ends.
+                    </p>
+                  </div>
+                )}
+
+                {/* Manual expiration - only show when no session is selected */}
+                {(!selectedSessionForToken) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Manual Token Expiration
+                    </label>
+                    <select 
+                      id="hours-select"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      defaultValue="24"
+                    >
+                      <option value="1">1 Hour</option>
+                      <option value="6">6 Hours</option>
+                      <option value="12">12 Hours</option>
+                      <option value="24">24 Hours (Recommended)</option>
+                      <option value="48">48 Hours</option>
+                      <option value="72">72 Hours</option>
+                      <option value="168">1 Week</option>
+                    </select>
+                  </div>
+                )}
 
                 {tokenError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -586,9 +907,10 @@ const UnifiedAttendancePortal = () => {
 
                 <button
                   onClick={() => {
-                    const select = document.querySelector('select[data-selected-hours]');
-                    const hours = parseInt(select?.value || '24');
-                    generateScannerToken(hours);
+                    const hoursSelect = document.getElementById('hours-select');
+                    const sessionId = selectedSessionForToken || null;
+                    const hours = sessionId ? null : parseInt(hoursSelect?.value || '24');
+                    generateScannerToken(sessionId, hours);
                   }}
                   disabled={tokenLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"

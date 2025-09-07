@@ -181,7 +181,7 @@ class DropdownOptionsService {
       this.saveToStorage(importedOptions);
       return true;
     } catch (error) {
-      console.error('Failed to import options:', error);
+      
       return false;
     }
   }
@@ -197,7 +197,7 @@ class DropdownOptionsService {
       const stored = localStorage.getItem(this.storageKey);
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
-      console.error('Failed to get options from storage:', error);
+      
       return null;
     }
   }
@@ -206,7 +206,7 @@ class DropdownOptionsService {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(options));
     } catch (error) {
-      console.error('Failed to save options to storage:', error);
+      
     }
   }
 

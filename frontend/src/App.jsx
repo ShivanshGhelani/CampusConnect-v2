@@ -8,7 +8,7 @@ function App() {
     <AuthProvider>
       <ToastProvider>
         <div className="App h-full">
-          {console.log("API URL:", import.meta.env.API_URL)}
+          {console.log("API URL:", import.meta.env.VITE_API_BASE_URL)}
           <AppRoutes />
         </div>
       </ToastProvider>

@@ -37,7 +37,7 @@ const VolunteerScanner = () => {
       setInvitationData(data);
       setStep('identify');
     } catch (error) {
-      console.error('Invitation validation error:', error);
+      
       setError('This invitation link is invalid or has expired.');
       setStep('identify'); // Still show form for development
     }
@@ -66,7 +66,7 @@ const VolunteerScanner = () => {
       setStep('scanning');
       
     } catch (error) {
-      console.error('Session creation error:', error);
+      
       setError(error.message);
     } finally {
       setIsCreatingSession(false);
@@ -98,7 +98,7 @@ const VolunteerScanner = () => {
 
       setScanHistory(prev => [scanRecord, ...prev]);
     } catch (error) {
-      console.error('Failed to record attendance:', error);
+      
       
       // Still add to local history
       const scanRecord = {

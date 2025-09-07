@@ -21,7 +21,6 @@ import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
 import FeedbackPreviewClient from '../pages/test/FeedbackPreviewClient'; // Feedback Test Page
-import AttendanceShowcase from '../pages/AttendanceShowcase'; // Attendance Components Showcase
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -30,7 +29,7 @@ import TeamManagement from '../pages/client/student/Account/TeamManagement';
 import Invitations from '../pages/client/student/Account/Invitations';
 import RegistrationRouter from '../components/common/RegistrationRouter';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
-
+import QRTest from '../pages/QRTest';
 // Attendance components
 import MarkAttendance from '../pages/client/student/Attendance/MarkAttendance';
 import AttendanceSuccess from '../pages/client/student/Attendance/AttendanceSuccess';
@@ -40,7 +39,6 @@ import NotRegistered from '../pages/client/student/NotRegistered';
 // Faculty components - new organized structure
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
-
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
@@ -92,6 +90,8 @@ function AppRoutes() {
     <Router>
       <ScrollToTop />
       <Routes>
+        <Route path='/test-mode' element={<TestMode />} />
+        <Route path= '/qr-test' element={<QRTest />} />
         {/* Auth Routes - No Layout */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />

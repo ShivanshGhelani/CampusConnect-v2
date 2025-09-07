@@ -23,12 +23,13 @@ export const useQRCode = (registrationData, eventData, options = {}) => {
       setLoading(true);
       setError(null);
 
-      const qrData = qrCodeService.generateQRData(registrationData, eventData);
+      // Use the async generateQRData method that now calls backend
+      const qrData = await qrCodeService.generateQRData(registrationData, eventData);
       const qrURL = await qrCodeService.generateQRCode(qrData, options);
       
       setQrCodeDataURL(qrURL);
     } catch (err) {
-      console.error('Error generating QR code:', err);
+      
       setError(err.message || 'Failed to generate QR code');
     } finally {
       setLoading(false);
@@ -41,7 +42,7 @@ export const useQRCode = (registrationData, eventData, options = {}) => {
       const filename = qrCodeService.generateFilename(registrationData, eventData);
       qrCodeService.downloadQRCode(highResQR, filename);
     } catch (err) {
-      console.error('Error downloading QR code:', err);
+      
       throw err;
     }
   }, [registrationData, eventData]);
@@ -97,12 +98,13 @@ export const usePreviewQRCode = (formData, eventData, tempRegistrationId) => {
         team_members: formData.participants || []
       };
 
-      const qrData = qrCodeService.generateQRData(mockRegistrationData, eventData);
+      // Use the async generateQRData method for preview as well
+      const qrData = await qrCodeService.generateQRData(mockRegistrationData, eventData);
       const qrURL = await qrCodeService.generateQRCode(qrData, { width: 200 });
       
       setPreviewQR(qrURL);
     } catch (err) {
-      console.error('Error generating preview QR:', err);
+      
     } finally {
       setLoading(false);
     }

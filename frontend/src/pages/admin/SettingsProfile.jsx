@@ -76,7 +76,7 @@ function SettingsProfile() {
         }));
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
+      
       setError('Failed to load profile data');
     } finally {
       setProfileLoading(false);
@@ -108,7 +108,7 @@ function SettingsProfile() {
         setError(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Profile update error:', error);
+      
       setError('An error occurred while updating profile');
     } finally {
       setIsLoading(false);
@@ -142,7 +142,7 @@ function SettingsProfile() {
         setError(response.data.message || 'Failed to change password');
       }
     } catch (error) {
-      console.error('Password change error:', error);
+      
       setError('An error occurred while changing password');
     } finally {
       setIsLoading(false);
@@ -174,7 +174,7 @@ function SettingsProfile() {
         setError(response.data.message || 'Failed to change username');
       }
     } catch (error) {
-      console.error('Username change error:', error);
+      
       setError('An error occurred while changing username');
     } finally {
       setIsLoading(false);

@@ -84,7 +84,7 @@ function ForgotPasswordPage() {
         faculty_email: '',
       });
     } catch (error) {
-      console.error('Forgot password error:', error);
+      
       setError(error.response?.data?.detail || 'Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);

@@ -107,7 +107,7 @@ const EditModal = ({ template, isOpen, onClose, onUpdate, availableCategories })
         throw new Error(response.data.message || 'Update failed');
       }
     } catch (error) {
-      console.error('Update error:', error);
+      
       setError(error.response?.data?.message || error.message || 'Failed to update template');
     } finally {
       setIsLoading(false);

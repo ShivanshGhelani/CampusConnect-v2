@@ -34,7 +34,7 @@ class InvitationScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error creating invitation link:', error);
+      
       
       // Development fallback
       const invitationCode = Math.random().toString(36).substring(2, 10);
@@ -65,7 +65,7 @@ class InvitationScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error getting invitation:', error);
+      
       return null;
     }
   }
@@ -85,7 +85,7 @@ class InvitationScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Invitation validation error:', error);
+      
       
       // Development fallback
       if (process.env.NODE_ENV === 'development') {
@@ -138,7 +138,7 @@ class InvitationScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Join volunteer error:', error);
+      
       
       // Development fallback
       if (process.env.NODE_ENV === 'development') {
@@ -201,7 +201,7 @@ class InvitationScannerService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error recording attendance:', error);
+      
       
       // Development fallback - mock success
       if (process.env.NODE_ENV === 'development') {
@@ -236,7 +236,7 @@ class InvitationScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error getting volunteer stats:', error);
+      
       
       // Development fallback
       return {
@@ -317,7 +317,7 @@ Thanks for volunteering! 🙏`;
       
       return session;
     } catch (error) {
-      console.error('Error getting stored session:', error);
+      
       return null;
     }
   }
@@ -331,7 +331,7 @@ Thanks for volunteering! 🙏`;
     try {
       localStorage.setItem(`scanner_session_${invitationCode}`, JSON.stringify(sessionData));
     } catch (error) {
-      console.error('Error storing session:', error);
+      
     }
   }
 
@@ -343,7 +343,7 @@ Thanks for volunteering! 🙏`;
     try {
       localStorage.removeItem(`scanner_session_${invitationCode}`);
     } catch (error) {
-      console.error('Error clearing session:', error);
+      
     }
   }
 }

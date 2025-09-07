@@ -30,7 +30,7 @@ const QRCodeModal = ({ isOpen, onClose, registrationData }) => {
       );
       setQRCodeURL(qrURL);
     } catch (err) {
-      console.error('Error generating QR code:', err);
+      
       setError('Failed to generate QR code. Please try again.');
     } finally {
       setIsLoading(false);

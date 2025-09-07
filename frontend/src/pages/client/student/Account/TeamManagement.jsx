@@ -118,7 +118,7 @@ const TeamManagement = () => {
         setError(response.data.message || 'Failed to load team registration data.');
       }
     } catch (error) {
-      console.error('Team fetch error:', error);
+      
       setError('Failed to load team details. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -263,7 +263,7 @@ const TeamManagement = () => {
 
       setTeamStatus(status);
     } catch (error) {
-      console.error('Failed to fetch participation status:', error);
+      
     }
   };
 
@@ -314,7 +314,7 @@ const TeamManagement = () => {
         setEnrollmentError(response.data.message || 'Student not found');
       }
     } catch (error) {
-      console.error('Validation error:', error);
+      
       setEnrollmentError('Unable to validate enrollment number');
     } finally {
       setValidatingStudent(false);
@@ -350,7 +350,7 @@ const TeamManagement = () => {
         setError(response.data.message || 'Failed to add team member');
       }
     } catch (error) {
-      console.error('Add participant error:', error);
+      
       setError('Failed to add team member. Please try again.');
     }
   };
@@ -383,7 +383,7 @@ const TeamManagement = () => {
         setError(response.data.message || 'Failed to remove team member');
       }
     } catch (error) {
-      console.error('Remove participant error:', error);
+      
       setError('Failed to remove team member. Please try again.');
     }
   };
@@ -406,7 +406,7 @@ const TeamManagement = () => {
         setShowCancelModal(false);
       }
     } catch (error) {
-      console.error('Cancel registration error:', error);
+      
       setError('Failed to cancel registration. Please try again.');
       setShowCancelModal(false);
     } finally {
@@ -466,7 +466,7 @@ const TeamManagement = () => {
 
       setShowExportDropdown(false);
     } catch (error) {
-      console.error('Export failed:', error);
+      
       showNotification('Export failed: ' + error.message, 'error');
     }
   };
@@ -764,10 +764,10 @@ const TeamManagement = () => {
           const tasksMap = {};
           const allTasks = tasksResponse.data.tasks || [];
           
-          console.log('TeamManagement: Loaded tasks from API:', allTasks);
+          
           
           allTasks.forEach(task => {
-            console.log('TeamManagement: Processing task:', task.task_id, task);
+            
             
             task.assigned_to.forEach(enrollment => {
               if (!tasksMap[enrollment]) {
@@ -800,7 +800,7 @@ const TeamManagement = () => {
           });
           setMemberTasks(tasksMap);
           
-          console.log('TeamManagement: Final tasks map:', tasksMap);
+          
         } else {
           // Use data from teamRegistration as fallback
           if (teamRegistration.tasks) {
@@ -818,7 +818,7 @@ const TeamManagement = () => {
         }
       }
     } catch (error) {
-      console.error('Error in loadTeamRolesAndTasks:', error);
+      
       
       // Fallback to existing data in teamRegistration if API fails
       if (teamRegistration.team_roles && Object.keys(memberRoles).length === 0) {
@@ -903,12 +903,12 @@ const TeamManagement = () => {
   const submitTaskReview = async () => {
     if (!reviewingTask) return;
 
-    console.log('TeamManagement: Reviewing task object:', reviewingTask);
-    console.log('TeamManagement: Review status selected:', reviewStatus);
-    console.log('TeamManagement: Review notes provided:', reviewNotes);
+    
+    
+    
     
     const taskId = reviewingTask.task_id || reviewingTask.id;
-    console.log('TeamManagement: Task ID for review:', taskId);
+    
 
     if (!taskId) {
       showNotification('Error: Task ID is missing. Cannot submit review.', 'error');
@@ -921,7 +921,7 @@ const TeamManagement = () => {
       review_notes: reviewNotes || ""
     };
     
-    console.log('TeamManagement: Review data being sent:', reviewData);
+    
     
     // Basic validation
     if (!reviewData.review_status) {
@@ -945,7 +945,7 @@ const TeamManagement = () => {
     try {
       const response = await clientAPI.reviewTask(eventId, taskId, reviewData);
       
-      console.log('TeamManagement: Task review response:', response);
+      
       
       if (response.data && response.data.success) {
         // Show success notification based on review status
@@ -969,7 +969,7 @@ const TeamManagement = () => {
       }
       
     } catch (error) {
-      console.error('TeamManagement: Error reviewing task:', error);
+      
       console.error('TeamManagement: Error details:', {
         message: error.message,
         response: error.response?.data,
@@ -1009,14 +1009,14 @@ const TeamManagement = () => {
         review_notes: notes
       });
       
-      console.log('TeamManagement: Quick task review response:', response);
+      
       
       // Refresh team data to reflect changes
       await loadTeamRolesAndTasks();
       showNotification(`Task ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'needs revision'}!`, 'success');
       
     } catch (error) {
-      console.error('TeamManagement: Error quick reviewing task:', error);
+      
       showNotification(`Failed to review task: ${error.message}`, 'error');
     } finally {
       setReviewLoading(false);
@@ -1081,8 +1081,8 @@ const TeamManagement = () => {
     }
     
     // Debug log to see what data we're working with
-    console.log('🔍 Team members for modal:', allMembers);
-    console.log('🔍 Original team registration:', teamRegistration);
+    
+    
     
     return allMembers;
   };
@@ -1138,7 +1138,7 @@ const TeamManagement = () => {
         }
       }
     } catch (error) {
-      console.error('Add member error:', error);
+      
       setError('Failed to add team member. Please try again.');
       setShowConfirmModal(false);
       setShowAddModal(true);
@@ -1177,7 +1177,7 @@ const TeamManagement = () => {
         setShowRemoveModal(false);
       }
     } catch (error) {
-      console.error('Remove member error:', error);
+      
       setError('Failed to remove team member. Please try again.');
       setShowRemoveModal(false);
     } finally {

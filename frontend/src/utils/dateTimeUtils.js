@@ -109,7 +109,7 @@ export function formatForDisplay(dt, formatStr = "YYYY-MM-DD HH:mm:ss") {
       .replace('mm', minutes)
       .replace('ss', seconds);
   } catch (error) {
-    console.error('Error formatting datetime:', error);
+    
     return typeof dt === 'string' ? dt : dt.toString();
   }
 }
@@ -140,7 +140,7 @@ export function formatForFrontend(dt) {
     
     return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
   } catch (error) {
-    console.error('Error formatting for frontend:', error);
+    
     return 'Invalid Date';
   }
 }
@@ -239,7 +239,7 @@ export function calculateEventStatus(event, currentTime = getCurrentUtc()) {
       return { status: EventMainStatus.DRAFT, subStatus: EventSubStatus.PENDING_APPROVAL };
     }
   } catch (error) {
-    console.error('Error calculating event status:', error);
+    
     return { status: EventMainStatus.DRAFT, subStatus: EventSubStatus.PENDING_APPROVAL };
   }
 }
@@ -313,7 +313,7 @@ export function calculateTimeRemaining(targetDateTime, currentTime = getCurrentU
       isExpired: false
     };
   } catch (error) {
-    console.error('Error calculating time remaining:', error);
+    
     return { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, isExpired: true };
   }
 }
@@ -478,7 +478,7 @@ export function calculateRegistrationProgress(event, currentTime = getCurrentUtc
     
     return Math.round((elapsed / totalDuration) * 100);
   } catch (error) {
-    console.error('Error calculating registration progress:', error);
+    
     return -1;
   }
 }
@@ -534,7 +534,7 @@ export function createCountdownTimer(targetDateTime, onUpdate, onExpire) {
   const target = typeof targetDateTime === 'string' ? new Date(targetDateTime) : targetDateTime;
   
   if (isNaN(target)) {
-    console.error('Invalid target datetime for countdown');
+    
     return () => {};
   }
   

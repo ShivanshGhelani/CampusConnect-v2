@@ -18,7 +18,7 @@ function StudentCard({ student, isOpen, onClose }) {
   useEffect(() => {
     if (isOpen && student) {
       // Debug log to see what data we receive
-      console.log('Student data received:', student);
+      
       
       // Directly use the student data passed from the table
       setStudentDetails(student);
@@ -97,7 +97,7 @@ function StudentCard({ student, isOpen, onClose }) {
         setError('Failed to delete student account');
       }
     } catch (error) {
-      console.error('Error deleting student account:', error);
+      
       setError('Failed to delete student account. Please try again.');
     } finally {
       setIsDeleting(false);

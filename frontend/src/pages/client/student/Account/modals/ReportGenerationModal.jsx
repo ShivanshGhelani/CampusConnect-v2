@@ -187,7 +187,7 @@ const ReportGenerationModal = ({ eventId, teamId, teamData = {}, onClose, onSucc
       }
     } catch (error) {
       clearInterval(progressInterval);
-      console.error('Error generating report:', error);
+      
       setError('Network error occurred. Please try again.');
       setGenerationProgress(0);
     } finally {

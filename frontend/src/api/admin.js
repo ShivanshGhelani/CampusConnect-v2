@@ -29,6 +29,11 @@ export const adminAPI = {
   }),
   getEventParticipants: (eventId, filters) => api.get(`/api/v1/admin/participation/event/${eventId}/participants`, { params: filters }),
   
+  // Unified participants method for cache compatibility
+  getParticipants: (eventId, filters = {}) => api.get('/api/v1/admin/participation/participants', { 
+    params: { event_id: eventId, ...filters } 
+  }),
+  
   // Event Approval Management
   approveEvent: async (eventId) => {
     const response = await api.post(`/api/v1/admin/events/approve/${eventId}`);
@@ -42,18 +47,18 @@ export const adminAPI = {
           // Use the event data directly from approval response
           const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
           handleEventApproval(eventId, eventData);
-          console.log('✅ Client scheduler updated with approved event data:', eventId);
+          
         } else {
           // Fallback: fetch event data separately
           const eventResponse = await adminAPI.getEvent(eventId);
           if (eventResponse.data.success) {
             const { handleEventApproval } = await import('../utils/eventSchedulerUtils.js');
             handleEventApproval(eventId, eventResponse.data.event);
-            console.log('✅ Client scheduler updated after fetching event data:', eventId);
+            
           }
         }
       } catch (error) {
-        console.warn('Failed to update client scheduler after approval:', error);
+        
       }
     }
     
@@ -69,7 +74,7 @@ export const adminAPI = {
         const { handleEventDecline } = await import('../utils/eventSchedulerUtils.js');
         handleEventDecline(eventId);
       } catch (error) {
-        console.warn('Failed to update client scheduler after decline:', error);
+        
       }
     }
     
@@ -153,7 +158,7 @@ export const adminAPI = {
       try {
         return await fetchActiveVenuesForSelection(api);
       } catch (error) {
-        console.error('Cache failed, fallback to API:', error);
+        
         return api.get('/api/v1/admin/venues/', { params: filters });
       }
     } else if (isManagementCall && !filters.search && !filters.venue_type) {
@@ -161,7 +166,7 @@ export const adminAPI = {
       try {
         return await fetchAllVenuesForManagement(api);
       } catch (error) {
-        console.error('Cache failed, fallback to API:', error);
+        
         return api.get('/api/v1/admin/venues/', { params: filters });
       }
     }
@@ -180,7 +185,7 @@ export const adminAPI = {
       }
       return response;
     } catch (error) {
-      console.error('Create venue failed:', error);
+      
       throw error;
     }
   },
@@ -193,7 +198,7 @@ export const adminAPI = {
       }
       return response;
     } catch (error) {
-      console.error('Update venue failed:', error);
+      
       throw error;
     }
   },
@@ -205,7 +210,7 @@ export const adminAPI = {
       updateVenueCacheAfterOperation(venueId, action);
       return response;
     } catch (error) {
-      console.error(`Venue ${action} failed:`, error);
+      
       throw error;
     }
   },
@@ -266,12 +271,13 @@ export const adminAPI = {
   getAttendanceConfigAndParticipants: (eventId) => api.get(`/api/v1/attendance/config/${eventId}`),
   markAttendance: (attendanceData) => api.post('/api/v1/attendance/mark', attendanceData),
   getAttendanceAnalytics: (eventId) => api.get(`/api/v1/attendance/analytics/${eventId}`),
+  
+  // Alias for cache compatibility
+  getAttendanceStatistics: (eventId) => api.get(`/api/v1/attendance/analytics/${eventId}`),
 
   // QR SCANNER TOKEN MANAGEMENT
-  generateScannerToken: (eventId, expiresInHours = 24) => 
-    api.post(`/api/v1/attendance/generate-scanner-token/${eventId}`, null, {
-      params: { expires_in_hours: expiresInHours }
-    }),
+  generateScannerToken: (eventId, queryParams = '') => 
+    api.post(`/api/v1/attendance/generate-scanner-token/${eventId}${queryParams ? '?' + queryParams : ''}`),
 
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints

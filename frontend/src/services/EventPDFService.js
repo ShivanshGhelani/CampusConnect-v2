@@ -22,7 +22,7 @@ export class EventPDFService {
       this.templateCache.set('event_form', template);
       return template;
     } catch (error) {
-      console.error('Error loading PDF template:', error);
+      
       throw error;
     }
   }
@@ -602,7 +602,7 @@ export class EventPDFService {
 
       return html;
     } catch (error) {
-      console.error('Error generating PDF HTML:', error);
+      
       throw error;
     }
   }
@@ -637,7 +637,7 @@ export class EventPDFService {
         newWindow.print();
       }
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      
       throw error;
     }
   }

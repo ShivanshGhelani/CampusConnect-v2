@@ -19,13 +19,13 @@ function EventDetail() {
   useEffect(() => {
     // Only fetch if eventId exists and is different from current event
     if (eventId && (!event || event.event_id !== eventId)) {
-      console.log('🎯 EventDetail: Fetching details for event:', eventId);
+      
       fetchEventDetails();
       // Reset state when eventId changes
       setFeedbackSubmitted(false);
       setAttendanceMarked(false);
     } else if (event && event.event_id === eventId) {
-      console.log('🎯 EventDetail: Event already loaded, skipping fetch');
+      
       setIsLoading(false);
     }
   }, [eventId]); // Only depend on eventId
@@ -36,24 +36,24 @@ function EventDetail() {
       setError('');
 
       // OPTIMIZED: Check for immediate cache hit first
-      console.log('🎯 EventDetail: Checking cache for event:', eventId);
+      
       let eventData = getAnyEventCache(eventId);
       
       if (!eventData) {
-        console.log('🎯 EventDetail: No cache found, fetching with cache system...');
+        
         // OPTIMIZED: Use global cache to prevent duplicate API calls
         eventData = await fetchEventWithCache(eventId, clientAPI);
       } else {
-        console.log('🎯 EventDetail: Using immediate cache hit!');
+        
       }
 
       if (eventData && eventData.success) {
         setEvent(eventData.event);
 
         // Debug: Log the event data to console to check organizers and contacts
-        console.log('Event data received:', eventData.event);
-        console.log('Organizers:', eventData.event.organizers);
-        console.log('Contacts:', eventData.event.contacts);
+        
+        
+        
 
         // Check registration status if user is authenticated
         if (isAuthenticated) {
@@ -64,7 +64,7 @@ function EventDetail() {
         setError('Failed to load event details');
       }
     } catch (error) {
-      console.error('Event details fetch error:', error);
+      
       setError('Failed to load event details. Please try again later.');
     } finally {
       setIsLoading(false);

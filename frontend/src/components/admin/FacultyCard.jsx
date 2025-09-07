@@ -37,7 +37,7 @@ function FacultyCard({ faculty, isOpen, onClose }) {
             setFacultyDetails(faculty);
           }
         } catch (apiError) {
-          console.log('API call failed, using passed faculty data:', apiError);
+          
           // Fallback to the faculty data passed in
           setFacultyDetails(faculty);
         }
@@ -46,7 +46,7 @@ function FacultyCard({ faculty, isOpen, onClose }) {
         setFacultyDetails(faculty);
       }
     } catch (error) {
-      console.error('Error fetching faculty details:', error);
+      
       setError('Failed to load faculty details');
       // Fallback to the faculty data passed in
       setFacultyDetails(faculty);
@@ -112,7 +112,7 @@ function FacultyCard({ faculty, isOpen, onClose }) {
         setError('Failed to delete faculty account');
       }
     } catch (error) {
-      console.error('Error deleting faculty account:', error);
+      
       setError('Failed to delete faculty account. Please try again.');
     } finally {
       setIsDeleting(false);

@@ -35,7 +35,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Debug loading state changes
   useEffect(() => {
-    console.log('📊 Loading state changed to:', loading);
+    
   }, [loading]);
 
   // Form data state
@@ -163,48 +163,48 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       });
       
       if (!user || !user.enrollment_no || !eventId || dataLoadingRef.current) {
-        console.log('⚠️ Skipping data load due to missing conditions');
+        
         return;
       }
       
       dataLoadingRef.current = true;
-      console.log('🚀 Loading registration data using cached profile and event...');
+      
       
       try {
         // Step 1: Get cached profile data (should already be loaded from login)
-        console.log('✅ Using cached profile data (no API call needed)');
+        
         const cachedProfile = getAnyCache('student');
         let profileData = user; // fallback to AuthContext user
         
         if (cachedProfile?.profile) {
-          console.log('📋 Found complete cached profile data');
+          
           profileData = cachedProfile.profile;
         } else {
-          console.log('📋 Using AuthContext user data (cached profile not found)');
+          
           // Try to fetch from session storage as backup
           try {
             const sessionProfile = sessionStorage.getItem('complete_profile');
             if (sessionProfile) {
               const parsedProfile = JSON.parse(sessionProfile);
               profileData = parsedProfile;
-              console.log('📋 Using session storage profile data');
+              
             }
           } catch (e) {
-            console.warn('Could not parse session profile data');
+            
           }
         }
 
         // Step 2: Get cached event data (should already be loaded from EventDetail)
-        console.log('📋 Loading event data from cache...');
+        
         let eventData = getAnyEventCache(eventId);
         
         if (!eventData) {
-          console.log('⚠️ Event not in cache, fetching from API...');
+          
           // Fallback to API if not cached (should rarely happen)
           const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
           eventData = cachedEventData?.event || cachedEventData;
         } else {
-          console.log('✅ Using cached event data (no API call needed)');
+          
           eventData = eventData.event || eventData;
         }
         
@@ -253,7 +253,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }
 
         // Step 5: Initialize form with cached profile data (NO API CALL)
-        console.log('📝 Initializing form with cached profile data...');
+        
         
         const transformGender = (gender) => {
           if (!gender) return '';
@@ -274,12 +274,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
 
         // Only update if component is still mounted
-        console.log('🔍 Checking if component is still mounted:', mountedRef.current);
+        
         if (mountedRef.current) {
-          console.log('📝 Setting form data and clearing loading state...');
+          
           setFormData(formInitData);
           setLoading(false);
-          console.log('✅ Loading state set to false');
+          
           
           // Update year display after setting form data
           setTimeout(() => {
@@ -296,13 +296,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             initializeParticipants(minParticipants);
           }
 
-          console.log('✅ Registration form loaded successfully (using cached data - no API calls needed)');
+          
         } else {
-          console.log('❌ Component unmounted, skipping state updates');
+          
         }
 
       } catch (error) {
-        console.error('❌ Error loading registration data:', error);
+        
         if (mountedRef.current) {
           setError('Failed to load registration data. Please refresh the page.');
           setLoading(false);
@@ -478,7 +478,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     }
 
     if (!formData || !formData.participants) {
-      console.error('FormData not properly initialized');
+      
       return;
     }
 
@@ -641,7 +641,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }));
       }
     } catch (error) {
-      console.error('Error fetching student data:', error);
+      
       setFormData(prev => ({
         ...prev,
         participants: prev.participants.map(p => 
@@ -742,6 +742,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setSuccess('');
 
     try {
+      
+      
       // Frontend validation before submission
       const formValidation = validateForm(formData, {
         full_name: ['required', 'name'],
@@ -778,6 +780,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         mobile_no: formData.mobile_no.trim(),
         department: formData.department,
         semester: parseInt(formData.semester),
+        year: calculateYear(formData.semester),
         gender: formData.gender,
         date_of_birth: formData.date_of_birth,
         session_id: sessionId,
@@ -853,11 +856,17 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       let response;
       if (isTeamRegistration) {
         response = await clientAPI.registerTeam(eventId, registrationData);
+        
+        
       } else {
+        
+        
+        
+        
         response = await clientAPI.registerIndividual(eventId, registrationData);
       }
       
-      console.log('Registration API response:', response);
+      
       
       // FIXED: Handle invitation information in team registration response
       const hasInvitations = response.data.data?.pending_invitations > 0;
@@ -915,7 +924,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       }, 2000);
 
     } catch (error) {
-      console.error('Registration error:', error);
+      
       
       if (error.response?.status === 409) {
         navigate(`/client/events/${eventId}/registration-success`, {

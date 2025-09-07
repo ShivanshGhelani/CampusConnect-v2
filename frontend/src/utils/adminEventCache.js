@@ -28,7 +28,7 @@ export const clearAdminEventCache = (eventId = null, dataType = null) => {
     // Clear all
     adminEventCache = {};
   }
-  console.log('🗑️ Admin event cache cleared for:', eventId || 'all events', dataType || 'all data types');
+  
 };
 
 const getCachedData = (eventId, dataType) => {
@@ -40,14 +40,14 @@ const getCachedData = (eventId, dataType) => {
   // Check if cache is expired
   const now = Date.now();
   if ((now - cache.fetchTime) > CACHE_DURATION) {
-    console.log('📊 Admin event cache expired for:', eventId, dataType);
+    
     if (adminEventCache[eventId]) {
       delete adminEventCache[eventId][dataType];
     }
     return null;
   }
   
-  console.log('✅ Using cached admin event data for:', eventId, dataType);
+  
   return cache.data;
 };
 
@@ -62,7 +62,7 @@ const setCachedData = (eventId, dataType, data) => {
     isLoading: false,
     promise: null
   };
-  console.log('💾 Cached admin event data for:', eventId, dataType);
+  
 };
 
 // Fast cache check without validation (for immediate access)
@@ -82,14 +82,14 @@ export const getAnyAdminEventCache = (eventId, dataType) => {
   // Check if cache is expired
   const now = Date.now();
   if ((now - cache.fetchTime) > CACHE_DURATION) {
-    console.log('⏰ Admin event cache expired for:', eventId, dataType);
+    
     if (adminEventCache[eventId]) {
       delete adminEventCache[eventId][dataType];
     }
     return null;
   }
   
-  console.log('⚡ Fast admin event cache hit for:', eventId, dataType);
+  
   return cache.data;
 };
 
@@ -104,18 +104,18 @@ export const fetchAdminEventDataWithCache = async (eventId, dataType, fetchFunct
   // Check if we have recent cached data (first priority)
   const cachedData = getCachedData(eventId, dataType);
   if (cachedData) {
-    console.log('✅ Returning cached admin event data for:', eventId, dataType);
+    
     return cachedData;
   }
   
   // Check if there's already a request in progress (prevent duplicate calls)
   if (cache?.isLoading && cache.promise) {
-    console.log('⏳ Waiting for ongoing admin event request:', eventId, dataType);
+    
     try {
       const result = await cache.promise;
       return result;
     } catch (error) {
-      console.error('❌ Error in ongoing admin event request:', error);
+      
       throw error;
     }
   }
@@ -123,7 +123,7 @@ export const fetchAdminEventDataWithCache = async (eventId, dataType, fetchFunct
   // Check for rapid successive calls (more aggressive prevention)
   const now = Date.now();
   if (cache?.fetchTime && (now - cache.fetchTime) < DUPLICATE_CALL_THRESHOLD) {
-    console.log('🚫 Preventing rapid successive call for admin event:', eventId, dataType, 'Time since last:', now - cache.fetchTime, 'ms');
+    
     if (cache.data) {
       return cache.data;
     }
@@ -133,7 +133,7 @@ export const fetchAdminEventDataWithCache = async (eventId, dataType, fetchFunct
   }
   
   // Make the API call (only if no cache and no ongoing request)
-  console.log('🌐 Making fresh API call for admin event:', eventId, dataType);
+  
   
   const fetchPromise = fetchFunction().then(response => {
     if (response.data.success) {
@@ -149,7 +149,7 @@ export const fetchAdminEventDataWithCache = async (eventId, dataType, fetchFunct
     }
   }).catch(error => {
     // Reset loading state on error
-    console.error('❌ Admin event fetch failed:', error);
+    
     if (adminEventCache[eventId]?.[dataType]) {
       adminEventCache[eventId][dataType].isLoading = false;
       adminEventCache[eventId][dataType].promise = null;
@@ -203,7 +203,7 @@ export const fetchAllEventDataWithCache = async (eventId, api, options = {}) => 
     participantFilters = { limit: 5 }
   } = options;
   
-  console.log('🔄 Batch fetching admin event data for:', eventId);
+  
   
   const promises = [
     fetchEventDetailsWithCache(eventId, api)
@@ -237,12 +237,12 @@ export const invalidateEventCache = (eventId, dataType = null) => {
     // Invalidate specific data type
     if (adminEventCache[eventId]?.[dataType]) {
       delete adminEventCache[eventId][dataType];
-      console.log('♻️ Invalidated admin event cache for:', eventId, dataType);
+      
     }
   } else {
     // Invalidate all data for event
     delete adminEventCache[eventId];
-    console.log('♻️ Invalidated all admin event cache for:', eventId);
+    
   }
 };
 
@@ -275,11 +275,11 @@ export const getCacheStatus = (eventId = null) => {
 };
 
 export const preloadEventData = async (eventId, api) => {
-  console.log('🚀 Preloading admin event data for:', eventId);
+  
   try {
     await fetchAllEventDataWithCache(eventId, api);
-    console.log('✅ Preload complete for:', eventId);
+    
   } catch (error) {
-    console.error('❌ Preload failed for:', eventId, error);
+    
   }
 };

@@ -51,15 +51,15 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
         // Step 3: Load event details (for display purposes)
         const eventResponse = await clientAPI.getEventDetails(eventId);
         
-        console.log('=== REGISTRATION ROUTER API RESPONSE ===');
-        console.log('Full API response:', eventResponse);
-        console.log('Response.data structure:', eventResponse.data);
+        
+        
+        
         
         // Correctly access the event data from the API response
         const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
         
-        console.log('=== REGISTRATION ROUTER EVENT DATA ===');
-        console.log('Extracted eventData:', eventData);
+        
+        
         
         if (!eventData) {
           throw new Error('Event data not found in response');
@@ -70,7 +70,7 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
         // Step 4: Check current registration status
         try {
           const statusResponse = await clientAPI.getRegistrationStatus(eventId);
-          console.log('Registration status response in router:', statusResponse.data);
+          
           setRegistrationStatus(statusResponse.data);
           
           // If already registered, we'll redirect to the registration success page
@@ -80,7 +80,7 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
           }
         } catch (statusError) {
           // If status check fails, assume not registered
-          console.log('Registration status check failed, assuming not registered');
+          
           setRegistrationStatus({ registered: false, success: false });
         }
 
@@ -89,7 +89,7 @@ const RegistrationRouter = ({ forceTeamMode = false }) => {
         setLoading(false);
 
       } catch (error) {
-        console.error('Error checking registration flow:', error);
+        
         setError('Failed to load event details');
         setLoading(false);
       }

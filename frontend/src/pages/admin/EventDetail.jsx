@@ -205,7 +205,7 @@ function EventDetail() {
       await fetchEventDetails();
     } catch (error) {
       setError('Failed to refresh data');
-      console.error('❌ Refresh failed:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -266,9 +266,9 @@ function EventDetail() {
         };
 
         setAttendanceStats(validatedStats);
-        console.log('✅ Attendance stats loaded from cache');
+        
       } else {
-        console.log('⚠️ Attendance stats not available');
+        
       }
 
       // Process recent participants/registrations
@@ -347,7 +347,7 @@ function EventDetail() {
       }
     } catch (error) {
       setError('Failed to load event details');
-      console.error('❌ EventDetail fetch error:', error);
+      
     } finally {
       setIsLoading(false);
     }
@@ -374,7 +374,7 @@ function EventDetail() {
       });
       setCertificateModalOpen(true);
     } catch (error) {
-      console.error('Failed to load certificate template:', error);
+      
       // Fallback to original URL if fetch fails
       setCurrentCertificateTemplate({
         url: templateUrl,
@@ -516,7 +516,7 @@ function EventDetail() {
         setAllRegistrations([]);
       }
     } catch (error) {
-      console.error('Error fetching registrations:', error);
+      
       setAllRegistrations([]);
     } finally {
       setModalLoading(false);
@@ -546,11 +546,11 @@ function EventDetail() {
         });
         setAttendeesList(presentParticipants);
       } else {
-        console.error('API response not successful:', response);
+        
         setAttendeesList([]);
       }
     } catch (error) {
-      console.error('Error fetching attendees:', error);
+      
       setAttendeesList([]);
     } finally {
       setModalLoading(false);
@@ -2728,7 +2728,7 @@ function EventDetail() {
                 title={`${currentCertificateTemplate.type} Certificate Template`}
                 className="w-full h-full border-0 bg-white"
                 onError={() => {
-                  console.error('Failed to load certificate template');
+                  
                 }}
               />
             </div>

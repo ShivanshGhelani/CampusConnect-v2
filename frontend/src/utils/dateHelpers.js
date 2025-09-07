@@ -29,7 +29,7 @@ export const parseLocalDate = (dateString) => {
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
   } catch (error) {
-    console.warn('Invalid date string:', dateString);
+    
     return null;
   }
 };

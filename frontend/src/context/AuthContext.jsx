@@ -113,7 +113,7 @@ export function AuthProvider({ children }) {
       const updatedUserData = event.detail;
       
       if (state.isAuthenticated && updatedUserData) {
-        console.log('🔄 Received userDataUpdated event, updating auth state immediately');
+        
         
         // Update the auth context state immediately
         dispatch({
@@ -162,11 +162,8 @@ export function AuthProvider({ children }) {
             ...storedUserDataParsed
           };
           
-          console.log('🔄 Merging server auth data with localStorage updates:', {
-            server: response.data.user,
-            localStorage: storedUserDataParsed,
-            merged: mergedUserData
-          });
+
+
           
           dispatch({
             type: authActions.LOGIN_SUCCESS,
@@ -180,7 +177,7 @@ export function AuthProvider({ children }) {
           localStorage.setItem('user_data', JSON.stringify(mergedUserData));
           
           // Initialize session avatar cache on successful auth check
-          console.log('🚀 Initializing session avatar cache on auth check');
+          
           sessionAvatarCache.initializeSession(response.data.user);
           
         } else {
@@ -193,9 +190,9 @@ export function AuthProvider({ children }) {
           try {
             resetAvatarGlobalState();
             sessionAvatarCache.clearSession();
-            console.log('✅ Avatar caches cleared due to invalid session');
+            
           } catch (error) {
-            console.error('Failed to clear avatar cache:', error);
+            
           }
           
           dispatch({ type: authActions.LOGOUT });
@@ -204,7 +201,7 @@ export function AuthProvider({ children }) {
         dispatch({ type: authActions.SET_LOADING, payload: false });
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      
       // Clear any invalid session data
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
@@ -212,9 +209,9 @@ export function AuthProvider({ children }) {
       // Clear avatar cache on auth failure
       try {
         resetAvatarGlobalState();
-        console.log('✅ Avatar cache cleared due to auth failure');
+        
       } catch (avatarError) {
-        console.error('Failed to clear avatar cache:', avatarError);
+        
       }
       
       dispatch({ type: authActions.LOGOUT });
@@ -230,15 +227,15 @@ export function AuthProvider({ children }) {
       if (userType === 'admin') {
         response = await authAPI.adminLogin(credentials);
       } else if (userType === 'faculty') {
-        console.log('Faculty login attempt with credentials:', { employee_id: credentials.employee_id });
+        
         response = await authAPI.facultyLogin(credentials);
-        console.log('Faculty login response:', response.data);
+        
       } else {
         response = await authAPI.studentLogin(credentials);
       }
       
       if (response.data.success) {
-        console.log('Login successful, storing user data:', response.data.user);
+        
         
         // Store user data locally for UI state (session is handled by cookies)
         localStorage.setItem('user_data', JSON.stringify(response.data.user));
@@ -247,23 +244,23 @@ export function AuthProvider({ children }) {
         // Store tokens for cross-device compatibility (Bearer auth fallback)
         if (response.data.access_token) {
           localStorage.setItem('access_token', response.data.access_token);
-          console.log('✅ Stored access token for Bearer auth fallback');
+          
         }
         if (response.data.refresh_token) {
           localStorage.setItem('refresh_token', response.data.refresh_token);
-          console.log('✅ Stored refresh token');
+          
         }
         
         // Pre-populate profile cache for students (optimized approach)
         if (userType === 'student' && response.data.user?.enrollment_no) {
           try {
-            console.log('🔄 Pre-populating profile cache on login...');
+            
             const profileResponse = await clientAPI.getCompleteProfile();
             
             if (profileResponse.data.success) {
               const { profile, stats, event_history } = profileResponse.data;
               if (profile) {
-                console.log('✅ Complete profile data cached on login');
+                
                 // Cache the data using the profile cache system
                 setCachedProfile('student', {
                   success: true,
@@ -282,7 +279,7 @@ export function AuthProvider({ children }) {
               }
             }
           } catch (profileError) {
-            console.warn('⚠️ Failed to pre-populate profile cache on login:', profileError);
+            pass;
             // Don't fail login if profile fetch fails
           }
         }
@@ -296,7 +293,7 @@ export function AuthProvider({ children }) {
         });
         
         // Initialize session avatar cache on successful login
-        console.log('🚀 Initializing session avatar cache on login');
+        
         sessionAvatarCache.initializeSession(response.data.user);
         
         return { success: true, redirectUrl: response.data.redirect_url };
@@ -329,7 +326,7 @@ export function AuthProvider({ children }) {
         await authAPI.facultyLogout();
       }
     } catch (error) {
-      console.error('Logout API failed:', error);
+      
       // Continue with logout even if API fails
     }
     
@@ -337,7 +334,7 @@ export function AuthProvider({ children }) {
     if (state.user?.role === 'executive_admin') {
       const sessionKey = `eventCreatorSession_${state.user.username || state.user.id || 'default'}`;
       sessionStorage.removeItem(sessionKey);
-      console.log('Executive Admin session cleared on logout for user:', state.user.username);
+      
     }
     
     // Clear local storage
@@ -359,35 +356,35 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('user_data');
       localStorage.removeItem('user_type');
       sessionStorage.removeItem('complete_profile');
-      console.log('✅ All local storage cleared on logout');
+      
     } catch (error) {
-      console.error('Failed to clear local storage:', error);
+      
     }
     
     // CRITICAL FIX: Clear avatar cache to prevent showing previous user's avatar
     try {
       resetAvatarGlobalState();
       sessionAvatarCache.clearSession();
-      console.log('✅ All avatar caches cleared on logout');
+      
     } catch (error) {
-      console.error('Failed to clear avatar cache:', error);
+      
     }
     
     // Clear profile cache to prevent showing previous user's profile data
     try {
       clearProfileCache(); // Clear both student and faculty caches
-      console.log('✅ Profile cache cleared on logout');
+      
     } catch (error) {
-      console.error('Failed to clear profile cache:', error);
+      
     }
     
     // Clear data cache manager to prevent cross-user data leaks
     try {
       const cacheManager = new DataCacheManager();
       cacheManager.clear();
-      console.log('✅ Data cache cleared on logout');
+      
     } catch (error) {
-      console.error('Failed to clear data cache:', error);
+      
     }
     
     dispatch({ type: authActions.LOGOUT });
@@ -457,7 +454,7 @@ export function AuthProvider({ children }) {
     const newUserData = { ...currentUserData, ...updatedData };
     localStorage.setItem('user_data', JSON.stringify(newUserData));
     
-    console.log('✅ User data updated in context and localStorage');
+    
   };
 
   // Function to transition faculty to organizer admin
@@ -508,7 +505,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user_data', JSON.stringify(updatedUser));
       }
     } catch (error) {
-      console.error('Failed to sync admin status after transition:', error);
+      
       // Don't throw - the transition already succeeded
     }
   };
@@ -554,10 +551,10 @@ export function AuthProvider({ children }) {
         
         // Update localStorage with merged data
         localStorage.setItem('user_data', JSON.stringify(mergedUserData));
-        console.log('✅ User data refreshed successfully with profile updates preserved');
+        
       }
     } catch (error) {
-      console.error('Failed to refresh user data:', error);
+      
     }
   };
 

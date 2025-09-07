@@ -177,13 +177,13 @@ const AttendancePreview = ({
             minimum_percentage: data.attendance_config?.minimum_percentage
           };
           
-          console.log('AttendancePreview - Sending strategy data to parent:', strategyData);
+          
           onStrategyChange(strategyData);
         }
       }
 
     } catch (err) {
-      console.error('Error generating attendance preview:', err);
+      
       setError('Failed to generate attendance preview. Please check your event details.');
     } finally {
       setLoading(false);
@@ -251,7 +251,7 @@ const AttendancePreview = ({
       }
 
     } catch (err) {
-      console.error('Error validating custom strategy:', err);
+      
       setError('Failed to validate custom strategy');
     } finally {
       setValidating(false);

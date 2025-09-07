@@ -42,10 +42,10 @@ export const usePerformanceMonitor = (componentName = 'Unknown') => {
   // Log performance issues
   useEffect(() => {
     if (performanceData.lastRenderTime > 100) {
-      console.warn(`⚠️ Slow render detected in ${componentName}: ${performanceData.lastRenderTime}ms`);
+      
     }
     if (performanceData.totalRenders > 0 && performanceData.totalRenders % 50 === 0) {
-      console.info(`📊 ${componentName} Performance Stats:`, performanceData);
+      
     }
   }, [performanceData, componentName]);
 
@@ -96,7 +96,7 @@ export const useNetworkMonitor = () => {
 
       // Log slow requests
       if (responseTime > 1000) {
-        console.warn(`🐌 Slow API request detected: ${url} took ${responseTime}ms`);
+        
       }
 
       return {
@@ -166,7 +166,7 @@ export const useDevPerformanceLogger = (enabled = process.env.NODE_ENV === 'deve
     const observer = new PerformanceObserver((list) => {
       list.getEntries().forEach((entry) => {
         if (entry.entryType === 'measure') {
-          console.log(`📏 Performance measure: ${entry.name} took ${entry.duration.toFixed(2)}ms`);
+          
         }
       });
     });

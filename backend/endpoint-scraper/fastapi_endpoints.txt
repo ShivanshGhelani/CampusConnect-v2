@@ -1,4 +1,4 @@
-Total API Endpoints: 117
+Total API Endpoints: 118
 
 ============================================================
 ENDPOINT 1
@@ -2488,6 +2488,7 @@ Category/Tags: api-v1, attendance-api, attendance
 Summary: Mark Attendance
 Description: Mark attendance for participants based on strategy
 Supports: single_mark, session_based, day_based, milestone_based
+Handles both individual registrations and team member attendance
 Request Body:
   MIME Type: application/json
   Schema: {
@@ -2530,23 +2531,39 @@ Responses:
 
 ============================================================
 ENDPOINT 104
-Method: POST
-Path: /api/v1/attendance/generate-scanner-token/{event_id}
+Method: GET
+Path: /api/v1/attendance/qr-data/{event_id}
 Category/Tags: api-v1, attendance-api, attendance
-Summary: Generate Scanner Token
-Description: Generate a secure token link for QR scanner access to mark attendance
-Stores the token in the event document for validation
+Summary: Get Qr Data For Event
+Description: Get proper registration data for QR code generation
+
+Query Parameters:
+- target_audience: "student" or "faculty" 
+- registration_type: "individual" or "team"
+- registration_id: The specific registration ID
+
+Returns properly formatted data for QR code generation
 Parameters:
   - Name: event_id
     In: path
     Required: True
     Type: string
     Description: No description
-  - Name: expires_in_hours
+  - Name: target_audience
     In: query
-    Required: False
-    Type: integer
-    Description: Token expiration in hours
+    Required: True
+    Type: string
+    Description: student or faculty
+  - Name: registration_type
+    In: query
+    Required: True
+    Type: string
+    Description: individual or team
+  - Name: registration_id
+    In: query
+    Required: True
+    Type: string
+    Description: Registration ID to fetch data for
 Responses:
   HTTP 200: Successful Response
     MIME Type: application/json
@@ -2559,6 +2576,40 @@ Responses:
 
 ============================================================
 ENDPOINT 105
+Method: POST
+Path: /api/v1/attendance/generate-scanner-token/{event_id}
+Category/Tags: api-v1, attendance-api, attendance
+Summary: Generate Scanner Token
+Description: Generate a secure token link for QR scanner access to mark attendance
+Uses session timing when available, or manual hours override
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: session_id
+    In: query
+    Required: False
+    Type: None
+    Description: Session ID for session-based events
+  - Name: expires_in_hours
+    In: query
+    Required: False
+    Type: None
+    Description: Manual override for token expiration in hours
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 106
 Method: GET
 Path: /api/v1/attendance/scanner-info/{token}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2582,25 +2633,19 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 106
+ENDPOINT 107
 Method: POST
-Path: /api/v1/attendance/scan-mark
+Path: /api/v1/attendance/scan-and-mark
 Category/Tags: api-v1, attendance-api, attendance
 Summary: Scan And Mark Attendance
 Description: Mark attendance using scanner token and QR code data
-Public endpoint - validates token for permission
-Parameters:
-  - Name: token
-    In: query
-    Required: True
-    Type: string
-    Description: No description
+Returns detailed participant information and attendance status
 Request Body:
   MIME Type: application/json
   Schema: {
-    "type": "object",
     "additionalProperties": true,
-    "title": "Qr Data"
+    "type": "object",
+    "title": "Request Data"
 }
 Responses:
   HTTP 200: Successful Response
@@ -2613,7 +2658,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 107
+ENDPOINT 108
 Method: POST
 Path: /api/v1/organizer/access-portal
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2625,7 +2670,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 108
+ENDPOINT 109
 Method: POST
 Path: /api/v1/organizer/admin/grant-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2664,7 +2709,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 109
+ENDPOINT 110
 Method: POST
 Path: /api/v1/organizer/admin/revoke-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2687,7 +2732,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 110
+ENDPOINT 111
 Method: GET
 Path: /api/v1/organizer/admin/requests
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2699,7 +2744,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 111
+ENDPOINT 112
 Method: GET
 Path: /api/health
 Category/Tags: No category
@@ -2711,7 +2756,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 112
+ENDPOINT 113
 Method: GET
 Path: /
 Category/Tags: No category
@@ -2725,7 +2770,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 113
+ENDPOINT 114
 Method: GET
 Path: /favicon.ico
 Category/Tags: No category
@@ -2737,7 +2782,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 114
+ENDPOINT 115
 Method: GET
 Path: /event-categories
 Category/Tags: No category
@@ -2749,7 +2794,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 115
+ENDPOINT 116
 Method: GET
 Path: /health/scheduler
 Category/Tags: No category
@@ -2761,7 +2806,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 116
+ENDPOINT 117
 Method: GET
 Path: /logo/{filename}
 Category/Tags: No category
@@ -2784,7 +2829,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 117
+ENDPOINT 118
 Method: GET
 Path: /signature/{path}
 Category/Tags: No category

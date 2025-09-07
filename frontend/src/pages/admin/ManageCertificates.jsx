@@ -104,7 +104,7 @@ function ManageCertificates() {
         setError('Failed to fetch certificate templates');
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      
       setError('Failed to load certificate templates. Please try again.');
     } finally {
       setIsLoading(false);
@@ -144,7 +144,7 @@ function ManageCertificates() {
           setError('Failed to migrate templates');
         }
       } catch (error) {
-        console.error('Error migrating templates:', error);
+        
         setError('Failed to migrate templates. Please try again.');
       } finally {
         setIsLoading(false);
@@ -197,7 +197,7 @@ function ManageCertificates() {
         
         showNotification('Certificate template deleted successfully!', 'success');
       } catch (error) {
-        console.error('Error deleting template:', error);
+        
         showNotification('Failed to delete template. Please try again.', 'error');
       } finally {
         setIsLoading(false);
@@ -244,7 +244,7 @@ function ManageCertificates() {
       });
       setCertificateModalOpen(true);
     } catch (error) {
-      console.error('Failed to load certificate template:', error);
+      
       // Fallback to original URL if fetch fails
       setCurrentCertificateTemplate({
         url: template.file_url,
@@ -289,7 +289,7 @@ function ManageCertificates() {
       
       showNotification('Template downloaded successfully!', 'success');
     } catch (error) {
-      console.error('Error downloading template:', error);
+      
       showNotification('Failed to download template. Please try again.', 'error');
     }
   };
@@ -657,7 +657,7 @@ function ManageCertificates() {
             title={`Certificate Template - ${currentCertificateTemplate.name}`}
             className="w-full h-full border-0 bg-white"
             onError={() => {
-              console.error('Failed to load certificate template preview');
+              
             }}
           />
         </div>

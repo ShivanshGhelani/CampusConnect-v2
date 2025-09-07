@@ -28,7 +28,7 @@ function CreateEvent() {
       const savedStep = localStorage.getItem('createEventCurrentStep');
       return savedStep ? parseInt(savedStep) : 1;
     } catch (error) {
-      console.log('Error loading step from localStorage:', error);
+      
       return 1;
     }
   });
@@ -80,7 +80,7 @@ function CreateEvent() {
       sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
       setLastActivityTime(Date.now());
 
-      console.log('Event creator session created for user:', user.username, sessionData);
+      
     }
   };
 
@@ -102,7 +102,7 @@ function CreateEvent() {
         // Session belongs to different user, remove it
         sessionStorage.removeItem(sessionKey);
         setEventCreatorSession(null);
-        console.log('Session belongs to different user, removing...');
+        
         return null;
       }
 
@@ -114,7 +114,7 @@ function CreateEvent() {
         // Session expired due to inactivity, remove it and logout
         sessionStorage.removeItem(sessionKey);
         setEventCreatorSession(null);
-        console.log('Session expired due to inactivity. Logging out...');
+        
         // Auto logout
         setTimeout(() => {
           logout();
@@ -148,7 +148,7 @@ function CreateEvent() {
       const sessionKey = `eventCreatorSession_${user.username || user.id || 'default'}`;
       sessionStorage.removeItem(sessionKey);
       setEventCreatorSession(null);
-      console.log('Event creator session cleared for user:', user.username);
+      
     }
   };
 
@@ -187,7 +187,7 @@ function CreateEvent() {
         return parsedForm;
       }
     } catch (error) {
-      console.log('Error loading form from localStorage:', error);
+      
     }
     return null;
   };
@@ -203,7 +203,7 @@ function CreateEvent() {
       localStorage.setItem('createEventForm', JSON.stringify(dataToSave));
       localStorage.setItem('createEventCurrentStep', step.toString());
     } catch (error) {
-      console.log('Error saving form to localStorage:', error);
+      
     }
   };
 
@@ -213,7 +213,7 @@ function CreateEvent() {
       localStorage.removeItem('createEventForm');
       localStorage.removeItem('createEventCurrentStep');
     } catch (error) {
-      console.log('Error clearing form from localStorage:', error);
+      
     }
   };
 
@@ -350,7 +350,7 @@ function CreateEvent() {
       // Check if there's an existing valid session
       const existingSession = getEventCreatorSession();
 
-      console.log('🔍 Existing Session:', existingSession);
+      
 
       if (!existingSession) {
         // Show modal to ask for creator name
@@ -396,7 +396,7 @@ function CreateEvent() {
         if (timeRemaining <= 0) {
           // Session expired due to inactivity
           clearEventCreatorSession();
-          console.log('Session expired due to inactivity. Logging out...');
+          
           alert('Session expired due to inactivity. You will be logged out.');
           logout();
           navigate('/login');
@@ -415,19 +415,19 @@ function CreateEvent() {
         setExistingEventIds(eventIds);
       }
     } catch (err) {
-      console.error('Error loading existing event IDs:', err);
+      
     }
   };
 
   const loadVenues = async () => {
     try {
       if (!isAuthenticated || userType !== 'admin') {
-        console.error('Not authenticated as admin');
+        
         alert('Please log in as an admin to access this feature.');
         return;
       }
 
-      console.log('🔄 Loading active venues for event creation (cached)');
+      
       const response = await adminAPI.getVenues(); // Single endpoint - defaults to active venues only
 
       if (response.data || response.success) {
@@ -438,17 +438,17 @@ function CreateEvent() {
         // Initialize filteredVenues with all active venues
         const activeVenues = venueArray.filter(v => v.is_active);
         setFilteredVenues(activeVenues);
-        console.log('✅ Loaded', activeVenues.length, 'active venues from cache');
+        
       } else {
-        console.error('No data received from venues API');
+        
       }
     } catch (err) {
-      console.error('Error loading venues:', err);
+      
 
       if (err.response?.status === 401) {
         alert('Authentication required. Please log in as admin first.');
       } else {
-        console.error('Venues API error:', err.message);
+        
       }
     }
   };
@@ -556,7 +556,7 @@ function CreateEvent() {
           }
         }
       } catch (error) {
-        console.error('❌ Error fetching faculty organizers:', error);
+        
         setExistingOrganizers([]);
         setFilteredOrganizers([]);
       }
@@ -887,7 +887,7 @@ function CreateEvent() {
 
       // For other inputs, prevent default and don't trigger form submission
       e.preventDefault();
-      console.log('Enter key pressed, prevented form submission');
+      
       return false;
     }
   };
@@ -1865,7 +1865,7 @@ function CreateEvent() {
             if (result.success) {
               certificateTemplateUrls[certificateType] = result.url;
             } else {
-              console.error(`Failed to upload ${certificateType}:`, result.error);
+              
               setErrors(prev => ({
                 ...prev,
                 certificates: `Failed to upload ${certificateType}: ${result.error}`
@@ -1876,7 +1876,7 @@ function CreateEvent() {
             }
           }
         } catch (error) {
-          console.error('Error uploading certificate templates:', error);
+          
           setErrors(prev => ({
             ...prev,
             certificates: 'Failed to upload certificate templates. Please try again.'
@@ -1899,7 +1899,7 @@ function CreateEvent() {
           if (posterResult.success) {
             eventPosterUrl = posterResult.url;
           } else {
-            console.error('Failed to upload event poster:', posterResult.error);
+            
             setErrors(prev => ({
               ...prev,
               poster: `Failed to upload event poster: ${posterResult.error}`
@@ -1909,7 +1909,7 @@ function CreateEvent() {
             return;
           }
         } catch (error) {
-          console.error('Error uploading event poster:', error);
+          
           setErrors(prev => ({
             ...prev,
             poster: 'Failed to upload event poster. Please try again.'
@@ -2036,13 +2036,13 @@ function CreateEvent() {
         if (!pendingApproval && (user?.role === 'super_admin' || user?.role === 'organizer_admin')) {
           try {
             addEventToScheduler(eventData);
-            console.log('✅ Added event to client scheduler (no approval required)');
+            
           } catch (schedulerError) {
-            console.warn('⚠️ Failed to add event to client scheduler:', schedulerError);
+            
             // Don't fail the creation process
           }
         } else {
-          console.log('⏸️ Event requires approval - not adding to client scheduler yet');
+          
         }
 
         // Clear the session after successful event creation
@@ -2084,9 +2084,9 @@ function CreateEvent() {
         // Refresh user data to update assigned_events (especially important for organizer_admin)
         try {
           await refreshUserData();
-          console.log('✅ User data refreshed after event creation');
+          
         } catch (error) {
-          console.error('⚠️ Failed to refresh user data after event creation:', error);
+          
           // Don't fail the entire flow if refresh fails
         }
 
@@ -2106,7 +2106,7 @@ function CreateEvent() {
         alert(`Error creating event: ${response.data?.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      
 
       if (error.response) {
         const status = error.response.status;

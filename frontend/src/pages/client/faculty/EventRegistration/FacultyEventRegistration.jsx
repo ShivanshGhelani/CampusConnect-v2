@@ -112,16 +112,16 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       }
 
       try {
-        console.log('📋 Loading event data from cache...');
+        
         let eventData = getAnyEventCache(eventId);
         
         if (!eventData) {
-          console.log('⚠️ Event not in cache, fetching from API...');
+          
           // Fallback to API if not cached (should rarely happen)
           const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
           eventData = cachedEventData?.event || cachedEventData;
         } else {
-          console.log('✅ Using cached event data (no API call needed)');
+          
           eventData = eventData.event || eventData;
         }
 
@@ -147,10 +147,10 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
           initializeParticipants(minParticipants);
         }
 
-        console.log('✅ Event details loaded successfully using cached data');
+        
 
       } catch (error) {
-        console.error('Error loading event:', error);
+        
         setError('Failed to load event details');
       } finally {
         setLoading(false);
@@ -163,27 +163,27 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   // Use cached profile data for form initialization (OPTIMIZED - NO API CALLS)
   useEffect(() => {
     if (user) {
-      console.log('📝 Initializing faculty form with cached profile data...');
+      
 
       // Get cached profile data (should already be loaded from login)
       const cachedProfile = getAnyCache('faculty');
       let profileData = user; // fallback to AuthContext user
       
       if (cachedProfile?.profile) {
-        console.log('✅ Using cached faculty profile data');
+        
         profileData = cachedProfile.profile;
       } else {
-        console.log('📋 Using AuthContext user data (cached profile not found)');
+        
         // Try to fetch from session storage as backup
         try {
           const sessionProfile = sessionStorage.getItem('complete_profile');
           if (sessionProfile) {
             const parsedProfile = JSON.parse(sessionProfile);
             profileData = parsedProfile;
-            console.log('📋 Using session storage profile data');
+            
           }
         } catch (e) {
-          console.warn('Could not parse session profile data');
+          
         }
       }
 
@@ -211,7 +211,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       };
 
       setFormData(newFormData);
-      console.log('✅ Faculty form initialized with cached data (no API calls needed)');
+      
     }
   }, [user, user?.contact_no, user?.phone_number, user?.full_name, user?.email]);
 
@@ -446,7 +446,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         setError(response.data.message || 'Registration failed');
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      
       setError(error.response?.data?.message || 'An error occurred during registration');
     } finally {
       setSubmitting(false);

@@ -36,7 +36,7 @@ function Faculty() {
         throw new Error(response.data.message || 'Failed to fetch faculty');
       }
     } catch (error) {
-      console.error('Error fetching faculty:', error);
+      
       setError('Failed to load faculty');
     } finally {
       setIsLoading(false);
@@ -153,7 +153,7 @@ function Faculty() {
         throw new Error(response.data.message || 'Failed to update faculty status');
       }
     } catch (error) {
-      console.error('Error updating faculty status:', error);
+      
       setError('Failed to update faculty status');
     }
   };

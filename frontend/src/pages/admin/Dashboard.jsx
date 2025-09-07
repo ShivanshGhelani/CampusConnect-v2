@@ -83,8 +83,8 @@ function Dashboard() {
         const scheduler = analytics.scheduler;
         const systemHealth = analytics.system_health;
         
-        console.log('Dashboard Analytics Data:', analytics); // Debug log
-        console.log('Events Data:', events); // Debug log
+         // Debug log
+         // Debug log
         
         // Extract server time for synchronization
         if (analytics.server_time) {
@@ -134,19 +134,19 @@ function Dashboard() {
         // Handle recent activity data
         const recentActivityData = dashboardData.recent_activity;
         if (recentActivityData && recentActivityData.logs) {
-          console.log('Recent Activity Data:', recentActivityData.logs); // Debug log
+           // Debug log
           setRecentActivity(recentActivityData.logs);
         } else {
-          console.warn('No recent activity data found');
+          
           setRecentActivity([]);
         }
       } else {
-        console.error('Dashboard API returned error:', dashboardResponse.data.message);
+        
         setError(dashboardResponse.data.message || 'Failed to load dashboard data');
       }
 
     } catch (err) {
-      console.error('Dashboard data fetch error:', err);
+      
       setError(err.message || 'Failed to load dashboard data');
       
       setActiveJobs([]);

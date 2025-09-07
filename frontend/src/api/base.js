@@ -5,18 +5,18 @@ const getApiBaseUrl = () => {
   // Check for Vite environment variable first
   const envApiUrl = import.meta.env.VITE_API_BASE_URL;
   if (envApiUrl) {
-    console.log('Using API URL from environment:', envApiUrl);
+    
     return envApiUrl;
   }
   
   // Fallback to localhost for development
-  console.log('Using fallback localhost API URL');
+  
   return 'http://localhost:8000';
 };
 
 // Create axios instance with base configuration - FIXED FOR CROSS-ORIGIN
 const apiBaseUrl = getApiBaseUrl();
-console.log('Initializing API with base URL:', apiBaseUrl);
+
 
 const api = axios.create({
   baseURL: apiBaseUrl,
@@ -31,8 +31,8 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Debug logging for cross-origin requests
-    console.log('Making API request to:', config.baseURL + config.url);
-    console.log('With credentials:', config.withCredentials);
+    
+    
     
     // Ensure credentials are always sent for session-based auth
     config.withCredentials = true;
@@ -44,7 +44,7 @@ api.interceptors.request.use(
     const accessToken = localStorage.getItem('access_token');
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
-      console.log('Added Bearer token to request');
+      
     }
     
     return config;
@@ -85,12 +85,12 @@ api.interceptors.response.use(
     
     if (error.response?.status === 403) {
       // Forbidden - user doesn't have permission
-      console.error('Access denied. You do not have permission to perform this action.');
+      
     }
     
     if (error.response?.status >= 500) {
       // Server error
-      console.error('Server error. Please try again later.');
+      
     }
     
     return Promise.reject(error);

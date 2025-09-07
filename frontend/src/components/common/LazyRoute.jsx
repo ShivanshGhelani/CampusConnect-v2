@@ -19,7 +19,7 @@ class LazyErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Lazy loading error:', error, errorInfo);
+    
   }
 
   render() {
@@ -60,7 +60,7 @@ export const withLazyLoading = (importFunc, fallback = <LoadingSpinner />) => {
 export const preloadRoute = (importFunc) => {
   const componentImport = importFunc();
   if (componentImport && typeof componentImport.then === 'function') {
-    componentImport.catch(err => console.warn('Preload failed:', err));
+    componentImport.catch(err => 
   }
   return componentImport;
 };
