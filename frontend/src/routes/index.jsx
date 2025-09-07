@@ -92,6 +92,7 @@ function AppRoutes() {
       <Routes>
         <Route path='/test-mode' element={<TestMode />} />
         <Route path= '/qr-test' element={<QRTest />} />
+        <Route path='/test/feedback-preview' element={<FeedbackPreviewClient />} />
         {/* Auth Routes - No Layout */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
