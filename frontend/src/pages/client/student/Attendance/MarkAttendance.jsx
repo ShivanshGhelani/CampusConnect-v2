@@ -149,7 +149,8 @@ function MarkAttendance() {
       });
 
       if (response.data.success) {
-        const studentData = response.data.student_data;
+        // FIXED: Updated to use new unified API response structure
+        const studentData = response.data.user_data; // Changed from student_data to user_data
         setRegistration(studentData);
         setAutoFilled(true);
         setFormData({

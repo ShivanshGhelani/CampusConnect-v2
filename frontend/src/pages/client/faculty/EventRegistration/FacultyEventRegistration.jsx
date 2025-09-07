@@ -285,7 +285,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         return {
           isValid: true,
           errors: {},
-          data: response.data.faculty
+          // FIXED: Updated to use new unified API response structure
+          data: response.data.user_data // Changed from faculty to user_data
         };
       } else {
         return {

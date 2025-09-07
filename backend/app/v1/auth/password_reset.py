@@ -9,64 +9,75 @@ from models.password_reset import (
 )
 from services.password_reset_service import password_reset_service
 from core.logger import get_logger
+from typing import Union
+from pydantic import BaseModel
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["Password Reset"])
 
-@router.post("/forgot-password/student", response_model=ForgotPasswordResponse)
-async def forgot_password_student(request_data: ForgotPasswordRequest, request: Request):
-    """
-    Initiate password reset for student
-    """
-    try:
-        # Extract client IP address
-        client_ip = request.client.host
-        if "x-forwarded-for" in request.headers:
-            client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
-        elif "x-real-ip" in request.headers:
-            client_ip = request.headers["x-real-ip"]
-        
-        result = await password_reset_service.initiate_password_reset_student(
-            enrollment_no=request_data.enrollment_no,
-            email=request_data.email,
-            client_ip=client_ip
-        )
-        
-        if result['success']:
-            return ForgotPasswordResponse(
-                message=result['message'],
-                email_sent=result['email_sent']
-            )
-        else:
-            raise HTTPException(status_code=400, detail=result['message'])
-            
-    except Exception as e:
-        logger.error(f"Error in forgot password student endpoint: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail="Failed to process password reset request. Please try again later."
-        )
+def extract_client_ip(request: Request) -> str:
+    """Extract client IP address from request headers"""
+    client_ip = request.client.host
+    if "x-forwarded-for" in request.headers:
+        client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
+    elif "x-real-ip" in request.headers:
+        client_ip = request.headers["x-real-ip"]
+    return client_ip
 
-@router.post("/forgot-password/faculty", response_model=ForgotPasswordResponse)
-async def forgot_password_faculty(request_data: ForgotPasswordFacultyRequest, request: Request):
+@router.post("/forgot-password/{user_type}", response_model=ForgotPasswordResponse)
+async def forgot_password_unified(
+    user_type: str, 
+    request_data: Union[ForgotPasswordRequest, ForgotPasswordFacultyRequest], 
+    request: Request
+):
     """
-    Initiate password reset for faculty
+    UNIFIED password reset endpoint for all user types
+    
+    Supports:
+    - POST /forgot-password/student (enrollment_no + email)
+    - POST /forgot-password/faculty (employee_id + email)
     """
     try:
-        # Extract client IP address
-        client_ip = request.client.host
-        if "x-forwarded-for" in request.headers:
-            client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
-        elif "x-real-ip" in request.headers:
-            client_ip = request.headers["x-real-ip"]
+        # Validate user type
+        if user_type not in ['student', 'faculty']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid user type. Must be 'student' or 'faculty'"
+            )
         
-        result = await password_reset_service.initiate_password_reset_faculty(
-            employee_id=request_data.employee_id,
-            email=request_data.email,
-            client_ip=client_ip
-        )
+        # Extract client IP address (unified logic)
+        client_ip = extract_client_ip(request)
         
+        # Route to appropriate service method based on user type
+        if user_type == 'student':
+            # Validate student request data
+            if not hasattr(request_data, 'enrollment_no'):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="enrollment_no is required for student password reset"
+                )
+            
+            result = await password_reset_service.initiate_password_reset_student(
+                enrollment_no=request_data.enrollment_no,
+                email=request_data.email,
+                client_ip=client_ip
+            )
+        else:  # faculty
+            # Validate faculty request data
+            if not hasattr(request_data, 'employee_id'):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="employee_id is required for faculty password reset"
+                )
+            
+            result = await password_reset_service.initiate_password_reset_faculty(
+                employee_id=request_data.employee_id,
+                email=request_data.email,
+                client_ip=client_ip
+            )
+        
+        # Unified response handling
         if result['success']:
             return ForgotPasswordResponse(
                 message=result['message'],
@@ -75,8 +86,10 @@ async def forgot_password_faculty(request_data: ForgotPasswordFacultyRequest, re
         else:
             raise HTTPException(status_code=400, detail=result['message'])
             
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error in forgot password faculty endpoint: {e}")
+        logger.error(f"Error in unified forgot password endpoint for {user_type}: {e}")
         raise HTTPException(
             status_code=500, 
             detail="Failed to process password reset request. Please try again later."

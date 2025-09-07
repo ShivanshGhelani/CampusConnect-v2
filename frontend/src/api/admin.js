@@ -119,11 +119,29 @@ export const adminAPI = {
   hardDeleteUser: (userId, userType) => api.patch(`/api/v1/admin/users/${userId}/status?user_type=${userType}&action=permanent_delete`),
   hardDeleteAdminUser: (adminId) => api.patch(`/api/v1/admin/users/${adminId}/status?user_type=admin&action=permanent_delete`),
   
-  // Profile Management - FIXED to use correct auth endpoints
-  getProfile: () => api.get('/api/auth/api/profile'),
-  updateProfile: (profileData) => api.put('/api/auth/api/profile', profileData),
-  updateUsername: (usernameData) => api.put('/api/auth/api/username', usernameData),
-  updatePassword: (passwordData) => api.put('/api/auth/api/password', passwordData),
+  // Profile Management - UNIFIED: Single endpoint with update_type parameter
+  getProfile: () => api.get('/api/v1/auth/admin/profile'),
+  
+  // Unified profile update method - handles all update types
+  updateProfile: (profileData, updateType = 'profile') => 
+    api.put('/api/v1/auth/admin/profile', { ...profileData, update_type: updateType }),
+  
+  // Convenience methods for specific update types
+  updateProfileData: (profileData) => 
+    api.put('/api/v1/auth/admin/profile', { ...profileData, update_type: 'profile' }),
+    
+  updatePassword: (passwordData) => 
+    api.put('/api/v1/auth/admin/profile', { ...passwordData, update_type: 'password' }),
+    
+  updateUsername: (usernameData) => 
+    api.put('/api/v1/auth/admin/profile', { ...usernameData, update_type: 'username' }),
+  
+  // Legacy compatibility aliases (for existing code)
+  changePassword: (passwordData) => 
+    api.put('/api/v1/auth/admin/profile', { ...passwordData, update_type: 'password' }),
+    
+  changeUsername: (usernameData) => 
+    api.put('/api/v1/auth/admin/profile', { ...usernameData, update_type: 'username' }),
   
   // Venue Management - CONSOLIDATED: Single endpoint for all venue fetching
   getVenues: async (filters = {}) => {

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
-import NotificationBell from './notifications/NotificationBell';
-import NotificationPanel from './notifications/NotificationPanel';
 
 function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     const { user, logout } = useAuth();
@@ -13,7 +11,6 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     // State management
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-    const [showNotificationPanel, setShowNotificationPanel] = useState(false);
     const [stats, setStats] = useState({
         totalEvents: 0,
         liveEvents: 0,
@@ -556,14 +553,6 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     {user?.role?.replace('_', ' ') || 'admin'}
                                 </div>
                             </div>
-
-                            {/* Notifications with Enhanced Styling */}
-                            <div className="relative">
-                                <NotificationBell
-                                    className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl transition-all duration-200 hover:scale-105 shadow-sm"
-                                    onTogglePanel={() => setShowNotificationPanel(!showNotificationPanel)}
-                                />
-                            </div>
                         </div>
                     </div>
                 </aside>
@@ -623,11 +612,6 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                     </div>
                 </div>
 
-                {/* Gmail-style Notification Modal */}
-                <NotificationPanel
-                    isOpen={showNotificationPanel}
-                    onClose={() => setShowNotificationPanel(false)}
-                />
             </main>
         </div>
     );

@@ -51,7 +51,8 @@ const RegistrationSuccess = () => {
               registration_datetime: statusResponse.data.registered_at,
               team_registration_id: statusResponse.data.team_registration_id, // Add team registration ID
               team: statusResponse.data.team_info, // Add team info from response
-              ...(statusResponse.data.student_data || {}),
+              // FIXED: Updated to use new unified API response structure
+              ...(statusResponse.data.user_data || {}), // Changed from student_data to user_data
               ...(statusResponse.data.event_data || {})
             };
           } else {
@@ -70,9 +71,9 @@ const RegistrationSuccess = () => {
               regData.team = statusResponse.data.team_info;
             }
 
-            // Flatten student_data to top level for frontend compatibility
-            if (regData.student_data || statusResponse.data.student_data) {
-              const studentData = regData.student_data || statusResponse.data.student_data;
+            // FIXED: Flatten user_data to top level for frontend compatibility
+            if (regData.user_data || statusResponse.data.user_data) { // Changed from student_data to user_data
+              const studentData = regData.user_data || statusResponse.data.user_data; // Changed from student_data to user_data
               Object.assign(regData, studentData);
             }
 

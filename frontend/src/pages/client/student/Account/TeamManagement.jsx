@@ -303,7 +303,8 @@ const TeamManagement = () => {
         const eligibilityResponse = await clientAPI.checkStudentEligibility(enrollment, eventId);
 
         if (eligibilityResponse.data.success && eligibilityResponse.data.eligible) {
-          setValidatedStudent(response.data.student_data);
+          // FIXED: Updated to use new unified API response structure
+          setValidatedStudent(eligibilityResponse.data.user_data); // Changed from response.data.student_data to eligibilityResponse.data.user_data
           setShowAddModal(false);
           setShowConfirmModal(true);
         } else {

@@ -240,260 +240,216 @@ async def cancel_registration(
         logger.error(f"Error cancelling registration: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to cancel registration: {str(e)}")
 
-@router.get("/my-registrations")
-async def get_my_registrations(
+# Unified User Lookup Endpoint
+
+@router.get("/lookup")
+async def unified_user_lookup(
+    user_type: str = Query(..., description="Type of user to lookup: 'faculty' or 'student'"),
+    user_id: str = Query(..., description="User identifier: employee_id for faculty, enrollment_no for student"),
+    action: str = Query("basic", description="Lookup action: 'basic' for user info, 'eligibility' for event eligibility check"),
+    event_id: str = Query(None, description="Event ID (required for eligibility action)"),
     current_user=Depends(get_current_user)
 ):
-    """Get all registrations for current user (student or faculty)"""
+    """
+    Unified user lookup endpoint - handles faculty lookup, student lookup, and eligibility checking
+    
+    Parameters:
+    - user_type: "faculty" or "student"
+    - user_id: employee_id (for faculty) or enrollment_no (for student)
+    - action: "basic" (default) or "eligibility"
+    - event_id: Required when action is "eligibility"
+    """
     try:
-        # Check user type and route to appropriate service
-        if hasattr(current_user, 'enrollment_no'):
-            # Student registrations
-            # Note: This would need implementation in EventRegistrationService
-            # For now, return placeholder
-            return {"success": True, "registrations": [], "message": "Student registrations feature needs implementation"}
-        elif hasattr(current_user, 'employee_id'):
-            # Faculty registrations
-            # Note: This would need implementation in FacultyRegistrationService
-            # For now, return placeholder
-            return {"success": True, "registrations": [], "message": "Faculty registrations feature needs implementation"}
-        else:
-            return {"success": True, "registrations": [], "message": "No registrations available for this user type"}
+        from database.operations import DatabaseOperations
+        
+        if user_type not in ["faculty", "student"]:
+            raise HTTPException(status_code=400, detail="user_type must be 'faculty' or 'student'")
+        
+        if action == "eligibility" and not event_id:
+            raise HTTPException(status_code=400, detail="event_id is required for eligibility action")
+        
+        # Handle Faculty Lookup
+        if user_type == "faculty":
+            # Find faculty by employee_id
+            faculty = await DatabaseOperations.find_one(
+                "faculties",
+                {"employee_id": user_id}
+            )
+            
+            if not faculty:
+                return {
+                    "success": False,
+                    "found": False,
+                    "message": "Faculty not found"
+                }
+            
+            # Return faculty information
+            faculty_info = {
+                "employee_id": faculty["employee_id"],
+                "full_name": faculty.get("full_name", ""),
+                "email": faculty.get("email", ""),
+                "contact_no": faculty.get("contact_no", ""),
+                "department": faculty.get("department", ""),
+                "designation": faculty.get("designation", "")
+            }
+            
+            result = {
+                "success": True,
+                "found": True,
+                "user_type": "faculty",
+                "user_data": faculty_info
+            }
+            
+            # Faculty eligibility checking not implemented yet
+            if action == "eligibility":
+                result["eligible"] = True
+                result["message"] = "Faculty eligibility checking not yet implemented - assuming eligible"
+            
+            return result
+        
+        # Handle Student Lookup
+        elif user_type == "student":
+            # Find student by enrollment_no
+            student = await DatabaseOperations.find_one(
+                "students",
+                {"enrollment_no": user_id}
+            )
+            
+            if not student:
+                return {
+                    "success": False,
+                    "found": False,
+                    "message": "Student not found in database"
+                }
+            
+            # Return student information
+            student_info = {
+                "enrollment_no": student["enrollment_no"],
+                "full_name": student.get("full_name", ""),
+                "email": student.get("email", ""),
+                "mobile_no": student.get("mobile_no", ""),
+                "department": student.get("department", ""),
+                "semester": student.get("semester", "")
+            }
+            
+            result = {
+                "success": True,
+                "found": True,
+                "user_type": "student",
+                "user_data": student_info
+            }
+            
+            # Handle eligibility checking for students
+            if action == "eligibility":
+                # Find event
+                event = await DatabaseOperations.find_one(
+                    "events",
+                    {"event_id": event_id}
+                )
+                
+                if not event:
+                    result.update({
+                        "eligible": False,
+                        "message": "Event not found"
+                    })
+                    return result
+                
+                # Check eligibility criteria
+                eligibility_issues = []
+                
+                # Check department eligibility
+                if "student_department" in event and event["student_department"]:
+                    allowed_departments = event["student_department"]
+                    if isinstance(allowed_departments, str):
+                        allowed_departments = [allowed_departments]
+                    
+                    student_dept = student.get("department", "")
+                    if student_dept not in allowed_departments:
+                        eligibility_issues.append(f"Department '{student_dept}' not eligible. Allowed: {', '.join(allowed_departments)}")
+                
+                # Check semester eligibility
+                if "student_semester" in event and event["student_semester"]:
+                    allowed_semesters = event["student_semester"]
+                    if isinstance(allowed_semesters, (int, str)):
+                        allowed_semesters = [int(allowed_semesters)]
+                    elif isinstance(allowed_semesters, list):
+                        allowed_semesters = [int(s) for s in allowed_semesters]
+                    
+                    student_sem = int(student.get("semester", 0))
+                    if student_sem not in allowed_semesters:
+                        eligibility_issues.append(f"Semester {student_sem} not eligible. Allowed: {', '.join(map(str, allowed_semesters))}")
+                
+                # Check if student is already registered for this event
+                existing_registration = await DatabaseOperations.find_one(
+                    "student_registrations",
+                    {
+                        "$or": [
+                            # Check for individual registration
+                            {
+                                "student.enrollment_no": user_id,
+                                "event.event_id": event_id,
+                                "registration.type": "individual"
+                            },
+                            # Check if student is team leader in team registration
+                            {
+                                "team.team_leader": user_id,
+                                "event.event_id": event_id,
+                                "registration_type": "team"
+                            },
+                            # Check if student is team member in team registration
+                            {
+                                "team_members.student.enrollment_no": user_id,
+                                "event.event_id": event_id,
+                                "registration_type": "team"
+                            }
+                        ]
+                    }
+                )
+                
+                if existing_registration:
+                    # Check if multiple team registrations are allowed
+                    allow_multiple = event.get("allow_multiple_team_registrations", False)
+                    
+                    # Student is already registered - determine registration type
+                    reg_type = "individual"
+                    if existing_registration.get("registration_type") == "team":
+                        if existing_registration.get("team", {}).get("team_leader") == user_id:
+                            reg_type = "team leader"
+                        else:
+                            reg_type = "team member"
+                    
+                    # Handle different scenarios based on multiple team registration setting
+                    if reg_type == "individual":
+                        # Individual registration always blocks further registration
+                        eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+                    elif reg_type == "team leader":
+                        # Team leaders cannot join multiple teams
+                        eligibility_issues.append(f"Team leader cannot join multiple teams")
+                    elif reg_type == "team member" and not allow_multiple:
+                        # Team member and multiple teams not allowed
+                        eligibility_issues.append(f"Student already registered for this event as {reg_type}")
+                    elif reg_type == "team member" and allow_multiple:
+                        # Team member can join another team if multiple teams are allowed
+                        pass  # No eligibility issue
+                
+                # Return eligibility result
+                is_eligible = len(eligibility_issues) == 0
+                
+                result.update({
+                    "eligible": is_eligible,
+                    "eligibility_issues": eligibility_issues,
+                    "already_registered": existing_registration is not None,
+                    "registration_type": existing_registration.get("registration_type") if existing_registration else None,
+                    "message": "Eligible for event" if is_eligible else f"Not eligible: {'; '.join(eligibility_issues)}"
+                })
+            
+            return result
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting user registrations: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get registrations: {str(e)}")
-
-# Faculty-specific endpoints
-
-@router.get("/lookup/faculty/{employee_id}")
-async def lookup_faculty(
-    employee_id: str,
-    current_user=Depends(get_current_user)
-):
-    """Lookup faculty by employee ID for registration purposes"""
-    try:
-        from database.operations import DatabaseOperations
-        
-        # Find faculty by employee_id
-        faculty = await DatabaseOperations.find_one(
-            "faculties",
-            {"employee_id": employee_id}
-        )
-        
-        if not faculty:
-            return {
-                "success": False,
-                "found": False,
-                "message": "Faculty not found"
-            }
-        
-        # Return only public faculty information for registration
-        faculty_info = {
-            "employee_id": faculty["employee_id"],
-            "full_name": faculty.get("full_name", ""),
-            "email": faculty.get("email", ""),
-            "contact_no": faculty.get("contact_no", ""),
-            "department": faculty.get("department", ""),
-            "designation": faculty.get("designation", "")
-        }
-        
-        return {
-            "success": True,
-            "found": True,
-            "faculty_data": faculty_info
-        }
-        
-    except Exception as e:
-        logger.error(f"Error looking up faculty: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Faculty lookup failed: {str(e)}")
-
-@router.get("/lookup/student/{enrollment_no}")
-async def lookup_student(
-    enrollment_no: str,
-    current_user=Depends(get_current_user)
-):
-    """Lookup student by enrollment number for registration purposes"""
-    try:
-        from database.operations import DatabaseOperations
-        
-        # Find student by enrollment_no
-        student = await DatabaseOperations.find_one(
-            "students",
-            {"enrollment_no": enrollment_no}
-        )
-        
-        if not student:
-            return {
-                "success": False,
-                "found": False,
-                "message": "Student not found in database"
-            }
-        
-        # Return only public student information for registration
-        student_info = {
-            "enrollment_no": student["enrollment_no"],
-            "full_name": student.get("full_name", ""),
-            "email": student.get("email", ""),
-            "mobile_no": student.get("mobile_no", ""),
-            "department": student.get("department", ""),
-            "semester": student.get("semester", "")
-        }
-        
-        return {
-            "success": True,
-            "found": True,
-            "student_data": student_info
-        }
-        
-    except Exception as e:
-        logger.error(f"Error looking up student: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Student lookup failed: {str(e)}")
-
-@router.get("/lookup/student/{enrollment_no}/eligibility/{event_id}")
-async def check_student_eligibility(
-    enrollment_no: str,
-    event_id: str,
-    current_user=Depends(get_current_user)
-):
-    """Check if student is eligible for specific event based on event criteria"""
-    try:
-        from database.operations import DatabaseOperations
-        
-        # Find student
-        student = await DatabaseOperations.find_one(
-            "students",
-            {"enrollment_no": enrollment_no}
-        )
-        
-        if not student:
-            return {
-                "success": False,
-                "found": False,
-                "eligible": False,
-                "message": "Student not found in database"
-            }
-        
-        # Find event
-        event = await DatabaseOperations.find_one(
-            "events",
-            {"event_id": event_id}
-        )
-        
-        if not event:
-            return {
-                "success": False,
-                "found": True,
-                "eligible": False,
-                "message": "Event not found"
-            }
-        
-        # Check eligibility criteria
-        eligibility_issues = []
-        
-        # Check department eligibility
-        if "student_department" in event and event["student_department"]:
-            allowed_departments = event["student_department"]
-            if isinstance(allowed_departments, str):
-                allowed_departments = [allowed_departments]
-            
-            student_dept = student.get("department", "")
-            if student_dept not in allowed_departments:
-                eligibility_issues.append(f"Department '{student_dept}' not eligible. Allowed: {', '.join(allowed_departments)}")
-        
-        # Check semester eligibility
-        if "student_semester" in event and event["student_semester"]:
-            allowed_semesters = event["student_semester"]
-            if isinstance(allowed_semesters, (int, str)):
-                allowed_semesters = [int(allowed_semesters)]
-            elif isinstance(allowed_semesters, list):
-                allowed_semesters = [int(s) for s in allowed_semesters]
-            
-            student_sem = int(student.get("semester", 0))
-            if student_sem not in allowed_semesters:
-                eligibility_issues.append(f"Semester {student_sem} not eligible. Allowed: {', '.join(map(str, allowed_semesters))}")
-        
-        # Check if student is already registered for this event
-        existing_registration = await DatabaseOperations.find_one(
-            "student_registrations",
-            {
-                "$or": [
-                    # Check for individual registration
-                    {
-                        "student.enrollment_no": enrollment_no,
-                        "event.event_id": event_id,
-                        "registration.type": "individual"
-                    },
-                    # Check if student is team leader in team registration
-                    {
-                        "team.team_leader": enrollment_no,
-                        "event.event_id": event_id,
-                        "registration_type": "team"
-                    },
-                    # Check if student is team member in team registration
-                    {
-                        "team_members.student.enrollment_no": enrollment_no,
-                        "event.event_id": event_id,
-                        "registration_type": "team"
-                    }
-                ]
-            }
-        )
-        
-        if existing_registration:
-            # Check if multiple team registrations are allowed
-            allow_multiple = event.get("allow_multiple_team_registrations", False)
-            
-            # Student is already registered - determine registration type
-            reg_type = "individual"
-            if existing_registration.get("registration_type") == "team":
-                if existing_registration.get("team", {}).get("team_leader") == enrollment_no:
-                    reg_type = "team leader"
-                else:
-                    reg_type = "team member"
-            
-            # Handle different scenarios based on multiple team registration setting
-            if reg_type == "individual":
-                # Individual registration always blocks further registration
-                eligibility_issues.append(f"Student already registered for this event as {reg_type}")
-            elif reg_type == "team leader":
-                # Team leaders cannot join multiple teams
-                eligibility_issues.append(f"Team leader cannot join multiple teams")
-            elif reg_type == "team member" and not allow_multiple:
-                # Team member and multiple teams not allowed
-                eligibility_issues.append(f"Student already registered for this event as {reg_type}")
-            elif reg_type == "team member" and allow_multiple:
-                # Team member can join another team if multiple teams are allowed
-                pass  # No eligibility issue
-        
-        # Return eligibility result
-        is_eligible = len(eligibility_issues) == 0
-        
-        student_info = {
-            "enrollment_no": student["enrollment_no"],
-            "full_name": student.get("full_name", ""),
-            "email": student.get("email", ""),
-            "mobile_no": student.get("mobile_no", ""),
-            "department": student.get("department", ""),
-            "semester": student.get("semester", "")
-        }
-        
-        return {
-            "success": True,
-            "found": True,
-            "eligible": is_eligible,
-            "student_data": student_info,
-            "eligibility_issues": eligibility_issues,
-            "already_registered": existing_registration is not None,
-            "registration_type": existing_registration.get("registration_type") if existing_registration else None,
-            "message": "Eligible for event" if is_eligible else f"Not eligible: {'; '.join(eligibility_issues)}"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error checking student eligibility: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Eligibility check failed: {str(e)}")
+        logger.error(f"Error in unified user lookup: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"User lookup failed: {str(e)}")
 
 # Team invitation endpoints
 

@@ -29,6 +29,7 @@ const authActions = {
   SET_LOADING: 'SET_LOADING',
   LOGIN_SUCCESS: 'LOGIN_SUCCESS',
   LOGIN_FAILURE: 'LOGIN_FAILURE',
+  UPDATE_USER: 'UPDATE_USER',
   LOGOUT: 'LOGOUT',
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
@@ -61,6 +62,12 @@ function authReducer(state, action) {
         userType: null,
         isLoading: false,
         error: action.payload,
+      };
+    
+    case authActions.UPDATE_USER:
+      return {
+        ...state,
+        user: { ...state.user, ...action.payload },
       };
     
     case authActions.LOGOUT:
@@ -438,6 +445,21 @@ export function AuthProvider({ children }) {
     dispatch({ type: authActions.CLEAR_ERROR });
   };
 
+  // Function to update user data in state and localStorage
+  const updateUser = (updatedData) => {
+    dispatch({ 
+      type: authActions.UPDATE_USER, 
+      payload: updatedData 
+    });
+    
+    // Update localStorage
+    const currentUserData = JSON.parse(localStorage.getItem('user_data') || '{}');
+    const newUserData = { ...currentUserData, ...updatedData };
+    localStorage.setItem('user_data', JSON.stringify(newUserData));
+    
+    console.log('✅ User data updated in context and localStorage');
+  };
+
   // Function to transition faculty to organizer admin
   const transitionToOrganizerAdmin = async (organizerData) => {
     // Update user data to reflect organizer admin role
@@ -545,6 +567,7 @@ export function AuthProvider({ children }) {
     logout,
     register,
     clearError,
+    updateUser,
     checkAuthStatus,
     transitionToOrganizerAdmin,
     refreshUserData,

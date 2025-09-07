@@ -43,8 +43,8 @@ async def unified_login_redirect(
             
         elif type == "admin":
             if method == "POST":
-                # Admin POST requests -> API endpoint (preserve POST)
-                redirect_url = "/api/v1/auth/admin/login"
+                # Admin POST requests -> Unified API endpoint (preserve POST)
+                redirect_url = "/api/v1/auth/login"
                 status_code = 307  # 307 preserves POST method
             else:
                 # Admin GET requests -> Frontend with admin tab
@@ -53,7 +53,7 @@ async def unified_login_redirect(
                 
         elif type == "student":
             if method == "POST":
-                redirect_url = "/api/v1/auth/student/login"
+                redirect_url = "/api/v1/auth/login"
                 status_code = 307
             else:
                 redirect_url = f"{FRONTEND_URL}/auth/login?tab=student"
@@ -61,7 +61,7 @@ async def unified_login_redirect(
                 
         elif type == "faculty":
             if method == "POST":
-                redirect_url = "/api/v1/auth/faculty/login"
+                redirect_url = "/api/v1/auth/login"
                 status_code = 307
             else:
                 redirect_url = f"{FRONTEND_URL}/auth/login?tab=faculty"
@@ -97,14 +97,14 @@ async def unified_logout_redirect(
     try:
         # Route to appropriate logout API endpoint
         if type == "admin":
-            redirect_url = "/api/v1/auth/admin/logout"
+            redirect_url = "/api/v1/auth/logout"
         elif type == "student":
-            redirect_url = "/api/v1/auth/student/logout"
+            redirect_url = "/api/v1/auth/logout"
         elif type == "faculty":
-            redirect_url = "/api/v1/auth/faculty/logout"
+            redirect_url = "/api/v1/auth/logout"
         else:
-            # Default to admin logout
-            redirect_url = "/api/v1/auth/admin/logout"
+            # Default to unified logout
+            redirect_url = "/api/v1/auth/logout"
             
         logger.info(f"Logout redirect: type={type} -> {redirect_url}")
         return RedirectResponse(url=redirect_url, status_code=307)  # 307 preserves original method
@@ -132,6 +132,9 @@ async def redirect_info():
                     "source": ["legacy", "admin", "direct"]
                 },
                 "replaces": [
+                    "/api/v1/auth/admin/login (POST)",
+                    "/api/v1/auth/student/login (POST)",
+                    "/api/v1/auth/faculty/login (POST)",
                     "/api/v1/auth/login (GET/POST)",
                     "/api/auth/login (GET/POST)", 
                     "/admin/login (GET/POST)",
@@ -145,6 +148,9 @@ async def redirect_info():
                     "return_to": "Optional return URL"
                 },
                 "replaces": [
+                    "/api/v1/auth/admin/logout (GET)",
+                    "/api/v1/auth/student/logout (GET)",
+                    "/api/v1/auth/faculty/logout (GET)",
                     "/api/v1/auth/logout (GET)",
                     "/api/auth/logout (GET)"
                 ]

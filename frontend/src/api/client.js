@@ -41,18 +41,33 @@ export const clientAPI = {
   
   cancelRegistration: (eventId) => api.delete(`/api/v1/client/registration/cancel/${eventId}`),
   
-  // Student lookup and validation (keep existing for form validation)
-  lookupStudent: (enrollmentNo) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}`),
-  checkStudentEligibility: (enrollmentNo, eventId) => api.get(`/api/v1/client/registration/lookup/student/${enrollmentNo}/eligibility/${eventId}`),
-  validateParticipant: (enrollmentNo, eventId) => api.get('/api/v1/client/registration/validate-participant', { 
-    params: { enrollment_no: enrollmentNo, event_id: eventId } 
-  }),
+  // UNIFIED: User lookup and validation (3→1 endpoint consolidation)
+  lookupUser: (userType, userId, action = 'basic', eventId = null) => {
+    const params = { user_type: userType, user_id: userId, action };
+    if (eventId) params.event_id = eventId;
+    return api.get('/api/v1/client/registration/lookup', { params });
+  },
   
-  // Faculty lookup and validation
-  lookupFaculty: (employeeId) => api.get(`/api/v1/client/registration/lookup/faculty/${employeeId}`),
-  validateFacultyParticipant: (employeeId, eventId) => api.get('/api/v1/client/registration/validate-faculty-participant', { 
-    params: { employee_id: employeeId, event_id: eventId } 
-  }),
+  // Convenience methods using unified endpoint
+  lookupStudent: (enrollmentNo) => 
+    api.get('/api/v1/client/registration/lookup', { 
+      params: { user_type: 'student', user_id: enrollmentNo, action: 'basic' } 
+    }),
+  
+  lookupFaculty: (employeeId) => 
+    api.get('/api/v1/client/registration/lookup', { 
+      params: { user_type: 'faculty', user_id: employeeId, action: 'basic' } 
+    }),
+  
+  checkStudentEligibility: (enrollmentNo, eventId) => 
+    api.get('/api/v1/client/registration/lookup', { 
+      params: { user_type: 'student', user_id: enrollmentNo, action: 'eligibility', event_id: eventId } 
+    }),
+  
+  checkFacultyEligibility: (employeeId, eventId) => 
+    api.get('/api/v1/client/registration/lookup', { 
+      params: { user_type: 'faculty', user_id: employeeId, action: 'eligibility', event_id: eventId } 
+    }),
   
   // Faculty registration methods
   registerFacultyIndividual: (eventId, registrationData) => api.post('/api/v1/client/registration/register', {

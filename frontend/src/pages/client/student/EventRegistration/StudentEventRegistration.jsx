@@ -559,7 +559,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       const response = await clientAPI.checkStudentEligibility(enrollmentNo, eventId);
       
       if (response.data.success && response.data.found) {
-        const studentData = response.data.student_data;
+        // FIXED: Updated to use new unified API response structure
+        const studentData = response.data.user_data; // Changed from student_data to user_data
         const isEligible = response.data.eligible;
         const eligibilityMessage = response.data.message;
         const alreadyRegistered = response.data.already_registered;

@@ -313,65 +313,65 @@ async def get_event_details(event_id: str, student: Student = Depends(get_curren
         logger.error(f"Error getting event details: {str(e)}")
         return {"success": False, "message": f"Error retrieving event details: {str(e)}"}
 
-@router.get("/timeline/{event_id}")
-async def get_event_timeline(event_id: str):
-    """Get comprehensive timeline information for an event"""
-    try:
-        # Get event details with updated status
-        event = await EventStatusManager.get_event_by_id(event_id)
-        if not event:
-            return {"success": False, "message": "Event not found"}
+# @router.get("/timeline/{event_id}")
+# async def get_event_timeline(event_id: str):
+#     """Get comprehensive timeline information for an event"""
+#     try:
+#         # Get event details with updated status
+#         event = await EventStatusManager.get_event_by_id(event_id)
+#         if not event:
+#             return {"success": False, "message": "Event not found"}
         
-        # Get timeline information
-        timeline_info = await EventStatusManager.get_event_timeline_info(event)
+#         # Get timeline information
+#         timeline_info = await EventStatusManager.get_event_timeline_info(event)
         
-        return {
-            "success": True,
-            "message": "Timeline information retrieved successfully",
-            "timeline": timeline_info,
-            "event_id": event_id
-        }
+#         return {
+#             "success": True,
+#             "message": "Timeline information retrieved successfully",
+#             "timeline": timeline_info,
+#             "event_id": event_id
+#         }
         
-    except Exception as e:
-        logger.error(f"Error getting event timeline: {str(e)}")
-        return {"success": False, "message": f"Error retrieving timeline: {str(e)}"}
+#     except Exception as e:
+#         logger.error(f"Error getting event timeline: {str(e)}")
+#         return {"success": False, "message": f"Error retrieving timeline: {str(e)}"}
 
-@router.get("/categories")
-async def get_event_categories():
-    """LEGACY: Redirect to unified endpoint - Get list of all event categories"""
-    logger.info(f"PHASE 4A: Redirecting /categories to /unified endpoint")
-    return await get_events_unified(mode="categories")
+# @router.get("/categories")
+# async def get_event_categories():
+#     """LEGACY: Redirect to unified endpoint - Get list of all event categories"""
+#     logger.info(f"PHASE 4A: Redirecting /categories to /unified endpoint")
+#     return await get_events_unified(mode="categories")
 
-@router.get("/search")
-async def search_events(
-    q: str = Query(..., description="Search query"),
-    status: str = Query("all", description="Filter by event status"),
-    category: str = Query(None, description="Filter by event category"),
-    page: int = Query(1, description="Page number for pagination"),
-    limit: int = Query(10, description="Number of events per page"),
-    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
-):
-    """LEGACY: Redirect to unified endpoint - Search events by name, description, or category"""
-    logger.info(f"PHASE 4A: Redirecting /search to /unified endpoint")
-    return await get_events_unified(
-        mode="search",
-        q=q,
-        status=status,
-        category=category,
-        page=page,
-        limit=limit,
-        current_user=current_user
-    )
+# @router.get("/search")
+# async def search_events(
+#     q: str = Query(..., description="Search query"),
+#     status: str = Query("all", description="Filter by event status"),
+#     category: str = Query(None, description="Filter by event category"),
+#     page: int = Query(1, description="Page number for pagination"),
+#     limit: int = Query(10, description="Number of events per page"),
+#     current_user: Union[Student, Faculty, None] = Depends(get_current_user)
+# ):
+#     """LEGACY: Redirect to unified endpoint - Search events by name, description, or category"""
+#     logger.info(f"PHASE 4A: Redirecting /search to /unified endpoint")
+#     return await get_events_unified(
+#         mode="search",
+#         q=q,
+#         status=status,
+#         category=category,
+#         page=page,
+#         limit=limit,
+#         current_user=current_user
+#     )
 
-@router.get("/upcoming")
-async def get_upcoming_events(
-    limit: int = Query(5, description="Number of upcoming events to retrieve"),
-    current_user: Union[Student, Faculty, None] = Depends(get_current_user)
-):
-    """LEGACY: Redirect to unified endpoint - Get upcoming events (quick access endpoint)"""
-    logger.info(f"PHASE 4A: Redirecting /upcoming to /unified endpoint")
-    return await get_events_unified(
-        mode="upcoming",
-        limit=limit,
-        current_user=current_user
-    )
+# @router.get("/upcoming")
+# async def get_upcoming_events(
+#     limit: int = Query(5, description="Number of upcoming events to retrieve"),
+#     current_user: Union[Student, Faculty, None] = Depends(get_current_user)
+# ):
+#     """LEGACY: Redirect to unified endpoint - Get upcoming events (quick access endpoint)"""
+#     logger.info(f"PHASE 4A: Redirecting /upcoming to /unified endpoint")
+#     return await get_events_unified(
+#         mode="upcoming",
+#         limit=limit,
+#         current_user=current_user
+#     )

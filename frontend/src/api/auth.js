@@ -46,9 +46,15 @@ export const authAPI = {
   facultyStatus: () => api.get('/api/v1/auth/status', { params: { user_type: 'faculty' } }),
   adminStatus: () => api.get('/api/v1/auth/status', { params: { user_type: 'admin' } }),
 
-  // 🔑 PASSWORD RESET APIs (unchanged)
+  // 🔑 PASSWORD RESET APIs - UNIFIED CONSOLIDATION
+  // Single unified endpoint for all password reset types
+  forgotPassword: (userType, data) => api.post(`/api/v1/auth/forgot-password/${userType}`, data),
+  
+  // 🔄 LEGACY COMPATIBILITY HELPERS (wraps unified endpoint)
   forgotPasswordStudent: (data) => api.post('/api/v1/auth/forgot-password/student', data),
   forgotPasswordFaculty: (data) => api.post('/api/v1/auth/forgot-password/faculty', data),
+  
+  // Token validation and reset (already unified)
   validateResetToken: (token) => api.get(`/api/v1/auth/validate-reset-token/${token}`),
   resetPassword: (token, data) => api.post(`/api/v1/auth/reset-password/${token}`, data),
   

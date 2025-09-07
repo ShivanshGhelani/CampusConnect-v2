@@ -39,9 +39,9 @@ ALLOWED_ORIGINS = [
     # Local development
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    
     # Production deployments
     "https://campusconnectldrp.vercel.app",
-    "https://campusconnect-self.vercel.app",
 ]
 
 # Get additional origins from environment variables

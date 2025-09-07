@@ -7,7 +7,7 @@ import Modal from '../../components/ui/Modal';
 import Avatar from '../../components/ui/Avatar';
 
 function SettingsProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
@@ -90,12 +90,22 @@ function SettingsProfile() {
 
     try {
       const response = await adminAPI.updateProfile(profileForm);
-      if (response.success) {
+      if (response.data.success) {
         setSuccessMessage('Profile updated successfully!');
         setIsProfileModalOpen(false);
         setTimeout(() => setSuccessMessage(''), 3000);
+        
+        // Update user context with new data immediately
+        updateUser({
+          fullname: profileForm.fullname,
+          email: profileForm.email,
+          mobile_no: profileForm.phone
+        });
+        
+        // No need to reload profile data - the form already has the updated data
+        // The updateUser call above already updates the displayed data in real-time
       } else {
-        setError(response.message || 'Failed to update profile');
+        setError(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Profile update error:', error);
@@ -119,16 +129,17 @@ function SettingsProfile() {
     try {
       const response = await adminAPI.changePassword({
         current_password: passwordForm.current_password,
-        new_password: passwordForm.new_password
+        new_password: passwordForm.new_password,
+        confirm_password: passwordForm.confirm_password
       });
 
-      if (response.success) {
+      if (response.data.success) {
         setSuccessMessage('Password changed successfully!');
         setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
         setIsPasswordModalOpen(false);
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        setError(response.message || 'Failed to change password');
+        setError(response.data.message || 'Failed to change password');
       }
     } catch (error) {
       console.error('Password change error:', error);
@@ -149,13 +160,18 @@ function SettingsProfile() {
         current_password: usernameForm.current_password
       });
 
-      if (response.success) {
-        setSuccessMessage('Username changed successfully!');
+      if (response.data.success) {
+        setSuccessMessage('Username changed successfully! Please log in again.');
         setUsernameForm(prev => ({ ...prev, current_password: '' }));
         setIsUsernameModalOpen(false);
-        setTimeout(() => setSuccessMessage(''), 3000);
+        setTimeout(() => setSuccessMessage(''), 5000);
+        
+        // For username changes, user should re-login as the session username has changed
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
       } else {
-        setError(response.message || 'Failed to change username');
+        setError(response.data.message || 'Failed to change username');
       }
     } catch (error) {
       console.error('Username change error:', error);

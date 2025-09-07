@@ -586,7 +586,7 @@ async def validate_field_api(request: Request):
         return {"success": False, "available": True, "message": "Validation check failed"}
 
 # Include all consolidated routers
+router.include_router(unified_auth_router)        # Unified login/logout endpoints
 router.include_router(password_reset_router)      # Password reset functionality
 router.include_router(status_router)              # Auth status endpoints  
-router.include_router(redirects_router)         # Redirect endpoints
-router.include_router(unified_auth_router)        # Unified login/logout endpoints
+router.include_router(redirects_router)           # Redirect endpoints

@@ -426,110 +426,184 @@ async def get_admin_profile_api(request: Request, admin: AdminUser = Depends(get
 
 @router.put("/admin/profile")
 async def update_admin_profile_api(request: Request, admin: AdminUser = Depends(get_current_admin)):
-    """API endpoint to update admin profile"""
+    """
+    Unified admin profile update endpoint - handles profile, username, and password updates
+    Uses 'update_type' parameter to determine what to update
+    """
     try:
+        logger.info(f"Profile update request from admin: {admin.username}")
         data = await request.json()
-        fullname = data.get("fullname", "").strip()
-        email = data.get("email", "").strip()
-        mobile_no = data.get("mobile_no", "").strip()
+        update_type = data.get("update_type", "profile")  # Default to profile update
+        logger.info(f"Update type: {update_type}, Data received: {[k for k in data.keys() if k != 'current_password' and k != 'new_password']}")
         
-        if not fullname:
+        if update_type == "profile":
+            return await _update_profile_data(admin, data)
+        elif update_type == "username":
+            return await _update_username(admin, data)
+        elif update_type == "password":
+            return await _update_password(admin, data)
+        else:
             return JSONResponse(
                 status_code=400,
-                content={"success": False, "message": "Full name is required"}
+                content={"success": False, "message": "Invalid update_type. Use: 'profile', 'username', or 'password'"}
             )
-        
-        # Update profile in database
-        update_data = {
-            "fullname": fullname,
-            "email": email,
-            "mobile_no": mobile_no,
-            "updated_at": datetime.utcnow()
-        }
-        
-        # Remove empty fields
-        update_data = {k: v for k, v in update_data.items() if v}
-        
-        success = await DatabaseOperations.update_one(
-            "admin_users",
-            {"username": admin.username},
-            {"$set": update_data}
+            
+    except Exception as e:
+        logger.error(f"Error in unified profile update: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Internal server error: {str(e)}"}
         )
-        
-        if success:
+
+async def _update_profile_data(admin: AdminUser, data: dict):
+    """Handle profile data updates (fullname, email, mobile_no)"""
+    fullname = data.get("fullname", "").strip()
+    email = data.get("email", "").strip()
+    # Handle both 'mobile_no' and 'phone' field names
+    mobile_no = data.get("mobile_no", data.get("phone", "")).strip()
+    
+    logger.info(f"Profile data - fullname: {fullname}, email: {email}, mobile_no: {mobile_no}")
+    
+    if not fullname:
+        logger.warning("Profile update failed: fullname is required")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Full name is required"}
+        )
+    
+    # Update profile in database
+    update_data = {
+        "fullname": fullname,
+        "email": email,
+        "mobile_no": mobile_no,
+        "updated_at": datetime.utcnow()
+    }
+    
+    # Remove empty fields
+    update_data = {k: v for k, v in update_data.items() if v}
+    logger.info(f"Profile update data prepared: {update_data}")
+    
+    success = await DatabaseOperations.update_one(
+        "users",
+        {"username": admin.username},
+        {"$set": update_data}
+    )
+    
+    if success:
+        logger.info(f"Profile updated successfully for admin: {admin.username}")
+        return {"success": True, "message": "Profile updated successfully"}
+    else:
+        # Check if no modification was needed (data unchanged)
+        updated_admin = await DatabaseOperations.find_one("users", {"username": admin.username})
+        if updated_admin and updated_admin.get("fullname") == fullname:
+            logger.info(f"Profile data unchanged for admin: {admin.username}")
             return {"success": True, "message": "Profile updated successfully"}
         else:
+            logger.error(f"Profile update failed for admin: {admin.username}")
             return JSONResponse(
                 status_code=500,
                 content={"success": False, "message": "Failed to update profile"}
             )
-            
-    except Exception as e:
-        logger.error(f"Error updating admin profile: {e}")
+
+async def _update_username(admin: AdminUser, data: dict):
+    """Handle username updates"""
+    new_username = data.get("new_username", "").strip()
+    current_password = data.get("current_password", "").strip()
+    
+    if not new_username:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "New username is required"}
+        )
+    
+    if not current_password:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Current password is required for username change"}
+        )
+    
+    # Verify current password
+    if not pwd_context.verify(current_password, admin.password):
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Current password is incorrect"}
+        )
+    
+    # Check if new username already exists
+    existing_admin = await DatabaseOperations.find_one("users", {"username": new_username})
+    if existing_admin and existing_admin.get("username") != admin.username:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Username already exists"}
+        )
+    
+    # Update username
+    success = await DatabaseOperations.update_one(
+        "users",
+        {"username": admin.username},
+        {"$set": {"username": new_username, "updated_at": datetime.utcnow()}}
+    )
+    
+    if success:
+        logger.info(f"Username updated successfully: {admin.username} -> {new_username}")
+        return {"success": True, "message": "Username updated successfully"}
+    else:
+        logger.error(f"Username update failed: {admin.username} -> {new_username}")
         return JSONResponse(
             status_code=500,
-            content={"success": False, "message": "Internal server error"}
+            content={"success": False, "message": "Failed to update username"}
         )
 
-@router.put("/admin/password")
-async def update_admin_password_api(request: Request, admin: AdminUser = Depends(get_current_admin)):
-    """API endpoint to update admin password"""
-    try:
-        data = await request.json()
-        current_password = data.get("current_password", "")
-        new_password = data.get("new_password", "")
-        confirm_password = data.get("confirm_password", "")
-        
-        if not all([current_password, new_password, confirm_password]):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "message": "All password fields are required"}
-            )
-        
-        if new_password != confirm_password:
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "message": "New passwords do not match"}
-            )
-        
-        # Verify current password
-        admin_data = await DatabaseOperations.find_one(
-            "admin_users",
-            {"username": admin.username}
+async def _update_password(admin: AdminUser, data: dict):
+    """Handle password updates"""
+    current_password = data.get("current_password", "")
+    new_password = data.get("new_password", "")
+    confirm_password = data.get("confirm_password", "")
+    
+    if not all([current_password, new_password, confirm_password]):
+        logger.warning("Password update failed: missing required fields")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "All password fields are required"}
         )
-        
-        if not admin_data or not await verify_password(current_password, admin_data.get("password", "")):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "message": "Current password is incorrect"}
-            )
-        
-        # Hash new password and update
-        hashed_password = await get_password_hash(new_password)
-        success = await DatabaseOperations.update_one(
-            "admin_users",
-            {"username": admin.username},
-            {
-                "$set": {
-                    "password": hashed_password,
-                    "updated_at": datetime.utcnow()
-                }
+    
+    if new_password != confirm_password:
+        logger.warning("Password update failed: passwords do not match")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "New passwords do not match"}
+        )
+    
+    # Verify current password
+    if not pwd_context.verify(current_password, admin.password):
+        logger.warning(f"Password update failed: incorrect current password for {admin.username}")
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Current password is incorrect"}
+        )
+    
+    # Hash new password and update
+    hashed_password = pwd_context.hash(new_password)
+    
+    success = await DatabaseOperations.update_one(
+        "users",
+        {"username": admin.username},
+        {
+            "$set": {
+                "password": hashed_password,
+                "updated_at": datetime.utcnow()
             }
-        )
-        
-        if success:
-            return {"success": True, "message": "Password updated successfully"}
-        else:
-            return JSONResponse(
-                status_code=500,
-                content={"success": False, "message": "Failed to update password"}
-            )
-            
-    except Exception as e:
-        logger.error(f"Error updating admin password: {e}")
+        }
+    )
+    
+    if success:
+        logger.info(f"Password updated successfully for admin: {admin.username}")
+        return {"success": True, "message": "Password updated successfully"}
+    else:
+        logger.error(f"Password update failed for admin: {admin.username}")
         return JSONResponse(
             status_code=500,
-            content={"success": False, "message": "Internal server error"}
+            content={"success": False, "message": "Failed to update password"}
         )
 
 @router.get("/info")
