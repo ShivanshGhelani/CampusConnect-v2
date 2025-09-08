@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import EventReportModal from '../../components/EventReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
@@ -64,6 +65,7 @@ function EventDetail() {
   const [posterModalOpen, setPosterModalOpen] = useState(false);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
+  const [eventReportModalOpen, setEventReportModalOpen] = useState(false);
   const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0); // For real-time updates
 
   // Helper function to calculate targeting statistics from registrations
@@ -662,6 +664,38 @@ function EventDetail() {
     }
   };
 
+  // Event Report Generation Function
+  const handleEventReportGeneration = async (reportData) => {
+    try {
+      setError(''); // Clear any previous errors
+      
+      // Generate event report with uploaded data
+      const response = await adminAPI.generateEventReport(eventId, {
+        ...reportData,
+        format: 'html'
+      });
+      
+      if (response.data) {
+        // Open the generated report in a new window
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(response.data);
+        newWindow.document.close();
+        
+        // Optional: Trigger print dialog after a short delay
+        setTimeout(() => {
+          newWindow.print();
+        }, 1000);
+      } else {
+        throw new Error('No report data received');
+      }
+      
+    } catch (error) {
+      console.error('Error generating event report:', error);
+      setError('Failed to generate event report. Please try again.');
+      alert('Failed to generate event report. Please try again.');
+    }
+  };
+
   const filteredRegistrations = allRegistrations.filter(reg => {
     const searchMatch = !searchTerm ||
       (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -1033,7 +1067,20 @@ function EventDetail() {
                           {/* Additional Report Options */}
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate budget report
+                                const response = await adminAPI.generateBudgetReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating budget report:', error);
+                                alert('Failed to generate budget report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -1043,7 +1090,25 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate sign sheet PDF
+                                const response = await adminAPI.generateSignSheet(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                                // Optional: Trigger print dialog
+                                setTimeout(() => {
+                                  newWindow.print();
+                                }, 1000);
+                                
+                              } catch (error) {
+                                console.error('Error generating sign sheet:', error);
+                                alert('Failed to generate sign sheet. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -1053,7 +1118,20 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate attendance report
+                                const response = await adminAPI.generateAttendanceReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating attendance report:', error);
+                                alert('Failed to generate attendance report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -1063,7 +1141,20 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate feedback report
+                                const response = await adminAPI.generateFeedbackReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating feedback report:', error);
+                                alert('Failed to generate feedback report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -1074,6 +1165,7 @@ function EventDetail() {
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={() => {
+                              setEventReportModalOpen(true);
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -2839,6 +2931,15 @@ function EventDetail() {
               />
             </div>
           )}
+
+          {/* Event Report Modal */}
+          <EventReportModal
+            isOpen={eventReportModalOpen}
+            onClose={() => setEventReportModalOpen(false)}
+            eventId={eventId}
+            eventName={event?.event_name || 'Event'}
+            onGenerate={handleEventReportGeneration}
+          />
         </div>
       </div>
     </AdminLayout>

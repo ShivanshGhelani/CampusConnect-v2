@@ -319,4 +319,81 @@ export const adminAPI = {
   deleteFeedbackForm: (eventId) => 
     api.delete(`/api/v1/admin/events/feedback/delete/${eventId}`),
 
+  // EXPORT AND REPORTING ENDPOINTS
+  generateReport: (eventId, reportType, options = {}) => {
+    const params = new URLSearchParams({
+      event_id: eventId,
+      report_type: reportType,
+      ...options
+    });
+    return api.get(`/api/v1/admin/export/report?${params}`);
+  },
+  
+  generateSignSheet: (eventId, options = {}) => {
+    const params = new URLSearchParams({
+      event_id: eventId,
+      report_type: 'sign_sheet',
+      format: options.format || 'html',
+      include_empty_rows: options.emptyRows || 10
+    });
+    return api.get(`/api/v1/admin/export/report?${params}`);
+  },
+  
+  generateAttendanceReport: (eventId, options = {}) => {
+    const params = new URLSearchParams({
+      event_id: eventId,
+      report_type: 'attendance_report',
+      format: options.format || 'html'
+    });
+    return api.get(`/api/v1/admin/export/report?${params}`);
+  },
+  
+  generateBudgetReport: (eventId, options = {}) => {
+    const params = new URLSearchParams({
+      event_id: eventId,
+      report_type: 'budget_report',
+      format: options.format || 'html'
+    });
+    return api.get(`/api/v1/admin/export/report?${params}`);
+  },
+  
+  generateFeedbackReport: (eventId, options = {}) => {
+    const params = new URLSearchParams({
+      event_id: eventId,
+      report_type: 'feedback_report',
+      format: options.format || 'html'
+    });
+    return api.get(`/api/v1/admin/export/report?${params}`);
+  },
+  
+  generateEventReport: async (eventId, reportData = {}) => {
+    const formData = new FormData();
+    
+    // Add event images if provided
+    if (reportData.images && reportData.images.length > 0) {
+      reportData.images.forEach((image, index) => {
+        formData.append('event_images', image);
+      });
+    }
+    
+    // Add other report data as form fields
+    formData.append('event_outcomes', JSON.stringify(reportData.outcomes || []));
+    formData.append('winners', JSON.stringify(reportData.winners || []));
+    formData.append('results_comparison', reportData.resultsComparison || '');
+    formData.append('actual_duration', reportData.actualDuration || '');
+    formData.append('budget_utilization', reportData.budgetUtilization || '');
+    formData.append('resources_used', reportData.resourcesUsed || '');
+    formData.append('post_event_summary', reportData.postEventSummary || '');
+    
+    const params = new URLSearchParams({
+      format: reportData.format || 'html'
+    });
+    
+    return api.post(`/api/v1/admin/export/event-report/${eventId}?${params}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
 };
