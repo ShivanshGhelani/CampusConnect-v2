@@ -43,18 +43,21 @@ export const getCachedProfile = (userType, userId) => {
   // Check if cache is expired
   const now = Date.now();
   if ((now - cache.fetchTime) > CACHE_DURATION) {
-    
+    console.log('⏰ Cache expired for:', userType, 'Clearing cache');
+    // Clear expired cache
+    clearProfileCache(userType);
     return null;
   }
   
   // Check if cached data is for the same user
   const cachedUserId = cache.data.profile?.enrollment_no || cache.data.profile?.employee_id;
   if (cachedUserId !== userId) {
-    
+    console.log('👤 Different user detected, clearing cache');
+    clearProfileCache(userType);
     return null;
   }
   
-  
+  console.log('✅ Valid cache found for:', userType, userId);
   return cache.data;
 };
 
@@ -65,7 +68,27 @@ export const setCachedProfile = (userType, data) => {
     isLoading: false,
     promise: null
   };
-  
+  console.log('💾 Profile cached for:', userType);
+};
+
+// Update cache with new profile data (for profile updates)
+export const updateCachedProfile = (userType, updatedProfileData) => {
+  const cache = profileCache[userType];
+  if (cache && cache.data) {
+    // Update the profile data while keeping the same structure
+    cache.data = {
+      ...cache.data,
+      profile: {
+        ...cache.data.profile,
+        ...updatedProfileData
+      }
+    };
+    cache.fetchTime = Date.now();
+    console.log('🔄 Profile cache updated for:', userType);
+    return true;
+  }
+  console.log('⚠️ No existing cache to update for:', userType);
+  return false;
 };
 
 // Fast cache check without userId validation (for immediate access)
@@ -85,11 +108,12 @@ export const getAnyCache = (userType) => {
   // Check if cache is expired
   const now = Date.now();
   if ((now - cache.fetchTime) > CACHE_DURATION) {
-    
+    console.log('⏰ Cache expired in getAnyCache, clearing cache');
+    clearProfileCache(userType);
     return null;
   }
   
-  
+  console.log('✅ Valid cache found in getAnyCache for:', userType);
   return cache.data;
 };
 
@@ -99,18 +123,18 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
   // Check if we have recent cached data (first priority)
   const cachedData = getCachedProfile(userType, userId);
   if (cachedData) {
-    
+    console.log('🎯 Using cached data for:', userType, userId);
     return cachedData;
   }
   
   // Check if there's already a request in progress (prevent duplicate calls)
   if (cache.isLoading && cache.promise) {
-    
+    console.log('⏳ Request already in progress for:', userType);
     try {
       const result = await cache.promise;
       return result;
     } catch (error) {
-      
+      console.error('❌ Failed to wait for existing request:', error);
       throw error;
     }
   }
@@ -118,7 +142,7 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
   // Check for rapid successive calls (more aggressive prevention)
   const now = Date.now();
   if (cache.fetchTime && (now - cache.fetchTime) < DUPLICATE_CALL_THRESHOLD) {
-    
+    console.log('🚫 Preventing duplicate call within threshold for:', userType);
     if (cache.data) {
       return cache.data;
     }
@@ -128,7 +152,7 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
   }
   
   // Make the API call (only if no cache and no ongoing request)
-  
+  console.log('🌐 Making fresh API call for:', userType, userId);
   
   const endpoint = userType === 'faculty' 
     ? '/api/v1/client/profile/faculty/complete-profile'
@@ -146,7 +170,7 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
     }
   }).catch(error => {
     // Reset loading state on error
-    
+    console.error('❌ Profile fetch failed for:', userType, error);
     profileCache[userType].isLoading = false;
     profileCache[userType].promise = null;
     throw error;
@@ -158,4 +182,24 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
   profileCache[userType].fetchTime = now;
   
   return await fetchPromise;
+};
+
+// Check if cache is expired and refresh for active sessions
+export const refreshExpiredCache = async (userType, userId, api, forceRefresh = false) => {
+  const cache = profileCache[userType];
+  const now = Date.now();
+  
+  // If no cache or cache is expired, fetch fresh data
+  if (!cache || !cache.data || !cache.fetchTime || 
+      (now - cache.fetchTime) > CACHE_DURATION || forceRefresh) {
+    console.log('🔄 Refreshing expired cache for active session:', userType, userId);
+    try {
+      return await fetchProfileWithCache(userType, userId, api);
+    } catch (error) {
+      console.error('❌ Failed to refresh expired cache:', error);
+      return null;
+    }
+  }
+  
+  return cache.data;
 };

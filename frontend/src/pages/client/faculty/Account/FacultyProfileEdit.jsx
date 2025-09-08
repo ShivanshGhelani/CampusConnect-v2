@@ -7,7 +7,7 @@ import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
 import TextInput from '../../../../components/ui/TextInput';
 import dropdownOptionsService from '../../../../services/dropdownOptionsService';
-import { fetchProfileWithCache, getCachedProfile } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getCachedProfile, updateCachedProfile } from '../../../../utils/profileCache';
 
 // Hardcoded options for genders
 const GENDER_OPTIONS = [
@@ -108,12 +108,30 @@ function FacultyProfileEdit() {
     (() => {
       const timers = {};
       return (fieldName, fieldValue) => {
-        
+        console.log(`🔄 Debouncing validation for ${fieldName}:`, fieldValue);
         clearTimeout(timers[fieldName]);
+        
+        // Define fields that need API validation with longer debounce
+        const apiValidationFields = ['email', 'contact_no', 'employee_id'];
+        const debounceTime = apiValidationFields.includes(fieldName) ? 1500 : 800; // 1.5s for API fields, 800ms for others
+        
+        // Check minimum length before making API calls to avoid unnecessary requests
+        const shouldValidate = () => {
+          if (!fieldValue || fieldValue.trim().length === 0) return false;
+          if (fieldName === 'email' && fieldValue.length < 5) return false;
+          if (fieldName === 'contact_no' && fieldValue.length < 7) return false;
+          if (fieldName === 'employee_id' && fieldValue.length < 3) return false;
+          return true;
+        };
+        
         timers[fieldName] = setTimeout(() => {
-          
-          validateFieldRealTime(fieldName, fieldValue);
-        }, 800); // Wait 800ms after user stops typing
+          if (shouldValidate()) {
+            console.log(`✅ Triggering validation for ${fieldName} after ${debounceTime}ms delay`);
+            validateFieldRealTime(fieldName, fieldValue);
+          } else {
+            console.log(`⏭️ Skipping validation for ${fieldName} - insufficient length`);
+          }
+        }, debounceTime);
       };
     })(),
     [validateFieldRealTime]
@@ -314,6 +332,13 @@ function FacultyProfileEdit() {
         // Refresh user data from backend to ensure consistency
         await refreshUserData();
 
+        // Update the profile cache with new data (exclude password fields)
+        const profileDataForCache = { ...updateData };
+        delete profileDataForCache.current_password;
+        delete profileDataForCache.new_password;
+        delete profileDataForCache.confirm_new_password;
+        updateCachedProfile('faculty', profileDataForCache);
+
         toast.success(hasPasswordChange ? 'Profile and password updated successfully!' : 'Profile updated successfully!');
         
         // Clear password fields after successful update
@@ -324,10 +349,10 @@ function FacultyProfileEdit() {
           confirm_new_password: ''
         }));
         
-        // Redirect after a short delay
+        // Navigate to dashboard after successful update
         setTimeout(() => {
-          navigate('/faculty/profile');
-        }, 2000);
+          navigate('/faculty/dashboard');
+        }, 1000);
       } else {
         toast.error(response.data.message || 'Failed to update profile');
       }

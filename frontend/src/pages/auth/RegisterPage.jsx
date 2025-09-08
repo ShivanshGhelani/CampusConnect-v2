@@ -345,12 +345,30 @@ function RegisterPage() {
     (() => {
       const timers = {};
       return (fieldName, fieldValue) => {
-        
+        console.log(`🔄 Debouncing validation for ${fieldName}:`, fieldValue);
         clearTimeout(timers[fieldName]);
+        
+        // Define fields that need API validation with longer debounce
+        const apiValidationFields = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
+        const debounceTime = apiValidationFields.includes(fieldName) ? 1500 : 800; // 1.5s for API fields, 800ms for others
+        
+        // Check minimum length before making API calls to avoid unnecessary requests
+        const shouldValidate = () => {
+          if (!fieldValue || fieldValue.trim().length === 0) return false;
+          if (fieldName === 'email' && fieldValue.length < 5) return false;
+          if ((fieldName === 'mobile_no' || fieldName === 'contact_no') && fieldValue.length < 7) return false;
+          if ((fieldName === 'enrollment_no' || fieldName === 'employee_id') && fieldValue.length < 3) return false;
+          return true;
+        };
+        
         timers[fieldName] = setTimeout(() => {
-          
-          validateFieldRealTime(fieldName, fieldValue);
-        }, 800); // Wait 800ms after user stops typing
+          if (shouldValidate()) {
+            console.log(`✅ Triggering validation for ${fieldName} after ${debounceTime}ms delay`);
+            validateFieldRealTime(fieldName, fieldValue);
+          } else {
+            console.log(`⏭️ Skipping validation for ${fieldName} - insufficient length`);
+          }
+        }, debounceTime);
       };
     })(),
     [validateFieldRealTime]

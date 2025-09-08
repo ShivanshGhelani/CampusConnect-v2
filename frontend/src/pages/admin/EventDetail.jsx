@@ -64,6 +64,7 @@ function EventDetail() {
   const [posterModalOpen, setPosterModalOpen] = useState(false);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
+  const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0); // For real-time updates
 
   // Helper function to calculate targeting statistics from registrations
   const calculateTargetingStats = (registrations) => {
@@ -129,6 +130,16 @@ function EventDetail() {
       }
     };
   }, [currentCertificateTemplate]);
+
+  // Real-time updates for attendance availability (update every minute)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Trigger re-render to update attendance availability message
+      setTimeUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [event?.start_date, event?.start_time]);
 
   const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "", title = "" }) => {
     const variants = {
@@ -681,11 +692,105 @@ function EventDetail() {
   const canDelete = user && ['super_admin', 'organizer_admin'].includes(user.role);
   const isReadOnly = false; // No longer read-only for organizer_admin
 
+  // Helper function to check if attendance can be taken (3 hours before event start)
+  const canTakeAttendanceNow = () => {
+    if (isSuperAdmin) return true; // Super admin can always take attendance
+    
+    if (!event?.start_date || !event?.start_time) return false;
+    
+    try {
+      // Combine start_date and start_time to create event start datetime
+      // Ensure proper format handling for different date/time formats
+      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
+      const timeStr = event.start_time;
+      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      
+      // Validate the date
+      if (isNaN(eventStartDateTime.getTime())) {
+        console.error('Invalid event start date/time:', event.start_date, event.start_time);
+        return false;
+      }
+      
+      const currentTime = new Date();
+      
+      // Calculate time difference in milliseconds
+      const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
+      
+      // Convert 3 hours to milliseconds (3 * 60 * 60 * 1000)
+      const threeHoursInMs = 3 * 60 * 60 * 1000;
+      
+      // Allow attendance if current time is within 3 hours of event start (or after event has started)
+      const canTake = timeDifference <= threeHoursInMs;
+      
+      console.log('Attendance availability check:', {
+        eventStart: eventStartDateTime.toLocaleString(),
+        currentTime: currentTime.toLocaleString(),
+        timeDifference: Math.round(timeDifference / (1000 * 60)) + ' minutes',
+        canTakeAttendance: canTake
+      });
+      
+      return canTake;
+    } catch (error) {
+      console.error('Error calculating attendance availability:', error);
+      return false;
+    }
+  };
+
+  // Helper function to get attendance availability message
+  const getAttendanceAvailabilityMessage = () => {
+    if (isSuperAdmin) return null; // Super admin doesn't need this message
+    
+    if (!event?.start_date || !event?.start_time) return "Event start time not set";
+    
+    try {
+      // Ensure proper format handling for different date/time formats
+      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
+      const timeStr = event.start_time;
+      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      
+      // Validate the date
+      if (isNaN(eventStartDateTime.getTime())) {
+        return "Invalid event start time";
+      }
+      
+      const currentTime = new Date();
+      const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
+      const threeHoursInMs = 3 * 60 * 60 * 1000;
+      
+      if (timeDifference <= threeHoursInMs) {
+        return null; // Attendance is available
+      }
+      
+      // Calculate when attendance will be available (3 hours before event)
+      const attendanceAvailableTime = new Date(eventStartDateTime.getTime() - threeHoursInMs);
+      const timeUntilAvailable = attendanceAvailableTime.getTime() - currentTime.getTime();
+      
+      if (timeUntilAvailable > 0) {
+        const daysUntil = Math.floor(timeUntilAvailable / (1000 * 60 * 60 * 24));
+        const hoursUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutesUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (daysUntil > 0) {
+          return `Attendance will be available in ${daysUntil}d ${hoursUntil}h (3 hours before event start)`;
+        } else if (hoursUntil > 0) {
+          return `Attendance will be available in ${hoursUntil}h ${minutesUntil}m (3 hours before event start)`;
+        } else {
+          return `Attendance will be available in ${minutesUntil} minutes`;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error calculating attendance message:', error);
+      return "Unable to determine attendance availability";
+    }
+  };
+
   // Conditional button states based on event status
   const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started';
   const isEventCompleted = event?.status === 'completed';
   const isSuperAdmin = user?.role === 'super_admin';
-  const canTakeAttendance = isSuperAdmin || isEventStarted; // Super admin can always take attendance, others only when event is ongoing/started
+  const canTakeAttendance = canTakeAttendanceNow(); // Use new time-based logic
   const canEditEvent = isSuperAdmin || (canEdit && !isEventStarted && !isEventCompleted); // Super admin can always edit, others only when event hasn't started and isn't completed
 
 
@@ -832,7 +937,7 @@ function EventDetail() {
                 icon={UserCheck}
                 disabled={!canTakeAttendance}
                 className={!canTakeAttendance ? "cursor-not-allowed" : ""}
-                title={!canTakeAttendance ? (isSuperAdmin ? "Take attendance for this event" : "Attendance can only be taken when the event is ongoing") : "Take attendance for this event"}
+                title={!canTakeAttendance ? (isSuperAdmin ? "Take attendance for this event" : "Attendance can be taken starting 3 hours before the event begins") : "Take attendance for this event"}
               >
                 Attendance
               </ActionButton>
@@ -992,6 +1097,7 @@ function EventDetail() {
                 )}
               </div>
 
+              
               {/* Mobile/Tablet: More Actions Dropdown */}
               <div className="relative lg:hidden">
                 <ActionButton

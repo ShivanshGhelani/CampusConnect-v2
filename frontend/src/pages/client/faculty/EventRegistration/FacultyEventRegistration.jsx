@@ -13,7 +13,7 @@ import {
   idValidators
 } from '../../../../utils/idGenerator';
 // Import cache utilities for optimized data loading
-import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
 import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const FacultyEventRegistration = ({ forceTeamMode = false }) => {
@@ -162,57 +162,86 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
 
   // Use cached profile data for form initialization (OPTIMIZED - NO API CALLS)
   useEffect(() => {
-    if (user) {
-      
+    const loadProfileData = async () => {
+      if (user) {
+        console.log('👤 Loading faculty profile data...');
 
-      // Get cached profile data (should already be loaded from login)
-      const cachedProfile = getAnyCache('faculty');
-      let profileData = user; // fallback to AuthContext user
-      
-      if (cachedProfile?.profile) {
+        // Get cached profile data (should already be loaded from login)
+        const cachedProfile = getAnyCache('faculty');
+        let profileData = user; // fallback to AuthContext user
         
-        profileData = cachedProfile.profile;
-      } else {
-        
-        // Try to fetch from session storage as backup
-        try {
-          const sessionProfile = sessionStorage.getItem('complete_profile');
-          if (sessionProfile) {
-            const parsedProfile = JSON.parse(sessionProfile);
-            profileData = parsedProfile;
-            
+        if (cachedProfile?.profile) {
+          console.log('✅ Using cached faculty profile data');
+          profileData = cachedProfile.profile;
+        } else {
+          console.log('❌ No cached faculty profile found, attempting to refresh...');
+          // If no cache and user is logged in, try to refresh expired cache
+          if (user?.employee_id) {
+            try {
+              const refreshedProfile = await refreshExpiredCache('faculty', user.employee_id, clientAPI);
+              if (refreshedProfile?.profile) {
+                console.log('🔄 Successfully refreshed expired faculty cache');
+                profileData = refreshedProfile.profile;
+              } else {
+                console.log('⚠️ Faculty cache refresh failed, using fallback');
+                // Try to fetch from session storage as backup
+                try {
+                  const sessionProfile = sessionStorage.getItem('complete_profile');
+                  if (sessionProfile) {
+                    const parsedProfile = JSON.parse(sessionProfile);
+                    profileData = parsedProfile;
+                    console.log('📦 Using session storage backup for faculty');
+                  }
+                } catch (e) {
+                  console.error('❌ Session storage backup failed for faculty:', e);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to refresh expired faculty cache:', error);
+              // Try to fetch from session storage as backup
+              try {
+                const sessionProfile = sessionStorage.getItem('complete_profile');
+                if (sessionProfile) {
+                  const parsedProfile = JSON.parse(sessionProfile);
+                  profileData = parsedProfile;
+                  console.log('📦 Using session storage backup after faculty error');
+                }
+              } catch (e) {
+                console.error('❌ Session storage backup failed for faculty:', e);
+              }
+            }
           }
-        } catch (e) {
-          
         }
+
+        // Utility function to resolve contact number from various field names
+        const resolveContactNumber = (userData) => {
+          const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
+          for (const field of possibleFields) {
+            if (userData[field] && userData[field].trim()) {
+              return userData[field];
+            }
+          }
+          return '';
+        };
+
+        const contactNumber = resolveContactNumber(profileData);
+
+        const newFormData = {
+          ...formData,
+          full_name: profileData.full_name || '',
+          employee_id: profileData.employee_id || '',  // Changed from faculty_id
+          email: profileData.email || '',
+          contact_no: contactNumber,  // FIXED: Use resolved contact number
+          department: profileData.department || ''
+          // REMOVED: designation field (not needed per user request)
+        };
+
+        setFormData(newFormData);
+        console.log('✅ Faculty form data initialized:', newFormData);
       }
+    };
 
-      // Utility function to resolve contact number from various field names
-      const resolveContactNumber = (userData) => {
-        const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
-        for (const field of possibleFields) {
-          if (userData[field] && userData[field].trim()) {
-            return userData[field];
-          }
-        }
-        return '';
-      };
-
-      const contactNumber = resolveContactNumber(profileData);
-
-      const newFormData = {
-        ...formData,
-        full_name: profileData.full_name || '',
-        employee_id: profileData.employee_id || '',  // Changed from faculty_id
-        email: profileData.email || '',
-        contact_no: contactNumber,  // FIXED: Use resolved contact number
-        department: profileData.department || ''
-        // REMOVED: designation field (not needed per user request)
-      };
-
-      setFormData(newFormData);
-      
-    }
+    loadProfileData();
   }, [user, user?.contact_no, user?.phone_number, user?.full_name, user?.email]);
 
   // Initialize participants array for team registration

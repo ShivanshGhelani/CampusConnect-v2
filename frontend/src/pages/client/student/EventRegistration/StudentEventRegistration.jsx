@@ -12,7 +12,7 @@ import {
   idValidators 
 } from '../../../../utils/idGenerator';
 // Import cache utilities for optimized data loading
-import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
 import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const StudentEventRegistration = ({ forceTeamMode = false }) => {
@@ -172,25 +172,50 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       
       try {
         // Step 1: Get cached profile data (should already be loaded from login)
-        
+        console.log('📊 Checking for cached profile data...');
         const cachedProfile = getAnyCache('student');
         let profileData = user; // fallback to AuthContext user
         
         if (cachedProfile?.profile) {
-          
+          console.log('✅ Using cached profile data');
           profileData = cachedProfile.profile;
         } else {
-          
-          // Try to fetch from session storage as backup
-          try {
-            const sessionProfile = sessionStorage.getItem('complete_profile');
-            if (sessionProfile) {
-              const parsedProfile = JSON.parse(sessionProfile);
-              profileData = parsedProfile;
-              
+          console.log('❌ No cached profile found, attempting to refresh...');
+          // If no cache and user is logged in, try to refresh expired cache
+          if (user?.enrollment_no) {
+            try {
+              const refreshedProfile = await refreshExpiredCache('student', user.enrollment_no, clientAPI);
+              if (refreshedProfile?.profile) {
+                console.log('🔄 Successfully refreshed expired cache');
+                profileData = refreshedProfile.profile;
+              } else {
+                console.log('⚠️ Cache refresh failed, using fallback');
+                // Try to fetch from session storage as backup
+                try {
+                  const sessionProfile = sessionStorage.getItem('complete_profile');
+                  if (sessionProfile) {
+                    const parsedProfile = JSON.parse(sessionProfile);
+                    profileData = parsedProfile;
+                    console.log('📦 Using session storage backup');
+                  }
+                } catch (e) {
+                  console.error('❌ Session storage backup failed:', e);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to refresh expired cache:', error);
+              // Try to fetch from session storage as backup
+              try {
+                const sessionProfile = sessionStorage.getItem('complete_profile');
+                if (sessionProfile) {
+                  const parsedProfile = JSON.parse(sessionProfile);
+                  profileData = parsedProfile;
+                  console.log('📦 Using session storage backup after error');
+                }
+              } catch (e) {
+                console.error('❌ Session storage backup failed:', e);
+              }
             }
-          } catch (e) {
-            
           }
         }
 

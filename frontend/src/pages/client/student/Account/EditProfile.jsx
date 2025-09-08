@@ -7,7 +7,7 @@ import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
 import TextInput from '../../../../components/ui/TextInput';
 import dropdownOptionsService from '../../../../services/dropdownOptionsService';
-import { fetchProfileWithCache, getCachedProfile } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getCachedProfile, updateCachedProfile } from '../../../../utils/profileCache';
 
 // Hardcoded options for genders and semesters
 const GENDER_OPTIONS = [
@@ -114,12 +114,30 @@ function EditProfile() {
     (() => {
       const timers = {};
       return (fieldName, fieldValue) => {
-        
+        console.log(`🔄 Debouncing validation for ${fieldName}:`, fieldValue);
         clearTimeout(timers[fieldName]);
+        
+        // Define fields that need API validation with longer debounce
+        const apiValidationFields = ['email', 'mobile_no', 'enrollment_no'];
+        const debounceTime = apiValidationFields.includes(fieldName) ? 1500 : 800; // 1.5s for API fields, 800ms for others
+        
+        // Check minimum length before making API calls to avoid unnecessary requests
+        const shouldValidate = () => {
+          if (!fieldValue || fieldValue.trim().length === 0) return false;
+          if (fieldName === 'email' && fieldValue.length < 5) return false;
+          if (fieldName === 'mobile_no' && fieldValue.length < 7) return false;
+          if (fieldName === 'enrollment_no' && fieldValue.length < 3) return false;
+          return true;
+        };
+        
         timers[fieldName] = setTimeout(() => {
-          
-          validateFieldRealTime(fieldName, fieldValue);
-        }, 800); // Wait 800ms after user stops typing
+          if (shouldValidate()) {
+            console.log(`✅ Triggering validation for ${fieldName} after ${debounceTime}ms delay`);
+            validateFieldRealTime(fieldName, fieldValue);
+          } else {
+            console.log(`⏭️ Skipping validation for ${fieldName} - insufficient length`);
+          }
+        }, debounceTime);
       };
     })(),
     [validateFieldRealTime]
@@ -316,6 +334,9 @@ function EditProfile() {
       // Refresh user data from backend to ensure consistency
       await refreshUserData();
 
+      // Update the profile cache with new data
+      updateCachedProfile('student', profileData);
+
       toast.success(hasPasswordChange ? 'Profile and password updated successfully!' : 'Profile updated successfully!');
       
       // Clear password fields on success
@@ -325,6 +346,11 @@ function EditProfile() {
         new_password: '',
         confirm_new_password: ''
       }));
+
+      // Navigate to dashboard after successful update
+      setTimeout(() => {
+        navigate('/student/dashboard');
+      }, 1000);
 
     } catch (error) {
       
