@@ -252,7 +252,7 @@ async def get_unified_team_data(
         if not event_id:
             raise HTTPException(status_code=400, detail="Event ID is required")
         
-        student_enrollment = student_data.get("enrollment_no")
+        student_enrollment = getattr(student_data, 'enrollment_no', None)
         if not student_enrollment:
             raise HTTPException(status_code=400, detail="Student enrollment not found")
 
@@ -272,13 +272,15 @@ async def get_unified_team_data(
         # Check if current student is team leader
         is_team_leader = await verify_team_leadership(event_id, student_enrollment)
         
+        # Get team leader from team data
+        team_data = registration.get("team", {})
+        team_leader = team_data.get("team_leader", "")
+        
         # Base team info that's always included
         base_data = {
             "event_id": event_id,
-            "team_name": registration.get("team_name", ""),
-            "team_leader": registration.get("team_leader"),
-            "is_team_leader": is_team_leader,
-            "is_team_member": True,
+            "team_name": registration.get("team_name", team_data.get("team_name", "")),
+            "team_leader": team_leader,
             "registration_id": registration.get("registration_id"),
             "team_size": len(team_members),
             "member_count": len(team_members)
@@ -394,7 +396,7 @@ async def unified_team_actions(
         if not event_id:
             raise HTTPException(status_code=400, detail="Event ID is required")
         
-        student_enrollment = student_data.get("enrollment_no")
+        student_enrollment = getattr(student_data, 'enrollment_no', None)
         if not student_enrollment:
             raise HTTPException(status_code=400, detail="Student enrollment not found")
 
@@ -542,7 +544,7 @@ async def _get_team_debug_info(event_id: str, team_id: str, student_data: dict):
 
         # Add debug information
         debug_info = {
-            "student_enrollment": student_data.get("enrollment_no"),
+            "student_enrollment": getattr(student_data, 'enrollment_no', None),
             "request_timestamp": datetime.now(timezone.utc).isoformat(),
             "team_member_count": len(basic_info["team_data"].get("members", [])),
             "registration_timestamp": basic_info["team_data"].get("registration_datetime")
@@ -560,8 +562,8 @@ async def _get_team_registration_details(event_id: str, student_data: dict):
     """Get team registration details (replaces team-registration-details endpoint)"""
     try:
         # Implementation from original endpoint
-        enrollment_no = student_data.get("enrollment_no")
-        event_participations = student_data.get('event_participations', {})
+        enrollment_no = getattr(student_data, 'enrollment_no', None)
+        event_participations = getattr(student_data, 'event_participations', {})
         
         if event_id not in event_participations:
             return {"success": False, "message": "Not registered for this event"}
@@ -664,12 +666,12 @@ async def _create_task(event_id: str, action_data: UnifiedTeamActionData, studen
     """Create a new task for the team (team leader only)"""
     try:
         # Verify team leadership
-        is_leader = await verify_team_leadership(event_id, student_data.get("enrollment_no"))
+        is_leader = await verify_team_leadership(event_id, getattr(student_data, 'enrollment_no', None))
         if not is_leader:
             raise HTTPException(status_code=403, detail="Only team leader can create tasks")
         
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -686,7 +688,7 @@ async def _create_task(event_id: str, action_data: UnifiedTeamActionData, studen
             "assigned_to": action_data.assigned_to or [],
             "category": action_data.category,
             "status": "pending",
-            "created_by": student_data.get("enrollment_no"),
+            "created_by": getattr(student_data, 'enrollment_no', None),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "completed_by": None,
@@ -704,7 +706,7 @@ async def _create_task(event_id: str, action_data: UnifiedTeamActionData, studen
             }
         )
         
-        logger.info(f"Task created: {task_id} by {student_data.get('enrollment_no')}")
+        logger.info(f"Task created: {task_id} by {getattr(student_data, 'enrollment_no', None)}")
         
         return {
             "success": True,
@@ -723,12 +725,12 @@ async def _assign_role(event_id: str, action_data: UnifiedTeamActionData, studen
     """Assign role to team member"""
     try:
         # Verify team leadership
-        is_leader = await verify_team_leadership(event_id, student_data.get("enrollment_no"))
+        is_leader = await verify_team_leadership(event_id, getattr(student_data, 'enrollment_no', None))
         if not is_leader:
             raise HTTPException(status_code=403, detail="Only team leader can assign roles")
         
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -744,7 +746,7 @@ async def _assign_role(event_id: str, action_data: UnifiedTeamActionData, studen
             "role": action_data.role,
             "permissions": action_data.permissions or [],
             "description": action_data.description or "",
-            "assigned_by": student_data.get("enrollment_no"),
+            "assigned_by": getattr(student_data, 'enrollment_no', None),
             "assigned_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -760,7 +762,7 @@ async def _assign_role(event_id: str, action_data: UnifiedTeamActionData, studen
             }
         )
         
-        logger.info(f"Role assigned: {action_data.role} to {action_data.member_enrollment} by {student_data.get('enrollment_no')}")
+        logger.info(f"Role assigned: {action_data.role} to {action_data.member_enrollment} by {getattr(student_data, 'enrollment_no', None)}")
         
         return {
             "success": True,
@@ -779,7 +781,7 @@ async def _post_message(event_id: str, action_data: UnifiedTeamActionData, stude
     """Post message to team"""
     try:
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -793,9 +795,9 @@ async def _post_message(event_id: str, action_data: UnifiedTeamActionData, stude
             "priority": action_data.priority or "normal",
             "mentions": action_data.mentions or [],
             "category": action_data.category or "general",
-            "sent_by": student_data.get("enrollment_no"),
+            "sent_by": getattr(student_data, 'enrollment_no', None),
             "sent_at": datetime.now(timezone.utc).isoformat(),
-            "read_by": [student_data.get("enrollment_no")],  # Mark as read by sender
+            "read_by": [getattr(student_data, 'enrollment_no', None)],  # Mark as read by sender
             "reactions": {},
             "replies": []
         }
@@ -810,7 +812,7 @@ async def _post_message(event_id: str, action_data: UnifiedTeamActionData, stude
             }
         )
         
-        logger.info(f"Message posted: {message_id} by {student_data.get('enrollment_no')}")
+        logger.info(f"Message posted: {message_id} by {getattr(student_data, 'enrollment_no', None)}")
         
         return {
             "success": True,
@@ -829,7 +831,7 @@ async def _submit_task(event_id: str, action_data: UnifiedTeamActionData, studen
     """Submit task"""
     try:
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -846,7 +848,7 @@ async def _submit_task(event_id: str, action_data: UnifiedTeamActionData, studen
         task = tasks[task_index]
         
         # Check if student is assigned to this task
-        if student_data.get("enrollment_no") not in task.get("assigned_to", []):
+        if getattr(student_data, 'enrollment_no', None) not in task.get("assigned_to", []):
             raise HTTPException(status_code=403, detail="You are not assigned to this task")
         
         # Check if task is in submittable state
@@ -855,7 +857,7 @@ async def _submit_task(event_id: str, action_data: UnifiedTeamActionData, studen
         
         # Update task submission
         task["status"] = "submitted"
-        task["submitted_by"] = student_data.get("enrollment_no")
+        task["submitted_by"] = getattr(student_data, 'enrollment_no', None)
         task["submitted_at"] = datetime.now(timezone.utc).isoformat()
         task["submission_link"] = action_data.submission_link
         task["submission_notes"] = action_data.submission_notes
@@ -874,7 +876,7 @@ async def _submit_task(event_id: str, action_data: UnifiedTeamActionData, studen
             }
         )
         
-        logger.info(f"Task submitted: {action_data.task_id} by {student_data.get('enrollment_no')}")
+        logger.info(f"Task submitted: {action_data.task_id} by {getattr(student_data, 'enrollment_no', None)}")
         
         return {
             "success": True,
@@ -893,12 +895,12 @@ async def _review_task(event_id: str, action_data: UnifiedTeamActionData, studen
     """Review task submission"""
     try:
         # Verify team leadership
-        is_leader = await verify_team_leadership(event_id, student_data.get("enrollment_no"))
+        is_leader = await verify_team_leadership(event_id, getattr(student_data, 'enrollment_no', None))
         if not is_leader:
             raise HTTPException(status_code=403, detail="Only team leader can review tasks")
         
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -930,7 +932,7 @@ async def _review_task(event_id: str, action_data: UnifiedTeamActionData, studen
         current_time = datetime.now(timezone.utc).isoformat()
         task["review_status"] = action_data.review_status
         task["review_notes"] = action_data.review_feedback or ""
-        task["reviewed_by"] = student_data.get("enrollment_no")
+        task["reviewed_by"] = getattr(student_data, 'enrollment_no', None)
         task["reviewed_at"] = current_time
         task["updated_at"] = current_time
         
@@ -959,7 +961,7 @@ async def _review_task(event_id: str, action_data: UnifiedTeamActionData, studen
         # Add review to reviews array
         review_entry = {
             "review_id": f"review_{action_data.task_id}_{int(datetime.now().timestamp())}",
-            "reviewer": student_data.get("enrollment_no"),
+            "reviewer": getattr(student_data, 'enrollment_no', None),
             "review_status": action_data.review_status,
             "comment": action_data.review_feedback or "",
             "reviewed_at": current_time
@@ -983,7 +985,7 @@ async def _review_task(event_id: str, action_data: UnifiedTeamActionData, studen
             }
         )
         
-        logger.info(f"Task reviewed: {action_data.task_id} by {student_data.get('enrollment_no')} - {action_data.review_status}")
+        logger.info(f"Task reviewed: {action_data.task_id} by {getattr(student_data, 'enrollment_no', None)} - {action_data.review_status}")
         
         return {
             "success": True,
@@ -1002,12 +1004,12 @@ async def _complete_task(event_id: str, action_data: UnifiedTeamActionData, stud
     """Complete task"""
     try:
         # Verify team leadership
-        is_leader = await verify_team_leadership(event_id, student_data.get("enrollment_no"))
+        is_leader = await verify_team_leadership(event_id, getattr(student_data, 'enrollment_no', None))
         if not is_leader:
             raise HTTPException(status_code=403, detail="Only team leader can complete tasks directly")
         
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -1026,11 +1028,11 @@ async def _complete_task(event_id: str, action_data: UnifiedTeamActionData, stud
         # Update task completion
         current_time = datetime.now(timezone.utc).isoformat()
         task["status"] = "completed"
-        task["completed_by"] = student_data.get("enrollment_no")
+        task["completed_by"] = getattr(student_data, 'enrollment_no', None)
         task["completed_at"] = current_time
         task["updated_at"] = current_time
         task["review_status"] = "approved"
-        task["reviewed_by"] = student_data.get("enrollment_no")
+        task["reviewed_by"] = getattr(student_data, 'enrollment_no', None)
         task["reviewed_at"] = current_time
         
         # Update in database
@@ -1045,7 +1047,7 @@ async def _complete_task(event_id: str, action_data: UnifiedTeamActionData, stud
             }
         )
         
-        logger.info(f"Task completed directly: {action_data.task_id} by {student_data.get('enrollment_no')}")
+        logger.info(f"Task completed directly: {action_data.task_id} by {getattr(student_data, 'enrollment_no', None)}")
         
         return {
             "success": True,
@@ -1064,12 +1066,12 @@ async def _generate_report(event_id: str, action_data: UnifiedTeamActionData, st
     """Generate team report"""
     try:
         # Verify team leadership
-        is_leader = await verify_team_leadership(event_id, student_data.get("enrollment_no"))
+        is_leader = await verify_team_leadership(event_id, getattr(student_data, 'enrollment_no', None))
         if not is_leader:
             raise HTTPException(status_code=403, detail="Only team leader can generate reports")
         
         # Get team registration
-        registration = await get_team_registration(event_id, student_data.get("enrollment_no"))
+        registration = await get_team_registration(event_id, getattr(student_data, 'enrollment_no', None))
         if not registration:
             raise HTTPException(status_code=404, detail="Team registration not found")
         
@@ -1081,7 +1083,7 @@ async def _generate_report(event_id: str, action_data: UnifiedTeamActionData, st
         report = {
             "report_id": f"report_{event_id}_{int(datetime.now().timestamp())}",
             "report_type": action_data.report_type or "team_overview",
-            "generated_by": student_data.get("enrollment_no"),
+            "generated_by": getattr(student_data, 'enrollment_no', None),
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "event_id": event_id,
             "summary": {

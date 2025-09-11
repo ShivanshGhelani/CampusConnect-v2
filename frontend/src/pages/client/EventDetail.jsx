@@ -1476,30 +1476,18 @@ function EventDetail() {
                   </span>
                 </div>
 
-                {/* Type - Always shown */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Type</span>
-                  <span className="text-sm font-semibold text-gray-800">                      {event.registration_type ? (
-                    event.registration_type === 'free' ? (
-                      <span className="flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                        </svg>
-                        Free
-                      </span>
-                    ) :
-                      event.registration_type === 'paid' ? (
-                        <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                          </svg>
-                          Paid
-                        </span>
-                      ) :
-                        event.registration_type.charAt(0).toUpperCase() + event.registration_type.slice(1)
-                  ) : 'Not specified'}
-                  </span>
-                </div>
+                {/* Multiple Team Registration - Only show for team-based events when true */}
+                {(event.registration_mode === 'team' || event.event_type === 'team') && event.allow_multiple_team_registrations === true && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">Multiple Team Registration</span>
+                    <span className="text-sm font-semibold text-blue-600 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Allowed
+                    </span>
+                  </div>
+                )}
 
                 {/* Registration Mode - Only if exists */}
                 {event.registration_mode && (

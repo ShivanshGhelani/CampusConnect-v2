@@ -978,8 +978,14 @@ function EventDetail() {
 
               <ActionButton
                 onClick={() => {
-                  // Navigate to feedback management page
-                  navigate(`/admin/events/${eventId}/feedback`);
+                  // Navigate to feedback management page with registration data
+                  navigate(`/admin/events/${eventId}/feedback`, {
+                    state: { 
+                      registrations_count: eventStats?.registrations_count || allRegistrations?.length || 0,
+                      event_data: event,
+                      event_stats: eventStats 
+                    }
+                  });
                 }}
                 variant="primary"
                 icon={FileText}

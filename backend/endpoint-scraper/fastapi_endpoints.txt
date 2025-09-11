@@ -1,4 +1,4 @@
-Total API Endpoints: 118
+Total API Endpoints: 124
 
 ============================================================
 ENDPOINT 1
@@ -2388,6 +2388,201 @@ Responses:
 ============================================================
 ENDPOINT 97
 Method: GET
+Path: /api/v1/admin/export/report
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Generate Report
+Description: Generate various reports for events
+
+Supported report types:
+- sign_sheet: Attendance sign sheet with participant details
+- attendance_report: Attendance summary and statistics
+- feedback_report: Feedback responses and analytics
+- budget_report: Financial summary and budget breakdown
+- event_report: Comprehensive event report with all details
+Parameters:
+  - Name: event_id
+    In: query
+    Required: True
+    Type: string
+    Description: Event ID for the report
+  - Name: report_type
+    In: query
+    Required: True
+    Type: string
+    Description: Type of report to generate
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+  - Name: include_empty_rows
+    In: query
+    Required: False
+    Type: None
+    Description: Number of empty rows to add (for sign sheets)
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 98
+Method: GET
+Path: /api/v1/admin/export/sign-sheet/{event_id}
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Get Sign Sheet
+Description: Quick endpoint for generating sign sheets (legacy compatibility)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+  - Name: empty_rows
+    In: query
+    Required: False
+    Type: integer
+    Description: Number of empty rows to add
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 99
+Method: GET
+Path: /api/v1/admin/export/attendance-report/{event_id}
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Get Attendance Report
+Description: Quick endpoint for generating attendance reports (legacy compatibility)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 100
+Method: GET
+Path: /api/v1/admin/export/feedback-report/{event_id}
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Get Feedback Report
+Description: Quick endpoint for generating feedback reports (legacy compatibility)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 101
+Method: GET
+Path: /api/v1/admin/export/budget-report/{event_id}
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Get Budget Report
+Description: Quick endpoint for generating budget reports (legacy compatibility)
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 102
+Method: POST
+Path: /api/v1/admin/export/event-report/{event_id}
+Category/Tags: api-v1, admin-api, admin-export-api
+Summary: Generate Event Report With Uploads
+Description: Generate comprehensive event report with uploaded images and outcomes
+Parameters:
+  - Name: event_id
+    In: path
+    Required: True
+    Type: string
+    Description: No description
+  - Name: format
+    In: query
+    Required: False
+    Type: string
+    Description: Output format
+Request Body:
+  MIME Type: multipart/form-data
+  Schema: {
+    "$ref": "#/components/schemas/Body_generate_event_report_with_uploads_api_v1_admin_export_event_report__event_id__post"
+}
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+  HTTP 422: Validation Error
+    MIME Type: application/json
+    Schema: {
+    "$ref": "#/components/schemas/HTTPValidationError"
+}
+
+============================================================
+ENDPOINT 103
+Method: GET
 Path: /api/v1/admin/dashboard/complete
 Category/Tags: api-v1, admin-api
 Summary: Get Complete Dashboard
@@ -2421,7 +2616,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 98
+ENDPOINT 104
 Method: GET
 Path: /api/v1/email/health
 Category/Tags: api-v1, email-api, email-api
@@ -2433,7 +2628,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 99
+ENDPOINT 105
 Method: GET
 Path: /api/v1/email/stats
 Category/Tags: api-v1, email-api, email-api
@@ -2445,7 +2640,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 100
+ENDPOINT 106
 Method: POST
 Path: /api/v1/email/circuit-breaker/reset
 Category/Tags: api-v1, email-api, email-api
@@ -2457,7 +2652,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 101
+ENDPOINT 107
 Method: GET
 Path: /api/v1/attendance/config/{event_id}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2481,7 +2676,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 102
+ENDPOINT 108
 Method: POST
 Path: /api/v1/attendance/mark
 Category/Tags: api-v1, attendance-api, attendance
@@ -2507,7 +2702,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 103
+ENDPOINT 109
 Method: GET
 Path: /api/v1/attendance/analytics/{event_id}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2530,7 +2725,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 104
+ENDPOINT 110
 Method: GET
 Path: /api/v1/attendance/qr-data/{event_id}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2575,7 +2770,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 105
+ENDPOINT 111
 Method: POST
 Path: /api/v1/attendance/generate-scanner-token/{event_id}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2609,7 +2804,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 106
+ENDPOINT 112
 Method: GET
 Path: /api/v1/attendance/scanner-info/{token}
 Category/Tags: api-v1, attendance-api, attendance
@@ -2633,7 +2828,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 107
+ENDPOINT 113
 Method: POST
 Path: /api/v1/attendance/scan-and-mark
 Category/Tags: api-v1, attendance-api, attendance
@@ -2658,7 +2853,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 108
+ENDPOINT 114
 Method: POST
 Path: /api/v1/organizer/access-portal
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2670,7 +2865,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 109
+ENDPOINT 115
 Method: POST
 Path: /api/v1/organizer/admin/grant-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2709,7 +2904,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 110
+ENDPOINT 116
 Method: POST
 Path: /api/v1/organizer/admin/revoke-access/{faculty_employee_id}
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2732,7 +2927,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 111
+ENDPOINT 117
 Method: GET
 Path: /api/v1/organizer/admin/requests
 Category/Tags: api-v1, organizer-access-api, organizer-access
@@ -2744,7 +2939,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 112
+ENDPOINT 118
 Method: GET
 Path: /api/health
 Category/Tags: No category
@@ -2756,7 +2951,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 113
+ENDPOINT 119
 Method: GET
 Path: /
 Category/Tags: No category
@@ -2770,7 +2965,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 114
+ENDPOINT 120
 Method: GET
 Path: /favicon.ico
 Category/Tags: No category
@@ -2782,7 +2977,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 115
+ENDPOINT 121
 Method: GET
 Path: /event-categories
 Category/Tags: No category
@@ -2794,7 +2989,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 116
+ENDPOINT 122
 Method: GET
 Path: /health/scheduler
 Category/Tags: No category
@@ -2806,7 +3001,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 117
+ENDPOINT 123
 Method: GET
 Path: /logo/{filename}
 Category/Tags: No category
@@ -2829,7 +3024,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 118
+ENDPOINT 124
 Method: GET
 Path: /signature/{path}
 Category/Tags: No category

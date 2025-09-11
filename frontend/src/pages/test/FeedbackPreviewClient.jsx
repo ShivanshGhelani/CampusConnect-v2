@@ -15,6 +15,7 @@ import {
   Play
 } from 'lucide-react';
 import { clientAPI } from '../../api/client';
+import api from '../../api/base';
 
 const FeedbackPreviewClient = () => {
   // Test configuration
@@ -43,15 +44,11 @@ const FeedbackPreviewClient = () => {
       setError('');
       setSuccessMessage('');
       
+      // Use the configured API client instead of direct fetch
+      const response = await api.get(`/api/v1/client/feedback/test-form/${eventId}`);
+      const data = response.data;
       
-      
-      // Use the actual test API endpoint
-      const response = await fetch(`https://campusconnectldrp.vercel.app/api/v1/client/feedback/test-form/${eventId}`);
-      const data = await response.json();
-      
-      
-      
-      if (response.ok && data.success) {
+      if (data.success) {
         setFeedbackForm(data.feedback_form);
         setEvent(data.event);
         
@@ -73,8 +70,8 @@ const FeedbackPreviewClient = () => {
       }
       
     } catch (error) {
-      
-      setError(`Network error: ${error.message}`);
+      console.error('Error loading feedback form:', error);
+      setError(`Network error: ${error.response?.data?.detail || error.message}`);
       setFeedbackForm(null);
       setEvent(null);
     } finally {
@@ -150,20 +147,21 @@ const FeedbackPreviewClient = () => {
       formData.append('student_enrollment', TEST_ENROLLMENT);
       formData.append('responses', JSON.stringify(testResponses));
       
-      // Use test-specific endpoint that doesn't require authentication
-      const response = await fetch('http://localhost:8000/api/v1/client/feedback/test-submit', {
-        method: 'POST',
-        body: formData
+      // Use the configured API client for test submission
+      const response = await api.post('/api/v1/client/feedback/test-submit', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
       
-      const result = await response.json();
+      const result = response.data;
       
       if (result.success) {
         setSubmissionCount(prev => prev + 1);
         setSuccessMessage(`✅ Test feedback submitted successfully! (Submission #${submissionCount + 1})`);
         
-        // Open success page in new tab
-        const successUrl = `http://localhost:3000/client/events/${eventId}/feedback/success?feedback_submitted=True&test_mode=true`;
+        // Open success page in new tab (use current origin for environment compatibility)
+        const successUrl = `${window.location.origin}/client/events/${eventId}/feedback/success?feedback_submitted=True&test_mode=true`;
         window.open(successUrl, '_blank');
         
         // Reset form for next test
@@ -181,8 +179,8 @@ const FeedbackPreviewClient = () => {
         throw new Error(result.message || 'Failed to submit feedback');
       }
     } catch (error) {
-      
-      setError(`Failed to submit feedback: ${error.message}`);
+      console.error('Error submitting feedback:', error);
+      setError(`Failed to submit feedback: ${error.response?.data?.detail || error.message}`);
     } finally {
       setIsSubmitting(false);
     }

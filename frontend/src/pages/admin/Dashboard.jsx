@@ -210,7 +210,7 @@ function Dashboard() {
   return (
     <AdminLayout pageTitle="Dashboard Overview">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+        <div className="backdrop-blur-sm max-w-7xl mx-auto rounded-2xl ">
           <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
               <div className="flex items-center space-x-4">

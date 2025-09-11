@@ -378,28 +378,4 @@ export const clientAPI = {
   submitFeedbackSimple: (eventId, feedbackData) => 
     api.post(`/api/v1/registrations/feedback/${eventId}/submit`, feedbackData),
 
-  // Team Management Tools
-  getTeamDetails: (eventId, teamId) => 
-    api.get(`/api/v1/client/profile/team-tools/team-overview/${eventId}`),
-  
-  getTeamByMemberRegistration: (eventId, memberRegId) => 
-    api.get(`/api/v1/client/profile/team-tools/team-overview/${eventId}`, { 
-      params: { member_registration_id: memberRegId } 
-    }),
-  
-  getTeamTasks: (eventId) => 
-    api.get(`/api/v1/client/profile/team-tools/tasks/${eventId}`),
-  
-  getTeamRoles: (eventId) => 
-    api.get(`/api/v1/client/profile/team-tools/roles/${eventId}`),
-  
-  submitTask: (eventId, taskId, submissionData) => 
-    api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/submit`, submissionData),
-  
-  reviewTask: (eventId, taskId, reviewData) => 
-    api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/review`, reviewData),
-  
-  completeTask: (eventId, taskId) => 
-    api.put(`/api/v1/client/profile/team-tools/task/${eventId}/${taskId}/complete`),
-
 };
