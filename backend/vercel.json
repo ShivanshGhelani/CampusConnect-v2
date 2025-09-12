@@ -11,5 +11,9 @@
       "src": "/(.*)",
       "dest": "/"
     }
-  ]
+  ],
+  "functions": {},
+  "outputDirectory": ".",
+  "buildCommand": "",
+  "installCommand": ""
 }
