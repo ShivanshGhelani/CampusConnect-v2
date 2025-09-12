@@ -335,16 +335,3 @@ async def serve_signature(path: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
-
-# Vercel serverless handler - for production deployment
-import os
-if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
-    # Running in serverless environment
-    from mangum import Mangum
-    
-    # Create a serverless-compatible handler
-    # Use lifespan="off" to avoid lifecycle events in serverless
-    handler = Mangum(app, lifespan="off")
-else:
-    # For local development, we can still use the normal app
-    handler = None
