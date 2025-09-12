@@ -1,12 +1,19 @@
 import hashlib
 import secrets
 import json
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 from core.logger import get_logger
 from config.database import Database
 from config.settings import FRONTEND_URL
 from services.communication.email_service import communication_service
+from utils.logging_utils import mask_redis_url
 
 try:
     import redis
@@ -24,13 +31,12 @@ class PasswordResetService:
         self.redis_client = None
         
         # Initialize Redis connection (Upstash or local)
-        import os
         redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
         if REDIS_AVAILABLE and redis_url:
             try:
                 self.redis_client = redis.from_url(redis_url, decode_responses=True)
                 self.redis_client.ping()
-                logger.info(f"Password reset service Redis connection established to {redis_url}")
+                logger.info(f"Password reset service Redis connection established to {mask_redis_url(redis_url)}")
             except Exception as e:
                 logger.error(f"Failed to connect to Redis for password reset: {e}")
                 self.redis_client = None

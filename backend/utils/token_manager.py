@@ -9,6 +9,11 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import secrets
 import hashlib
+import os
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
 try:
     import redis
@@ -36,21 +41,34 @@ class TokenManager:
         self.refresh_token_expiry = 30 * 24 * 3600  # 30 days in seconds
         
         if REDIS_AVAILABLE:
-            try:
-                self.redis_client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
-                    db=redis_db,
-                    decode_responses=True,
-                    socket_connect_timeout=2,
-                    socket_timeout=2
-                )
-                # Test connection
-                self.redis_client.ping()
-                logger.info(f"Token manager initialized successfully on {redis_host}:{redis_port}/db{redis_db}")
-            except Exception as e:
-                logger.warning(f"Failed to connect to Redis for token management: {e}")
-                self.redis_client = None
+            # First try to use Upstash Redis URL from environment
+            redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
+            
+            if redis_url:
+                try:
+                    self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                    self.redis_client.ping()
+                    logger.info(f"Token manager initialized successfully with cloud Redis")
+                except Exception as e:
+                    logger.warning(f"Failed to connect to Redis for token management: {e}")
+                    self.redis_client = None
+            else:
+                # Fallback to local Redis only if no cloud URL is provided
+                try:
+                    self.redis_client = redis.Redis(
+                        host=redis_host,
+                        port=redis_port,
+                        db=redis_db,
+                        decode_responses=True,
+                        socket_connect_timeout=2,
+                        socket_timeout=2
+                    )
+                    # Test connection
+                    self.redis_client.ping()
+                    logger.info(f"Token manager initialized successfully on {redis_host}:{redis_port}/db{redis_db}")
+                except Exception as e:
+                    logger.warning(f"Failed to connect to Redis for token management: {e}")
+                    self.redis_client = None
         else:
             logger.warning("Redis not available, token management disabled")
     

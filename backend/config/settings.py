@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str = ""
     FROM_EMAIL: str = ""
 
+    # Redis Settings
+    UPSTASH_REDIS_URL: str = ""
+    REDIS_URL: str = ""
+    
     # Supabase Settings
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
@@ -37,10 +41,14 @@ class Settings(BaseSettings):
     SUPABASE_STORAGE_BUCKET: str = "campusconnect"
     SUPABASE_ASSETS_BUCKET: str = "campusconnect-assets-private"
     SUPABASE_EVENT_BUCKET: str = "campusconnect-event-data"
+    
+    # Session Settings
+    SESSION_SECRET_KEY: str = "development-secret-key"
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "allow"  # Allow extra fields from .env
 
 # Initialize settings
 settings = Settings()

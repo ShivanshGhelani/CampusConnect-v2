@@ -10,18 +10,33 @@ from fastapi import Request, HTTPException
 import redis
 from datetime import datetime, timedelta
 import logging
+import os
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
 # Initialize Redis for rate limiting storage
 # pip install redis
 try:
-    redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
+    if redis_url:
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        redis_client.ping()  # Test connection
+        storage_uri = redis_url
+    else:
+        # Fallback to local Redis
+        redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        redis_client.ping()  # Test connection
+        storage_uri = "redis://localhost:6379"
 except:
     redis_client = None
+    storage_uri = "memory://"
 
 # Initialize rate limiter
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri="memory://" if not redis_client else "redis://localhost:6379"
+    storage_uri=storage_uri
 )
 
 class AdvancedRateLimiter:

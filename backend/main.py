@@ -7,6 +7,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from config.database import Database
 from utils.dynamic_event_scheduler import start_dynamic_scheduler, stop_dynamic_scheduler
 from core.json_encoder import CustomJSONEncoder
@@ -205,13 +210,13 @@ scheduler_task = None
 async def startup_db_client():
     # Serverless-friendly startup
     import os
-    is_vercel = os.getenv("VERCEL", "").lower() == "1"
+    is_serverless = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
     
+    global scheduler_task
     await Database.connect_db()
     
     # Skip background tasks in serverless environment
-    if not is_vercel:
-        global scheduler_task
+    if not is_serverless:
         # Communication service will be initialized automatically when first accessed (singleton)
         # No need to explicitly initialize it here
         logger.info("Communication service ready for high-performance email delivery")
@@ -232,7 +237,7 @@ async def startup_db_client():
         status = await get_scheduler_status()
         print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
     else:
-        print("Running in Vercel serverless mode - background tasks disabled")
+        print("Running in serverless mode - background tasks disabled")
 
 async def keep_scheduler_alive():
     """Background task to monitor and restart scheduler if needed"""
@@ -256,10 +261,11 @@ async def keep_scheduler_alive():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     import os
-    is_vercel = os.getenv("VERCEL", "").lower() == "1"
+    is_serverless = os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME") is not None
     
-    if not is_vercel:
-        global scheduler_task
+    global scheduler_task
+    
+    if not is_serverless:
         if scheduler_task:
             scheduler_task.cancel()
         await stop_dynamic_scheduler()
@@ -330,12 +336,15 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
 
-# Vercel serverless handler
-def handler(request):
-    """Vercel serverless function handler"""
-    import asyncio
+# Vercel serverless handler - for production deployment
+import os
+if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    # Running in serverless environment
     from mangum import Mangum
     
-    # Create Mangum adapter for ASGI app
-    asgi_handler = Mangum(app, lifespan="off")
-    return asgi_handler(request)
+    # Create a serverless-compatible handler
+    # Use lifespan="off" to avoid lifecycle events in serverless
+    handler = Mangum(app, lifespan="off")
+else:
+    # For local development, we can still use the normal app
+    handler = None

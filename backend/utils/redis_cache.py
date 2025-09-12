@@ -26,6 +26,13 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
+import os
+
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+from utils.logging_utils import mask_redis_url
 
 try:
     import redis
@@ -53,13 +60,12 @@ class EventCache:
         self.events_key = 'campus_connect:events'
         self.redis_client = None
         
-        import os
         redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
         if REDIS_AVAILABLE and redis_url:
             try:
                 self.redis_client = redis.from_url(redis_url, decode_responses=True)
                 self.redis_client.ping()
-                logger.info(f"Redis cache initialized successfully on {redis_url}")
+                logger.info(f"Redis cache initialized successfully on {mask_redis_url(redis_url)}")
             except Exception as e:
                 logger.warning(f"Failed to connect to Redis: {e}")
                 self.redis_client = None
