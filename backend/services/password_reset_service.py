@@ -23,8 +23,18 @@ class PasswordResetService:
         self.token_expiry_minutes = 10  # Token expires in 10 minutes
         self.redis_client = None
         
-        # Initialize Redis connection
-        if REDIS_AVAILABLE:
+        # Initialize Redis connection (Upstash or local)
+        import os
+        redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
+        if REDIS_AVAILABLE and redis_url:
+            try:
+                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                self.redis_client.ping()
+                logger.info(f"Password reset service Redis connection established to {redis_url}")
+            except Exception as e:
+                logger.error(f"Failed to connect to Redis for password reset: {e}")
+                self.redis_client = None
+        elif REDIS_AVAILABLE:
             try:
                 self.redis_client = redis.Redis(
                     host='localhost',
@@ -33,9 +43,9 @@ class PasswordResetService:
                     decode_responses=True
                 )
                 self.redis_client.ping()
-                logger.info("Password reset service Redis connection established")
+                logger.info("Password reset service Redis connection established (localhost)")
             except Exception as e:
-                logger.error(f"Failed to connect to Redis for password reset: {e}")
+                logger.error(f"Failed to connect to local Redis for password reset: {e}")
                 self.redis_client = None
     
     def get_redis_connection(self):

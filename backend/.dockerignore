@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.whl
+
+# Environments
+.env
+.env.*
+venv/
+.env.local
+.pyvenv*
+
+# Distribution / packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Tests cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend (if accidentally copied in context)
+node_modules/
+*.tsbuildinfo
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode/
+*.swp
+.idea/
+
+# Misc
+.DS_Store
+*.sql
+**/uploads/**
+static/uploads/*
