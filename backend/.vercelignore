@@ -9,7 +9,6 @@ prometheus.yml
 endpoint-scraper/
 main-vercel.py
 requirements-vercel.txt
-static/
 .git/
 .env
 *.pyc
