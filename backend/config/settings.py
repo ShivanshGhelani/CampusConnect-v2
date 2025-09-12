@@ -14,9 +14,9 @@ class Settings(BaseSettings):
 
     # Server Settings
     DEBUG: bool = True
-    ENVIRONMENT: str = "development"
-    BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:3000"
+    ENVIRONMENT: str = "PRODUCTION"  # Options: PRODUCTION, DEVELOPMENT, TESTING
+    BACKEND_URL: str = "https://campusconnect-v2.onrender.com"
+    FRONTEND_URL: str = "https://campusconnectldrp.vercel.app/"
 
     # Admin Settings
     DEFAULT_ADMIN_USERNAME: str = "ldrpadmin"
