@@ -1,14 +1,20 @@
-"""
-Vercel-specific handler for FastAPI application.
-This file serves as the entry point for Vercel deployments.
-"""
-
+import asyncio
 from main import app
-from mangum import Mangum
 
-# Create the Mangum handler for Vercel
-# Use lifespan="off" to disable startup/shutdown events in serverless
-handler = Mangum(app, lifespan="off")
+# For Vercel, we need to ensure the app is properly wrapped
+# Try without Mangum first - Vercel might handle ASGI directly
+def handler(event, context):
+    """
+    Vercel handler that wraps the FastAPI app
+    """
+    # Import mangum only when needed
+    from mangum import Mangum
+    
+    # Create mangum instance for this request
+    mangum_handler = Mangum(app, lifespan="off")
+    
+    # Call the handler
+    return mangum_handler(event, context)
 
-# Export for Vercel
-__all__ = ['handler']
+# Also export the app directly for Vercel's automatic detection
+application = app

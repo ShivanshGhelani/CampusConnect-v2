@@ -64,4 +64,4 @@ supafunc==0.10.2
 typing_extensions==4.13.2
 urllib3==2.4.0
 uvicorn==0.23.2
-mangum==0.17.0
+mangum==0.14.1
