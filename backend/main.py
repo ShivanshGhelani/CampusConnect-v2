@@ -203,28 +203,36 @@ scheduler_task = None
 
 @app.on_event("startup")
 async def startup_db_client():
-    global scheduler_task
+    # Serverless-friendly startup
+    import os
+    is_vercel = os.getenv("VERCEL", "").lower() == "1"
+    
     await Database.connect_db()
     
-    # Communication service will be initialized automatically when first accessed (singleton)
-    # No need to explicitly initialize it here
-    logger.info("Communication service ready for high-performance email delivery")
-    
-    # Initialize dynamic event scheduler with background task
-    await start_dynamic_scheduler()
-    print("Started Dynamic Event Scheduler - updates triggered by event timing")
-    
-    # Communication service is already initialized
-    print("Communication Email Service - ready for email delivery")
-    
-    # Create a background task to keep scheduler alive
-    import asyncio
-    from utils.dynamic_event_scheduler import dynamic_scheduler
-    scheduler_task = asyncio.create_task(keep_scheduler_alive())
-      # Verify scheduler is running
-    from utils.dynamic_event_scheduler import get_scheduler_status
-    status = await get_scheduler_status()
-    print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
+    # Skip background tasks in serverless environment
+    if not is_vercel:
+        global scheduler_task
+        # Communication service will be initialized automatically when first accessed (singleton)
+        # No need to explicitly initialize it here
+        logger.info("Communication service ready for high-performance email delivery")
+        
+        # Initialize dynamic event scheduler with background task
+        await start_dynamic_scheduler()
+        print("Started Dynamic Event Scheduler - updates triggered by event timing")
+        
+        # Communication service is already initialized
+        print("Communication Email Service - ready for email delivery")
+        
+        # Create a background task to keep scheduler alive
+        import asyncio
+        from utils.dynamic_event_scheduler import dynamic_scheduler
+        scheduler_task = asyncio.create_task(keep_scheduler_alive())
+        # Verify scheduler is running
+        from utils.dynamic_event_scheduler import get_scheduler_status
+        status = await get_scheduler_status()
+        print(f"Scheduler status: {status['running']}, Queue size: {status['triggers_queued']}")
+    else:
+        print("Running in Vercel serverless mode - background tasks disabled")
 
 async def keep_scheduler_alive():
     """Background task to monitor and restart scheduler if needed"""
@@ -247,18 +255,20 @@ async def keep_scheduler_alive():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global scheduler_task
-    if scheduler_task:
-        scheduler_task.cancel()
-    await stop_dynamic_scheduler()
+    import os
+    is_vercel = os.getenv("VERCEL", "").lower() == "1"
     
-    # Communication service cleanup happens automatically
-    print("Communication service cleanup completed")
+    if not is_vercel:
+        global scheduler_task
+        if scheduler_task:
+            scheduler_task.cancel()
+        await stop_dynamic_scheduler()
+        
+        # Communication service cleanup happens automatically
+        print("Communication service cleanup completed")
     
     await Database.close_db()
     print("Database connections closed")
-    
-    await Database.close_db()
 
 # Health check endpoint for debugging API connectivity
 @app.get("/api/health")
@@ -319,3 +329,13 @@ async def serve_signature(path: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
+
+# Vercel serverless handler
+def handler(request):
+    """Vercel serverless function handler"""
+    import asyncio
+    from mangum import Mangum
+    
+    # Create Mangum adapter for ASGI app
+    asgi_handler = Mangum(app, lifespan="off")
+    return asgi_handler(request)
