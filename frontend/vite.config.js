@@ -8,36 +8,51 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  base: '/', // Ensure proper base path for deployment
   build: {
     // CRITICAL: Code splitting optimization
     rollupOptions: {
       output: {
         manualChunks: {
-          // Vendor chunk for large libraries
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          // Vendor chunk for React core
+          'react-vendor': ['react', 'react-dom'],
+          // Router chunk
+          'react-router': ['react-router-dom'],
           // UI library chunk
-          ui: ['@heroicons/react', 'lucide-react'],
-          // Heavy features chunk
-          editor: ['@monaco-editor/react'],
-          pdf: ['@react-pdf/renderer'],
-          image: ['react-image-crop'],
-          // API and utilities
-          api: ['axios', '@supabase/supabase-js'],
+          'ui-components': ['@heroicons/react', 'lucide-react', 'framer-motion'],
+          // Heavy features chunk - PDF handling
+          'pdf-renderer': ['@react-pdf/renderer'],
+          // Monaco Editor - separate chunk due to size
+          'code-editor': ['@monaco-editor/react'],
+          // Image processing
+          'image-processing': ['react-image-crop', 'html5-qrcode', '@yudiel/react-qr-scanner'],
+          // API and networking
+          'api-networking': ['axios', '@supabase/supabase-js'],
+          // Forms and validation
+          'forms': ['react-hook-form', '@hookform/resolvers'],
+          // Charts and visualization
+          'data-viz': ['recharts'],
+          // QR Code libraries
+          'qr-codes': ['qrcode', 'react-qr-code']
         }
       }
     },
-    // Optimize chunk size
-    chunkSizeWarningLimit: 1000,
-    // Enable source map for production debugging
+    // Increase chunk size warning limit since we have legitimate large chunks
+    chunkSizeWarningLimit: 2000,
+    // Enable source map for production debugging (set to false for smaller builds)
     sourcemap: false,
     // Minification
     minify: 'terser',
     terserOptions: {
       compress: {
         drop_console: true,
-        drop_debugger: true
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.warn']
       }
-    }
+    },
+    // Ensure proper asset handling
+    assetsDir: 'assets',
+    outDir: 'dist'
   },
   server: {
     port: 3000,
@@ -51,13 +66,13 @@ export default defineConfig({
         secure: false,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
-            console.log('proxy error', err);
+            
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
+            
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            
           });
         }
       }

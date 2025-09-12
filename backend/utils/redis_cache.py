@@ -39,13 +39,13 @@ logger = logging.getLogger(__name__)
 class EventCache:
     """Redis-based cache for event data with automatic expiration."""
     
-    def __init__(self, redis_host='localhost', redis_port=6379, redis_db=0, expire_minutes=5):
+    def __init__(self, redis_host=None, redis_port=None, redis_db=0, expire_minutes=5):
         """
         Initialize Redis cache connection.
         
         Args:
-            redis_host: Redis server host
-            redis_port: Redis server port  
+            redis_host: Redis server host (overridden by env if set)
+            redis_port: Redis server port  (overridden by env if set)
             redis_db: Redis database number
             expire_minutes: Cache expiration time in minutes
         """
@@ -53,19 +53,28 @@ class EventCache:
         self.events_key = 'campus_connect:events'
         self.redis_client = None
         
-        if REDIS_AVAILABLE:
+        import os
+        redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
+        if REDIS_AVAILABLE and redis_url:
+            try:
+                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                self.redis_client.ping()
+                logger.info(f"Redis cache initialized successfully on {redis_url}")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis: {e}")
+                self.redis_client = None
+        elif REDIS_AVAILABLE:
             try:
                 self.redis_client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
+                    host=redis_host or 'localhost',
+                    port=redis_port or 6379,
                     db=redis_db,
                     decode_responses=True,
                     socket_connect_timeout=2,
                     socket_timeout=2
                 )
-                # Test connection
                 self.redis_client.ping()
-                logger.info(f"Redis cache initialized successfully on {redis_host}:{redis_port}")
+                logger.info(f"Redis cache initialized successfully on {redis_host or 'localhost'}:{redis_port or 6379}")
             except Exception as e:
                 logger.warning(f"Failed to connect to Redis: {e}")
                 self.redis_client = None

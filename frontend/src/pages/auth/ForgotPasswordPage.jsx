@@ -65,13 +65,15 @@ function ForgotPasswordPage() {
           enrollment_no: formData.enrollment_no,
           email: formData.email,
         };
-        response = await authAPI.forgotPasswordStudent(requestData);
+        // Use unified endpoint
+        response = await authAPI.forgotPassword('student', requestData);
       } else {
         const requestData = {
           employee_id: formData.employee_id,
           email: formData.faculty_email,
         };
-        response = await authAPI.forgotPasswordFaculty(requestData);
+        // Use unified endpoint
+        response = await authAPI.forgotPassword('faculty', requestData);
       }
 
       setMessage(response.data.message || 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions.');
@@ -82,7 +84,7 @@ function ForgotPasswordPage() {
         faculty_email: '',
       });
     } catch (error) {
-      console.error('Forgot password error:', error);
+      
       setError(error.response?.data?.detail || 'Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);

@@ -29,7 +29,7 @@ const eventsCache = {
         return (Date.now() - timestamp) < this.duration;
       }
     } catch (error) {
-      console.warn('localStorage access failed:', error);
+      
     }
 
     return false;
@@ -44,7 +44,7 @@ const eventsCache = {
       localStorage.setItem(this.key, JSON.stringify(data));
       localStorage.setItem(this.timestampKey, this.timestamp.toString());
     } catch (error) {
-      console.warn('Failed to cache in localStorage:', error);
+      
     }
   },
 
@@ -67,7 +67,7 @@ const eventsCache = {
           return data;
         }
       } catch (error) {
-        console.warn('Failed to retrieve from localStorage:', error);
+        
       }
     }
 
@@ -81,7 +81,7 @@ const eventsCache = {
       localStorage.removeItem(this.key);
       localStorage.removeItem(this.timestampKey);
     } catch (error) {
-      console.warn('Failed to clear localStorage:', error);
+      
     }
   },
 
@@ -154,7 +154,7 @@ function EventList() {
 
   // Fetch events only once and cache them
   useEffect(() => {
-    console.log('EventList mounted, initializing...');
+    
     mountedRef.current = true;
 
     // Always fetch events on mount (cache will handle duplicates)
@@ -162,7 +162,7 @@ function EventList() {
 
     // Cleanup function
     return () => {
-      console.log('EventList unmounting...');
+      
       mountedRef.current = false;
     };
   }, []); // Only run once on mount
@@ -243,11 +243,11 @@ function EventList() {
       // For students, we require BOTH department and semester for proper filtering
       // If either is missing, the loading state will handle the UI
       if (!user?.department || !user?.semester) {
-        console.log('⏳ Student profile incomplete, loading state should be shown');
+        
         return []; // This won't be displayed due to loading state
       }
 
-      console.log('✅ Student has complete profile data, applying full filtering');
+      
       // Show only events that match student's department AND semester
       return events.filter(event => {
         if (event.target_audience !== 'student' && event.target_audience !== 'students') {
@@ -299,20 +299,20 @@ function EventList() {
   const fetchEventsOnce = async () => {
     // Prevent multiple simultaneous calls
     if (fetchingRef.current) {
-      console.log('Fetch already in progress, skipping...');
+      
       return;
     }
 
     // Check if component is still mounted
     if (!mountedRef.current) {
-      console.log('Component unmounted, skipping fetch...');
+      
       return;
     }
 
     // Check cache first
     const cachedEvents = eventsCache.get();
     if (cachedEvents) {
-      console.log('Using cached events data:', cachedEvents.length, 'events');
+      
       if (mountedRef.current) {
         setAllEvents(cachedEvents);
         setIsLoading(false);
@@ -323,7 +323,7 @@ function EventList() {
 
     try {
       fetchingRef.current = true;
-      console.log('Fetching fresh events from API...');
+      
       // Only set loading if we don't have any events yet
       if (mountedRef.current && allEvents.length === 0) {
         setIsLoading(true);
@@ -338,18 +338,18 @@ function EventList() {
 
       // Check if component is still mounted before processing response
       if (!mountedRef.current) {
-        console.log('Component unmounted during API call, aborting...');
+        
         return;
       }
 
       if (response.data && response.data.success) {
         let allFetchedEvents = response.data.events || [];
-        console.log('Successfully fetched events from API (first request):', allFetchedEvents.length, 'events');
-        console.log('Pagination info:', response.data.pagination);
+        
+        
 
         // If there are more pages, fetch them all
         if (response.data.pagination && response.data.pagination.total_pages > 1) {
-          console.log(`Detected ${response.data.pagination.total_pages} pages, fetching remaining pages...`);
+          
 
           for (let page = 2; page <= response.data.pagination.total_pages; page++) {
             if (!mountedRef.current) break; // Stop if component unmounted
@@ -364,15 +364,15 @@ function EventList() {
               if (pageResponse.data && pageResponse.data.success) {
                 const pageEvents = pageResponse.data.events || [];
                 allFetchedEvents = [...allFetchedEvents, ...pageEvents];
-                console.log(`Fetched page ${page}: ${pageEvents.length} events (total: ${allFetchedEvents.length})`);
+                
               }
             } catch (pageError) {
-              console.warn(`Failed to fetch page ${page}:`, pageError);
+              
             }
           }
         }
 
-        console.log('Final total events fetched:', allFetchedEvents.length);
+        
 
         // Cache the complete events list
         eventsCache.set(allFetchedEvents);
@@ -384,13 +384,13 @@ function EventList() {
         }
 
       } else {
-        console.error('API response indicates failure:', response.data);
+        
         if (mountedRef.current) {
           setError('Failed to load events - API returned unsuccessful response');
         }
       }
     } catch (error) {
-      console.error('API call failed with error:', error);
+      
       if (mountedRef.current) {
         setError(`Failed to load events: ${error.message}`);
       }
@@ -429,7 +429,7 @@ function EventList() {
     // Apply user-based filtering using helper function
     filtered = getUserFilteredEvents(filtered);
 
-    console.log('After user-based filtering:', filtered.length, 'events');
+    
     // ===== END INTELLIGENT USER-BASED FILTERING =====
 
     // Apply status filter
@@ -455,7 +455,7 @@ function EventList() {
       );
     }
 
-    console.log('Final filtered events:', filtered.length);
+    
     setFilteredEvents(filtered);
   };
 
@@ -599,7 +599,7 @@ function EventList() {
     return { ongoing, upcoming };
   };  // Refresh function for manual refresh
   const handleRefresh = () => {
-    console.log('Manual refresh triggered');
+    
     eventsCache.clear();
     fetchingRef.current = false; // Reset the flag
     setError(''); // Clear any existing errors
@@ -613,7 +613,7 @@ function EventList() {
     if (isLoading) {
       const timeout = setTimeout(() => {
         if (isLoading && mountedRef.current) {
-          console.warn('Loading timeout reached, forcing loading to false');
+          
           setIsLoading(false);
           setError('Request timed out. Please try refreshing.');
         }

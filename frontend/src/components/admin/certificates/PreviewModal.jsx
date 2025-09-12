@@ -58,7 +58,7 @@ const PreviewModal = ({ template, isOpen, onClose }) => {
                 title={`Preview of ${template.name}`}
                 sandbox="allow-same-origin allow-scripts"
                 onError={() => {
-                  console.error('Failed to load template preview');
+                  
                 }}
               />
             ) : (

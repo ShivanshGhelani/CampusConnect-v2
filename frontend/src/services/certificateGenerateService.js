@@ -118,7 +118,7 @@ class CertificateGenerateService {
       }
       return await response.text();
     } catch (error) {
-      console.error('Error fetching template:', error);
+      
       // Return a fallback template if the URL fails
       return this.getFallbackTemplate();
     }
@@ -302,7 +302,7 @@ class CertificateGenerateService {
       };
 
     } catch (error) {
-      console.error('Error generating certificate:', error);
+      
       return {
         success: false,
         message: error.message || 'Failed to generate certificate'

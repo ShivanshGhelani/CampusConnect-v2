@@ -75,7 +75,7 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
   }, []);
   const handleUpload = async () => {
     if (!completedCrop || !imgRef.current) {
-      console.log('Missing crop or image ref');
+      
       return;
     }
 
@@ -84,11 +84,11 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
       setError('');
       setOptimizationStats(null);
 
-      console.log('Starting upload process...');
-      console.log('Crop data:', completedCrop);
+      
+      
 
       const croppedImageBlob = await getCroppedImg(imgRef.current, completedCrop);
-      console.log('Cropped image blob:', croppedImageBlob);
+      
 
       if (!croppedImageBlob) {
         throw new Error('Failed to generate cropped image');
@@ -98,11 +98,11 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
         type: 'image/jpeg',
       });
 
-      console.log('Original file created:', file.name, file.size, 'bytes');
+      
 
       // Optimize image to WebP format for better compression
       setOptimizing(true);
-      console.log('🔍 Starting image optimization to WebP...');
+      
       console.log('📋 Original file details:', {
         name: file.name,
         size: file.size,
@@ -132,16 +132,16 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
       setOptimizing(false);
 
       // Upload optimized file to storage service
-      console.log('Uploading optimized image to storage...');
+      
       const uploadResult = await uploadAvatar(optimizedFile, user);
-      console.log('Storage upload successful:', uploadResult);
+      
       
       // Extract the avatar URL from the upload result
       const avatarPublicUrl = uploadResult.avatarUrl;
-      console.log('Avatar URL to store:', avatarPublicUrl);
+      
       
       // Update profile in backend with the avatar URL
-      console.log('Updating backend profile...');
+      
       
       // Use different endpoint based on user type
       const endpoint = user?.user_type === 'faculty' 
@@ -152,13 +152,13 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
         avatar_url: avatarPublicUrl  // Store the full public URL
       });
       
-      console.log('Backend response:', response.data);      if (response.data.success) {
-        console.log('Backend update successful');
+            if (response.data.success) {
+        
         onAvatarUpdate(avatarPublicUrl);  // Use the same URL we stored
         
         // Show optimization stats briefly if available
         if (optimizationStats && optimizationStats.format === 'webp') {
-          console.log(`✅ Avatar optimized successfully! Reduced size by ${optimizationStats.compressionRatio} (${imageOptimizationService.formatFileSize(optimizationStats.originalSize)} → ${imageOptimizationService.formatFileSize(optimizationStats.optimizedSize)})`);
+          
         }
         
         setShowModal(false);
@@ -167,8 +167,8 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
         throw new Error(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      console.error('Error stack:', error.stack);
+      
+      
       setError(`Failed to upload avatar: ${error.message}`);
     } finally {
       setUploading(false);
@@ -180,7 +180,7 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
       setUploading(true);
       setError('');
 
-      console.log('🗑️ Starting avatar removal process...');
+      
       console.log('👤 User details:', {
         userType: user?.user_type,
         userId: user?.enrollment_no || user?.employee_id,
@@ -190,16 +190,16 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
       // First, delete the file from Supabase storage
       if ((user?.enrollment_no || user?.employee_id) && user?.full_name) {
         try {
-          console.log('🗄️ Attempting to delete avatar from storage...');
+          
           const deleteResult = await deleteAvatar(user);
-          console.log('✅ Storage deletion result:', deleteResult);
+          
         } catch (storageError) {
-          console.warn('⚠️ Storage deletion failed (may not exist):', storageError);
+          
           // Continue with database update even if file deletion fails
         }
       }
 
-      console.log('💾 Updating database to clear avatar_url...');
+      
       // Update the database to set avatar_url to null
       const endpoint = user?.user_type === 'faculty' 
         ? '/api/v1/client/profile/faculty/update' 
@@ -209,10 +209,10 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
         avatar_url: null
       });
 
-      console.log('📋 Database update response:', response.data);
+      
 
       if (response.data.success) {
-        console.log('✅ Avatar removal completed successfully');
+        
         // Clear any cached avatar state
         onAvatarUpdate(null);
         setShowModal(false);
@@ -220,7 +220,7 @@ const AvatarUpload = memo(function AvatarUpload({ currentAvatar, onAvatarUpdate,
         throw new Error(response.data.message || 'Failed to remove avatar');
       }
     } catch (error) {
-      console.error('❌ Error removing avatar:', error);
+      
       setError('Failed to remove avatar. Please try again.');
     } finally {
       setUploading(false);

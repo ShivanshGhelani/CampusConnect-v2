@@ -47,7 +47,7 @@ function ExportData() {
         throw new Error(response.data.message || 'Failed to fetch event details');
       }
     } catch (error) {
-      console.error('Error fetching event details:', error);
+      
       setError('Failed to load event details');
     } finally {
       setIsLoading(false);
@@ -83,7 +83,7 @@ function ExportData() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating quick report:', error);
+      
       alert('Failed to generate report');
     } finally {
       setIsExporting(false);
@@ -110,7 +110,7 @@ function ExportData() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating sign sheet:', error);
+      
       alert('Failed to generate sign sheet');
     } finally {
       setIsExporting(false);
@@ -138,7 +138,7 @@ function ExportData() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating custom report:', error);
+      
       alert('Failed to generate custom report');
     } finally {
       setIsExporting(false);

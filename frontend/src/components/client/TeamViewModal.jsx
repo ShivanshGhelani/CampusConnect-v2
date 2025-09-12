@@ -4,13 +4,13 @@ import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
 const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
-  console.log('=== TEAM VIEW MODAL RENDER ===');
-  console.log('isOpen:', isOpen);
-  console.log('eventId:', eventId);
-  console.log('teamId:', teamId);
-  console.log('teamData received:', teamData);
-  console.log('Rendering with isOpen =', isOpen);
-  console.log('===============================');
+  
+  
+  
+  
+  
+  
+  
   const { user } = useAuth();
   const [teamRegistration, setTeamRegistration] = useState(null);
   const [memberTasks, setMemberTasks] = useState([]);
@@ -39,20 +39,20 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
   // Lock body scroll when modal is open (especially important for mobile)
   useEffect(() => {
     if (isOpen) {
-      console.log('TeamViewModal: Modal opened - locking body scroll');
+      
       document.body.style.overflow = 'hidden';
       document.body.style.height = '100vh';
-      console.log('TeamViewModal: Body scroll locked');
+      
     } else {
-      console.log('TeamViewModal: Modal closed - unlocking body scroll');
+      
       document.body.style.overflow = '';
       document.body.style.height = '';
-      console.log('TeamViewModal: Body scroll unlocked');
+      
     }
     
     // Cleanup on unmount
     return () => {
-      console.log('TeamViewModal: Component unmounting - cleaning up body styles');
+      
       document.body.style.overflow = '';
       document.body.style.height = '';
     };
@@ -60,14 +60,14 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
   // Debug useEffect to track component lifecycle
   useEffect(() => {
-    console.log('TeamViewModal: Component mounted/updated');
-    console.log('TeamViewModal: Current props:', { isOpen, eventId, teamId, teamData });
+    
+    
     
     if (isOpen) {
       // Check if modal exists in DOM
       setTimeout(() => {
         const modalElement = document.querySelector('[data-team-modal="true"]');
-        console.log('TeamViewModal: Modal element in DOM:', modalElement);
+        
         if (modalElement) {
           const computedStyle = window.getComputedStyle(modalElement);
           console.log('TeamViewModal: Computed styles:', {
@@ -86,7 +86,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
     }
     
     return () => {
-      console.log('TeamViewModal: Component will unmount');
+      
     };
   }, [isOpen, eventId, teamId, teamData]);
 
@@ -104,12 +104,12 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
     setError('');
 
     try {
-      console.log('TeamViewModal: Loading team data for eventId:', eventId);
-      console.log('TeamViewModal: teamData prop:', teamData);
+      
+      
       
       // Get team registration data
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
-      console.log('TeamViewModal: Registration response:', registrationResponse);
+      
 
       // Handle different response structures
       let teamReg = null;
@@ -127,30 +127,30 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         }
       }
 
-      console.log('TeamViewModal: Processed team registration:', teamReg);
+      
 
       // If we don't have team registration but have teamData with reg_id, 
       // this might be a member's individual registration ID - try to find the team
       if (!teamReg && teamData?.reg_id) {
-        console.log('TeamViewModal: No team registration found, trying with member reg_id:', teamData.reg_id);
+        
         try {
           // Try to get team data using the member registration ID
           const memberTeamResponse = await clientAPI.getTeamByMemberRegistration(eventId, teamData.reg_id);
-          console.log('TeamViewModal: Member team response:', memberTeamResponse);
+          
           
           if (memberTeamResponse.data?.success && memberTeamResponse.data?.team_registration) {
             teamReg = memberTeamResponse.data.team_registration;
-            console.log('TeamViewModal: Found team via member registration:', teamReg);
+            
           }
         } catch (memberTeamError) {
-          console.log('TeamViewModal: Error getting team by member registration:', memberTeamError);
+          
           // Continue with original approach if this fails
         }
       }
 
       if (teamReg) {
         // Process the team registration data
-        console.log('TeamViewModal: Processing team registration data');
+        
         
         // Ensure we have the correct structure for team members
         if (teamReg.team_members) {
@@ -172,13 +172,13 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         
         // Process team roles from the registration data if available
         if (teamReg.team_roles) {
-          console.log('TeamViewModal: Processing team roles from registration:', teamReg.team_roles);
+          
           setMemberRoles(teamReg.team_roles);
         }
         
         // Process tasks from the registration data if available
         if (teamReg.tasks) {
-          console.log('TeamViewModal: Processing tasks from registration:', teamReg.tasks);
+          
           setAllTasks(teamReg.tasks);
           
           // Filter tasks for current user
@@ -186,13 +186,13 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
             task.assigned_to && Array.isArray(task.assigned_to) && task.assigned_to.includes(user.enrollment_no)
           );
           setMemberTasks(userTasks);
-          console.log('TeamViewModal: User tasks filtered:', userTasks);
+          
         }
         
         setTeamRegistration(teamReg);
 
-        console.log('TeamViewModal: Final teamRegistration set:', teamReg);
-        console.log('TeamViewModal: Team structure:', teamReg.team);
+        
+        
         console.log('TeamViewModal: Available team ID sources:', {
           'teamReg.team?.team_id': teamReg.team?.team_id,
           'teamReg.team_id': teamReg.team_id,
@@ -206,12 +206,12 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
             // Get team roles if not in registration
             if (!teamReg.team_roles) {
               const rolesResponse = await clientAPI.getTeamRoles(eventId);
-              console.log('TeamViewModal: Roles response:', rolesResponse);
+              
               
               let teamRoles = {};
               if (rolesResponse.data?.success && rolesResponse.data?.roles) {
                 const rolesArray = rolesResponse.data.roles;
-                console.log('TeamViewModal: Processing roles array:', rolesArray);
+                
                 
                 teamRoles = {};
                 rolesArray.forEach(roleItem => {
@@ -235,7 +235,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
             // Get team tasks if not in registration
             if (!teamReg.tasks) {
               const tasksResponse = await clientAPI.getTeamTasks(eventId);
-              console.log('TeamViewModal: Tasks response:', tasksResponse);
+              
               
               let allTeamTasks = [];
               if (tasksResponse.data?.success && tasksResponse.data?.tasks) {
@@ -252,16 +252,16 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
               setMemberTasks(userTasks);
             }
           } catch (apiError) {
-            console.error('TeamViewModal: Error loading additional roles/tasks:', apiError);
+            
           }
         }
       } else {
-        console.log('TeamViewModal: No team registration found');
+        
         setError('No team registration found for this event');
       }
 
     } catch (error) {
-      console.error('TeamViewModal: Error loading team data:', error);
+      
       setError(`Failed to load team data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -373,7 +373,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         submission_notes: submissionNotes
       });
       
-      console.log('TeamViewModal: Task submission response:', response);
+      
       
       // Reload team data to reflect changes
       await loadTeamData();
@@ -381,7 +381,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
       closeSubmissionModal();
       
     } catch (error) {
-      console.error('TeamViewModal: Error submitting task:', error);
+      
       showNotification(`Failed to submit task: ${error.message}`, 'error');
     } finally {
       setSubmissionLoading(false);
@@ -398,7 +398,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         review_notes: reviewNotes
       });
       
-      console.log('TeamViewModal: Task review response:', response);
+      
       
       // Reload team data to reflect changes
       await loadTeamData();
@@ -406,7 +406,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
       closeReviewModal();
       
     } catch (error) {
-      console.error('TeamViewModal: Error reviewing task:', error);
+      
       showNotification(`Failed to review task: ${error.message}`, 'error');
     } finally {
       setReviewLoading(false);
@@ -423,7 +423,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
     setTaskUpdateLoading(prev => ({ ...prev, [taskId]: true }));
     
     try {
-      console.log('TeamViewModal: Updating task status:', taskId, 'to', newStatus);
+      
       
       if (newStatus === 'submit') {
         // Open submission modal instead of direct completion
@@ -451,7 +451,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         }
         
         const response = await clientAPI.completeTask(eventId, taskId);
-        console.log('TeamViewModal: Task completion response:', response);
+        
       } else {
         // For other status updates, simulate locally (until backend supports general updates)
         setAllTasks(prev => prev.map(task => 
@@ -470,7 +470,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
       showNotification('Task updated successfully!', 'success');
       
     } catch (error) {
-      console.error('TeamViewModal: Error updating task:', error);
+      
       setError(`Failed to update task status: ${error.message}`);
     } finally {
       setTaskUpdateLoading(prev => ({ ...prev, [taskId]: false }));
@@ -479,12 +479,12 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
 
   // Get member role
   const getMemberRole = (enrollmentNo) => {
-    console.log('TeamViewModal: Getting role for enrollment:', enrollmentNo);
-    console.log('TeamViewModal: Available member roles:', memberRoles);
+    
+    
     
     // Check roles from API first
     const role = memberRoles[enrollmentNo];
-    console.log('TeamViewModal: Found role for', enrollmentNo, ':', role);
+    
     
     if (role) {
       return {
@@ -529,16 +529,16 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
   };
 
   if (!isOpen) {
-    console.log('TeamViewModal: NOT RENDERING - isOpen is false');
+    
     return null;
   }
 
-  console.log('TeamViewModal: RENDERING - isOpen is true');
-  console.log('Window width:', typeof window !== 'undefined' ? window.innerWidth : 'SSR');
-  console.log('Is mobile?', typeof window !== 'undefined' ? window.innerWidth < 1024 : 'unknown');
-  console.log('TeamViewModal: About to render modal DOM element');
-  console.log('Document body overflow:', typeof document !== 'undefined' ? document.body.style.overflow : 'SSR');
-  console.log('Viewport size:', typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'SSR');
+  
+  
+  
+  
+  
+  
 
   // Use createPortal to render the modal directly to document.body
   const modalContent = (
@@ -563,7 +563,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
         pointerEvents: 'auto'
       }}
       onClick={(e) => {
-        console.log('TeamViewModal: Backdrop clicked', e.target === e.currentTarget);
+        
         // Allow clicking backdrop to close on desktop
         if (e.target === e.currentTarget && typeof window !== 'undefined' && window.innerWidth >= 1024) {
           onClose();
@@ -590,7 +590,7 @@ const TeamViewModal = ({ isOpen, onClose, eventId, teamId, teamData }) => {
           margin: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '2rem' : '0'
         }}
         onClick={(e) => {
-          console.log('TeamViewModal: Modal content clicked');
+          
           e.stopPropagation();
         }} // Prevent closing when clicking inside
       >

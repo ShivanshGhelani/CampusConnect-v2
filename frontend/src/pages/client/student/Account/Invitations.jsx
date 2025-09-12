@@ -29,7 +29,7 @@ const Invitations = () => {
                 setError(result.data.message || 'Failed to fetch invitations');
             }
         } catch (error) {
-            console.error('Error fetching invitations:', error);
+            
             setError('Failed to load invitations. Please try again.');
         } finally {
             setLoading(false);
@@ -46,12 +46,12 @@ const Invitations = () => {
                 ? `Successfully joined team "${invitation.team_name}"!`
                 : `Declined invitation to team "${invitation.team_name}"`;
 
-            console.log(successMessage);
+            
             // You might want to show a toast notification here
         } else {
             // Don't remove invitation from list if it failed
             // The error will be shown in the InvitationCard itself
-            console.log(`Failed to ${response} invitation: ${message}`);
+            
         }
     };
 
@@ -63,7 +63,7 @@ const Invitations = () => {
     const handleViewTeam = (invitation) => {
         // Navigate to team details or event details with team focus
         if (invitation.event_id) {
-            console.log('Navigating to team view for event:', invitation.event_id);
+            
             // Navigate to event details page
             navigate(`/client/events/${invitation.event_id}`, {
                 state: {
@@ -72,17 +72,17 @@ const Invitations = () => {
                 }
             });
         } else {
-            console.warn('No event ID found in invitation:', invitation);
+            
         }
     };
 
     const handleViewDetails = (invitation) => {
         // Navigate to event details page
         if (invitation.event_id) {
-            console.log('Navigating to event details for event:', invitation.event_id);
+            
             navigate(`/client/events/${invitation.event_id}`);
         } else {
-            console.warn('No event ID found in invitation:', invitation);
+            
         }
     };
 

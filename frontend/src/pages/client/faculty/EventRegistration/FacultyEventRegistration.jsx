@@ -12,6 +12,9 @@ import {
   generateSessionId,
   idValidators
 } from '../../../../utils/idGenerator';
+// Import cache utilities for optimized data loading
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
+import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
@@ -99,7 +102,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     }
   }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
 
-  // Load event details and initialize form
+  // Load event details using cached data
   useEffect(() => {
     const loadEventDetails = async () => {
       if (!eventId) {
@@ -109,16 +112,21 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       }
 
       try {
-        const response = await clientAPI.getEventDetails(eventId);
-
-
-        // Correctly access the event data from the API response
-        const eventData = response.data.success ? response.data.event : response.data;
-
-
+        
+        let eventData = getAnyEventCache(eventId);
+        
+        if (!eventData) {
+          
+          // Fallback to API if not cached (should rarely happen)
+          const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
+          eventData = cachedEventData?.event || cachedEventData;
+        } else {
+          
+          eventData = eventData.event || eventData;
+        }
 
         if (!eventData) {
-          throw new Error('Event data not found in response');
+          throw new Error('Event data not found');
         }
 
         setEvent(eventData);
@@ -126,8 +134,6 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         // Check if URL indicates team registration or use event setting
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';
-
-
 
         setIsTeamRegistration(shouldUseTeamMode);
         setTeamSizeMin(eventData.team_size_min || 2);
@@ -141,8 +147,10 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
           initializeParticipants(minParticipants);
         }
 
+        
+
       } catch (error) {
-        console.error('Error loading event:', error);
+        
         setError('Failed to load event details');
       } finally {
         setLoading(false);
@@ -152,48 +160,88 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     loadEventDetails();
   }, [eventId, location.pathname, forceTeamMode]);
 
-  // Separate useEffect for user data initialization (FIXES AUTO-FETCH ISSUE)
+  // Use cached profile data for form initialization (OPTIMIZED - NO API CALLS)
   useEffect(() => {
-    if (user) {
+    const loadProfileData = async () => {
+      if (user) {
+        console.log('👤 Loading faculty profile data...');
 
-
-      // Utility function to resolve contact number from various field names
-      const resolveContactNumber = (userData) => {
-        const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
-        for (const field of possibleFields) {
-          if (userData[field] && userData[field].trim()) {
-            return userData[field];
+        // Get cached profile data (should already be loaded from login)
+        const cachedProfile = getAnyCache('faculty');
+        let profileData = user; // fallback to AuthContext user
+        
+        if (cachedProfile?.profile) {
+          console.log('✅ Using cached faculty profile data');
+          profileData = cachedProfile.profile;
+        } else {
+          console.log('❌ No cached faculty profile found, attempting to refresh...');
+          // If no cache and user is logged in, try to refresh expired cache
+          if (user?.employee_id) {
+            try {
+              const refreshedProfile = await refreshExpiredCache('faculty', user.employee_id, clientAPI);
+              if (refreshedProfile?.profile) {
+                console.log('🔄 Successfully refreshed expired faculty cache');
+                profileData = refreshedProfile.profile;
+              } else {
+                console.log('⚠️ Faculty cache refresh failed, using fallback');
+                // Try to fetch from session storage as backup
+                try {
+                  const sessionProfile = sessionStorage.getItem('complete_profile');
+                  if (sessionProfile) {
+                    const parsedProfile = JSON.parse(sessionProfile);
+                    profileData = parsedProfile;
+                    console.log('📦 Using session storage backup for faculty');
+                  }
+                } catch (e) {
+                  console.error('❌ Session storage backup failed for faculty:', e);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to refresh expired faculty cache:', error);
+              // Try to fetch from session storage as backup
+              try {
+                const sessionProfile = sessionStorage.getItem('complete_profile');
+                if (sessionProfile) {
+                  const parsedProfile = JSON.parse(sessionProfile);
+                  profileData = parsedProfile;
+                  console.log('📦 Using session storage backup after faculty error');
+                }
+              } catch (e) {
+                console.error('❌ Session storage backup failed for faculty:', e);
+              }
+            }
           }
         }
-        return '';
-      };
 
-      // Get session storage data as fallback (same pattern as StudentEventRegistration)
-      let sessionProfile = null;
-      try {
-        const sessionData = sessionStorage.getItem('complete_profile');
-        if (sessionData) {
-          sessionProfile = JSON.parse(sessionData);
-        }
-      } catch (e) {
-        console.warn('Could not parse session profile data');
+        // Utility function to resolve contact number from various field names
+        const resolveContactNumber = (userData) => {
+          const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
+          for (const field of possibleFields) {
+            if (userData[field] && userData[field].trim()) {
+              return userData[field];
+            }
+          }
+          return '';
+        };
+
+        const contactNumber = resolveContactNumber(profileData);
+
+        const newFormData = {
+          ...formData,
+          full_name: profileData.full_name || '',
+          employee_id: profileData.employee_id || '',  // Changed from faculty_id
+          email: profileData.email || '',
+          contact_no: contactNumber,  // FIXED: Use resolved contact number
+          department: profileData.department || ''
+          // REMOVED: designation field (not needed per user request)
+        };
+
+        setFormData(newFormData);
+        console.log('✅ Faculty form data initialized:', newFormData);
       }
+    };
 
-      const sourceData = sessionProfile || user;
-      const contactNumber = resolveContactNumber(sourceData);
-
-      const newFormData = {
-        ...formData,
-        full_name: sourceData.full_name || '',
-        employee_id: sourceData.employee_id || '',  // Changed from faculty_id
-        email: sourceData.email || '',
-        contact_no: contactNumber,  // FIXED: Use resolved contact number
-        department: sourceData.department || ''
-        // REMOVED: designation field (not needed per user request)
-      };
-
-      setFormData(newFormData);
-    }
+    loadProfileData();
   }, [user, user?.contact_no, user?.phone_number, user?.full_name, user?.email]);
 
   // Initialize participants array for team registration
@@ -266,7 +314,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         return {
           isValid: true,
           errors: {},
-          data: response.data.faculty
+          // FIXED: Updated to use new unified API response structure
+          data: response.data.user_data // Changed from faculty to user_data
         };
       } else {
         return {
@@ -426,7 +475,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         setError(response.data.message || 'Registration failed');
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      
       setError(error.response?.data?.message || 'An error occurred during registration');
     } finally {
       setSubmitting(false);
@@ -438,7 +487,11 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-gray-600">Loading registration form...</p>
+            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
+          </div>
         </div>
       </Layout>
     );

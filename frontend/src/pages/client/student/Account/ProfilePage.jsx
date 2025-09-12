@@ -9,6 +9,8 @@ import MessageBox from '../../../../components/client/MessageBox';
 import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
 import { clientAPI } from '../../../../api/client';
+import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
+import { qrCodeService } from '../../../../services/QRCodeService';
 import api from '../../../../api/base';
 
 function ProfilePage() {
@@ -83,7 +85,7 @@ function ProfilePage() {
       const updatedUserData = event.detail;
 
       if (updatedUserData && profileData) {
-        console.log('📱 ProfilePage: Received user data update, refreshing profile data');
+        
 
         // Update the profile data with the new user data
         setProfileData(prevProfileData => ({
@@ -102,51 +104,66 @@ function ProfilePage() {
     };
   }, [profileData]);
 
-  // Also listen for changes to the user from AuthContext
+  // Also listen for changes to the user from AuthContext (minimal updates only)
   useEffect(() => {
     if (user && profileData && user.full_name !== profileData.full_name) {
-      console.log('📱 ProfilePage: User context changed, updating profile data');
+      
       setProfileData(prevProfileData => ({
         ...prevProfileData,
         ...user
       }));
     }
-  }, [user?.full_name, user?.email, user?.mobile_no, user?.department, user?.semester]);
+  }, [user?.enrollment_no, profileData?.enrollment_no]); // OPTIMIZED: Only depend on stable IDs
 
   // Fetch event history and dashboard stats on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);        // Fetch complete profile data
-        const profileResponse = await api.get('/api/v1/client/profile/info');
-        if (profileResponse.data.success) {
-          const profile = profileResponse.data.profile || {};
-          setProfileData(profile);
+        setLoading(true);
+        
+        // OPTIMIZED: Check for immediate cache hit first
+        
+        let data = getAnyCache('student');
+        
+        if (!data) {
+          
+          // OPTIMIZED: Use global cache to prevent duplicate API calls
+          data = await fetchProfileWithCache('student', user?.enrollment_no, api);
+        } else {
+          
         }
-
-        // Fetch event history
-        const historyResponse = await api.get('/api/v1/client/profile/event-history');
-        if (historyResponse.data.success) {
-          setEventHistory(historyResponse.data.event_history || []);
-        }
-
-        // Fetch dashboard stats
-        const statsResponse = await api.get('/api/v1/client/profile/dashboard-stats');
-        if (statsResponse.data.success) {
-          setDashboardStats(statsResponse.data.stats || {});
+        
+        
+        
+        if (data && data.success) {
+          const { profile, stats, event_history } = data;
+          
+          
+          
+          // Update all state with the combined response
+          setProfileData(profile || {});
+          setDashboardStats(stats || {});
+          setEventHistory(event_history || []);
+        } else {
+          
         }
 
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    // Only fetch if user exists and we haven't fetched profile data yet (prevent duplicate calls)
+    if (user?.enrollment_no && !profileData?.enrollment_no) {
+      
       fetchData();
+    } else if (profileData?.enrollment_no) {
+      
+      setLoading(false); // Ensure loading is false if data is already available
     }
-  }, [user]);
+  }, [user?.enrollment_no, user?.name]); // Wait for user to be fully loaded before fetching
 
   // Convert event history to match the existing format for compatibility
   const registrations = eventHistory.map(item => {
@@ -257,11 +274,11 @@ function ProfilePage() {
   }, []);
 
   const openTeamDetailModal = useCallback(async (teamDetail) => {
-    console.log('=== TEAM DETAIL MODAL DEBUG ===');
-    console.log('Opening team detail modal with:', teamDetail);
-    console.log('Current QR modal state:', showQRCodeModal);
-    console.log('Current showTeamDetailModal state:', showTeamDetailModal);
-    console.log('==============================');
+    
+    
+    
+    
+    
 
     // Close QR modal if it's open to prevent stacking
     if (showQRCodeModal) {
@@ -279,7 +296,7 @@ function ProfilePage() {
     setSelectedTeamDetail(teamDetail);
     setShowTeamDetailModal(true);
 
-    console.log('Team modal should now be open, modal state:', true);
+    
   }, [showQRCodeModal, closeQRCodeModal, showTeamDetailModal]);
 
   const closeTeamDetailModal = useCallback(() => {
@@ -292,77 +309,114 @@ function ProfilePage() {
   }, []);
 
   const openQRCodeModal = useCallback(async (qrData) => {
-    console.log('=== QR CODE DATA DEBUG ===');
-    console.log('Full QR Data received:', qrData);
-    console.log('Registration ID:', qrData?.registration?.reg_id);
-    console.log('Event ID:', qrData?.eventId);
-    console.log('Event Name:', qrData?.eventName);
-    console.log('Registration Type:', qrData?.registrationType);
-    console.log('Team Name:', qrData?.teamName);
-    console.log('Registration Object:', qrData?.registration);
-    console.log('Event Object:', qrData?.event);
-    console.log('========================');
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     // Close team modal if it's open to prevent stacking
     if (showTeamDetailModal) {
       closeTeamDetailModal();
     }
 
-    let enhancedQRData = { ...qrData };
+    try {
+      // Generate QR code with backend data
+      
+      
+      const registrationData = qrData.registration;
+      // Ensure event data has event_id properly set
+      const eventData = {
+        ...qrData.event,
+        event_id: qrData.eventId || qrData.event?.event_id || qrData.event?.id,
+        id: qrData.eventId || qrData.event?.event_id || qrData.event?.id,
+        eventId: qrData.eventId || qrData.event?.event_id || qrData.event?.id
+      };
+      
+      
+      
+      
+      // Generate QR data using backend endpoint
+      const backendQRData = await qrCodeService.generateQRData(registrationData, eventData);
+      
+      // Create enhanced QR data with backend response
+      const enhancedQRData = {
+        ...qrData,
+        backendQRData, // This contains the proper QR data from backend
+        registration: registrationData,
+        event: eventData
+      };
 
-    // If this is a team registration, try to fetch full team details with members
-    if (qrData?.registrationType === 'team' && qrData?.eventId) {
-      try {
-        console.log('Fetching full team data for QR code generation...');
-        const teamResponse = await clientAPI.getTeamRegistrationDetails(qrData.eventId);
+      
+      
+      setSelectedQRData(enhancedQRData);
+      setShowQRCodeModal(true);
+      
+    } catch (error) {
+      
+      
+      // Fallback to original implementation with team enhancement
+      let enhancedQRData = { ...qrData };
 
-        if (teamResponse.data?.success && teamResponse.data?.team_registration) {
-          console.log('Enhanced team data received:', teamResponse.data.team_registration);
+      // If this is a team registration, try to fetch full team details with members
+      if (qrData?.registrationType === 'team' && qrData?.eventId) {
+        try {
+          
+          const teamResponse = await clientAPI.getTeamRegistrationDetails(qrData.eventId);
 
-          // Map the team members to the expected format for QR service
-          const mappedTeamMembers = teamResponse.data.team_registration.members?.map(member => ({
-            name: member.student?.name || member.name,
-            enrollment_no: member.student?.enrollment_no || member.enrollment_no,
-            email: member.student?.email || member.email,
-            phone: member.student?.phone || member.phone,
-            department: member.student?.department || member.department,
-            semester: member.student?.semester || member.semester,
-            is_leader: member.is_team_leader || false,
-            registration_id: member.registration_id
-          })) || [];
+          if (teamResponse.data?.success && teamResponse.data?.team_registration) {
+            
 
-          // Enhance the registration data with full team member details
-          enhancedQRData.registration = {
-            ...qrData.registration,
-            team_members: mappedTeamMembers,
-            team_details: {
-              team_name: teamResponse.data.team_registration.team_name,
-              team_leader: teamResponse.data.team_registration.team_leader,
-              team_registration_id: teamResponse.data.team_registration.team_registration_id
-            },
-            // Add any other relevant team data
-            team_size: teamResponse.data.team_registration.team_size || mappedTeamMembers.length || 1
-          };
+            // Map the team members to the expected format for QR service
+            const mappedTeamMembers = teamResponse.data.team_registration.members?.map(member => ({
+              name: member.student?.name || member.name,
+              enrollment_no: member.student?.enrollment_no || member.enrollment_no,
+              email: member.student?.email || member.email,
+              phone: member.student?.phone || member.phone,
+              department: member.student?.department || member.department,
+              semester: member.student?.semester || member.semester,
+              is_leader: member.is_team_leader || false,
+              registration_id: member.registration_id
+            })) || [];
 
-          // Also enhance event data with event_id if available
-          if (teamResponse.data.team_registration.event?.event_id) {
-            enhancedQRData.event = {
-              ...qrData.event,
-              event_id: teamResponse.data.team_registration.event.event_id
+            // Enhance the registration data with full team member details
+            enhancedQRData.registration = {
+              ...qrData.registration,
+              team_members: mappedTeamMembers,
+              team_details: {
+                team_name: teamResponse.data.team_registration.team_name,
+                team_leader: teamResponse.data.team_registration.team_leader,
+                team_registration_id: teamResponse.data.team_registration.team_registration_id
+              },
+              // Add any other relevant team data
+              team_size: teamResponse.data.team_registration.team_size || mappedTeamMembers.length || 1
             };
+
+            // Also enhance event data with event_id if available
+            if (teamResponse.data.team_registration.event?.event_id) {
+              enhancedQRData.event = {
+                ...qrData.event,
+                event_id: teamResponse.data.team_registration.event.event_id
+              };
+            }
+
+            
+            
           }
-
-          console.log('Enhanced QR data with mapped team members:', enhancedQRData.registration);
-          console.log('Team members mapped for QR service:', mappedTeamMembers);
+        } catch (teamError) {
+          
+          // Continue with basic data if team fetch fails
         }
-      } catch (error) {
-        console.warn('Could not fetch full team data for QR code, using basic data:', error);
-        // Continue with basic data if team fetch fails
       }
-    }
 
-    setSelectedQRData(enhancedQRData);
-    setShowQRCodeModal(true);
+      setSelectedQRData(enhancedQRData);
+      setShowQRCodeModal(true);
+    }
   }, [showTeamDetailModal, closeTeamDetailModal]);
 
   const confirmCancelRegistration = useCallback((eventId, eventName) => {
@@ -396,13 +450,13 @@ function ProfilePage() {
         closeCancelModal();
 
         // Show success message (you might want to add a toast notification here)
-        console.log('Registration cancelled successfully');
+        
       } else {
-        console.error('Failed to cancel registration:', response.data.message);
+        
         alert('Failed to cancel registration: ' + (response.data.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error cancelling registration:', error);
+      
       alert('Error cancelling registration. Please try again.');
     } finally {
       setCancellingRegistration(false);
@@ -782,6 +836,15 @@ function ProfilePage() {
             <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="p-4 sm:p-6 flex flex-col items-center justify-start">
                 <div className="w-full max-w-sm">
+                  {/* Debug Info */}
+                  <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+                    <div>Event ID: {selectedQRData?.eventId || selectedQRData?.event?.event_id || 'MISSING'}</div>
+                    <div>Reg ID: {selectedQRData?.registration?.registration_id || 'MISSING'}</div>
+                    <div>Registration Data: {selectedQRData?.registration ? 'Present' : 'Missing'}</div>
+                    <div>Event Data: {selectedQRData?.event ? 'Present' : 'Missing'}</div>
+                    <div>Backend QR Data: {selectedQRData?.backendQRData ? 'Present' : 'Missing'}</div>
+                  </div>
+                  
                   <QRCodeDisplay
                     registrationData={selectedQRData?.registration}
                     eventData={selectedQRData?.event}

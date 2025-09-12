@@ -24,10 +24,10 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
 
   // Debug logging
   useEffect(() => {
-    console.log('🔍 RoleAssignmentModal props:');
-    console.log('  eventId:', eventId);
-    console.log('  teamId:', teamId);
-    console.log('  teamMembers:', teamMembers);
+    
+    
+    
+    
   }, [eventId, teamId, teamMembers]);
 
   // Load current role assignments
@@ -37,16 +37,16 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
       
       try {
         setIsLoadingRoles(true);
-        console.log('🔍 Loading current team roles for event:', eventId);
+        
         
         const response = await clientAPI.getTeamRoles(eventId);
-        console.log('✅ Current roles response:', response);
+        
         
         if (response.data && response.data.success) {
           setCurrentRoles(response.data.roles || []);
         }
       } catch (error) {
-        console.error('❌ Error loading current roles:', error);
+        
         // Don't set error state here since this is optional functionality
       } finally {
         setIsLoadingRoles(false);
@@ -314,17 +314,17 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
         description: roleDescription.trim() || (selectedRoleData ? selectedRoleData.description : '')
       };
 
-      console.log('🔧 Assigning role with data:', roleData);
-      console.log('🔧 Event ID:', eventId);
-      console.log('🔧 Team ID:', teamId);
+      
+      
+      
 
       // Use clientAPI from client.js
       const response = await clientAPI.assignRole(eventId, roleData);
 
-      console.log('✅ Role assignment response:', response);
+      
 
       if (response.data && response.data.success) {
-        console.log('✅ Role assigned successfully:', response.data.message);
+        
         
         // Refresh current roles to show the update
         try {
@@ -333,7 +333,7 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
             setCurrentRoles(rolesResponse.data.roles || []);
           }
         } catch (rolesError) {
-          console.warn('⚠️ Could not refresh roles after assignment:', rolesError);
+          
         }
 
         // Clear form
@@ -346,27 +346,27 @@ const RoleAssignmentModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
         // Success - call onSuccess callback
         onSuccess();
       } else {
-        console.error('❌ Role assignment failed:', response.data);
+        
         setError(response.data?.message || 'Failed to assign role');
       }
     } catch (error) {
-      console.error('❌ Error assigning role:', error);
+      
       
       // Handle different types of errors
       if (error.response) {
         // HTTP error response
-        console.error('❌ HTTP Error Response:', error.response.data);
+        
         const errorMessage = error.response.data?.detail || 
                            error.response.data?.message || 
                            `Server error: ${error.response.status}`;
         setError(errorMessage);
       } else if (error.request) {
         // Network error
-        console.error('❌ Network Error:', error.request);
+        
         setError('Network error occurred. Please check your connection.');
       } else {
         // Other error
-        console.error('❌ Unknown Error:', error.message);
+        
         setError('An unexpected error occurred. Please try again.');
       }
     } finally {

@@ -29,11 +29,11 @@ function EventCreatedSuccess() {
 
   useEffect(() => {
     if (location.state?.eventData) {
-      console.log('Event Data Structure:', location.state.eventData);
-      console.log('Organizers:', location.state.eventData.organizers);
-      console.log('Certificate Template:', location.state.eventData.certificate_template);
-      console.log('Certificate Template Type:', typeof location.state.eventData.certificate_template);
-      console.log('Certificate Template Name:', location.state.eventData.certificate_template_name);
+      
+      
+      
+      
+      
       console.log('All Certificate Related Fields:', {
         certificate_template: location.state.eventData.certificate_template,
         certificate_template_name: location.state.eventData.certificate_template_name,
@@ -42,17 +42,17 @@ function EventCreatedSuccess() {
       });
       
       // Debug attendance strategy data
-      console.log('Attendance Strategy Full Object:', location.state.eventData.attendance_strategy);
+      
       if (location.state.eventData.attendance_strategy) {
-        console.log('Strategy Type Field:', location.state.eventData.attendance_strategy.strategy_type);
-        console.log('Strategy Field:', location.state.eventData.attendance_strategy.strategy);
-        console.log('Detected Strategy:', location.state.eventData.attendance_strategy.detected_strategy);
+        
+        
+        
         console.log('Pass Criteria Fields:', {
           minimum_percentage: location.state.eventData.attendance_strategy.minimum_percentage,
           pass_criteria: location.state.eventData.attendance_strategy.pass_criteria,
           criteria: location.state.eventData.attendance_strategy.criteria
         });
-        console.log('Sessions:', location.state.eventData.attendance_strategy.sessions);
+        
         if (location.state.eventData.attendance_strategy.sessions?.[0]) {
           console.log('First Session Fields:', {
             session_name: location.state.eventData.attendance_strategy.sessions[0].session_name,
@@ -989,7 +989,7 @@ function EventCreatedSuccess() {
         newWindow.print();
       };
     } catch (error) {
-      console.error('Error generating HTML for print:', error);
+      
       alert('Error generating PDF. Please try again.');
     }
   };

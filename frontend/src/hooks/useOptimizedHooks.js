@@ -106,7 +106,7 @@ export const useOptimizedLocalStorage = (key, initialValue) => {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+      
       return initialValue;
     }
   });
@@ -127,7 +127,7 @@ export const useOptimizedLocalStorage = (key, initialValue) => {
         window.localStorage.setItem(key, newStored);
       }
     } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
+      
     }
   }, [key, storedValue]);
 

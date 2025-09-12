@@ -580,7 +580,7 @@ function FeedbackSetup() {
         is_active: true
       };
 
-      console.log('Saving form:', formData);
+      
       
       // Call the API to save the feedback form
       const response = await adminAPI.createFeedbackForm(eventId, formData);
@@ -593,7 +593,7 @@ function FeedbackSetup() {
       }
       
     } catch (error) {
-      console.error('Error saving form:', error);
+      
       alert(`Failed to save form: ${error.response?.data?.detail || error.message || 'Please try again.'}`);
     } finally {
       setIsSaving(false);
@@ -604,24 +604,24 @@ function FeedbackSetup() {
   useEffect(() => {
     const loadFeedbackForm = async () => {
       try {
-        console.log('Loading feedback form for event:', eventId);
+        
         const response = await adminAPI.getFeedbackForm(eventId);
-        console.log('Feedback form response:', response.data);
+        
         
         if (response.data.success && response.data.feedback_form) {
           const feedbackForm = response.data.feedback_form;
-          console.log('Found existing feedback form:', feedbackForm);
+          
           
           setFormTitle(feedbackForm.title || 'Event Feedback Form');
           setFormDescription(feedbackForm.description || 'Please share your feedback about this event.');
           setFormElements(feedbackForm.elements || []);
         } else {
-          console.log('No feedback form found, creating default elements');
+          
           createDefaultElements();
         }
       } catch (error) {
-        console.error('Error loading feedback form:', error);
-        console.log('No existing feedback form found, creating default elements');
+        
+        
         createDefaultElements();
       }
     };

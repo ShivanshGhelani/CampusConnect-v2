@@ -311,10 +311,21 @@ class SMTPConnectionPool:
 
 class CommunicationService:
     """
-    Production-ready Communication Service for CampusConnect
+    Production-ready Communication Service for CampusConnect - Singleton Pattern
     """
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self):
+        # Only initialize once (singleton pattern)
+        if self._initialized:
+            return
+            
         self.settings = get_settings()
         self.smtp_pool = SMTPConnectionPool()
         self.circuit_breaker = EmailCircuitBreaker()
@@ -333,6 +344,9 @@ class CommunicationService:
         # Health check
         self.last_health_check = None
         self.health_status = "unknown"
+        
+        # Mark as initialized
+        CommunicationService._initialized = True
         
         logger.info(f"Production-ready communication service initialized:")
         logger.info(f"  SMTP Server: {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")

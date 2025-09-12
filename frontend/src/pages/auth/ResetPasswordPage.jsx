@@ -40,7 +40,7 @@ function ResetPasswordPage() {
         userInfo: response.data.user_info,
       });
     } catch (error) {
-      console.error('Token validation error:', error);
+      
       setTokenValidation({
         isValid: false,
         isLoading: false,
@@ -129,7 +129,7 @@ function ResetPasswordPage() {
             });
           }
         } catch (loginError) {
-          console.error('Auto-login error:', loginError);
+          
           navigate('/auth/login', { 
             replace: true,
             state: { 
@@ -139,7 +139,7 @@ function ResetPasswordPage() {
         }
       }, 2000);
     } catch (error) {
-      console.error('Reset password error:', error);
+      
       setError('The password reset link has expired or is invalid.');
     } finally {
       setIsLoading(false);

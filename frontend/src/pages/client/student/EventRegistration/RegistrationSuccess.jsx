@@ -26,15 +26,15 @@ const RegistrationSuccess = () => {
           return;
         }
 
-        console.log('Loading registration data for eventId:', eventId);
+        
 
         const [eventResponse, statusResponse] = await Promise.all([
           clientAPI.getEventDetails(eventId),
           clientAPI.getRegistrationStatus(eventId)
         ]);
 
-        console.log('Event response:', eventResponse.data);
-        console.log('Status response:', statusResponse.data);
+        
+        
 
         const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
         setEvent(eventData);
@@ -44,14 +44,15 @@ const RegistrationSuccess = () => {
 
           // Handle case where full_registration_data might be null/undefined
           if (!regData || typeof regData !== 'object') {
-            console.log('full_registration_data is missing or invalid, creating from response data');
+            
             regData = {
               registration_id: statusResponse.data.registration_id,
               registration_type: statusResponse.data.registration_type,
               registration_datetime: statusResponse.data.registered_at,
               team_registration_id: statusResponse.data.team_registration_id, // Add team registration ID
               team: statusResponse.data.team_info, // Add team info from response
-              ...(statusResponse.data.student_data || {}),
+              // FIXED: Updated to use new unified API response structure
+              ...(statusResponse.data.user_data || {}), // Changed from student_data to user_data
               ...(statusResponse.data.event_data || {})
             };
           } else {
@@ -70,9 +71,9 @@ const RegistrationSuccess = () => {
               regData.team = statusResponse.data.team_info;
             }
 
-            // Flatten student_data to top level for frontend compatibility
-            if (regData.student_data || statusResponse.data.student_data) {
-              const studentData = regData.student_data || statusResponse.data.student_data;
+            // FIXED: Flatten user_data to top level for frontend compatibility
+            if (regData.user_data || statusResponse.data.user_data) { // Changed from student_data to user_data
+              const studentData = regData.user_data || statusResponse.data.user_data; // Changed from student_data to user_data
               Object.assign(regData, studentData);
             }
 
@@ -83,13 +84,13 @@ const RegistrationSuccess = () => {
             }
           }
 
-          console.log('Final registration data:', regData);
-          console.log('Team info from response:', statusResponse.data.team_info);
-          console.log('Team data in regData:', regData.team);
+          
+          
+          
           setRegistrationData(regData);
         } else {
           // Enhanced error handling with debugging info
-          console.error('Registration status failed:', statusResponse.data);
+          
 
           let errorMessage = 'Registration not found for this event';
 
@@ -99,14 +100,14 @@ const RegistrationSuccess = () => {
           }
 
           // Check if user has any registrations at all (debugging)
-          console.log('Checking for any recent registrations...');
+          
 
           setError(`${errorMessage}. Please check that you're viewing the correct event or contact support if this is unexpected.`);
         }
 
         setLoading(false);
       } catch (err) {
-        console.error('Error loading registration data:', err);
+        
         setError('Failed to load registration data. Please try refreshing the page or contact support.');
         setLoading(false);
       }
@@ -185,14 +186,14 @@ const RegistrationSuccess = () => {
   // For backward compatibility, also check if current user is team leader
   const currentUserAsLeader = registrationData.team?.team_leader === registrationData.enrollment_no;
 
-  console.log('Team registration debug:');
-  console.log('- isTeamRegistration:', isTeamRegistration);
-  console.log('- teamName:', teamName);
-  console.log('- teamMembers:', teamMembers);
-  console.log('- teamLeader:', teamLeader);
-  console.log('- teamParticipants:', teamParticipants);
-  console.log('- actualTeamSize:', actualTeamSize);
-  console.log('- currentUserAsLeader:', currentUserAsLeader);
+  
+  
+  
+  
+  
+  
+  
+  
 
   return (
     <Layout noPadding={true}>

@@ -475,7 +475,7 @@ export function useEventStatus(eventData, options = {}) {
       setRegistrationStatus(regStatusResult);
       
     } catch (error) {
-      console.error('Error updating event status:', error);
+      
     }
   }, [eventData]);
   

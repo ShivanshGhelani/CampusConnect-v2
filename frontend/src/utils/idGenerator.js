@@ -161,7 +161,7 @@ class IDGenerator {
       const data = localStorage.getItem('campusconnect_session_ids');
       return data ? JSON.parse(data) : {};
     } catch (error) {
-      console.warn('Failed to load session data:', error);
+      
       return {};
     }
   }
@@ -173,7 +173,7 @@ class IDGenerator {
     try {
       localStorage.setItem('campusconnect_session_ids', JSON.stringify(this.sessionData));
     } catch (error) {
-      console.warn('Failed to save session data:', error);
+      
     }
   }
 }
@@ -374,7 +374,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateRegistrationId instead
    */
   generateTempRegistrationId(enrollment, eventName, participantName) {
-    console.warn('generateTempRegistrationId is deprecated. Use generateRegistrationId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_REGISTRATION;
     const hash = this.simpleHash(`${enrollment}${eventName}${participantName}`);
     const random = this.generateRandom(3);
@@ -399,7 +399,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateTeamRegistrationId instead
    */
   generateTempTeamId(teamName, eventName, leaderEnrollment) {
-    console.warn('generateTempTeamId is deprecated. Use generateTeamRegistrationId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_TEAM;
     const hash = this.simpleHash(`${teamName}${eventName}${leaderEnrollment}`);
     const random = this.generateRandom(3);
@@ -423,7 +423,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateEventId instead
    */
   generateTempEventId(eventName, department = '', organizerInfo = '') {
-    console.warn('generateTempEventId is deprecated. Use generateEventId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_EVENT;
     const hash = this.simpleHash(`${eventName}${department}${organizerInfo}`);
     const random = this.generateRandom(3);
@@ -436,7 +436,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateAttendanceId instead
    */
   generateTempAttendanceId(registrationId, eventId) {
-    console.warn('generateTempAttendanceId is deprecated. Use generateAttendanceId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_ATTENDANCE;
     const hash = this.simpleHash(`${registrationId}${eventId}`);
     const random = this.generateRandom(3);
@@ -449,7 +449,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateVirtualAttendanceId instead
    */
   generateTempVirtualAttendanceId(registrationId, eventId) {
-    console.warn('generateTempVirtualAttendanceId is deprecated. Use generateVirtualAttendanceId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_VIRTUAL_ATTENDANCE;
     const hash = this.simpleHash(`${registrationId}${eventId}`);
     const random = this.generateRandom(3);
@@ -462,7 +462,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generatePhysicalAttendanceId instead
    */
   generateTempPhysicalAttendanceId(registrationId, eventId) {
-    console.warn('generateTempPhysicalAttendanceId is deprecated. Use generatePhysicalAttendanceId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_PHYSICAL_ATTENDANCE;
     const hash = this.simpleHash(`${registrationId}${eventId}`);
     const random = this.generateRandom(3);
@@ -475,7 +475,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateCertificateId instead
    */
   generateTempCertificateId(enrollment, eventName, participantName) {
-    console.warn('generateTempCertificateId is deprecated. Use generateCertificateId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_CERTIFICATE;
     const hash = this.simpleHash(`${enrollment}${eventName}${participantName}`);
     const random = this.generateRandom(3);
@@ -488,7 +488,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateFeedbackId instead
    */
   generateTempFeedbackId(enrollment, eventId) {
-    console.warn('generateTempFeedbackId is deprecated. Use generateFeedbackId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_FEEDBACK;
     const hash = this.simpleHash(`${enrollment}${eventId}`);
     const random = this.generateRandom(3);
@@ -501,7 +501,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateAdminId instead
    */
   generateTempAdminId(username, role = 'admin') {
-    console.warn('generateTempAdminId is deprecated. Use generateAdminId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_ADMIN;
     const hash = this.simpleHash(`${username}${role}`);
     const random = this.generateRandom(3);
@@ -514,7 +514,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generatePaymentId instead
    */
   generateTempPaymentId(registrationId, amount) {
-    console.warn('generateTempPaymentId is deprecated. Use generatePaymentId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_PAYMENT;
     const hash = this.simpleHash(`${registrationId}${amount}`);
     const random = this.generateRandom(3);
@@ -527,7 +527,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateNotificationId instead
    */
   generateTempNotificationId(userId, notificationType) {
-    console.warn('generateTempNotificationId is deprecated. Use generateNotificationId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_NOTIFICATION;
     const hash = this.simpleHash(`${userId}${notificationType}`);
     const random = this.generateRandom(3);
@@ -540,7 +540,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateAuditId instead
    */
   generateTempAuditId(userId, action) {
-    console.warn('generateTempAuditId is deprecated. Use generateAuditId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_AUDIT;
     const hash = this.simpleHash(`${userId}${action}`);
     const random = this.generateRandom(3);
@@ -553,7 +553,7 @@ class SpecificIDGenerators extends IDGenerator {
    * @deprecated Use generateParticipantId instead
    */
   generateTempParticipantId(index, formType = 'event') {
-    console.warn('generateTempParticipantId is deprecated. Use generateParticipantId instead.');
+    
     const prefix = ID_PREFIXES.TEMP_PARTICIPANT;
     const hash = this.simpleHash(`${index}${formType}`);
     const random = this.generateRandom(3);

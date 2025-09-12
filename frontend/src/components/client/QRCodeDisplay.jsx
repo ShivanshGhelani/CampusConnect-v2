@@ -15,13 +15,13 @@ const QRCodeDisplay = ({
   className = '',
   style = 'default'
 }) => {
-  console.log('=== QR CODE DISPLAY DEBUG ===');
-  console.log('Registration Data:', registrationData);
-  console.log('Event Data:', eventData);
-  console.log('============================');
+  
+  
+  
+  
   
   const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadLoading, setDownloadLoading] = useState(false);
 
@@ -48,37 +48,76 @@ const QRCodeDisplay = ({
   // Generate QR code on component mount
   useEffect(() => {
     const generateQR = async () => {
+      console.log('QRCodeDisplay: Starting generateQR function');
+      console.log('QRCodeDisplay: registrationData:', registrationData);
+      console.log('QRCodeDisplay: eventData:', eventData);
+      
       if (!registrationData || !eventData) {
+        console.log('QRCodeDisplay: Missing data, setting error and loading false');
         setError('Missing registration or event data');
         setLoading(false);
         return;
       }
 
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.error('QRCodeDisplay: Generation timeout after 15 seconds');
+        setError('QR generation timed out. Please try again.');
+        setLoading(false);
+      }, 15000);
+
       try {
+        console.log('QRCodeDisplay: Starting QR generation...');
         setLoading(true);
         setError('');
+
+        console.log('QRCodeDisplay: Generating QR with:', {
+          registrationData,
+          eventData,
+          size,
+          style
+        });
 
         const options = {
           width: currentSize.width,
           ...currentStyle
         };
 
-        const qrCodeURL = await qrCodeService.generateQRCode(
-          qrCodeService.generateQRData(registrationData, eventData),
-          options
-        );
+        console.log('QRCodeDisplay: Calling qrCodeService.generateQRData...');
+        const qrData = await qrCodeService.generateQRData(registrationData, eventData);
+        console.log('QRCodeDisplay: Generated QR data:', qrData);
+        
+        console.log('QRCodeDisplay: Calling qrCodeService.generateQRCode...');
+        const qrCodeURL = await qrCodeService.generateQRCode(qrData, options);
+        console.log('QRCodeDisplay: Generated QR code URL:', qrCodeURL ? 'Success' : 'Failed');
 
-        setQrCodeDataURL(qrCodeURL);
+        if (qrCodeURL) {
+          clearTimeout(timeoutId);
+          setQrCodeDataURL(qrCodeURL);
+          console.log('QRCodeDisplay: Successfully set QR code URL');
+        } else {
+          clearTimeout(timeoutId);
+          throw new Error('QR code generation returned null/undefined');
+        }
       } catch (err) {
-        console.error('Error generating QR code:', err);
-        setError('Failed to generate QR code');
+        clearTimeout(timeoutId);
+        console.error('QRCodeDisplay: Error:', err);
+        console.error('QRCodeDisplay: Error stack:', err.stack);
+        setError('Failed to generate QR code: ' + err.message);
       } finally {
+        console.log('QRCodeDisplay: Setting loading to false');
         setLoading(false);
       }
     };
 
-    generateQR();
-  }, [registrationData, eventData, size, style]);
+    // Only generate QR if we have the required data and we haven't generated it yet
+    if (registrationData && eventData && !qrCodeDataURL && !loading) {
+      console.log('QRCodeDisplay: Conditions met, calling generateQR...');
+      generateQR();
+    } else {
+      console.log('QRCodeDisplay: Skipping generateQR - loading:', loading, 'hasData:', !!(registrationData && eventData), 'hasQR:', !!qrCodeDataURL);
+    }
+  }, [registrationData, eventData, size, style, currentSize.width]);
 
   // Handle QR code download
   const handleDownload = async () => {
@@ -94,7 +133,7 @@ const QRCodeDisplay = ({
       const filename = qrCodeService.generateFilename(registrationData, eventData);
       qrCodeService.downloadQRCode(highResQR, filename);
     } catch (err) {
-      console.error('Error downloading QR code:', err);
+      
       setError('Failed to download QR code');
     } finally {
       setDownloadLoading(false);
@@ -102,16 +141,14 @@ const QRCodeDisplay = ({
   };
 
   // Copy QR data to clipboard (for debugging)
-  const handleCopyData = () => {
-    const qrData = qrCodeService.generateQRData(registrationData, eventData);
-    navigator.clipboard.writeText(JSON.stringify(qrData, null, 2))
-      .then(() => {
-        // Could add a toast notification here
-        console.log('QR data copied to clipboard');
-      })
-      .catch(err => {
-        console.error('Failed to copy QR data:', err);
-      });
+  const handleCopyData = async () => {
+    try {
+      const qrData = await qrCodeService.generateQRData(registrationData, eventData);
+      await navigator.clipboard.writeText(JSON.stringify(qrData, null, 2));
+      
+    } catch (err) {
+      
+    }
   };
 
   if (loading) {
@@ -238,7 +275,7 @@ export const QRCodeCompact = ({
   className = '' 
 }) => {
   const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const generateQR = async () => {
@@ -251,7 +288,7 @@ export const QRCodeCompact = ({
         );
         setQrCodeDataURL(qrCodeURL);
       } catch (err) {
-        console.error('Error generating compact QR:', err);
+        
       } finally {
         setLoading(false);
       }

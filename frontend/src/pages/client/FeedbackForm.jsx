@@ -55,7 +55,7 @@ const FeedbackForm = () => {
         setResponses(initialResponses);
       }
     } catch (error) {
-      console.error('Error loading feedback form:', error);
+      
       setError(error.response?.data?.detail || 'Failed to load feedback form');
     } finally {
       setIsLoading(false);
@@ -67,7 +67,7 @@ const FeedbackForm = () => {
       const response = await clientAPI.checkFeedbackEligibility(eventId);
       setEligibility(response.data);
     } catch (error) {
-      console.error('Error checking eligibility:', error);
+      
       setEligibility({ 
         eligible: false, 
         reason: 'error',
@@ -141,7 +141,7 @@ const FeedbackForm = () => {
         throw new Error(response.data.message || 'Failed to submit feedback');
       }
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      
       alert(`Failed to submit feedback: ${error.response?.data?.detail || error.message}`);
     } finally {
       setIsSubmitting(false);

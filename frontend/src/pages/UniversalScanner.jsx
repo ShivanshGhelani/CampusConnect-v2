@@ -93,7 +93,7 @@ const UniversalScanner = () => {
 
       setScanHistory(prev => [scanRecord, ...prev]);
     } catch (error) {
-      console.error('Failed to record attendance:', error);
+      
       // Still add to local history for fallback
       const scanRecord = {
         id: Date.now(),

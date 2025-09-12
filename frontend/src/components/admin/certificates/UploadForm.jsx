@@ -125,7 +125,7 @@ const UploadForm = ({
         throw new Error(response.data.message || 'Upload failed');
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      
       setError(error.response?.data?.message || error.message || 'Failed to upload certificate template');
     } finally {
       setIsUploading(false);

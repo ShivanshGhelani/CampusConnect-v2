@@ -69,7 +69,7 @@ function MarkAttendance() {
       let registrationData = null;
       try {
         const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
-        console.log('Registration response:', registrationResponse.data);
+        
         
         if (registrationResponse.data.success && registrationResponse.data.registered) {
           const regData = registrationResponse.data.full_registration_data;
@@ -104,7 +104,7 @@ function MarkAttendance() {
         }
       } catch (regError) {
         // Registration not found - redirect to NotRegistered page
-        console.log('No registration found, student must register first');
+        
         navigate(`/client/events/${eventId}/not-registered`);
         return;
       }
@@ -112,7 +112,7 @@ function MarkAttendance() {
       // Check if attendance is already marked
       try {
         const attendanceResponse = await clientAPI.getAttendanceStatus(eventId);
-        console.log('Attendance status response:', attendanceResponse.data);
+        
         
         if (attendanceResponse.data.success && attendanceResponse.data.attendance_marked) {
           // Attendance already marked - redirect to confirmation page
@@ -130,11 +130,11 @@ function MarkAttendance() {
           return;
         }
       } catch (attError) {
-        console.log('Could not check attendance status, proceeding with form');
+        
       }
 
     } catch (error) {
-      console.error('Error fetching event data:', error);
+      
       setError('Failed to load event information. Please try again.');
     } finally {
       setIsLoading(false);
@@ -149,7 +149,8 @@ function MarkAttendance() {
       });
 
       if (response.data.success) {
-        const studentData = response.data.student_data;
+        // FIXED: Updated to use new unified API response structure
+        const studentData = response.data.user_data; // Changed from student_data to user_data
         setRegistration(studentData);
         setAutoFilled(true);
         setFormData({
@@ -171,7 +172,7 @@ function MarkAttendance() {
         return false;
       }
     } catch (error) {
-      console.error('Error validating registration:', error);
+      
       setError('An error occurred while validating registration');
       return false;
     }
@@ -253,7 +254,7 @@ function MarkAttendance() {
         }
       }
     } catch (error) {
-      console.error('Error marking attendance:', error);
+      
       setError(error.response?.data?.message || 'Failed to mark attendance. Please try again.');
     } finally {
       setIsSubmitting(false);

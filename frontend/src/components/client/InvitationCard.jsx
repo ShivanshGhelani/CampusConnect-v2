@@ -27,7 +27,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                     onDecline?.(invitation, 'decline', true);
                 }
             } else {
-                console.error('Failed to respond to invitation:', result.data.message);
+                
                 // Show error message to user
                 setErrorMessage(result.data.message || 'Failed to respond to invitation');
                 setShowError(true);
@@ -55,7 +55,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                 }, hideDelay);
             }
         } catch (error) {
-            console.error('Error responding to invitation:', error);
+            
             // Show error message to user
             setErrorMessage('Network error. Please try again.');
             setShowError(true);
@@ -99,7 +99,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                     registered_at: teamData.registered_at
                 });
             } else {
-                console.error('Failed to fetch team details:', result.data.message);
+                
                 // Fallback: create basic team info from invitation data
                 setTeamDetails({
                     team_name: invitation.team_name,
@@ -119,7 +119,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                 });
             }
         } catch (error) {
-            console.error('Error fetching team details:', error);
+            
             // Fallback: create basic team info from invitation data
             setTeamDetails({
                 team_name: invitation.team_name,

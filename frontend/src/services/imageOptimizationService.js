@@ -17,11 +17,11 @@ class ImageOptimizationService {
    */
   isWebPSupported() {
     return new Promise((resolve) => {
-      console.log('🔍 Checking WebP support...');
+      
       
       // Check user agent for modern browsers that support WebP
       const userAgent = navigator.userAgent;
-      console.log(`🌐 User Agent: ${userAgent}`);
+      
       
       // Chrome 23+, Firefox 65+, Edge 18+, Safari 14+, Opera 12+ support WebP
       const isChrome = /Chrome/.test(userAgent) && !/Edg/.test(userAgent);
@@ -30,18 +30,18 @@ class ImageOptimizationService {
       const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
       const isOpera = /OPR/.test(userAgent);
       
-      console.log(`� Browser detection: Chrome=${isChrome}, Firefox=${isFirefox}, Edge=${isEdge}, Safari=${isSafari}, Opera=${isOpera}`);
+      
       
       // For Chrome, Firefox, Edge, Opera - force enable WebP
       if (isChrome || isFirefox || isEdge || isOpera) {
-        console.log('✅ Modern browser detected - WebP supported');
-        console.log('📊 WebP Support Result: true (modern browser)');
+        
+        
         resolve(true);
         return;
       }
       
       // For Safari and others, test with canvas
-      console.log('🧪 Testing WebP support with canvas...');
+      
       const canvas = document.createElement('canvas');
       canvas.width = 2;
       canvas.height = 2;
@@ -54,13 +54,13 @@ class ImageOptimizationService {
       try {
         canvas.toBlob((blob) => {
           const canvasSupported = blob && blob.type === 'image/webp' && blob.size > 0;
-          console.log(`🎨 Canvas WebP test:`, blob ? {type: blob.type, size: blob.size} : 'No blob created');
-          console.log(`📊 WebP Support Result: ${canvasSupported} (canvas test)`);
+          
+          
           resolve(canvasSupported);
         }, 'image/webp', 0.8);
       } catch (error) {
-        console.log('❌ Canvas WebP test failed:', error);
-        console.log('📊 WebP Support Result: false (canvas failed)');
+        
+        
         resolve(false);
       }
     });
@@ -121,11 +121,11 @@ class ImageOptimizationService {
             ctx.drawImage(img, 0, 0, width, height);
 
             // Convert to WebP with high quality
-            console.log('🎨 Converting canvas to WebP blob...');
+            
             canvas.toBlob(
               (blob) => {
                 if (!blob) {
-                  console.error('❌ Canvas toBlob failed - no blob created');
+                  
                   reject(new Error('Failed to convert image to WebP'));
                   return;
                 }
@@ -143,7 +143,7 @@ class ImageOptimizationService {
 
                 // Create optimized file
                 const webpFileName = this.generateWebPFileName(imageFile.name);
-                console.log('📁 Creating WebP file:', webpFileName);
+                
                 
                 const optimizedFile = new File(
                   [blob], 
@@ -209,7 +209,7 @@ class ImageOptimizationService {
    */
   async optimizeAvatar(avatarFile) {
     try {
-      console.log('🚀 Starting avatar optimization...');
+      
       console.log('📋 Input file:', {
         name: avatarFile.name,
         size: avatarFile.size,
@@ -218,10 +218,10 @@ class ImageOptimizationService {
       
       // Check WebP support
       const webpSupported = await this.isWebPSupported();
-      console.log('🖼️ WebP supported:', webpSupported);
+      
       
       if (!webpSupported) {
-        console.warn('⚠️ WebP not supported, falling back to original format');
+        
         return {
           file: avatarFile,
           stats: {
@@ -242,9 +242,9 @@ class ImageOptimizationService {
         maintainAspectRatio: true
       };
 
-      console.log('🔧 Converting to WebP with options:', avatarOptions);
+      
       const result = await this.convertToWebP(avatarFile, avatarOptions);
-      console.log('✅ WebP conversion completed successfully');
+      
 
       return {
         file: result.file,
@@ -258,8 +258,8 @@ class ImageOptimizationService {
         }
       };
     } catch (error) {
-      console.error('❌ Avatar optimization failed:', error);
-      console.error('📚 Error stack:', error.stack);
+      
+      
       throw new Error(`Failed to optimize avatar: ${error.message}`);
     }
   }

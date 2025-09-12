@@ -57,11 +57,9 @@ class AssetService:
             # Use user-provided name with proper extension
             file_ext = Path(original_filename).suffix
             
-            # Create stored filename using user-provided name + UUID for uniqueness
-            # This ensures the name is recognizable but still unique
+            # Create clean name for file naming
             clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '-', '_')).strip()
             clean_name = clean_name.replace(' ', '_')  # Replace spaces with underscores
-            stored_filename = f"{clean_name}_{uuid.uuid4().hex[:8]}{file_ext}"
             
             # Detect MIME type
             mime_type, _ = mimetypes.guess_type(original_filename)
@@ -111,9 +109,10 @@ class AssetService:
                 except Exception as e:
                     logger.error(f"WebP optimization failed for {original_filename}: {e}")
                     # Fallback to original file upload
+                    fallback_filename = f"{clean_name}_{uuid.uuid4().hex[:8]}{file_ext}"
                     supabase_result = await SupabaseStorageService.upload_file(
                         bucket_name=AssetService.ASSETS_BUCKET,
-                        file_path=f"{folder_path}/{stored_filename}",
+                        file_path=f"{folder_path}/{fallback_filename}",
                         file_content=file_content,
                         content_type=mime_type
                     )
@@ -122,14 +121,15 @@ class AssetService:
                         raise Exception(f"Supabase upload failed: {supabase_result['error']}")
                     
                     supabase_url = supabase_result["file_url"]
-                    actual_filename = stored_filename
+                    actual_filename = fallback_filename
                     actual_mime_type = mime_type
                     file_size = len(file_content)
             else:
                 # For non-images, upload as-is
+                non_image_filename = f"{clean_name}_{uuid.uuid4().hex[:8]}{file_ext}"
                 supabase_result = await SupabaseStorageService.upload_file(
                     bucket_name=AssetService.ASSETS_BUCKET,
-                    file_path=f"{folder_path}/{stored_filename}",
+                    file_path=f"{folder_path}/{non_image_filename}",
                     file_content=file_content,
                     content_type=mime_type
                 )
@@ -138,64 +138,33 @@ class AssetService:
                     raise Exception(f"Supabase upload failed: {supabase_result['error']}")
                 
                 supabase_url = supabase_result["file_url"]
-                actual_filename = stored_filename
+                actual_filename = non_image_filename
                 actual_mime_type = mime_type
                 file_size = len(file_content)
             
-            # Create asset record
+            # Create asset record with simplified model - use Supabase URL as secure URL
             asset = Asset(
                 original_filename=original_filename,
-                stored_filename=actual_filename,
                 file_size=file_size,
                 mime_type=actual_mime_type,
                 asset_type=asset_type,
                 signature_type=signature_type,
                 department=department,
                 name=name,
-                uploaded_by=uploaded_by,
-                file_url=supabase_url,
-                shortened_url="",  # Will be set after URL shortening
-                image_tag="",      # Will be set after URL shortening
+                created_by=uploaded_by,
+                secure_url=supabase_url,  # Use Supabase URL directly as secure URL
                 description=description,
                 tags=tags or []
             )
             
-            # Insert asset into database to get ID
+            # Insert asset into database
             asset_dict = asset.to_dict()
             asset_id = await DatabaseOperations.insert_one("assets", asset_dict)
             
             if not asset_id:
                 raise Exception("Failed to save asset to database")
             
-            # Create secure URL (replaces short URL functionality)
-            secure_url = SecureURLService.create_secure_url(
-                asset_id=str(asset_id),
-                original_url=supabase_url,
-                expires_in_hours=24 * 30,  # 30 days for assets
-                purpose="view"
-            )
-            
-            # Generate image tag with secure URL
-            image_tag = SecureURLService.create_image_tag(
-                secure_url=secure_url,
-                asset_name=name
-            )
-            
-            # Update asset with secure URLs
-            await DatabaseOperations.update_one(
-                "assets",
-                {"_id": asset_id},
-                {"$set": {
-                    "shortened_url": secure_url,
-                    "image_tag": image_tag
-                }}
-            )
-            
-            # Update local asset object
-            asset.shortened_url = secure_url
-            asset.image_tag = image_tag
-            
-            logger.info(f"Asset uploaded successfully: {original_filename} -> {stored_filename}")
+            logger.info(f"Asset uploaded successfully: {original_filename} -> {actual_filename}")
             
             return {
                 "success": True,
@@ -282,31 +251,41 @@ class AssetService:
             if not asset_data:
                 return False
             
-            asset = Asset.from_dict(asset_data)
-            
-            # Delete from Supabase
-            await SupabaseStorageService.delete_file(
-                bucket_name=AssetService.ASSETS_BUCKET,
-                file_path=f"assets/{asset.asset_type}/{asset.stored_filename}"
-            )
-            
-            # Delete WebP version if exists
-            if asset.webp_url:
-                webp_filename = await WebPOptimizationService.get_optimized_filename(asset.stored_filename)
+            # Delete from Supabase using secure URL to get the file path
+            # Extract filename from secure_url
+            secure_url = asset_data.get("secure_url") or asset_data.get("file_url", "")
+            if secure_url and "/storage/v1/object/public/" in secure_url:
+                # Extract the file path from the URL
+                file_path = secure_url.split("/storage/v1/object/public/")[-1]
+                file_path = file_path.split("?")[0]  # Remove any query parameters
+                
                 await SupabaseStorageService.delete_file(
                     bucket_name=AssetService.ASSETS_BUCKET,
-                    file_path=f"assets/{asset.asset_type}/webp/{webp_filename}"
+                    file_path=file_path
                 )
             
-            # Remove from database (secure URLs expire automatically, no need to deactivate)
+            # Remove from database
             result = await DatabaseOperations.delete_one("assets", {"_id": asset_id})
             
-            logger.info(f"Asset deleted: {asset.original_filename}")
+            logger.info(f"Asset deleted: {asset_id}")
             return bool(result)
             
         except Exception as e:
             logger.error(f"Error deleting asset {asset_id}: {e}")
             return False
+
+    @staticmethod
+    async def delete_asset_permanent(asset_id: str) -> bool:
+        """
+        Permanently delete asset (same as delete_asset for now)
+        
+        Args:
+            asset_id: Asset ID to delete
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        return await AssetService.delete_asset(asset_id)
 
     @staticmethod
     async def get_asset_statistics() -> Dict[str, Any]:

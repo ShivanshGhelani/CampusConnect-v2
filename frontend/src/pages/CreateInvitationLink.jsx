@@ -34,7 +34,7 @@ const CreateInvitationLink = () => {
         setExpiryTime(new Date(data.expires_at).toISOString().slice(0, 16));
       }
     } catch (error) {
-      console.error('Error loading invitation:', error);
+      
     }
   };
 
@@ -44,7 +44,7 @@ const CreateInvitationLink = () => {
       setEventStats(data.stats);
       setActiveVolunteers(data.active_volunteers || []);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      
     }
   };
 
@@ -55,7 +55,7 @@ const CreateInvitationLink = () => {
       const data = await invitationScannerService.createInvitationLink(eventId, expiryTime);
       setInvitationLink(data.invitation_link);
     } catch (error) {
-      console.error('Error creating invitation:', error);
+      
     } finally {
       setIsCreating(false);
     }
@@ -66,7 +66,7 @@ const CreateInvitationLink = () => {
       await navigator.clipboard.writeText(text);
       // You could add a toast notification here
     } catch (error) {
-      console.error('Failed to copy:', error);
+      
     }
   };
 

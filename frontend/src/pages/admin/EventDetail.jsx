@@ -3,10 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import EventReportModal from '../../components/EventReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
 import { eventPDFService } from '../../services/EventPDFService';
+import {
+  fetchAllEventDataWithCache,
+  fetchParticipantsWithCache,
+  clearAdminEventCache,
+  invalidateEventCache,
+  getAnyAdminEventCache
+} from '../../utils/adminEventCache';
 
 // Helper function to convert backend strategy types to user-friendly labels
 const getStrategyDisplayName = (strategyType) => {
@@ -57,6 +65,8 @@ function EventDetail() {
   const [posterModalOpen, setPosterModalOpen] = useState(false);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
+  const [eventReportModalOpen, setEventReportModalOpen] = useState(false);
+  const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0); // For real-time updates
 
   // Helper function to calculate targeting statistics from registrations
   const calculateTargetingStats = (registrations) => {
@@ -123,6 +133,16 @@ function EventDetail() {
     };
   }, [currentCertificateTemplate]);
 
+  // Real-time updates for attendance availability (update every minute)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Trigger re-render to update attendance availability message
+      setTimeUpdateTrigger(prev => prev + 1);
+    }, 60000); // Update every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [event?.start_date, event?.start_time]);
+
   const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "", title = "" }) => {
     const variants = {
       primary: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600',
@@ -186,6 +206,10 @@ function EventDetail() {
     try {
       setIsLoading(true);
       setError('');
+
+
+      clearAdminEventCache(eventId);
+
       // Clear existing data first
       setAttendanceStats(null);
       setEventStats(null);
@@ -194,6 +218,7 @@ function EventDetail() {
       await fetchEventDetails();
     } catch (error) {
       setError('Failed to refresh data');
+      
     } finally {
       setIsLoading(false);
     }
@@ -204,36 +229,40 @@ function EventDetail() {
       setIsLoading(true);
       setError('');
 
-      // Add cache-busting timestamp to force fresh data
-      const timestamp = Date.now();
+      
 
-      // Fetch event details, statistics, recent registrations, and attendance stats
-      const [eventResponse, statsResponse, recentRegsResponse, attendanceStatsResponse] = await Promise.all([
-        adminAPI.getEvent(eventId),
-        adminAPI.getEventStats(eventId).catch(() => ({ data: { success: false } })),
-        adminAPI.getEventRegistrations(eventId, { limit: 5 }).catch(() => ({ data: { success: false } })),
-        adminAPI.getAttendanceStatistics(eventId).then(response => {
-          // Add timestamp to verify fresh data
-          if (response.data) {
-            response.data._fetchedAt = timestamp;
-          }
-          return response;
-        }).catch(() => ({ data: { success: false } }))
-      ]);
+      // Use cached batch fetch to prevent duplicate API calls
+      const allData = await fetchAllEventDataWithCache(eventId, adminAPI, {
+        includeStats: true,
+        includeParticipants: true,
+        includeAttendanceStats: true,
+        participantFilters: { limit: 5 }
+      });
 
-      if (eventResponse.data.success) {
-        setEvent(eventResponse.data.event);
+      // Process event details
+      if (allData.event?.success) {
+        setEvent(allData.event.event);
+        
       } else {
-        throw new Error(eventResponse.data.message || 'Failed to fetch event details');
+        throw new Error(allData.event?.message || 'Failed to fetch event details');
       }
 
-      if (statsResponse.data.success) {
-        setEventStats(statsResponse.data.stats);
+      // Process stats
+      if (allData.stats?.success) {
+        setEventStats(allData.stats.stats);
+
+      } else {
+        pass; // No action needed if stats are not available
+
       }
 
-      if (attendanceStatsResponse.data && attendanceStatsResponse.data.event_id) {
-        // Validate attendance statistics data
-        const stats = attendanceStatsResponse.data;
+      // Process attendance statistics
+      if (allData.attendanceStats?.success && allData.attendanceStats.event_id) {
+        const stats = allData.attendanceStats;
+
+        // Add timestamp to track freshness
+        const timestamp = Date.now();
+        stats._fetchedAt = timestamp;
 
         // Ensure all required fields are present and valid
         const validatedStats = {
@@ -246,105 +275,92 @@ function EventDetail() {
           physical_only_count: Math.max(0, stats.physical_only_count || 0),
           absent_count: Math.max(0, stats.absent_count || 0),
           attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0)),
-          user_type: eventStats.user_type
+          user_type: allData.stats?.stats?.user_type || 'mixed'
         };
 
-        // Validate data integrity
-        const totalAccounted = validatedStats.present_count +
-          validatedStats.virtual_only_count +
-          validatedStats.physical_only_count +
-          validatedStats.absent_count;
-
         setAttendanceStats(validatedStats);
+        
+      } else {
+        
       }
 
-      if (recentRegsResponse.data.success) {
-        // Handle new unified API response structure for recent registrations
-        let registrations = [];
-        if (recentRegsResponse.data.registrations) {
-          registrations = Array.isArray(recentRegsResponse.data.registrations)
-            ? recentRegsResponse.data.registrations
-            : [recentRegsResponse.data.registrations];
-        } else if (recentRegsResponse.data.data && Array.isArray(recentRegsResponse.data.data)) {
-          registrations = recentRegsResponse.data.data;
-        }
+      // Process recent participants/registrations
+      if (allData.participants?.success) {
+        const participantsData = allData.participants.participants || allData.participants.registrations || [];
 
-        // Transform registrations to match expected frontend structure
-        const transformedRecentRegistrations = registrations.map(reg => {
+        // Transform participants to match expected frontend structure
+        const transformedRecentRegistrations = participantsData.map(reg => {
           if (reg.registration_type === 'individual') {
-            if (reg.user_type === 'faculty') {
-              // Faculty individual registration
+            if (reg.participant_type === 'faculty') {
               return {
-                full_name: reg.faculty_data?.full_name || reg.full_name,
-                name: reg.faculty_data?.full_name || reg.full_name,
-                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
-                email: reg.faculty_data?.email || reg.email,
-                department: reg.faculty_data?.department || reg.department,
-                designation: reg.faculty_data?.designation || reg.designation,
+                full_name: reg.full_name || reg.name,
+                name: reg.full_name || reg.name,
+                employee_id: reg.employee_id,
+                email: reg.email,
+                department: reg.department,
+                designation: reg.designation,
                 registration_date: reg.registration_date,
-                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
+                mobile_no: reg.phone,
+                contact_no: reg.phone,
                 registration_type: 'individual',
-                user_type: 'faculty',
-
+                user_type: 'faculty'
               };
             } else {
-              // Student individual registration
               return {
-                full_name: reg.student_data?.full_name || reg.full_name,
-                name: reg.student_data?.full_name || reg.full_name,
-                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
-                email: reg.student_data?.email || reg.email,
-                department: reg.student_data?.department || reg.department,
-                semester: reg.student_data?.semester || reg.semester,
+                full_name: reg.full_name || reg.name,
+                name: reg.full_name || reg.name,
+                enrollment_no: reg.enrollment_no,
+                email: reg.email,
+                department: reg.department,
+                semester: reg.semester,
                 registration_date: reg.registration_date,
-                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
+                mobile_no: reg.phone,
                 registration_type: 'individual',
                 user_type: 'student'
               };
             }
           } else if (reg.registration_type === 'team') {
-            // For team registrations in recent list
-            // Use team_members directly from backend (already includes leader at index 0)
-            const teamMembers = [];
-            const isStudentTeam = reg.user_type !== 'faculty';
+            // Handle team registrations - ensure team_members have proper structure
+            const teamMembers = reg.team_members || [];
 
-            // Use team_members array directly (backend already has leader at index 0)
-            if (reg.team_members && Array.isArray(reg.team_members)) {
-              reg.team_members.forEach(member => {
-                teamMembers.push({
-                  full_name: member.full_name,
-                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
-                  employee_id: !isStudentTeam ? member.employee_id : null,
-                  email: member.email,
-                  department: member.department,
-                  semester: isStudentTeam ? member.semester : null,
-                  designation: !isStudentTeam ? member.designation : null
-                });
-              });
-            }
+            // Ensure team members have proper name fields
+            const processedTeamMembers = teamMembers.map(member => ({
+              full_name: member.name || member.full_name || 'Unknown Member',
+              name: member.name || member.full_name || 'Unknown Member',
+              enrollment_no: member.enrollment_no || '',
+              email: member.email || '',
+              department: member.department || '',
+              semester: member.semester || '',
+              phone: member.phone || member.mobile_no || '',
+              is_team_leader: member.is_team_leader || false
+            }));
 
             return {
-              team_name: reg.team_name,
-              name: teamMembers.length > 0 ? teamMembers[0].full_name : 'Team Leader',
+              full_name: reg.team_name || reg.name,
+              name: reg.team_name || reg.name,
+              team_name: reg.team_name || reg.name,
+              team_leader: reg.team_leader,
+              team_leader_enrollment: reg.team_leader_enrollment,
+              team_size: reg.team_size || teamMembers.length,
+              member_count: reg.member_count || teamMembers.length,
+              team_members: processedTeamMembers,
               registration_date: reg.registration_date,
-              member_count: teamMembers.length,
-              team_members: teamMembers,
               registration_type: 'team',
-              user_type: reg.user_type || 'student',
-              team_count: reg.team_count || 0,
-              participant_count: reg.participant_count || 0
+              user_type: reg.participant_type === 'faculty' ? 'faculty' : 'student'
             };
           }
-
-          return reg; // fallback for unknown types
+          return reg;
         });
 
         setRecentRegistrations(transformedRecentRegistrations);
+
       } else {
         setRecentRegistrations([]);
+
       }
     } catch (error) {
       setError('Failed to load event details');
+      
     } finally {
       setIsLoading(false);
     }
@@ -371,7 +387,7 @@ function EventDetail() {
       });
       setCertificateModalOpen(true);
     } catch (error) {
-      console.error('Failed to load certificate template:', error);
+      
       // Fallback to original URL if fetch fails
       setCurrentCertificateTemplate({
         url: templateUrl,
@@ -386,6 +402,10 @@ function EventDetail() {
     try {
       const response = await adminAPI.deleteEvent(eventId);
       if (response.data.success) {
+        // Clear cache after successful deletion
+        clearAdminEventCache(eventId);
+
+
         navigate('/admin/events', {
           state: { message: 'Event deleted successfully' }
         });
@@ -409,90 +429,107 @@ function EventDetail() {
   const fetchAllRegistrations = async () => {
     try {
       setModalLoading(true);
-      const response = await adminAPI.getEventRegistrations(eventId);
 
-      if (response.data.success) {
+
+      // Use cached fetch for all participants
+      const response = await fetchParticipantsWithCache(eventId, adminAPI, {});
+
+      if (response?.success) {
         // Handle new unified API response structure
-        const registrations = response.data.registrations || [];
+        const participants = response.participants || [];
 
-        // Transform registrations to match expected frontend structure
-        const transformedRegistrations = registrations.map(reg => {
-          if (reg.registration_type === 'individual') {
-            if (reg.user_type === 'faculty') {
+
+        // Transform participants to match expected frontend structure
+        // For modal, keep teams as single entries (don't expand into individual members)
+        const transformedParticipants = [];
+        const seenTeams = new Set(); // Track teams to avoid duplicates
+
+        participants.forEach(participant => {
+          if (participant.registration_type === 'individual') {
+            if (participant.participant_type === 'faculty') {
               // Faculty individual registration
-              return {
-                full_name: reg.faculty_data?.full_name || reg.full_name,
-                name: reg.faculty_data?.full_name || reg.full_name,
-                employee_id: reg.faculty_data?.employee_id || reg.employee_id,
-                email: reg.faculty_data?.email || reg.email,
-                department: reg.faculty_data?.department || reg.department,
-                designation: reg.faculty_data?.designation || reg.designation,
-                registration_date: reg.registration_date,
-                mobile_no: reg.faculty_data?.mobile_no || reg.mobile_no,
-                phone: reg.faculty_data?.mobile_no || reg.mobile_no,
-                registration_id: reg.registration_id,
+              transformedParticipants.push({
+                full_name: participant.full_name || participant.name,
+                name: participant.full_name || participant.name,
+                employee_id: participant.employee_id,
+                email: participant.email,
+                department: participant.department,
+                designation: participant.designation,
+                registration_date: participant.registration_date,
+                mobile_no: participant.phone,
+                contact_no: participant.phone,
+                phone: participant.phone,
+                registration_id: participant.registration_id,
                 registration_type: 'individual',
                 user_type: 'faculty'
-              };
+              });
             } else {
               // Student individual registration
-              return {
-                full_name: reg.student_data?.full_name || reg.full_name,
-                name: reg.student_data?.full_name || reg.full_name,
-                enrollment_no: reg.student_data?.enrollment_no || reg.enrollment_no,
-                email: reg.student_data?.email || reg.email,
-                department: reg.student_data?.department || reg.department,
-                semester: reg.student_data?.semester || reg.semester,
-                registration_date: reg.registration_date,
-                mobile_no: reg.student_data?.mobile_no || reg.mobile_no,
-                phone: reg.student_data?.mobile_no || reg.mobile_no,
-                registration_id: reg.registration_id,
+              transformedParticipants.push({
+                full_name: participant.full_name || participant.name,
+                name: participant.full_name || participant.name,
+                enrollment_no: participant.enrollment_no,
+                email: participant.email,
+                department: participant.department,
+                semester: participant.semester,
+                registration_date: participant.registration_date,
+                mobile_no: participant.phone,
+                phone: participant.phone,
+                registration_id: participant.registration_id,
                 registration_type: 'individual',
                 user_type: 'student'
-              };
-            }
-          } else if (reg.registration_type === 'team') {
-            // For team registrations, use team_members directly from backend
-            // Backend already has leader at index 0 with is_team_leader: true
-            const teamMembers = [];
-            const isStudentTeam = reg.user_type !== 'faculty';
-
-            // Use team_members array directly (backend already has leader at index 0)
-            if (reg.team_members && Array.isArray(reg.team_members)) {
-              reg.team_members.forEach(member => {
-                teamMembers.push({
-                  full_name: member.full_name,
-                  enrollment_no: isStudentTeam ? member.enrollment_no : null,
-                  employee_id: !isStudentTeam ? member.employee_id : null,
-                  email: member.email,
-                  department: member.department,
-                  semester: isStudentTeam ? member.semester : null,
-                  designation: !isStudentTeam ? member.designation : null,
-                  registration_type: member.is_team_leader ? 'team_leader' : 'team_member'
-                });
               });
             }
+          } else if (participant.registration_type === 'team') {
+            // Check if we've already processed this team (prevent duplicates)
+            const teamKey = participant.registration_id || participant.team_name || `team_${participant.name}`;
+            if (seenTeams.has(teamKey)) {
 
-            return {
-              team_name: reg.team_name,
-              registration_date: reg.registration_date,
-              registration_id: reg.registration_id,
-              member_count: teamMembers.length,
-              team_members: teamMembers,  // Use team_members consistently
+              return; // Skip this duplicate team entry
+            }
+            seenTeams.add(teamKey);
+
+            // For teams in modal, keep as single team entry (not expanded)
+            const teamMembers = participant.team_members || [];
+
+            // Ensure team members have proper structure
+            const processedTeamMembers = teamMembers.map(member => ({
+              full_name: member.name || member.full_name || 'Unknown Member',
+              name: member.name || member.full_name || 'Unknown Member',
+              enrollment_no: member.enrollment_no || '',
+              email: member.email || '',
+              department: member.department || '',
+              semester: member.semester || '',
+              phone: member.phone || member.mobile_no || '',
+              is_team_leader: member.is_team_leader || false
+            }));
+
+            transformedParticipants.push({
+              full_name: participant.team_name || participant.name,
+              name: participant.team_name || participant.name,
+              team_name: participant.team_name || participant.name,
+              team_leader: participant.team_leader,
+              team_leader_enrollment: participant.team_leader_enrollment,
+              team_size: participant.team_size || participant.member_count,
+              member_count: participant.member_count || participant.team_size,
+              team_members: processedTeamMembers,
+              registration_date: participant.registration_date,
+              registration_id: participant.registration_id,
               registration_type: 'team',
-              user_type: reg.user_type || 'student'
-            };
-          }
+              user_type: participant.participant_type || 'student'
+            });
 
-          return reg; // fallback
+
+          }
         });
 
-        setAllRegistrations(transformedRegistrations);
+
+        setAllRegistrations(transformedParticipants);
       } else {
         setAllRegistrations([]);
       }
     } catch (error) {
-      console.error('Error fetching registrations:', error);
+      
       setAllRegistrations([]);
     } finally {
       setModalLoading(false);
@@ -502,28 +539,31 @@ function EventDetail() {
   const fetchAttendees = async () => {
     try {
       setModalLoading(true);
-      // Get registrations with attendance details instead of just attendance
-      const response = await adminAPI.getEventRegistrationsWithAttendance(eventId);
+      
 
-      if (response.data.success) {
-        // The API returns data in response.data.data.registrations structure
-        const allRegistrations = response.data.data?.registrations || [];
+      // Use cached fetch for participants with attendance details
+      const response = await fetchParticipantsWithCache(eventId, adminAPI, { include_attendance: true });
+
+      if (response?.success) {
+        // The API returns participants in response.participants structure
+        const allParticipants = response.participants || [];
+        
 
         // For now, let's show all attendees to debug the issue
-        // Filter for students who have BOTH virtual and physical attendance (present status)
-        const presentStudents = allRegistrations.filter(reg => {
-          const hasVirtual = reg.virtual_attendance_id;
-          const hasPhysical = reg.physical_attendance_id;
-          const isPresent = reg.final_attendance_status === 'present';
+        // Filter for participants who have BOTH virtual and physical attendance (present status)
+        const presentParticipants = allParticipants.filter(participant => {
+          const hasVirtual = participant.virtual_attendance_id;
+          const hasPhysical = participant.physical_attendance_id;
+          const isPresent = participant.final_attendance_status === 'present';
           return isPresent || (hasVirtual && hasPhysical);
         });
-        setAttendeesList(presentStudents);
+        setAttendeesList(presentParticipants);
       } else {
-        console.error('API response not successful:', response.data);
+        
         setAttendeesList([]);
       }
     } catch (error) {
-      console.error('Error fetching attendees:', error);
+      
       setAttendeesList([]);
     } finally {
       setModalLoading(false);
@@ -624,12 +664,45 @@ function EventDetail() {
     }
   };
 
+  // Event Report Generation Function
+  const handleEventReportGeneration = async (reportData) => {
+    try {
+      setError(''); // Clear any previous errors
+      
+      // Generate event report with uploaded data
+      const response = await adminAPI.generateEventReport(eventId, {
+        ...reportData,
+        format: 'html'
+      });
+      
+      if (response.data) {
+        // Open the generated report in a new window
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(response.data);
+        newWindow.document.close();
+        
+        // Optional: Trigger print dialog after a short delay
+        setTimeout(() => {
+          newWindow.print();
+        }, 1000);
+      } else {
+        throw new Error('No report data received');
+      }
+      
+    } catch (error) {
+      console.error('Error generating event report:', error);
+      setError('Failed to generate event report. Please try again.');
+      alert('Failed to generate event report. Please try again.');
+    }
+  };
+
   const filteredRegistrations = allRegistrations.filter(reg => {
     const searchMatch = !searchTerm ||
       (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.name && reg.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.email && reg.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.enrollment_no && reg.enrollment_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (reg.employee_id && reg.employee_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (reg.team_name && reg.team_name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const statusMatch = statusFilter === 'all' ||
@@ -653,11 +726,105 @@ function EventDetail() {
   const canDelete = user && ['super_admin', 'organizer_admin'].includes(user.role);
   const isReadOnly = false; // No longer read-only for organizer_admin
 
+  // Helper function to check if attendance can be taken (3 hours before event start)
+  const canTakeAttendanceNow = () => {
+    if (isSuperAdmin) return true; // Super admin can always take attendance
+    
+    if (!event?.start_date || !event?.start_time) return false;
+    
+    try {
+      // Combine start_date and start_time to create event start datetime
+      // Ensure proper format handling for different date/time formats
+      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
+      const timeStr = event.start_time;
+      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      
+      // Validate the date
+      if (isNaN(eventStartDateTime.getTime())) {
+        console.error('Invalid event start date/time:', event.start_date, event.start_time);
+        return false;
+      }
+      
+      const currentTime = new Date();
+      
+      // Calculate time difference in milliseconds
+      const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
+      
+      // Convert 3 hours to milliseconds (3 * 60 * 60 * 1000)
+      const threeHoursInMs = 3 * 60 * 60 * 1000;
+      
+      // Allow attendance if current time is within 3 hours of event start (or after event has started)
+      const canTake = timeDifference <= threeHoursInMs;
+      
+      console.log('Attendance availability check:', {
+        eventStart: eventStartDateTime.toLocaleString(),
+        currentTime: currentTime.toLocaleString(),
+        timeDifference: Math.round(timeDifference / (1000 * 60)) + ' minutes',
+        canTakeAttendance: canTake
+      });
+      
+      return canTake;
+    } catch (error) {
+      console.error('Error calculating attendance availability:', error);
+      return false;
+    }
+  };
+
+  // Helper function to get attendance availability message
+  const getAttendanceAvailabilityMessage = () => {
+    if (isSuperAdmin) return null; // Super admin doesn't need this message
+    
+    if (!event?.start_date || !event?.start_time) return "Event start time not set";
+    
+    try {
+      // Ensure proper format handling for different date/time formats
+      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
+      const timeStr = event.start_time;
+      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      
+      // Validate the date
+      if (isNaN(eventStartDateTime.getTime())) {
+        return "Invalid event start time";
+      }
+      
+      const currentTime = new Date();
+      const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
+      const threeHoursInMs = 3 * 60 * 60 * 1000;
+      
+      if (timeDifference <= threeHoursInMs) {
+        return null; // Attendance is available
+      }
+      
+      // Calculate when attendance will be available (3 hours before event)
+      const attendanceAvailableTime = new Date(eventStartDateTime.getTime() - threeHoursInMs);
+      const timeUntilAvailable = attendanceAvailableTime.getTime() - currentTime.getTime();
+      
+      if (timeUntilAvailable > 0) {
+        const daysUntil = Math.floor(timeUntilAvailable / (1000 * 60 * 60 * 24));
+        const hoursUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutesUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (daysUntil > 0) {
+          return `Attendance will be available in ${daysUntil}d ${hoursUntil}h (3 hours before event start)`;
+        } else if (hoursUntil > 0) {
+          return `Attendance will be available in ${hoursUntil}h ${minutesUntil}m (3 hours before event start)`;
+        } else {
+          return `Attendance will be available in ${minutesUntil} minutes`;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error calculating attendance message:', error);
+      return "Unable to determine attendance availability";
+    }
+  };
+
   // Conditional button states based on event status
-  const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started'; 
+  const isEventStarted = event?.status === 'ongoing' || event?.sub_status === 'event_started';
   const isEventCompleted = event?.status === 'completed';
   const isSuperAdmin = user?.role === 'super_admin';
-  const canTakeAttendance = isSuperAdmin || isEventStarted; // Super admin can always take attendance, others only when event is ongoing/started
+  const canTakeAttendance = canTakeAttendanceNow(); // Use new time-based logic
   const canEditEvent = isSuperAdmin || (canEdit && !isEventStarted && !isEventCompleted); // Super admin can always edit, others only when event hasn't started and isn't completed
 
 
@@ -804,15 +971,21 @@ function EventDetail() {
                 icon={UserCheck}
                 disabled={!canTakeAttendance}
                 className={!canTakeAttendance ? "cursor-not-allowed" : ""}
-                title={!canTakeAttendance ? (isSuperAdmin ? "Take attendance for this event" : "Attendance can only be taken when the event is ongoing") : "Take attendance for this event"}
+                title={!canTakeAttendance ? (isSuperAdmin ? "Take attendance for this event" : "Attendance can be taken starting 3 hours before the event begins") : "Take attendance for this event"}
               >
                 Attendance
               </ActionButton>
 
               <ActionButton
                 onClick={() => {
-                  // Navigate to feedback management page
-                  navigate(`/admin/events/${eventId}/feedback`);
+                  // Navigate to feedback management page with registration data
+                  navigate(`/admin/events/${eventId}/feedback`, {
+                    state: { 
+                      registrations_count: eventStats?.registrations_count || allRegistrations?.length || 0,
+                      event_data: event,
+                      event_stats: eventStats 
+                    }
+                  });
                 }}
                 variant="primary"
                 icon={FileText}
@@ -900,7 +1073,20 @@ function EventDetail() {
                           {/* Additional Report Options */}
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate budget report
+                                const response = await adminAPI.generateBudgetReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating budget report:', error);
+                                alert('Failed to generate budget report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -910,7 +1096,25 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate sign sheet PDF
+                                const response = await adminAPI.generateSignSheet(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                                // Optional: Trigger print dialog
+                                setTimeout(() => {
+                                  newWindow.print();
+                                }, 1000);
+                                
+                              } catch (error) {
+                                console.error('Error generating sign sheet:', error);
+                                alert('Failed to generate sign sheet. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -920,7 +1124,20 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate attendance report
+                                const response = await adminAPI.generateAttendanceReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating attendance report:', error);
+                                alert('Failed to generate attendance report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -930,7 +1147,20 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              try {
+                                // Generate feedback report
+                                const response = await adminAPI.generateFeedbackReport(eventId, { format: 'html' });
+                                
+                                // Open in new window for printing/downloading
+                                const newWindow = window.open('', '_blank');
+                                newWindow.document.write(response.data);
+                                newWindow.document.close();
+                                
+                              } catch (error) {
+                                console.error('Error generating feedback report:', error);
+                                alert('Failed to generate feedback report. Please try again.');
+                              }
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -941,6 +1171,7 @@ function EventDetail() {
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={() => {
+                              setEventReportModalOpen(true);
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -964,6 +1195,7 @@ function EventDetail() {
                 )}
               </div>
 
+              
               {/* Mobile/Tablet: More Actions Dropdown */}
               <div className="relative lg:hidden">
                 <ActionButton
@@ -1029,13 +1261,13 @@ function EventDetail() {
                         }
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {console.log(eventStats.user_type)}
+
                         {eventStats.is_team_based ?
                           `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (eventStats.user_type === 'student' ?
-                          `Students Registered`
-                          :
-                          `Participants Registered`
-                        )
+                            `Students Registered`
+                            :
+                            `Participants Registered`
+                          )
                         }
                       </p>
                     </div>
@@ -1203,7 +1435,7 @@ function EventDetail() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{eventStats?.registrations_count || 0}</span></div>
+                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{recentRegistrations.length}</span></div>
                 <button
                   onClick={handleViewAllRegistrations}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
@@ -1233,7 +1465,8 @@ function EventDetail() {
                             )}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Leader: <span className="font-medium text-gray-700">{reg.name || 'N/A'}</span> • {reg.member_count} members
+
+                            Leader: <span className="font-medium text-gray-700">{reg.team_leader || 'N/A'}</span> • {reg.member_count} members
                             {reg.user_type === 'faculty' ? ' (Faculty)' : ''}
                           </div>
                         </div>
@@ -1320,18 +1553,33 @@ function EventDetail() {
                       {recentRegistrations.slice(0, 5).map((reg, index) => (
                         <div key={index} className="grid grid-cols-7 gap-2 px-3 py-3 items-center hover:bg-gray-50 text-sm text-gray-800 border-b last:border-0">
                           <div className="col-span-1 truncate flex items-center gap-2">
-                            {reg.full_name || reg.name || 'N/A'}
-
+                            {reg.registration_type === 'team' ? (
+                              <span className="flex items-center gap-1">
+                                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.196-2.121M9 3a4 4 0 014 4v.07a6.951 6.951 0 00-3.36 6.07M9 3a4 4 0 00-4 4v.07A6.951 6.951 0 0014 13.07M9 3h.01M9 3v.07M14 13.07V13a4 4 0 00-4-4M14 13.07V13a4 4 0 014 4v.07M9 6.93a4 4 0 014 4v.07M9 6.93a4 4 0 00-4 4v.07" />
+                                </svg>
+                                {reg.team_name}
+                              </span>
+                            ) : (
+                              reg.full_name || reg.name || 'N/A'
+                            )}
                           </div>
                           <div className="col-span-1 font-mono truncate">
-                            {reg.user_type === 'faculty' ? (reg.employee_id || 'N/A') : (reg.enrollment_no || 'N/A')}
+                            {reg.registration_type === 'team' ? (
+                              reg.team_leader_enrollment || 'N/A'
+                            ) : (
+                              reg.user_type === 'faculty' ? (reg.employee_id || 'N/A') : (reg.enrollment_no || 'N/A')
+                            )}
                           </div>
                           <div className="col-span-1">{reg.department || 'N/A'}</div>
                           <div className="col-span-1 text-xs">
-                            {reg.user_type === 'faculty'
-                              ? (reg.designation || 'Faculty')
-                              : formatOrdinalNumber(reg.semester) || 'N/A'
-                            }
+                            {reg.registration_type === 'team' ? (
+                              `Leader: ${reg.team_leader || 'N/A'} • ${reg.member_count} members`
+                            ) : (
+                              reg.user_type === 'faculty'
+                                ? (reg.designation || 'Faculty')
+                                : formatOrdinalNumber(reg.semester) || 'N/A'
+                            )}
                           </div>
                           <div className="col-span-2 truncate flex flex-col gap-2">
                             <span className='flex flex-row gap-2.5'>
@@ -1345,10 +1593,7 @@ function EventDetail() {
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                               </svg>
-
-                              {
-                                (reg.mobile_no) || (reg.contact_no)
-                              }
+                              {reg.mobile_no || reg.contact_no || 'N/A'}
                             </span>
                           </div>
                           <div className="col-span-1 text-xs text-gray-500">{formatCompactDateTime(reg.registration_date) || 'N/A'}</div>
@@ -2197,8 +2442,22 @@ function EventDetail() {
                                 <tr key={index} className="hover:bg-gray-50">
                                   <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal" title={reg.full_name || reg.name}>
-                                      {reg.full_name || reg.name}
-
+                                      <div className="flex items-center gap-2">
+                                        {reg.registration_type === 'team_member' && (
+                                          <i className="fas fa-users text-blue-500 text-xs"></i>
+                                        )}
+                                        <span>{reg.full_name || reg.name}</span>
+                                        {reg.is_team_leader && (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Leader
+                                          </span>
+                                        )}
+                                      </div>
+                                      {reg.team_name && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Team: {reg.team_name}
+                                        </div>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="w-[15%] px-3 py-3 text-sm text-gray-700 font-mono border-r border-gray-100">
@@ -2213,16 +2472,18 @@ function EventDetail() {
                                   </td>
                                   <td className="w-[8%] px-2 py-3 text-xs text-gray-700 font-medium border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal">
-                                      {reg.user_type === 'faculty' ? reg.designation : formatOrdinalNumber(reg.semester)}
+                                      {reg.user_type === 'faculty'
+                                        ? reg.designation || 'Faculty'
+                                        : formatOrdinalNumber(reg.semester)
+                                      }
                                     </div>
                                   </td>
                                   <td className="w-[28%] px-3 py-3 text-sm text-gray-700 border-r border-gray-100">
                                     <div className="break-words leading-tight whitespace-normal flex flex-col gap-2" title={reg.email}>
                                       {(reg.email || '').trim()}
-                                      <span className="text-xs text-gray-500 font-mono" title={reg.mobile_no}>
-                                        {reg.mobile_no}
+                                      <span className="text-xs text-gray-500 font-mono" title={reg.mobile_no || reg.contact_no}>
+                                        {reg.mobile_no || reg.contact_no || 'N/A'}
                                       </span>
-
                                     </div>
                                   </td>
                                   <td className="w-[11%] px-2 py-3 text-xs text-gray-700">
@@ -2671,11 +2932,20 @@ function EventDetail() {
                 title={`${currentCertificateTemplate.type} Certificate Template`}
                 className="w-full h-full border-0 bg-white"
                 onError={() => {
-                  console.error('Failed to load certificate template');
+                  
                 }}
               />
             </div>
           )}
+
+          {/* Event Report Modal */}
+          <EventReportModal
+            isOpen={eventReportModalOpen}
+            onClose={() => setEventReportModalOpen(false)}
+            eventId={eventId}
+            eventName={event?.event_name || 'Event'}
+            onGenerate={handleEventReportGeneration}
+          />
         </div>
       </div>
     </AdminLayout>

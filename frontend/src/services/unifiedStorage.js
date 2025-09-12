@@ -5,7 +5,8 @@
 
 class UnifiedStorageService {
   constructor() {
-    this.baseURL = import.meta.env.API_URL || 'http://localhost:8000';
+    // Use the correct environment variable name for API base URL
+    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   }
 
   // Event file uploads (posters, certificates)
@@ -36,7 +37,7 @@ class UnifiedStorageService {
         url: result.file_url
       };
     } catch (error) {
-      console.error('Error uploading event file:', error);
+      
       return {
         success: false,
         error: error.message
@@ -92,7 +93,7 @@ class UnifiedStorageService {
         filePath: result.file_path
       };
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      
       throw error;
     }
   }
@@ -125,7 +126,7 @@ class UnifiedStorageService {
         category: category
       };
     } catch (error) {
-      console.error('Error uploading certificate template:', error);
+      
       return {
         success: false,
         error: error.message
@@ -168,7 +169,7 @@ class UnifiedStorageService {
         bucket: result.bucket
       };
     } catch (error) {
-      console.error('Error uploading asset:', error);
+      
       throw error;
     }
   }
@@ -197,7 +198,7 @@ class UnifiedStorageService {
 
       return result.success;
     } catch (error) {
-      console.error('Error deleting asset:', error);
+      
       return false;
     }
   }
@@ -214,7 +215,7 @@ class UnifiedStorageService {
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         // If it's not JSON (like HTML error page), the API endpoint might not be implemented yet
-        console.warn('Delete event files API returned non-JSON response, likely not implemented yet');
+        
         return { 
           success: false, 
           error: 'Delete API endpoint not available yet',
@@ -233,7 +234,7 @@ class UnifiedStorageService {
         deletedCount: result.deleted_count 
       };
     } catch (error) {
-      console.error('Error deleting event files:', error);
+      
       // Return graceful error that allows the upload to continue
       return { 
         success: false, 
@@ -254,7 +255,7 @@ class UnifiedStorageService {
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.warn('Delete specific event files API returned non-JSON response');
+        
         return { 
           success: false, 
           error: 'Delete API endpoint not available yet',
@@ -274,7 +275,7 @@ class UnifiedStorageService {
         fileTypesDeleted: result.file_types_deleted
       };
     } catch (error) {
-      console.error('Error deleting specific event files:', error);
+      
       return { 
         success: false, 
         error: error.message,
@@ -304,7 +305,7 @@ class UnifiedStorageService {
 
       return result.success;
     } catch (error) {
-      console.error('Error deleting avatar:', error);
+      
       throw error;
     }
   }
@@ -332,7 +333,7 @@ class UnifiedStorageService {
 
   async listAssets(assetType = null) {
     // This would require a new backend endpoint if needed
-    console.warn('listAssets not implemented in unified service');
+    
     return [];
   }
 }
@@ -366,7 +367,7 @@ export const uploadAsset = async (file, assetType, subType, department, assetNam
 export const getAssetUrl = (path) => path;
 
 export const listAssets = async (assetType = null) => {
-  console.warn('listAssets not implemented in unified service');
+  
   return [];
 };
 

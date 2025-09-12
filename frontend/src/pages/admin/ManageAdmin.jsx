@@ -50,10 +50,10 @@ function ManageAdmin() {
     
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
-      console.log('Modal opened, body overflow hidden');
+      
     } else {
       document.body.style.overflow = 'unset';
-      console.log('Modal closed, body overflow restored');
+      
     }
 
     // Cleanup on unmount
@@ -69,19 +69,19 @@ function ManageAdmin() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching admin data...');
+      
       const adminsResponse = await adminAPI.getAdminUsers();
 
-      console.log('Admins response:', adminsResponse.data);
+      
 
       if (adminsResponse.data.success) {
         setAdmins(adminsResponse.data.users || []); // Note: API returns 'users' not 'admins'
-        console.log('Set admins:', adminsResponse.data.users);
+        
       }
 
       setError('');
     } catch (error) {
-      console.error('Error fetching data:', error);
+      
       setError('Failed to load admin data');
     } finally {
       setIsLoading(false);
@@ -128,7 +128,7 @@ function ManageAdmin() {
         throw new Error(response.data.message || 'Failed to create admin');
       }
     } catch (error) {
-      console.error('Error creating admin:', error);
+      
       showNotification(error.response?.data?.message || 'Failed to create admin', 'error');
     }
   };
@@ -147,16 +147,16 @@ function ManageAdmin() {
         throw new Error(response.data.message || 'Failed to update admin');
       }
     } catch (error) {
-      console.error('Error updating admin:', error);
+      
       showNotification(error.response?.data?.message || 'Failed to update admin', 'error');
     }
   };
 
   const handleDeleteAdmin = async () => {
     try {
-      console.log('Soft deleting admin with username:', deleteAdminData.id);
+      
       const response = await adminAPI.deleteAdminUser(deleteAdminData.id);
-      console.log('Soft delete response:', response.data);
+      
       
       if (response.data.success) {
         showNotification('Admin deactivated successfully!', 'success');
@@ -166,16 +166,16 @@ function ManageAdmin() {
         throw new Error(response.data.message || 'Failed to deactivate admin');
       }
     } catch (error) {
-      console.error('Error deactivating admin:', error);
+      
       showNotification(error.response?.data?.message || 'Failed to deactivate admin', 'error');
     }
   };
 
   const handleRestoreAdmin = async () => {
     try {
-      console.log('Restoring admin with username:', restoreAdminData.id);
+      
       const response = await adminAPI.restoreAdminUser(restoreAdminData.id);
-      console.log('Restore response:', response.data);
+      
       
       if (response.data.success) {
         showNotification('Admin restored successfully!', 'success');
@@ -185,16 +185,16 @@ function ManageAdmin() {
         throw new Error(response.data.message || 'Failed to restore admin');
       }
     } catch (error) {
-      console.error('Error restoring admin:', error);
+      
       showNotification(error.response?.data?.message || 'Failed to restore admin', 'error');
     }
   };
 
   const handleHardDeleteAdmin = async () => {
     try {
-      console.log('Hard deleting admin with username:', hardDeleteAdminData.id);
+      
       const response = await adminAPI.hardDeleteAdminUser(hardDeleteAdminData.id);
-      console.log('Hard delete response:', response.data);
+      
       
       if (response.data.success) {
         showNotification('Admin permanently deleted!', 'success');
@@ -204,13 +204,13 @@ function ManageAdmin() {
         throw new Error(response.data.message || 'Failed to permanently delete admin');
       }
     } catch (error) {
-      console.error('Error permanently deleting admin:', error);
+      
       showNotification(error.response?.data?.message || 'Failed to permanently delete admin', 'error');
     }
   };
 
   const openEditModal = (admin) => {
-    console.log('Opening edit modal for admin:', admin);
+    
     setEditAdminForm({
       username: admin.username,
       fullname: admin.fullname,
@@ -218,7 +218,7 @@ function ManageAdmin() {
       is_active: admin.is_active
     });
     setIsEditModalOpen(true);
-    console.log('Edit modal state set to true');
+    
   };
 
   const openDeleteModal = (admin) => {

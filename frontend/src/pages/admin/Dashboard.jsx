@@ -73,49 +73,56 @@ function Dashboard() {
       setIsDataFetching(true);
       setLastFetchTime(now);
 
-      // Fetch dashboard stats and recent activity in parallel
-      const [dashboardResponse, activityResponse] = await Promise.all([
-        adminAPI.getDashboardStats(),
-        adminAPI.getRecentActivity(20)
-      ]);
+      // Fetch consolidated dashboard data
+      const dashboardResponse = await adminAPI.getDashboardStats('month', 20);
 
       if (dashboardResponse.data.success) {
-        const data = dashboardResponse.data.data;
+        const dashboardData = dashboardResponse.data.data;
+        const analytics = dashboardData.analytics;
+        const events = analytics.events;
+        const scheduler = analytics.scheduler;
+        const systemHealth = analytics.system_health;
         
-        if (data.server_time) {
-          const serverTime = new Date(data.server_time);
+         // Debug log
+         // Debug log
+        
+        // Extract server time for synchronization
+        if (analytics.server_time) {
+          const serverTime = new Date(analytics.server_time);
           const localTime = new Date();
           setServerTimeOffset(serverTime.getTime() - localTime.getTime());
           setCurrentTime(serverTime);
         }
 
+        // Update stats with correct data structure
         setStats({
-          active_events_count: data.active_events_count || 0,
-          total_events_count: data.total_events_count || 0,
-          pending_jobs: data.pending_jobs || 0,
-          system_status: data.system_status || 'Online',
-          upcoming_events: data.upcoming_events || 0,
-          ongoing_events: data.ongoing_events || 0,
-          completed_events: data.completed_events || 0,
-          draft_events: data.draft_events || 0,
-          triggers_queued: data.triggers_queued || 0,
-          scheduler_running: data.scheduler_running !== false
+          active_events_count: events.active || 0,
+          total_events_count: events.total || 0,
+          pending_jobs: scheduler.pending_jobs || 0,
+          system_status: scheduler.status || 'Online',
+          upcoming_events: events.upcoming || 0,
+          ongoing_events: events.live || 0,
+          completed_events: events.completed || 0,
+          draft_events: events.draft || 0,
+          triggers_queued: systemHealth.triggers_queued || 0,
+          scheduler_running: systemHealth.scheduler_running !== false
         });
 
         // Calculate event status distribution for analytics table
         const statusDistribution = {
-          'upcoming': data.upcoming_events || 0,
-          'ongoing': data.ongoing_events || 0,
-          'completed': data.completed_events || 0,
-          'draft': data.draft_events || 0,
-          'active': data.active_events_count || 0,
+          'upcoming': events.upcoming || 0,
+          'ongoing': events.live || 0,
+          'completed': events.completed || 0,
+          'draft': events.draft || 0,
+          'active': events.active || 0,
         };
         setEventsByStatus(statusDistribution);
-        setTotalEvents(data.total_events_count || 0);
+        setTotalEvents(events.total || 0);
 
-        const triggersData = data.upcoming_triggers || [];
+        // Extract upcoming triggers from scheduler data
+        const triggersData = scheduler.upcoming_triggers || [];
         const formattedJobs = triggersData.slice(0, 10).map((trigger, index) => ({
-          id: trigger.id || index,
+          id: trigger.id || `trigger_${index}`,
           event_id: trigger.event_id || `Event ${index + 1}`,
           trigger_type: trigger.trigger_type || 'unknown',
           trigger_time: trigger.trigger_time || null,
@@ -123,23 +130,23 @@ function Dashboard() {
           time_until_formatted: trigger.time_until_formatted || 'Unknown'
         }));
         setActiveJobs(formattedJobs);
-      }
 
-      // Handle enhanced recent activity with dynamic messaging
-      if (activityResponse.data.success) {
-        const activityData = activityResponse.data.data || [];
-        console.log('Enhanced Recent Activity Data:', activityData); // Debug log
-        
-        // The data already comes formatted from the enhanced service
-        setRecentActivity(activityData);
+        // Handle recent activity data
+        const recentActivityData = dashboardData.recent_activity;
+        if (recentActivityData && recentActivityData.logs) {
+           // Debug log
+          setRecentActivity(recentActivityData.logs);
+        } else {
+          
+          setRecentActivity([]);
+        }
       } else {
-        console.warn('Failed to fetch recent activity:', activityResponse.data.message);
-        setRecentActivity([]);
+        
+        setError(dashboardResponse.data.message || 'Failed to load dashboard data');
       }
 
-      setError('');
     } catch (err) {
-      console.error('Dashboard data fetch error:', err);
+      
       setError(err.message || 'Failed to load dashboard data');
       
       setActiveJobs([]);
@@ -203,7 +210,7 @@ function Dashboard() {
   return (
     <AdminLayout pageTitle="Dashboard Overview">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm">
+        <div className="backdrop-blur-sm max-w-7xl mx-auto rounded-2xl ">
           <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
               <div className="flex items-center space-x-4">

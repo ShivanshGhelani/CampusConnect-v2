@@ -3,28 +3,28 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 
 const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
-  console.log('=== EVENT DETAIL MODAL RENDER ===');
-  console.log('isOpen:', isOpen);
-  console.log('selectedEventDetail:', selectedEventDetail);
-  console.log('===============================');
+  
+  
+  
+  
 
   // Lock body scroll when modal is open (especially important for mobile)
   useEffect(() => {
     if (isOpen) {
-      console.log('EventDetailModal: Modal opened - locking body scroll');
+      
       document.body.style.overflow = 'hidden';
       document.body.style.height = '100vh';
-      console.log('EventDetailModal: Body scroll locked');
+      
     } else {
-      console.log('EventDetailModal: Modal closed - unlocking body scroll');
+      
       document.body.style.overflow = '';
       document.body.style.height = '';
-      console.log('EventDetailModal: Body scroll unlocked');
+      
     }
     
     // Cleanup on unmount
     return () => {
-      console.log('EventDetailModal: Component unmounting - cleaning up body styles');
+      
       document.body.style.overflow = '';
       document.body.style.height = '';
     };
@@ -32,14 +32,14 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
 
   // Debug useEffect to track component lifecycle
   useEffect(() => {
-    console.log('EventDetailModal: Component mounted/updated');
-    console.log('EventDetailModal: Current props:', { isOpen, selectedEventDetail });
+    
+    
     
     if (isOpen) {
       // Check if modal exists in DOM
       setTimeout(() => {
         const modalElement = document.querySelector('[data-event-modal="true"]');
-        console.log('EventDetailModal: Modal element in DOM:', modalElement);
+        
         if (modalElement) {
           const computedStyle = window.getComputedStyle(modalElement);
           console.log('EventDetailModal: Computed styles:', {
@@ -54,18 +54,18 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
     }
     
     return () => {
-      console.log('EventDetailModal: Component will unmount');
+      
     };
   }, [isOpen, selectedEventDetail]);
 
   if (!isOpen || !selectedEventDetail) {
-    console.log('EventDetailModal: NOT RENDERING - isOpen:', isOpen, 'selectedEventDetail:', selectedEventDetail);
+    
     return null;
   }
 
-  console.log('EventDetailModal: RENDERING - isOpen is true');
-  console.log('Window width:', typeof window !== 'undefined' ? window.innerWidth : 'SSR');
-  console.log('Is mobile?', typeof window !== 'undefined' ? window.innerWidth < 1024 : 'unknown');
+  
+  
+  
 
   // Use createPortal to render the modal directly to document.body
   const modalContent = (
@@ -90,7 +90,7 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
         pointerEvents: 'auto'
       }}
       onClick={(e) => {
-        console.log('EventDetailModal: Backdrop clicked', e.target === e.currentTarget);
+        
         // Allow clicking backdrop to close on desktop
         if (e.target === e.currentTarget && typeof window !== 'undefined' && window.innerWidth >= 1024) {
           onClose();
@@ -117,7 +117,7 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
           border: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '1px solid #e5e7eb' : 'none'
         }}
         onClick={(e) => {
-          console.log('EventDetailModal: Modal content clicked');
+          
           e.stopPropagation();
         }}
       >

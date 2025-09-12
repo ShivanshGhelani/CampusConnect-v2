@@ -5,7 +5,7 @@
 
 export const testWebPSupport = async () => {
   try {
-    console.log('🧪 Testing WebP support...');
+    
     
     // Test WebP support using same method as service
     const webP = new Image();
@@ -16,7 +16,7 @@ export const testWebPSupport = async () => {
       webP.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAwAAAARBxAR/Q9ERP8DAABWUDggGAAAABQBAJ0BKgEAAQAAAP4AAA3AAP7mtQAAAA==';
     });
     
-    console.log('🖼️ WebP Support:', webpSupported);
+    
     
     // Test canvas WebP conversion
     const canvas = document.createElement('canvas');
@@ -47,7 +47,7 @@ export const testWebPSupport = async () => {
     };
     
   } catch (error) {
-    console.error('❌ WebP test failed:', error);
+    
     return {
       webpSupported: false,
       canvasWebP: false,

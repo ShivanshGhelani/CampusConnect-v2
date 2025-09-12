@@ -7,6 +7,7 @@ import { authAPI } from '../../../../api/auth';
 import Dropdown from '../../../../components/ui/Dropdown';
 import TextInput from '../../../../components/ui/TextInput';
 import dropdownOptionsService from '../../../../services/dropdownOptionsService';
+import { fetchProfileWithCache, getCachedProfile, updateCachedProfile } from '../../../../utils/profileCache';
 
 // Hardcoded options for genders
 const GENDER_OPTIONS = [
@@ -58,21 +59,21 @@ function FacultyProfileEdit() {
   // Real-time field validation for database checks
   const validateFieldRealTime = useCallback(
     async (fieldName, fieldValue) => {
-      console.log('🎯 validateFieldRealTime CALLED for faculty profile edit:', { fieldName, fieldValue });
+      
       
       // Only validate email and contact_no for cross-validation
       const fieldsToValidate = ['email', 'contact_no'];
       if (!fieldsToValidate.includes(fieldName) || !fieldValue || fieldValue.length < 3) {
-        console.log('❌ Validation skipped - field not in list or too short');
+        
         return;
       }
 
-      console.log('✅ Validation proceeding for:', fieldName);
+      
       setValidationLoading(prev => ({ ...prev, [fieldName]: true }));
 
       try {
         const response = await authAPI.validateField(fieldName, fieldValue, 'faculty', user?.employee_id);
-        console.log('🔍 Validation response for', fieldName, ':', response);
+        
         
         if (response.data.success) {
           // Update validation errors with the real-time check
@@ -93,7 +94,7 @@ function FacultyProfileEdit() {
           }
         }
       } catch (error) {
-        console.error('Field validation error:', error);
+        
         // Don't show errors for network issues during real-time validation
       } finally {
         setValidationLoading(prev => ({ ...prev, [fieldName]: false }));
@@ -107,12 +108,30 @@ function FacultyProfileEdit() {
     (() => {
       const timers = {};
       return (fieldName, fieldValue) => {
-        console.log('⏰ Debouncing validation for:', fieldName, 'value:', fieldValue);
+        console.log(`🔄 Debouncing validation for ${fieldName}:`, fieldValue);
         clearTimeout(timers[fieldName]);
+        
+        // Define fields that need API validation with longer debounce
+        const apiValidationFields = ['email', 'contact_no', 'employee_id'];
+        const debounceTime = apiValidationFields.includes(fieldName) ? 1500 : 800; // 1.5s for API fields, 800ms for others
+        
+        // Check minimum length before making API calls to avoid unnecessary requests
+        const shouldValidate = () => {
+          if (!fieldValue || fieldValue.trim().length === 0) return false;
+          if (fieldName === 'email' && fieldValue.length < 5) return false;
+          if (fieldName === 'contact_no' && fieldValue.length < 7) return false;
+          if (fieldName === 'employee_id' && fieldValue.length < 3) return false;
+          return true;
+        };
+        
         timers[fieldName] = setTimeout(() => {
-          console.log('✅ Executing debounced validation for:', fieldName);
-          validateFieldRealTime(fieldName, fieldValue);
-        }, 800); // Wait 800ms after user stops typing
+          if (shouldValidate()) {
+            console.log(`✅ Triggering validation for ${fieldName} after ${debounceTime}ms delay`);
+            validateFieldRealTime(fieldName, fieldValue);
+          } else {
+            console.log(`⏭️ Skipping validation for ${fieldName} - insufficient length`);
+          }
+        }, debounceTime);
       };
     })(),
     [validateFieldRealTime]
@@ -123,9 +142,17 @@ function FacultyProfileEdit() {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/v1/client/profile/faculty/info');
-        if (response.data.success) {
-          const profile = response.data.profile;
+        
+        // OPTIMIZED: Try cached data first, then fetch if needed
+        let profileData = getCachedProfile('faculty', user?.employee_id);
+        
+        if (!profileData) {
+          // No cached data, fetch using cache system
+          profileData = await fetchProfileWithCache('faculty', user?.employee_id, api);
+        }
+        
+        if (profileData && profileData.success) {
+          const profile = profileData.profile;
           
           // Transform gender to match frontend options (capitalize first letter)
           const transformGender = (gender) => {
@@ -153,7 +180,7 @@ function FacultyProfileEdit() {
           });
         }
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        
         setError('Failed to load profile data');
       } finally {
         setLoading(false);
@@ -195,7 +222,7 @@ function FacultyProfileEdit() {
     // Trigger real-time database validation for email and contact_no
     const fieldsToValidateRealTime = ['email', 'contact_no'];
     if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
-      console.log('🚀 Triggering real-time validation for:', name, 'value:', processedValue);
+      
       debouncedValidation(name, processedValue);
     }
   };
@@ -282,7 +309,7 @@ function FacultyProfileEdit() {
             date_of_joining: updateData.date_of_joining
           };
           
-          console.log('📝 Updating localStorage user_data for faculty:', userDataUpdate);
+          
           
           // Update localStorage with properly mapped data
           localStorage.setItem('user_data', JSON.stringify(userDataUpdate));
@@ -299,11 +326,18 @@ function FacultyProfileEdit() {
           sessionStorage.setItem('campus_connect_session_user', JSON.stringify(updatedSessionData));
           
         } catch (storageError) {
-          console.warn('Failed to update storage:', storageError);
+          
         }
 
         // Refresh user data from backend to ensure consistency
         await refreshUserData();
+
+        // Update the profile cache with new data (exclude password fields)
+        const profileDataForCache = { ...updateData };
+        delete profileDataForCache.current_password;
+        delete profileDataForCache.new_password;
+        delete profileDataForCache.confirm_new_password;
+        updateCachedProfile('faculty', profileDataForCache);
 
         toast.success(hasPasswordChange ? 'Profile and password updated successfully!' : 'Profile updated successfully!');
         
@@ -315,15 +349,15 @@ function FacultyProfileEdit() {
           confirm_new_password: ''
         }));
         
-        // Redirect after a short delay
+        // Navigate to dashboard after successful update
         setTimeout(() => {
-          navigate('/faculty/profile');
-        }, 2000);
+          navigate('/faculty/dashboard');
+        }, 1000);
       } else {
         toast.error(response.data.message || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      
       toast.error(
         error.response?.data?.message || 
         error.response?.data?.detail || 

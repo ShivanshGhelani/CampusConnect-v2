@@ -69,12 +69,24 @@ const ProfileEventCard = ({ reg, showActions = true, onCancelRegistration, onVie
         !reg.registration?.team_name &&
         reg.registration?.team_registration_id) {
         try {
-          const response = await api.get(`/api/v1/client/profile/team-info/${reg.event_id}/${reg.registration.team_registration_id}`);
-          if (response.data.success && response.data.data?.team_name) {
-            setTeamName(response.data.data.team_name);
+          // PHASE 3A: Use unified team data endpoint
+          const response = await api.get(`/api/v1/client/profile/team/${reg.event_id}/unified`, {
+            params: { mode: 'info', team_id: reg.registration.team_registration_id }
+          });
+          if (response.data.success && response.data.team_data?.team_name) {
+            setTeamName(response.data.team_data.team_name);
           }
         } catch (error) {
-          console.error('Error fetching team name:', error);
+          
+          // Fallback to legacy endpoint
+          try {
+            const legacyResponse = await api.get(`/api/v1/client/profile/team-info/${reg.event_id}/${reg.registration.team_registration_id}`);
+            if (legacyResponse.data.success && legacyResponse.data.data?.team_name) {
+              setTeamName(legacyResponse.data.data.team_name);
+            }
+          } catch (legacyError) {
+            
+          }
         }
       }
     };

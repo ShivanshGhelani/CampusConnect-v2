@@ -115,7 +115,7 @@ export class DataFilterManager {
           filtered = this.applyCustomFilter(filtered, filterConfig);
           break;
         default:
-          console.warn(`Unknown filter type: ${filterType}`);
+          
       }
     });
 

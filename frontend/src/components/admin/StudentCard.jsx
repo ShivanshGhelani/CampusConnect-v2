@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../../api/admin';
+import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../LoadingSpinner';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
@@ -7,11 +8,17 @@ import Avatar from '../ui/Avatar';
 function StudentCard({ student, isOpen, onClose }) {
   const [studentDetails, setStudentDetails] = useState(null);
   const [error, setError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Check if current user is super admin
+  const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
     if (isOpen && student) {
       // Debug log to see what data we receive
-      console.log('Student data received:', student);
+      
       
       // Directly use the student data passed from the table
       setStudentDetails(student);
@@ -63,16 +70,51 @@ function StudentCard({ student, isOpen, onClose }) {
     return [];
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      setError('');
+
+      // Call the delete student API
+      const studentId = studentDetails._id || studentDetails.user_id || studentDetails.id || studentDetails.enrollment_no;
+      if (!studentId) {
+        setError('Unable to identify student for deletion');
+        return;
+      }
+      
+      const response = await adminAPI.deleteStudent(studentId);
+      
+      if (response.data.success) {
+        // Close confirmation modal
+        setDeleteConfirmOpen(false);
+        // Close the main modal
+        onClose();
+        // Show success message (you might want to pass this to parent component)
+        alert('Student account deleted successfully');
+        // Optionally refresh the student list in parent component
+        window.location.reload(); // Simple refresh - you might want to use a callback instead
+      } else {
+        setError('Failed to delete student account');
+      }
+    } catch (error) {
+      
+      setError('Failed to delete student account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Student Details" size="4xl">
-      <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
-        {error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        ) : studentDetails ? (
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title="Student Details" size="4xl">
+        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+          {error ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          ) : studentDetails ? (
           <div className="space-y-6">
             {/* Student Profile Section */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
@@ -98,18 +140,32 @@ function StudentCard({ student, isOpen, onClose }) {
                   <p className="text-lg text-gray-600 mb-2">
                     {studentDetails.enrollment_no || 'N/A'}
                   </p>
-                  <div className="flex items-center space-x-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                      studentDetails.is_active !== false 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      <i className={`fas ${studentDetails.is_active !== false ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
-                      {studentDetails.is_active !== false ? 'Active' : 'Inactive'}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      Member since {formatDate(studentDetails.created_at)}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        studentDetails.is_active !== false 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        <i className={`fas ${studentDetails.is_active !== false ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
+                        {studentDetails.is_active !== false ? 'Active' : 'Inactive'}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        Member since {formatDate(studentDetails.created_at)}
+                      </span>
+                    </div>
+                    
+                    {/* Delete Account Button - Only for Super Admin */}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setDeleteConfirmOpen(true)}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                        title="Delete Student Account (Super Admin Only)"
+                      >
+                        <i className="fas fa-trash-alt mr-1.5"></i>
+                        Delete Account
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -282,6 +338,51 @@ function StudentCard({ student, isOpen, onClose }) {
           )}
         </div>
     </Modal>
+    
+    {/* Delete Confirmation Modal */}
+    {deleteConfirmOpen && (
+      <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-[100000] animate-in fade-in duration-200">
+        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+          <div className="p-6">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <i className="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 text-center mb-2">Delete Student Account</h3>
+            <p className="text-gray-500 text-center mb-6">
+              Are you sure you want to delete <strong>{studentDetails?.full_name}</strong>'s account? This action cannot be undone and will permanently remove all student data, registrations, and participation records.
+            </p>
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Account'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

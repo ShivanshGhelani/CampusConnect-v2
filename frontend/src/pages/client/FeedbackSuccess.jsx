@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import certificateGenerateService from '../../services/certificateGenerateService.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { getCachedProfile, fetchProfileWithCache } from '../../utils/profileCache';
 
 const FeedbackSuccess = () => {
   const { eventId } = useParams();
@@ -70,9 +71,9 @@ const FeedbackSuccess = () => {
       const eventResponse = await clientAPI.getEventDetails(eventId);
       if (eventResponse.data.success) {
         setEvent(eventResponse.data.event);
-        console.log('📅 Real event data loaded:', eventResponse.data.event);
-        console.log('🎖️ Available certificate templates:', eventResponse.data.event.certificate_templates);
-        console.log('🗂️ Event has certificates:', !!eventResponse.data.event.certificate_templates);
+        
+        
+        
       } else {
         throw new Error('Failed to fetch event details');
       }
@@ -81,20 +82,28 @@ const FeedbackSuccess = () => {
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
       if (registrationResponse.data.success) {
         setRegistration(registrationResponse.data.registration);
-        console.log('📝 Registration data loaded:', registrationResponse.data.registration);
+        
       } else {
-        console.log('⚠️ No registration found for this event');
+        
       }
 
-      // Fetch user profile
+      // Fetch user profile - OPTIMIZED: Use cached profile data
       try {
-        const userResponse = await clientAPI.getProfile();
-        if (userResponse.data.success) {
-          setUser(userResponse.data.user);
-          console.log('👤 User profile loaded:', userResponse.data.user);
+        // First check cache for fast loading
+        const cachedProfile = getCachedProfile();
+        if (cachedProfile?.profile) {
+          setUser(cachedProfile.profile);
+          
+        } else {
+          // Fallback to API with cache
+          const profileData = await fetchProfileWithCache();
+          if (profileData?.profile) {
+            setUser(profileData.profile);
+            
+          }
         }
       } catch (userError) {
-        console.log('User profile not available:', userError);
+        
       }
 
       // Fetch attendance status
@@ -104,15 +113,15 @@ const FeedbackSuccess = () => {
           setAttendance({
             attendance_id: attendanceResponse.data.attendance_data?.attendance_id
           });
-          console.log('✅ Attendance confirmed:', attendanceResponse.data.attendance_data);
+          
         }
       } catch (attendanceError) {
         // Attendance might not be marked yet, which is okay
-        console.log('Attendance not found:', attendanceError);
+        
       }
 
     } catch (error) {
-      console.error('Data fetch error:', error);
+      
       setError('Failed to load event details. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -152,16 +161,16 @@ const FeedbackSuccess = () => {
       // Test direct URL access first
       const templateUrl = event.certificate_templates[certificateType];
       if (templateUrl) {
-        console.log('🔍 Testing direct URL access...');
+        
         try {
           const testResponse = await fetch(templateUrl);
-          console.log(`🌐 Direct fetch test: ${testResponse.status} ${testResponse.ok ? '✅' : '❌'}`);
+          
           if (testResponse.ok) {
             const content = await testResponse.text();
-            console.log(`📄 Content preview: ${content.substring(0, 200)}...`);
+            
           }
         } catch (testError) {
-          console.log('🚫 Direct fetch test failed:', testError.message);
+          
         }
       }
 
@@ -176,7 +185,7 @@ const FeedbackSuccess = () => {
       } : user;
 
       // Debug the certificate generation process
-      console.log('=== STARTING CERTIFICATE GENERATION ===');
+      
       await certificateGenerateService.debugCertificateGeneration(
         event,
         studentData,
@@ -201,7 +210,7 @@ const FeedbackSuccess = () => {
       }
 
     } catch (error) {
-      console.error('Certificate generation error:', error);
+      
       setCertificateMessage(`❌ ${error.message}`);
     } finally {
       setIsGeneratingCertificate(false);

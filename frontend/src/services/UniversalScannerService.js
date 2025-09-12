@@ -49,7 +49,7 @@ class UniversalScannerService {
 
       return data;
     } catch (error) {
-      console.error('Error getting access code:', error);
+      
       
       // Fallback for development/offline mode
       const cached = this.currentCodes.get(eventId);
@@ -99,7 +99,7 @@ class UniversalScannerService {
 
       return data;
     } catch (error) {
-      console.error('Error refreshing access code:', error);
+      
       
       // Fallback for development
       const newCode = {
@@ -145,7 +145,7 @@ class UniversalScannerService {
       
       return sessionData;
     } catch (error) {
-      console.error('Error validating access code:', error);
+      
       
       // Development fallback - mock validation
       if (process.env.NODE_ENV === 'development') {
@@ -224,7 +224,7 @@ class UniversalScannerService {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('Error recording attendance:', error);
+      
       
       // Development fallback - mock success
       if (process.env.NODE_ENV === 'development') {
@@ -256,7 +256,7 @@ class UniversalScannerService {
       const data = await response.json();
       return data.venues;
     } catch (error) {
-      console.error('Error getting venues:', error);
+      
       
       // Development fallback
       return [
@@ -291,7 +291,7 @@ class UniversalScannerService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error getting event stats:', error);
+      
       
       // Development fallback
       return {
@@ -337,7 +337,7 @@ class UniversalScannerService {
       
       return updatedSession;
     } catch (error) {
-      console.error('Error extending session:', error);
+      
       throw error;
     }
   }

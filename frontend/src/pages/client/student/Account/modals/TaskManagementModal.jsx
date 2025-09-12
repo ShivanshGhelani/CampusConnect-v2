@@ -225,7 +225,7 @@ const TaskManagementModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
       const suggestedPriority = getSuggestedPriority(value);
       if (suggestedPriority !== taskData.priority) {
         // Don't auto-change, but could show suggestion
-        console.log(`💡 Suggested priority: ${suggestedPriority} based on deadline`);
+        
       }
     }
     
@@ -273,16 +273,16 @@ const TaskManagementModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
         deadline: taskData.deadline ? new Date(taskData.deadline).toISOString() : null
       };
 
-      console.log('🔧 Creating task with data:', taskDataForBackend);
-      console.log('🔧 Event ID:', eventId);
+      
+      
 
       // Use clientAPI from client.js
       const response = await clientAPI.createTask(eventId, taskDataForBackend);
 
-      console.log('✅ Task creation response:', response);
+      
 
       if (response.data && response.data.success) {
-        console.log('✅ Task created successfully:', response.data.message);
+        
         
         // Clear form
         setTaskData({
@@ -299,27 +299,27 @@ const TaskManagementModal = ({ eventId, teamId, teamMembers = [], onClose, onSuc
         // Success callback
         onSuccess();
       } else {
-        console.error('❌ Task creation failed:', response.data);
+        
         setError(response.data?.message || 'Failed to create task');
       }
     } catch (error) {
-      console.error('❌ Error creating task:', error);
+      
       
       // Handle different types of errors
       if (error.response) {
         // HTTP error response
-        console.error('❌ HTTP Error Response:', error.response.data);
+        
         const errorMessage = error.response.data?.detail || 
                            error.response.data?.message || 
                            `Server error: ${error.response.status}`;
         setError(errorMessage);
       } else if (error.request) {
         // Network error
-        console.error('❌ Network Error:', error.request);
+        
         setError('Network error occurred. Please check your connection.');
       } else {
         // Other error
-        console.error('❌ Unknown Error:', error.message);
+        
         setError('An unexpected error occurred. Please try again.');
       }
     } finally {

@@ -15,16 +15,12 @@ import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackForm from '../pages/client/FeedbackForm';
 import FeedbackSuccess from '../pages/client/FeedbackSuccess';
-import QRCodeDemo from '../pages/QRCodeDemo'; // QR Code Demo Page
-import QRTest from '../pages/QRTest'; // QR Code Test Page
-import QRTest_Updated from '../pages/QRTest_Updated'; // QR Code Test Page - Enhanced
-import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page
-import MobileQRScanner from '../pages/MobileQRScanner'; // Mobile QR Scanner
+import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page (Legacy - Admin/Faculty)
+import UnifiedQRScanner from '../pages/UnifiedQRScanner'; // NEW: Unified QR Scanner with Token Access
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
 import FeedbackPreviewClient from '../pages/test/FeedbackPreviewClient'; // Feedback Test Page
-import AttendanceShowcase from '../pages/AttendanceShowcase'; // Attendance Components Showcase
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -33,7 +29,7 @@ import TeamManagement from '../pages/client/student/Account/TeamManagement';
 import Invitations from '../pages/client/student/Account/Invitations';
 import RegistrationRouter from '../components/common/RegistrationRouter';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
-
+import QRTest from '../pages/QRTest';
 // Attendance components
 import MarkAttendance from '../pages/client/student/Attendance/MarkAttendance';
 import AttendanceSuccess from '../pages/client/student/Attendance/AttendanceSuccess';
@@ -43,7 +39,6 @@ import NotRegistered from '../pages/client/student/NotRegistered';
 // Faculty components - new organized structure
 import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePage';
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
-
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
 import AdminStudents from '../pages/admin/Students';
@@ -92,9 +87,12 @@ function AppRoutes() {
   }
 
   return (
-    <Router>
+    <Router basename="/">
       <ScrollToTop />
       <Routes>
+        <Route path='/test-mode' element={<TestMode />} />
+        <Route path= '/qr-test' element={<QRTest />} />
+        <Route path='/test/feedback-preview' element={<FeedbackPreviewClient />} />
         {/* Auth Routes - No Layout */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
@@ -499,42 +497,10 @@ function AppRoutes() {
           }
         />
 
-        {/* QR Code Demo Route (for development/testing) */}
-        <Route
-          path="/demo/qr"
-          element={<QRCodeDemo />}
-        />
-        <Route
-          path="/test/qr"
-          element={<QRTest />}
-        />
-        <Route
-          path="/test/qr-enhanced"
-          element={<QRTest_Updated />}
-        />
+        {/* QR Scanner with Token Access - Public Route */}
+        <Route path="/scanner/:token" element={<UnifiedQRScanner />} />
         
-        {/* Test Mode - Overview of All Pages */}
-        <Route
-          path="/test/all-pages"
-          element={<TestMode />}
-        />
-        
-        {/* Feedback Test Page */}
-        <Route
-          path="/test/feedback-preview"
-          element={<FeedbackPreviewClient />}
-        />
-        <Route
-          path="/test/feedback"
-          element={<FeedbackPreviewClient />}
-        />
-        
-        {/* Attendance Components Showcase */}
-        <Route
-          path="/test/attendance"
-          element={<AttendanceShowcase />}
-        />
-        
+        {/* Legacy QR Scanner Routes (Admin/Faculty) */}
         <Route
           path="/admin/qr-scanner"
           element={
@@ -550,10 +516,6 @@ function AppRoutes() {
               <QRScannerPage />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/mobile/qr-scanner"
-          element={<MobileQRScanner />}
         />
         
         {/* Reusable Invitation Link System - Production Endpoints */}

@@ -28,7 +28,7 @@ function NotRegistered() {
         setError('Failed to load event details');
       }
     } catch (error) {
-      console.error('Error fetching event details:', error);
+      
       setError('Failed to load event information');
     } finally {
       setIsLoading(false);

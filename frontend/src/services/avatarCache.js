@@ -22,7 +22,7 @@ class AvatarCacheService {
         }
       }
     } catch (error) {
-      console.warn('Failed to load avatar cache:', error);
+      
     }
     return {};
   }
@@ -35,7 +35,7 @@ class AvatarCacheService {
       };
       localStorage.setItem(AVATAR_CACHE_KEY, JSON.stringify(cacheData));
     } catch (error) {
-      console.warn('Failed to save avatar cache:', error);
+      
     }
   }
 
@@ -73,14 +73,14 @@ class AvatarCacheService {
       // Create a new image to trigger browser caching
       const img = new Image();
       img.onload = () => {
-        console.log('✅ Avatar prefetched for user:', this.getUserKey(user));
+        
       };
       img.onerror = () => {
-        console.warn('⚠️ Failed to prefetch avatar for user:', this.getUserKey(user));
+        
       };
       img.src = avatarUrl;
     } catch (error) {
-      console.warn('Avatar prefetch error:', error);
+      
     }
   }
 }

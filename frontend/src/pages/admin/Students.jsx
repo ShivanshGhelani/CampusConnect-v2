@@ -61,7 +61,7 @@ function Students() {
       const cacheExpiry = 5 * 60 * 1000; // 5 minutes
       
       if (cachedStudents && cacheAge < cacheExpiry) {
-        console.log('Loading students from cache');
+        
         const parsedStudents = JSON.parse(cachedStudents);
         setAllStudents(parsedStudents);
         setTotalStudents(parsedStudents.length);
@@ -80,7 +80,7 @@ function Students() {
         include_all: true 
       });
       
-      console.log('API Response:', response.data);
+      
       
       if (response.data.success) {
         const students = response.data.students || [];
@@ -97,13 +97,13 @@ function Students() {
         
         setError('');
         
-        console.log('Students loaded:', students.length);
-        console.log('Departments found:', departments);
+        
+        
       } else {
         throw new Error(response.data.message || 'Failed to fetch students');
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
+      
       setError('Failed to load students');
     } finally {
       setIsLoading(false);
@@ -269,7 +269,7 @@ function Students() {
         throw new Error(response.data.message || 'Failed to update student status');
       }
     } catch (error) {
-      console.error('Error updating student status:', error);
+      
       setError('Failed to update student status');
     }
   };

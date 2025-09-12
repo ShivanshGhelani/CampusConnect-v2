@@ -601,17 +601,18 @@ function EditEvent() {
   // Load venues
   const loadVenues = async () => {
     try {
-      const response = await adminAPI.getVenues();
+      
+      const response = await adminAPI.getVenues(); // Single endpoint - defaults to active venues only
 
-      if (response.data) {
-        // The API returns { success: true, data: [venues], message: "..." }
-        // So we need to access response.data.data, not just response.data
-        const apiData = response.data.data || response.data;
+      if (response.data || response.success) {
+        // Handle both cached and API responses
+        const apiData = response.success ? response.data : (response.data.data || response.data);
         const venueArray = Array.isArray(apiData) ? apiData : [];
         setVenues(venueArray);
         // Initialize filteredVenues with all active venues
         const activeVenues = venueArray.filter(v => v.is_active);
         setFilteredVenues(activeVenues);
+        
       }
     } catch (error) {
       // Handle error silently
@@ -1126,7 +1127,7 @@ function EditEvent() {
             if (result.success) {
               certificateTemplateUrls[certificateType] = result.url;
             } else {
-              console.error(`Failed to upload ${certificateType}:`, result.error);
+              
               toast.error(`Failed to upload ${certificateType}: ${result.error}`);
               setIsSaving(false);
               setUploadStatus('');
@@ -1258,9 +1259,9 @@ function EditEvent() {
         // Update event in client-side scheduler
         try {
           updateEventInScheduler(eventId, response.data.event || formData);
-          console.log('✅ Updated event in client scheduler');
+          
         } catch (schedulerError) {
-          console.warn('⚠️ Failed to update event in client scheduler:', schedulerError);
+          
           // Don't fail the update process
         }
 
@@ -1282,7 +1283,7 @@ function EditEvent() {
         throw new Error(response.data.message || 'Failed to update event');
       }
     } catch (error) {
-      console.error('Error updating event:', error);
+      
       toast.error('Failed to update event: ' + error.message);
     } finally {
       setIsSaving(false);
@@ -2360,7 +2361,7 @@ function EditEvent() {
                         const [year, month, day] = formData.certificate_end_date.split('-');
                         return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                       } catch (error) {
-                        console.error('Error parsing certificate end date:', error);
+                        
                         return null;
                       }
                     })() : null}
@@ -2391,7 +2392,7 @@ function EditEvent() {
                         const [year, month, day] = formData.end_date.split('-');
                         return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                       } catch (error) {
-                        console.error('Error parsing end date for minDate:', error);
+                        
                         return new Date(); // Fallback to today
                       }
                     })() : new Date()}
@@ -2742,13 +2743,13 @@ function EditEvent() {
                                                     alert('Popup blocked! Please allow popups for this site to preview templates.');
                                                   }
                                                 } catch (error) {
-                                                  console.error('Error creating preview:', error);
+                                                  
                                                   alert('Error creating preview. Please check if the HTML file is valid.');
                                                 }
                                               };
 
                                               reader.onerror = (error) => {
-                                                console.error('Error reading file:', error);
+                                                
                                                 alert('Error reading the file. Please try selecting the file again.');
                                               };
 

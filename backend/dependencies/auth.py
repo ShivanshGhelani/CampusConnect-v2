@@ -5,10 +5,24 @@ from models.admin_user import AdminUser, AdminRole
 from models.student import Student
 from models.faculty import Faculty
 from core.permissions import PermissionManager, require_super_admin
+from middleware.auth_middleware import AuthMiddleware
 from typing import Optional, Union
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def get_current_admin(request: Request) -> AdminUser:
-    """Get current authenticated admin from session"""
+    """Get current authenticated admin from session or token (hybrid auth)"""
+    
+    # First try token-based authentication
+    try:
+        admin_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='admin')
+        if admin_from_token and isinstance(admin_from_token, AdminUser):
+            return admin_from_token
+    except Exception:
+        pass
+    
+    # Fallback to session-based authentication
     admin_data = request.session.get('admin')  # Changed from 'admin_user' to 'admin'
     if not admin_data:
         raise HTTPException(
@@ -26,7 +40,7 @@ async def get_current_admin(request: Request) -> AdminUser:
                     admin_data[key] = None
         
         return AdminUser(**admin_data)
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid session data"
@@ -64,7 +78,17 @@ async def refresh_admin_session(request: Request) -> AdminUser:
     return admin
 
 async def get_current_student(request: Request) -> Student:
-    """Get currently logged in student from session"""
+    """Get currently logged in student from session or token (hybrid auth)"""
+    
+    # First try token-based authentication
+    try:
+        student_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='student')
+        if student_from_token and isinstance(student_from_token, Student):
+            return student_from_token
+    except Exception:
+        pass
+    
+    # Fallback to session-based authentication
     student_data = request.session.get("student")
     if not student_data:
         raise HTTPException(
@@ -90,7 +114,17 @@ async def get_current_student_optional(request: Request) -> Optional[Student]:
         return None
 
 async def get_current_faculty(request: Request) -> Faculty:
-    """Get currently logged in faculty from session"""
+    """Get currently logged in faculty from session or token (hybrid auth)"""
+    
+    # First try token-based authentication
+    try:
+        faculty_from_token = await AuthMiddleware.authenticate_user_with_token(request, required_user_type='faculty')
+        if faculty_from_token and isinstance(faculty_from_token, Faculty):
+            return faculty_from_token
+    except Exception:
+        pass
+    
+    # Fallback to session-based authentication
     faculty_data = request.session.get("faculty")
     if not faculty_data:
         raise HTTPException(
@@ -274,3 +308,24 @@ async def get_optional_student(request: Request) -> Optional[Student]:
 async def get_optional_faculty(request: Request) -> Optional[Faculty]:
     """Get currently logged in faculty from session, return None if not logged in"""
     return await get_current_faculty_optional(request)
+
+async def get_current_student_hybrid(request: Request):
+    """Hybrid authentication - tries token first, then session fallback"""
+    try:
+        return await get_current_student(request)
+    except HTTPException:
+        raise
+    except Exception:
+        raise
+
+async def require_student_login_hybrid(request: Request):
+    """Hybrid dependency to require student authentication (token or session)"""
+    return await get_current_student_hybrid(request)
+
+async def get_current_faculty_hybrid(request: Request):
+    """Hybrid authentication for faculty - tries token first, then session fallback"""
+    return await get_current_faculty(request)
+
+async def require_faculty_login_hybrid(request: Request):
+    """Hybrid dependency to require faculty authentication (token or session)"""
+    return await get_current_faculty_hybrid(request)

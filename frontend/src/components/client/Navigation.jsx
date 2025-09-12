@@ -247,11 +247,11 @@ function ClientNavigation() {
                                   navigate(response.data.redirect_url || '/admin/events');
                                 } else {
                                   // Show specific error message
-                                  console.log('Access denied:', response.data);
+                                  
                                   alert(response.data.message || 'Unable to access organizer portal');
                                 }
                               } catch (error) {
-                                console.error('Error accessing organizer portal:', error);
+                                
                                 if (error.response?.data?.message) {
                                   alert(error.response.data.message);
                                 } else {
@@ -464,11 +464,11 @@ function ClientNavigation() {
                     navigate(response.data.redirect_url || '/admin/events');
                   } else {
                     // Show specific error message
-                    console.log('Access denied:', response.data);
+                    
                     alert(response.data.message || 'Unable to access organizer portal');
                   }
                 } catch (error) {
-                  console.error('Error accessing organizer portal:', error);
+                  
                   if (error.response?.data?.message) {
                     alert(error.response.data.message);
                   } else {

@@ -19,7 +19,7 @@ class SessionAvatarCacheService {
    */
   initializeSession(user) {
     if (!user) {
-      console.warn('Cannot initialize session: user is null or undefined');
+      
       return;
     }
 
@@ -32,9 +32,9 @@ class SessionAvatarCacheService {
         userKey: this.getUserKey(user),
         timestamp: Date.now()
       }));
-      console.log('✅ Session avatar cache initialized for user:', this.getUserKey(user));
+      
     } catch (error) {
-      console.error('Failed to initialize session avatar cache:', error);
+      
     }
   }
 
@@ -48,9 +48,9 @@ class SessionAvatarCacheService {
     try {
       sessionStorage.removeItem(SESSION_USER_KEY);
       sessionStorage.removeItem(SESSION_AVATAR_CACHE_KEY);
-      console.log('✅ Session avatar cache cleared');
+      
     } catch (error) {
-      console.error('Failed to clear session avatar cache:', error);
+      
     }
   }
 
@@ -64,10 +64,10 @@ class SessionAvatarCacheService {
         const parsed = JSON.parse(sessionData);
         // Session data exists, but we don't restore the user object
         // as it should be provided by the auth context
-        console.log('Session avatar cache data found for:', parsed.userKey);
+        
       }
     } catch (error) {
-      console.warn('Failed to load session avatar cache:', error);
+      
     }
   }
 
@@ -87,7 +87,7 @@ class SessionAvatarCacheService {
    */
   getCachedAvatar() {
     if (!this.sessionUser) {
-      console.warn('No active session for avatar cache');
+      
       return null;
     }
 
@@ -101,7 +101,7 @@ class SessionAvatarCacheService {
    */
   setCachedAvatar(avatarUrl) {
     if (!this.sessionUser) {
-      console.warn('No active session to cache avatar');
+      
       return;
     }
 
@@ -116,7 +116,7 @@ class SessionAvatarCacheService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Failed to persist session avatar cache:', error);
+      
     }
   }
 
@@ -125,7 +125,7 @@ class SessionAvatarCacheService {
    */
   removeCachedAvatar() {
     if (!this.sessionUser) {
-      console.warn('No active session to remove avatar from');
+      
       return;
     }
 
@@ -140,7 +140,7 @@ class SessionAvatarCacheService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Failed to update session avatar cache:', error);
+      
     }
   }
 
@@ -170,15 +170,15 @@ class SessionAvatarCacheService {
     try {
       const img = new Image();
       img.onload = () => {
-        console.log('✅ Avatar prefetched for session user:', this.getUserKey(this.sessionUser));
+        
         this.setCachedAvatar(avatarUrl);
       };
       img.onerror = () => {
-        console.warn('⚠️ Failed to prefetch avatar for session user:', this.getUserKey(this.sessionUser));
+        
       };
       img.src = avatarUrl;
     } catch (error) {
-      console.warn('Session avatar prefetch error:', error);
+      
     }
   }
 }

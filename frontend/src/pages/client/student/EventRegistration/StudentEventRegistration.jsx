@@ -11,6 +11,9 @@ import {
   generateSessionId,
   idValidators 
 } from '../../../../utils/idGenerator';
+// Import cache utilities for optimized data loading
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
+import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
@@ -32,7 +35,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Debug loading state changes
   useEffect(() => {
-    console.log('📊 Loading state changed to:', loading);
+    
   }, [loading]);
 
   // Form data state
@@ -148,7 +151,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setParticipantCount(count);
   }, []);
 
-  // CLEAN & OPTIMIZED: Simple data loading using existing AuthContext
+  // OPTIMIZED: Use cached profile and event data instead of API calls
   useEffect(() => {
     const loadData = async () => {
       console.log('🔄 useEffect triggered with dependencies:', {
@@ -160,21 +163,75 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       });
       
       if (!user || !user.enrollment_no || !eventId || dataLoadingRef.current) {
-        console.log('⚠️ Skipping data load due to missing conditions');
+        
         return;
       }
       
       dataLoadingRef.current = true;
-      console.log('🚀 Loading registration data (optimized - single API call)...');
+      
       
       try {
-        // Step 1: Use AuthContext user data (already complete from login)
-        console.log('✅ Using AuthContext profile data (already available)');
+        // Step 1: Get cached profile data (should already be loaded from login)
+        console.log('📊 Checking for cached profile data...');
+        const cachedProfile = getAnyCache('student');
+        let profileData = user; // fallback to AuthContext user
         
-        // Step 2: Load event data (only API call we need)
-        console.log('📋 Loading event data...');
-        const eventResponse = await clientAPI.getEventDetails(eventId);
-        const eventData = eventResponse.data.success ? eventResponse.data.event : eventResponse.data;
+        if (cachedProfile?.profile) {
+          console.log('✅ Using cached profile data');
+          profileData = cachedProfile.profile;
+        } else {
+          console.log('❌ No cached profile found, attempting to refresh...');
+          // If no cache and user is logged in, try to refresh expired cache
+          if (user?.enrollment_no) {
+            try {
+              const refreshedProfile = await refreshExpiredCache('student', user.enrollment_no, clientAPI);
+              if (refreshedProfile?.profile) {
+                console.log('🔄 Successfully refreshed expired cache');
+                profileData = refreshedProfile.profile;
+              } else {
+                console.log('⚠️ Cache refresh failed, using fallback');
+                // Try to fetch from session storage as backup
+                try {
+                  const sessionProfile = sessionStorage.getItem('complete_profile');
+                  if (sessionProfile) {
+                    const parsedProfile = JSON.parse(sessionProfile);
+                    profileData = parsedProfile;
+                    console.log('📦 Using session storage backup');
+                  }
+                } catch (e) {
+                  console.error('❌ Session storage backup failed:', e);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Failed to refresh expired cache:', error);
+              // Try to fetch from session storage as backup
+              try {
+                const sessionProfile = sessionStorage.getItem('complete_profile');
+                if (sessionProfile) {
+                  const parsedProfile = JSON.parse(sessionProfile);
+                  profileData = parsedProfile;
+                  console.log('📦 Using session storage backup after error');
+                }
+              } catch (e) {
+                console.error('❌ Session storage backup failed:', e);
+              }
+            }
+          }
+        }
+
+        // Step 2: Get cached event data (should already be loaded from EventDetail)
+        
+        let eventData = getAnyEventCache(eventId);
+        
+        if (!eventData) {
+          
+          // Fallback to API if not cached (should rarely happen)
+          const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
+          eventData = cachedEventData?.event || cachedEventData;
+        } else {
+          
+          eventData = eventData.event || eventData;
+        }
         
         if (!eventData) {
           throw new Error('Event data not found');
@@ -220,23 +277,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           initializeParticipants(minParticipants);
         }
 
-        // Step 5: Initialize form with complete profile data
-        console.log('📝 Initializing form with user data...');
+        // Step 5: Initialize form with cached profile data (NO API CALL)
         
-        // Get complete profile from session storage (set during login)
-        let completeProfile = null;
-        try {
-          const sessionProfile = sessionStorage.getItem('complete_profile');
-          if (sessionProfile) {
-            completeProfile = JSON.parse(sessionProfile);
-            console.log('✅ Using complete profile from session storage');
-          }
-        } catch (e) {
-          console.warn('Could not parse session profile data');
-        }
-        
-        // Use complete profile if available, otherwise use AuthContext user
-        const sourceData = completeProfile || user;
         
         const transformGender = (gender) => {
           if (!gender) return '';
@@ -244,25 +286,25 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
 
         const formInitData = {
-          full_name: sourceData.full_name || '',
-          enrollment_no: sourceData.enrollment_no || sourceData.enrollment_number || '',
-          email: sourceData.email || '',
-          mobile_no: sourceData.mobile_no || sourceData.phone_number || '',
-          department: sourceData.department || '',
-          semester: sourceData.semester || '',
-          gender: transformGender(sourceData.gender) || '',
-          date_of_birth: sourceData.date_of_birth ? formatDateForInput(sourceData.date_of_birth) : '',
+          full_name: profileData.full_name || '',
+          enrollment_no: profileData.enrollment_no || profileData.enrollment_number || '',
+          email: profileData.email || '',
+          mobile_no: profileData.mobile_no || profileData.phone_number || '',
+          department: profileData.department || '',
+          semester: profileData.semester || '',
+          gender: transformGender(profileData.gender) || '',
+          date_of_birth: profileData.date_of_birth ? formatDateForInput(profileData.date_of_birth) : '',
           team_name: '',
           participants: []
         };
 
         // Only update if component is still mounted
-        console.log('🔍 Checking if component is still mounted:', mountedRef.current);
+        
         if (mountedRef.current) {
-          console.log('📝 Setting form data and clearing loading state...');
+          
           setFormData(formInitData);
           setLoading(false);
-          console.log('✅ Loading state set to false');
+          
           
           // Update year display after setting form data
           setTimeout(() => {
@@ -279,13 +321,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             initializeParticipants(minParticipants);
           }
 
-          console.log('✅ Registration form loaded successfully (1 API call only)');
+          
         } else {
-          console.log('❌ Component unmounted, skipping state updates');
+          
         }
 
       } catch (error) {
-        console.error('❌ Error loading registration data:', error);
+        
         if (mountedRef.current) {
           setError('Failed to load registration data. Please refresh the page.');
           setLoading(false);
@@ -461,7 +503,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     }
 
     if (!formData || !formData.participants) {
-      console.error('FormData not properly initialized');
+      
       return;
     }
 
@@ -542,7 +584,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       const response = await clientAPI.checkStudentEligibility(enrollmentNo, eventId);
       
       if (response.data.success && response.data.found) {
-        const studentData = response.data.student_data;
+        // FIXED: Updated to use new unified API response structure
+        const studentData = response.data.user_data; // Changed from student_data to user_data
         const isEligible = response.data.eligible;
         const eligibilityMessage = response.data.message;
         const alreadyRegistered = response.data.already_registered;
@@ -623,7 +666,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }));
       }
     } catch (error) {
-      console.error('Error fetching student data:', error);
+      
       setFormData(prev => ({
         ...prev,
         participants: prev.participants.map(p => 
@@ -724,6 +767,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setSuccess('');
 
     try {
+      
+      
       // Frontend validation before submission
       const formValidation = validateForm(formData, {
         full_name: ['required', 'name'],
@@ -760,6 +805,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         mobile_no: formData.mobile_no.trim(),
         department: formData.department,
         semester: parseInt(formData.semester),
+        year: calculateYear(formData.semester),
         gender: formData.gender,
         date_of_birth: formData.date_of_birth,
         session_id: sessionId,
@@ -835,11 +881,17 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       let response;
       if (isTeamRegistration) {
         response = await clientAPI.registerTeam(eventId, registrationData);
+        
+        
       } else {
+        
+        
+        
+        
         response = await clientAPI.registerIndividual(eventId, registrationData);
       }
       
-      console.log('Registration API response:', response);
+      
       
       // FIXED: Handle invitation information in team registration response
       const hasInvitations = response.data.data?.pending_invitations > 0;
@@ -865,13 +917,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       // Prepare data for success page
       const successData = {
         registrationData: {
-          registration_id: response.data.registration_id || response.data.registrar_id,
+          registration_id: response.data.registration_id || response.data.registrar_id || tempRegistrationId,
           registration_type: registrationData.registration_type,
           full_name: registrationData.full_name,
           enrollment_no: registrationData.enrollment_no,
           payment_status: response.data.payment_status || 'free',
           team_name: registrationData.team_name,
-          registration_id: tempRegistrationId,
           session_id: sessionId,
           team_info: isTeamRegistration ? {
             team_name: registrationData.team_name,
@@ -897,7 +948,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       }, 2000);
 
     } catch (error) {
-      console.error('Registration error:', error);
+      
       
       if (error.response?.status === 409) {
         navigate(`/client/events/${eventId}/registration-success`, {
@@ -924,7 +975,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           <div className="text-center">
             <LoadingSpinner size="lg" />
             <p className="mt-4 text-gray-600">Loading registration form...</p>
-            <p className="mt-2 text-sm text-gray-500">Optimized loading - just one moment!</p>
+            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
           </div>
         </div>
       </Layout>

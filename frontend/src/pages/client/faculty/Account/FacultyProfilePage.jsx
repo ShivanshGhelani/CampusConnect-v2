@@ -8,7 +8,9 @@ import QRCodeDisplay from '../../../../components/client/QRCodeDisplay';
 import MessageBox from '../../../../components/client/MessageBox';
 import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
+import { qrCodeService } from '../../../../services/QRCodeService';
 import api from '../../../../api/base';
+import { fetchProfileWithCache } from '../../../../utils/profileCache';
 
 function FacultyProfilePage() {
   const { user } = useAuth();
@@ -79,7 +81,7 @@ function FacultyProfilePage() {
       const updatedUserData = event.detail;
       
       if (updatedUserData && profileData) {
-        console.log('📱 FacultyProfilePage: Received user data update, refreshing profile data');
+        
         
         // Update the profile data with the new user data
         setProfileData(prevProfileData => ({
@@ -101,7 +103,7 @@ function FacultyProfilePage() {
   // Also listen for changes to the user from AuthContext
   useEffect(() => {
     if (user && profileData && user.full_name !== profileData.full_name) {
-      console.log('📱 FacultyProfilePage: User context changed, updating profile data');
+      
       setProfileData(prevProfileData => ({
         ...prevProfileData,
         ...user
@@ -115,43 +117,19 @@ function FacultyProfilePage() {
       try {
         setLoading(true);
 
-        // Fetch complete faculty profile data
-        const profileResponse = await api.get('/api/v1/client/profile/faculty/info');
-        if (profileResponse.data.success) {
-          const profile = profileResponse.data.profile || {};
-          setProfileData(profile);
-        }
-
-        // Fetch faculty event history
-        try {
-          const historyResponse = await api.get('/api/v1/client/profile/faculty/event-history');
-          if (historyResponse.data.success) {
-            setEventHistory(historyResponse.data.event_history || []);
-          }
-        } catch (error) {
-          console.log('Faculty event history not available yet');
-          setEventHistory([]);
-        }
-
-        // Fetch faculty dashboard stats
-        try {
-          const statsResponse = await api.get('/api/v1/client/profile/faculty/dashboard-stats');
-          if (statsResponse.data.success) {
-            setDashboardStats(statsResponse.data.stats || {});
-          }
-        } catch (error) {
-          // If faculty dashboard stats endpoint is not available, use default values
-          console.log('Faculty dashboard stats not available, using defaults');
-          setDashboardStats({
-            total_registrations: 0,
-            attendance_marked: 0,
-            feedback_submitted: 0,
-            certificates_earned: 0
-          });
+        // OPTIMIZED: Use global cache to prevent duplicate API calls
+        const data = await fetchProfileWithCache('faculty', user?.employee_id, api);
+        
+        if (data && data.success) {
+          const { profile, stats, event_history } = data;
+          
+          setProfileData(profile || {});
+          setDashboardStats(stats || {});
+          setEventHistory(event_history || []);
         }
 
       } catch (error) {
-        console.error('Error fetching faculty profile data:', error);
+        
       } finally {
         setLoading(false);
       }
@@ -160,7 +138,7 @@ function FacultyProfilePage() {
     if (user && user.user_type === 'faculty') {
       fetchData();
     }
-  }, [user]);
+  }, [user?.employee_id]); // Only depend on employee_id for consistency
 
   // Convert event history to match the existing format for compatibility
   const registrations = eventHistory.map(item => ({
@@ -259,19 +237,41 @@ function FacultyProfilePage() {
     try {
       // Fetch team details if team_registration_id is available
       if (teamDetail.teamId) {
-        const response = await api.get(`/api/v1/client/profile/team-details/${teamDetail.eventId}/${teamDetail.teamId}`);
+        // PHASE 3A: Use unified team data endpoint
+        const response = await api.get(`/api/v1/client/profile/team/${teamDetail.eventId}/unified`, {
+          params: { mode: 'details', team_id: teamDetail.teamId }
+        });
+        
         if (response.data.success) {
           setSelectedTeamDetail({
             ...teamDetail,
-            teamMembers: response.data.data.team_members || [],
-            teamName: response.data.data.team_name || teamDetail.teamName || 'Unknown Team'
+            teamMembers: response.data.team_data?.members || [],
+            teamName: response.data.team_data?.team_name || teamDetail.teamName || 'Unknown Team'
           });
         } else {
-          setSelectedTeamDetail({
-            ...teamDetail,
-            teamMembers: [],
-            error: 'Unable to load team details'
-          });
+          // Fallback to legacy endpoint
+          try {
+            const legacyResponse = await api.get(`/api/v1/client/profile/team-details/${teamDetail.eventId}/${teamDetail.teamId}`);
+            if (legacyResponse.data.success) {
+              setSelectedTeamDetail({
+                ...teamDetail,
+                teamMembers: legacyResponse.data.data.team_members || [],
+                teamName: legacyResponse.data.data.team_name || teamDetail.teamName || 'Unknown Team'
+              });
+            } else {
+              setSelectedTeamDetail({
+                ...teamDetail,
+                teamMembers: [],
+                error: 'Unable to load team details'
+              });
+            }
+          } catch (legacyError) {
+            setSelectedTeamDetail({
+              ...teamDetail,
+              teamMembers: [],
+              error: 'Unable to load team details'
+            });
+          }
         }
       } else {
         setSelectedTeamDetail({
@@ -282,7 +282,7 @@ function FacultyProfilePage() {
       }
       setShowTeamDetailModal(true);
     } catch (error) {
-      console.error('Error fetching team details:', error);
+      
       setSelectedTeamDetail({
         ...teamDetail,
         teamMembers: [],
@@ -298,9 +298,43 @@ function FacultyProfilePage() {
   setShowMessageBox(false);
   }, []);
 
-  const openQRCodeModal = useCallback((qrData) => {
-    setSelectedQRData(qrData);
-    setShowQRCodeModal(true);
+  const openQRCodeModal = useCallback(async (qrData) => {
+    
+    
+    
+    
+    
+
+    try {
+      // Generate QR code with backend data
+      
+      
+      const registrationData = qrData.registration;
+      const eventData = qrData.event;
+      
+      // Generate QR data using backend endpoint
+      const backendQRData = await qrCodeService.generateQRData(registrationData, eventData);
+      
+      // Create enhanced QR data with backend response
+      const enhancedQRData = {
+        ...qrData,
+        backendQRData, // This contains the proper QR data from backend
+        registration: registrationData,
+        event: eventData
+      };
+
+      
+      
+      setSelectedQRData(enhancedQRData);
+      setShowQRCodeModal(true);
+      
+    } catch (error) {
+      
+      
+      // Fallback to original simple implementation
+      setSelectedQRData(qrData);
+      setShowQRCodeModal(true);
+    }
   }, []);
 
   const closeQRCodeModal = useCallback(() => {
@@ -328,26 +362,22 @@ function FacultyProfilePage() {
       const response = await api.delete(`/api/v1/client/registration/cancel/${currentEventId}`);
 
       if (response.data.success) {
-        // Refresh event history
-        const historyResponse = await api.get('/api/v1/client/profile/faculty/event-history');
-        if (historyResponse.data.success) {
-          setEventHistory(historyResponse.data.event_history || []);
-        }
-
-        // Refresh dashboard stats
-        const statsResponse = await api.get('/api/v1/client/profile/faculty/dashboard-stats');
-        if (statsResponse.data.success) {
-          setDashboardStats(statsResponse.data.stats || {});
+        // OPTIMIZED: Single API call to refresh data after cancellation
+        const refreshResponse = await api.get('/api/v1/client/profile/faculty/complete-profile');
+        if (refreshResponse.data.success) {
+          const { stats, event_history } = refreshResponse.data;
+          setEventHistory(event_history || []);
+          setDashboardStats(stats || {});
         }
 
         closeCancelModal();
-        console.log('Faculty registration cancelled successfully');
+        
       } else {
-        console.error('Failed to cancel faculty registration:', response.data.message);
+        
         alert('Failed to cancel registration: ' + (response.data.message || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error cancelling faculty registration:', error);
+      
       alert('Error cancelling registration. Please try again.');
     } finally {
       setCancellingRegistration(false);

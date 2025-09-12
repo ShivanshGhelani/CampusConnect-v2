@@ -57,7 +57,7 @@ const MessageBox = ({ eventId, teamData, onBack, isVisible }) => {
         setMessages([]); // Use empty array as fallback
       }
     } catch (err) {
-      console.error('Error fetching messages:', err);
+      
       
       // If API is not available, use mock data for development
       const mockMessages = [
@@ -115,7 +115,7 @@ const MessageBox = ({ eventId, teamData, onBack, isVisible }) => {
         setError(response.data.message || 'Failed to send message');
       }
     } catch (err) {
-      console.error('Error sending message:', err);
+      
       
       // If API is not available, simulate sending message for development
       const simulatedMessage = {

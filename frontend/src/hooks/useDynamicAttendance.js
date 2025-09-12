@@ -22,38 +22,38 @@ export const useDynamicAttendance = (eventId) => {
     setError(null);
     
     try {
-      console.log(`🔍 Loading attendance config for event: ${eventId}`);
+      
       
       // Try to get existing configuration
       const response = await api.get(`/api/v1/attendance/config/${eventId}`);
       
       if (response.data.success) {
         setConfig(response.data.data);
-        console.log(`✅ Config loaded: ${response.data.data.strategy} strategy`);
+        
       } else {
         // Configuration doesn't exist, try to initialize
-        console.log('🔄 Config not found, initializing...');
+        
         
         const initResponse = await api.post(`/api/v1/attendance/initialize/${eventId}`);
         
         if (initResponse.data.success) {
-          console.log('✅ Configuration initialized successfully');
+          
           
           // Retry loading configuration
           const retryResponse = await api.get(`/api/v1/attendance/config/${eventId}`);
           if (retryResponse.data.success) {
             setConfig(retryResponse.data.data);
-            console.log(`✅ Config loaded after init: ${retryResponse.data.data.strategy} strategy`);
+            
           }
         } else {
           throw new Error(initResponse.data.message || 'Failed to initialize attendance configuration');
         }
       }
     } catch (err) {
-      console.error('❌ Error loading attendance config:', err);
+      
       
       // Fallback to single-mark strategy for compatibility
-      console.log('🔄 Falling back to single-mark strategy');
+      
       setConfig({
         event_id: eventId,
         strategy: 'single_mark',
@@ -86,19 +86,19 @@ export const useDynamicAttendance = (eventId) => {
     if (!eventId) return;
     
     try {
-      console.log(`🔍 Loading active sessions for event: ${eventId}`);
+      
       
       const response = await api.get(`/api/v1/attendance/sessions/${eventId}/active`);
       
       if (response.data.success) {
         setSessions(response.data.data);
-        console.log(`✅ Active sessions loaded: ${response.data.data.active_sessions?.length || 0} active, ${response.data.data.upcoming_sessions?.length || 0} upcoming`);
+        
       } else {
-        console.log('⚠️ No active sessions data available');
+        
         setSessions({ active_sessions: [], upcoming_sessions: [], can_mark_attendance: false });
       }
     } catch (err) {
-      console.error('❌ Error loading active sessions:', err);
+      
       // Don't set error state for sessions, just log it
       setSessions({ active_sessions: [], upcoming_sessions: [], can_mark_attendance: false });
     }
@@ -109,19 +109,19 @@ export const useDynamicAttendance = (eventId) => {
     if (!eventId) return;
     
     try {
-      console.log(`🔍 Loading analytics for event: ${eventId}`);
+      
       
       const response = await api.get(`/api/v1/attendance/analytics/${eventId}`);
       
       if (response.data.success) {
         setAnalytics(response.data.data);
-        console.log(`✅ Analytics loaded: ${response.data.data.total_registered || 0} registered students`);
+        
       } else {
-        console.log('⚠️ No analytics data available');
+        
         setAnalytics(null);
       }
     } catch (err) {
-      console.error('❌ Error loading analytics:', err);
+      
       // Don't set error state for analytics, just log it
       setAnalytics(null);
     }
@@ -136,7 +136,7 @@ export const useDynamicAttendance = (eventId) => {
     setMarkingInProgress(true);
     
     try {
-      console.log(`🎯 Marking attendance: ${studentEnrollment} -> ${eventId} -> ${sessionId || 'auto'}`);
+      
       
       const response = await api.post(`/api/v1/attendance/mark/${eventId}`, {
         student_enrollment: studentEnrollment,
@@ -145,7 +145,7 @@ export const useDynamicAttendance = (eventId) => {
       });
       
       if (response.data.success) {
-        console.log(`✅ Attendance marked successfully: ${response.data.data.session_name}`);
+        
         
         // Refresh data after successful marking
         await Promise.all([
@@ -158,7 +158,7 @@ export const useDynamicAttendance = (eventId) => {
         throw new Error(response.data.message || 'Failed to mark attendance');
       }
     } catch (err) {
-      console.error('❌ Error marking attendance:', err);
+      
       throw err;
     } finally {
       setMarkingInProgress(false);
@@ -174,7 +174,7 @@ export const useDynamicAttendance = (eventId) => {
     setMarkingInProgress(true);
     
     try {
-      console.log(`🎯 Bulk marking attendance: ${studentEnrollments.length} students -> ${eventId}`);
+      
       
       const response = await api.post(`/api/v1/attendance/bulk-mark/${eventId}`, {
         student_enrollments: studentEnrollments,
@@ -185,7 +185,7 @@ export const useDynamicAttendance = (eventId) => {
       
       if (response.data.success) {
         const successCount = response.data.data.successful_count || 0;
-        console.log(`✅ Bulk attendance marked: ${successCount}/${studentEnrollments.length} successful`);
+        
         
         // Refresh data after successful marking
         await Promise.all([
@@ -198,7 +198,7 @@ export const useDynamicAttendance = (eventId) => {
         throw new Error(response.data.message || 'Failed to mark bulk attendance');
       }
     } catch (err) {
-      console.error('❌ Error bulk marking attendance:', err);
+      
       throw err;
     } finally {
       setMarkingInProgress(false);
@@ -217,7 +217,7 @@ export const useDynamicAttendance = (eventId) => {
       }
       return null;
     } catch (err) {
-      console.error('❌ Error getting student status:', err);
+      
       return null;
     }
   }, [eventId]);
@@ -234,7 +234,7 @@ export const useDynamicAttendance = (eventId) => {
   // Initialize data when eventId changes
   useEffect(() => {
     if (eventId) {
-      console.log(`🚀 Initializing dynamic attendance for event: ${eventId}`);
+      
       refreshData();
     }
   }, [eventId, refreshData]);
@@ -244,7 +244,7 @@ export const useDynamicAttendance = (eventId) => {
     if (!eventId) return;
     
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing active sessions...');
+      
       loadActiveSessions();
     }, 30000);
 

@@ -49,7 +49,7 @@ const TeamQRCodes = ({
 
         setTeamQRCodes(qrCodesWithImages);
       } catch (err) {
-        console.error('Error generating team QR codes:', err);
+        
         setError('Failed to generate team QR codes');
       } finally {
         setLoading(false);
@@ -71,7 +71,7 @@ const TeamQRCodes = ({
       const filename = `QR_${eventData.event_name?.replace(/[^a-zA-Z0-9]/g, '_')}_${student.name.replace(/[^a-zA-Z0-9]/g, '_')}_${qrCodeData.qrData.reg_id}.png`;
       qrCodeService.downloadQRCode(highResQR, filename);
     } catch (err) {
-      console.error('Error downloading QR code:', err);
+      
     }
   };
 
@@ -86,7 +86,7 @@ const TeamQRCodes = ({
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (err) {
-      console.error('Error downloading all QR codes:', err);
+      
     } finally {
       setDownloadingAll(false);
     }

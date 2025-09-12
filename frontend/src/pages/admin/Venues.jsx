@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminAPI } from '../../api/admin';
+import { invalidateVenueCache } from '../../utils/venueCache';
 import { Dropdown, SearchBox } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
 import { 
@@ -77,14 +78,39 @@ const Venues = () => {
 
   const fetchVenues = async () => {
     try {
-      const response = await adminAPI.getAllVenues(); // Changed to getAllVenues to include soft-deleted venues
-      console.log('API Response:', response); // Debug log
+      const response = await adminAPI.getVenues({ include_inactive: true }); // Single endpoint for all venues
       
-      // The API returns { success: true, data: [venues], message: "..." }
-      // So we need to access response.data.data, not just response.data
-      const venuesData = response.data?.data || response.data || [];
-      console.log('Venues data:', venuesData); // Debug log
-      setVenues(Array.isArray(venuesData) ? venuesData : []);
+      // The backend returns List[Venue] directly, not wrapped in a response object
+      // Handle both cached responses (with .success) and direct API responses
+      let venuesData;
+      if (response.success) {
+        // Cached response format
+        venuesData = response.data;
+      } else if (Array.isArray(response.data)) {
+        // Direct API response (List[Venue])
+        venuesData = response.data;
+      } else if (Array.isArray(response)) {
+        // Sometimes the response itself is the array
+        venuesData = response;
+      } else {
+        venuesData = [];
+      }
+      
+      // Validate and normalize venue data
+      const validatedVenues = Array.isArray(venuesData) ? venuesData.map((venue, index) => {
+        return {
+          ...venue,
+          venue_id: venue.venue_id || `venue-${index}`, // Ensure venue_id exists
+          venue_type: venue.venue_type || 'other', // Default to 'other' if undefined
+          facilities: Array.isArray(venue.facilities) ? venue.facilities : [],
+          is_active: venue.is_active !== false, // Default to true if not explicitly false
+          // Only set defaults for truly missing or empty values
+          name: venue.name || 'Unnamed Venue',
+          location: venue.location || 'Unknown Location'
+        };
+      }) : [];
+      
+      setVenues(validatedVenues);
     } catch (error) {
       console.error('Error fetching venues:', error);
       setError('Failed to load venues');
@@ -145,6 +171,8 @@ const Venues = () => {
           venue_type: '',
           facilities: []
         });
+        // Invalidate cache before fetching to ensure fresh data
+        invalidateVenueCache();
         fetchVenues();
       } else {
         setError(response.data.message || 'Failed to create venue');
@@ -179,6 +207,8 @@ const Venues = () => {
           venue_type: '',
           facilities: []
         });
+        // Invalidate cache before fetching to ensure fresh data
+        invalidateVenueCache();
         fetchVenues();
       } else {
         setError(response.data.message || 'Failed to update venue');
@@ -205,7 +235,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to delete venue');
       }
     } catch (error) {
-      console.error('Error deleting venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to delete venue');
     }
   };
@@ -226,7 +256,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to restore venue');
       }
     } catch (error) {
-      console.error('Error restoring venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to restore venue');
     }
   };
@@ -252,7 +282,7 @@ const Venues = () => {
         setError(response.data.message || 'Failed to permanently delete venue');
       }
     } catch (error) {
-      console.error('Error permanently deleting venue:', error);
+      
       setError(error.response?.data?.detail || 'Failed to permanently delete venue');
     }
   };
@@ -260,12 +290,12 @@ const Venues = () => {
   const openEditModal = (venue) => {
     setEditingVenue(venue);
     setNewVenue({
-      name: venue.name,
-      location: venue.location,
+      name: venue.name || '',
+      location: venue.location || '',
       description: venue.description || '',
       capacity: venue.capacity ? venue.capacity.toString() : '',
-      venue_type: venue.venue_type,
-      facilities: venue.facilities || []
+      venue_type: venue.venue_type || 'other', // Default to 'other' if undefined
+      facilities: Array.isArray(venue.facilities) ? venue.facilities : []
     });
     setError('');
     setSuccess('');
@@ -273,6 +303,10 @@ const Venues = () => {
   };
 
   const formatVenueType = (type) => {
+    // Handle undefined, null, or empty type values
+    if (!type || typeof type !== 'string') {
+      return 'Unknown Type';
+    }
     return type.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -441,8 +475,8 @@ const Venues = () => {
         {viewMode === 'cards' ? (
           /* Cards View */
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {Array.isArray(filteredVenues) && filteredVenues.map((venue) => (
-              <div key={venue.venue_id} className={`group relative bg-white rounded-xl shadow-sm border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex flex-col ${venue.is_active ? 'border-gray-200' : 'border-red-200 bg-gradient-to-br from-red-50 to-orange-50'}`}>
+            {Array.isArray(filteredVenues) && filteredVenues.map((venue, index) => (
+              <div key={venue.venue_id || `venue-${index}`} className={`group relative bg-white rounded-xl shadow-sm border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex flex-col ${venue.is_active ? 'border-gray-200' : 'border-red-200 bg-gradient-to-br from-red-50 to-orange-50'}`}>
                 
                 {/* Status Badge */}
                 <div className="absolute top-4 right-4 z-10">
@@ -476,7 +510,7 @@ const Venues = () => {
                         ? 'bg-blue-100 text-blue-700' 
                         : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {formatVenueType(venue.venue_type)}
+                      {venue.venue_type ? formatVenueType(venue.venue_type) : 'Unknown Type'}
                     </span>
                   </div>
 
@@ -517,9 +551,9 @@ const Venues = () => {
                         </div>
                         <div className="h-16 overflow-hidden">
                           <div className="flex flex-wrap gap-2">
-                            {venue.facilities.slice(0, 6).map((facility) => (
+                            {venue.facilities.slice(0, 6).map((facility, facilityIndex) => (
                               <span
-                                key={facility}
+                                key={`${venue.venue_id}-facility-${facilityIndex}-${facility}`}
                                 className={`px-2 py-1 text-xs rounded-md font-medium ${
                                   venue.is_active 
                                     ? 'bg-indigo-100 text-indigo-700' 
@@ -620,7 +654,7 @@ const Venues = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {Array.isArray(filteredVenues) && filteredVenues.map((venue, index) => (
-                    <tr key={venue.venue_id} className={`transition-colors duration-200 hover:bg-gray-50 ${!venue.is_active ? 'bg-red-50/30' : ''}`}>
+                    <tr key={venue.venue_id || `venue-table-${index}`} className={`transition-colors duration-200 hover:bg-gray-50 ${!venue.is_active ? 'bg-red-50/30' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div>
@@ -642,7 +676,7 @@ const Venues = () => {
                               ? 'bg-blue-100 text-blue-700' 
                               : 'bg-gray-100 text-gray-500'
                           }`}>
-                            {formatVenueType(venue.venue_type)}
+                            {venue.venue_type ? formatVenueType(venue.venue_type) : 'Unknown Type'}
                           </span>
                         </div>
                         <div className={`text-sm ${venue.is_active ? 'text-gray-500' : 'text-gray-400'} flex items-center gap-1 mt-1`}>
@@ -658,9 +692,9 @@ const Venues = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1 max-w-xs">
-                          {venue.facilities && venue.facilities.slice(0, 3).map((facility) => (
+                          {venue.facilities && venue.facilities.slice(0, 3).map((facility, facilityIndex) => (
                             <span
-                              key={facility}
+                              key={`${venue.venue_id}-table-facility-${facilityIndex}-${facility}`}
                               className={`px-2 py-1 text-xs rounded-md font-medium ${
                                 venue.is_active 
                                   ? 'bg-indigo-100 text-indigo-700' 

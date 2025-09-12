@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import FeedbackResponseCard from '../../components/admin/FeedbackResponseCard';
 import { adminAPI } from '../../api/admin';
 import { 
   ArrowLeft, 
@@ -25,12 +26,23 @@ import {
 function Feedbacks() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  
+  // Get data passed from EventDetail via navigation state
+  const passedData = location.state;
+  const registrationsCountFromProps = passedData?.registrations_count || 0;
   
   // State management
   const [event, setEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [allResponses, setAllResponses] = useState([]);
+  const [hasMoreResponses, setHasMoreResponses] = useState(true);
+
+  const RESPONSES_PER_PAGE = 20;
 
   useEffect(() => {
     if (eventId) {
@@ -43,9 +55,14 @@ function Feedbacks() {
       setIsLoading(true);
       setError('');
       
-      // Fetch event details
-      const eventResponse = await adminAPI.getEvent(eventId);
-      const eventData = eventResponse.data;
+      // Start with event data (use passed data if available)
+      let eventData;
+      if (passedData?.event_data) {
+        eventData = passedData.event_data;
+      } else {
+        const eventResponse = await adminAPI.getEvent(eventId);
+        eventData = eventResponse.data;
+      }
       
       let feedbackForm = null;
       let feedbackAnalytics = null;
@@ -57,10 +74,10 @@ function Feedbacks() {
         if (formResponse.data.success) {
           feedbackForm = formResponse.data.feedback_form;
           
-          // Fetch analytics and responses if form exists
+          // Fetch analytics and initial responses if form exists
           const [analyticsResponse, responsesResponse] = await Promise.all([
             adminAPI.getFeedbackAnalytics(eventId),
-            adminAPI.getFeedbackResponses(eventId, { page: 1, limit: 10 })
+            adminAPI.getFeedbackResponses(eventId, { page: 1, limit: RESPONSES_PER_PAGE })
           ]);
           
           if (analyticsResponse.data.success) {
@@ -69,14 +86,19 @@ function Feedbacks() {
           
           if (responsesResponse.data.success) {
             feedbackResponses = responsesResponse.data;
+            setAllResponses(responsesResponse.data.responses || []);
+            setHasMoreResponses((responsesResponse.data.responses || []).length === RESPONSES_PER_PAGE);
+            setCurrentPage(1);
           }
         }
       } catch (feedbackError) {
-        console.log('No feedback form found for this event');
+        console.error('Error fetching feedback data:', feedbackError);
       }
       
       setEvent({
         ...eventData,
+        event_stats: passedData?.event_stats || null,
+        registrations_count: registrationsCountFromProps,
         feedback_form: feedbackForm,
         feedback_analytics: feedbackAnalytics,
         feedback_responses: feedbackResponses
@@ -84,9 +106,44 @@ function Feedbacks() {
       
     } catch (error) {
       setError('Failed to load event and feedback data');
-      console.error('Error fetching data:', error);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadMoreResponses = async () => {
+    if (isLoadingMore || !hasMoreResponses) return;
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+      
+      const responsesResponse = await adminAPI.getFeedbackResponses(eventId, { 
+        page: nextPage, 
+        limit: RESPONSES_PER_PAGE 
+      });
+      
+      if (responsesResponse.data.success) {
+        const newResponses = responsesResponse.data.responses || [];
+        setAllResponses(prev => [...prev, ...newResponses]);
+        setCurrentPage(nextPage);
+        setHasMoreResponses(newResponses.length === RESPONSES_PER_PAGE);
+        
+        // Update event state with new total count
+        setEvent(prev => ({
+          ...prev,
+          feedback_responses: {
+            ...prev.feedback_responses,
+            responses: [...allResponses, ...newResponses],
+            total_responses: responsesResponse.data.total_responses || prev.feedback_responses?.total_responses
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading more responses:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -112,14 +169,9 @@ function Feedbacks() {
         throw new Error(response.data.message || 'Failed to delete feedback form');
       }
     } catch (error) {
-      console.error('Error deleting feedback form:', error);
+      
       alert(`Failed to delete feedback form: ${error.response?.data?.detail || error.message}`);
     }
-  };
-
-  const handleViewResponses = () => {
-    // Could navigate to a detailed responses page or show modal
-    navigate(`/admin/events/${eventId}/feedback/responses`);
   };
 
   const handleExportData = async () => {
@@ -127,7 +179,7 @@ function Feedbacks() {
       // This could be implemented as a CSV/Excel export
       alert('Export functionality will be implemented here');
     } catch (error) {
-      console.error('Error exporting data:', error);
+      
       alert('Failed to export data');
     }
   };
@@ -247,7 +299,7 @@ function Feedbacks() {
         <div className="max-w-7xl mx-auto px-4">
           
           {/* Header */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => navigate(`/admin/events/${eventId}`)}
@@ -301,14 +353,6 @@ function Feedbacks() {
                   </ActionButton>
                   
                   <ActionButton
-                    onClick={handleViewResponses}
-                    variant="primary"
-                    icon={Eye}
-                  >
-                    View Responses
-                  </ActionButton>
-                  
-                  <ActionButton
                     onClick={handleExportData}
                     variant="secondary"
                     icon={Download}
@@ -330,7 +374,7 @@ function Feedbacks() {
 
           {/* Feedback Stats */}
           {event.feedback_analytics && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-6xl gap-6 mb-6 justify-between items-center mx-auto ">
               <StatCard
                 icon={Users}
                 title="Total Responses"
@@ -342,7 +386,7 @@ function Feedbacks() {
               <StatCard
                 icon={Users}
                 title="Total Registrations"
-                value={event.feedback_analytics.summary.total_registrations}
+                value={event.registrations_count || 0}
                 subtitle="Registered participants"
                 variant="default"
               />
@@ -371,56 +415,171 @@ function Feedbacks() {
 
           {/* No Feedback Form Message */}
           {!event.feedback_form && (
-            <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-              <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FileText className="w-8 h-8 text-gray-400" />
+            <div className="text-center py-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border border-blue-100 relative overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-5">
+                <div className="absolute top-10 left-10">
+                  <MessageSquare className="w-16 h-16" />
+                </div>
+                <div className="absolute top-20 right-16">
+                  <Star className="w-12 h-12" />
+                </div>
+                <div className="absolute bottom-16 left-20">
+                  <BarChart3 className="w-14 h-14" />
+                </div>
+                <div className="absolute bottom-10 right-10">
+                  <Users className="w-18 h-18" />
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-700 mb-3">No Feedback Form Setup</h3>
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                Create a feedback form to collect valuable insights from event participants.
-              </p>
-              <ActionButton onClick={handleCreateFeedbackForm} variant="primary" icon={Plus}>
-                Create Feedback Form
-              </ActionButton>
+              
+              <div className="relative z-10">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <MessageSquare className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Start Collecting Feedback</h3>
+                <p className="text-gray-600 mb-8 max-w-lg mx-auto leading-relaxed">
+                  Create a customized feedback form to gather valuable insights, ratings, and suggestions from your event participants. Build better events with data-driven decisions.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <ActionButton 
+                    onClick={handleCreateFeedbackForm} 
+                    variant="primary" 
+                    icon={Plus}
+                    className="px-8 py-3 text-base font-semibold shadow-lg"
+                  >
+                    Create Feedback Form
+                  </ActionButton>
+                  
+                  <ActionButton 
+                    onClick={() => navigate(`/admin/events/${eventId}/feedback/templates`)} 
+                    variant="secondary" 
+                    icon={FileText}
+                    className="px-8 py-3 text-base"
+                  >
+                    Use Template
+                  </ActionButton>
+                </div>
+                
+                <div className="mt-8 flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4" />
+                    <span>Rating Questions</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Text Responses</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Multiple Choice</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4" />
+                    <span>Live Analytics</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* No Responses Yet Message */}
+          {event.feedback_form && allResponses.length === 0 && (
+            <div className="text-center py-16 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 rounded-xl border border-amber-100 relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Clock className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-amber-800 mb-3">Waiting for Responses</h3>
+                <p className="text-amber-700 mb-6 max-w-md mx-auto">
+                  Your feedback form is active and ready. Share the event link with participants to start collecting responses.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <ActionButton 
+                    onClick={() => navigator.clipboard.writeText(window.location.origin + `/client/events/${eventId}`)} 
+                    variant="warning" 
+                    icon={Eye}
+                    className="px-6 py-2"
+                  >
+                    Copy Event Link
+                  </ActionButton>
+                  
+                  <ActionButton 
+                    onClick={handleEditFeedbackForm} 
+                    variant="secondary" 
+                    icon={Edit}
+                    className="px-6 py-2"
+                  >
+                    Edit Form
+                  </ActionButton>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Recent Responses */}
-          {event.feedback_responses && event.feedback_responses.responses.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Responses</h2>
-                <ActionButton onClick={handleViewResponses} variant="secondary" icon={Eye}>
-                  View All
-                </ActionButton>
+          {allResponses.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-t-4xl p-6 max-w-7xl mx-auto ">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Recent Responses 
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({allResponses.length}{event.feedback_responses?.total_responses ? ` of ${event.feedback_responses.total_responses}` : ''})
+                  </span>
+                </h2>
               </div>
               
-              <div className="space-y-4">
-                {event.feedback_responses.responses.slice(0, 5).map((response, index) => (
-                  <div key={response.feedback_id || index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {response.student_info.name || 'Anonymous'}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {response.student_info.enrollment_no}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">
-                          {formatDateTime(response.submitted_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              {/* 3-Column Grid Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {allResponses.map((response, index) => (
+                  <FeedbackResponseCard
+                    key={response.feedback_id || index}
+                    response={response}
+                    feedbackForm={event.feedback_form}
+                    showStudentInfo={true}
+                    className="hover:shadow-lg transition-shadow duration-200"
+                  />
                 ))}
               </div>
+              
+              {/* Load More Button */}
+              {hasMoreResponses && (
+                <div className="flex justify-center mt-8 pt-6 border-t border-gray-100">
+                  <ActionButton 
+                    onClick={loadMoreResponses}
+                    variant="secondary"
+                    disabled={isLoadingMore}
+                    className="px-8 py-3 text-base"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More Responses
+                        {event.feedback_responses?.total_responses && (
+                          <span className="ml-2 text-sm opacity-75">
+                            ({event.feedback_responses.total_responses - allResponses.length} remaining)
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </ActionButton>
+                </div>
+              )}
+              
+              {/* End of Results Message */}
+              {!hasMoreResponses && allResponses.length >= RESPONSES_PER_PAGE && (
+                <div className="text-center mt-8 pt-6 border-t border-gray-100">
+                  <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    All responses loaded ({allResponses.length} total)
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

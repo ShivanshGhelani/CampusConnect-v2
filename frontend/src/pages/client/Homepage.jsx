@@ -67,7 +67,7 @@ function Homepage() {
 
       setFestImages(fallbackImages);
     } catch (error) {
-      console.error('Error fetching fest images:', error);
+      
       // Set default images if API fails
       setFestImages([
         'https://images.unsplash.com/photo-1523580494863-6f3031224c94?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
@@ -84,7 +84,7 @@ function Homepage() {
         setUpcomingEvents(upcoming);
       }
     } catch (error) {
-      console.error('Failed to fetch upcoming events:', error);
+      
     } finally {
       setIsLoading(false);
     }

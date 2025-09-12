@@ -6,14 +6,18 @@ let avatarListeners = [];
 let isAvatarFetched = false;
 let isFetching = false;
 let currentUserId = null;
+let lastFetchTime = null;  // NEW: Track last fetch time
+let ongoingFetchPromise = null;  // NEW: Track ongoing fetch promise
 
 // Export function to reset global avatar state (for logout/user change)
 export const resetAvatarGlobalState = () => {
-  console.log('🔄 Resetting global avatar state (logout/user change)');
+  
   globalAvatarUrl = null;
   isAvatarFetched = false;
   isFetching = false;
   currentUserId = null;
+  lastFetchTime = null;
+  ongoingFetchPromise = null;
   // Notify all listeners to clear their avatar state
   avatarListeners.forEach(listener => listener(null));
 };
@@ -23,7 +27,9 @@ export const getGlobalAvatarState = () => ({
   globalAvatarUrl,
   isAvatarFetched,
   isFetching,
-  currentUserId
+  currentUserId,
+  lastFetchTime,
+  ongoingFetchPromise
 });
 
 export const setGlobalAvatarState = (state) => {
@@ -31,6 +37,8 @@ export const setGlobalAvatarState = (state) => {
   if (state.isAvatarFetched !== undefined) isAvatarFetched = state.isAvatarFetched;
   if (state.isFetching !== undefined) isFetching = state.isFetching;
   if (state.currentUserId !== undefined) currentUserId = state.currentUserId;
+  if (state.lastFetchTime !== undefined) lastFetchTime = state.lastFetchTime;
+  if (state.ongoingFetchPromise !== undefined) ongoingFetchPromise = state.ongoingFetchPromise;
 };
 
 export const addAvatarListener = (listener) => {

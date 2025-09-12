@@ -4,7 +4,6 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import UploadForm from '../../components/admin/certificates/UploadForm';
 import TemplateTable from '../../components/admin/certificates/TemplateTable';
 import EditModal from '../../components/admin/certificates/EditModal';
-import PreviewModal from '../../components/admin/certificates/PreviewModal';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { adminAPI } from '../../api/admin';
 import { Dropdown, SearchBox } from '../../components/ui';
@@ -22,6 +21,8 @@ function ManageCertificates() {
   const [isUploading, setIsUploading] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
+  const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ field: 'uploaded_at', direction: 'desc' });
   const [stats, setStats] = useState({
@@ -45,7 +46,7 @@ function ManageCertificates() {
 
   // Add/remove modal backdrop blur class
   useEffect(() => {
-    const isModalOpen = isEditModalOpen || isPreviewModalOpen;
+    const isModalOpen = isEditModalOpen || isPreviewModalOpen || certificateModalOpen;
     
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -57,7 +58,16 @@ function ManageCertificates() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isEditModalOpen, isPreviewModalOpen]);
+  }, [isEditModalOpen, isPreviewModalOpen, certificateModalOpen]);
+
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      if (currentCertificateTemplate && currentCertificateTemplate.url.startsWith('blob:')) {
+        URL.revokeObjectURL(currentCertificateTemplate.url);
+      }
+    };
+  }, [currentCertificateTemplate]);
 
   // Fetch templates on component mount
   useEffect(() => {
@@ -94,7 +104,7 @@ function ManageCertificates() {
         setError('Failed to fetch certificate templates');
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      
       setError('Failed to load certificate templates. Please try again.');
     } finally {
       setIsLoading(false);
@@ -134,7 +144,7 @@ function ManageCertificates() {
           setError('Failed to migrate templates');
         }
       } catch (error) {
-        console.error('Error migrating templates:', error);
+        
         setError('Failed to migrate templates. Please try again.');
       } finally {
         setIsLoading(false);
@@ -187,7 +197,7 @@ function ManageCertificates() {
         
         showNotification('Certificate template deleted successfully!', 'success');
       } catch (error) {
-        console.error('Error deleting template:', error);
+        
         showNotification('Failed to delete template. Please try again.', 'error');
       } finally {
         setIsLoading(false);
@@ -203,9 +213,85 @@ function ManageCertificates() {
     setSelectedTemplate(null);
   };
 
-  const handlePreviewTemplate = (template) => {
-    setPreviewTemplate(template);
-    setIsPreviewModalOpen(true);
+  const handlePreviewTemplate = async (template) => {
+    try {
+      // Use the file_url from the template
+      const templateUrl = template.file_url;
+      if (!templateUrl) {
+        showNotification('Template URL not found', 'error');
+        return;
+      }
+
+      // Fetch the HTML content and create a blob URL for proper rendering
+      const response = await fetch(templateUrl);
+      if (!response.ok) {
+        throw new Error('Failed to load template');
+      }
+      const htmlContent = await response.text();
+
+      // Create a blob URL from the HTML content so it renders properly
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      setCurrentCertificateTemplate({
+        url: blobUrl,
+        originalUrl: templateUrl,
+        name: template.name,
+        category: template.category,
+        created_at: template.created_at,
+        file_path: template.file_path,
+        tags: template.tags
+      });
+      setCertificateModalOpen(true);
+    } catch (error) {
+      
+      // Fallback to original URL if fetch fails
+      setCurrentCertificateTemplate({
+        url: template.file_url,
+        originalUrl: template.file_url,
+        name: template.name,
+        category: template.category,
+        created_at: template.created_at,
+        file_path: template.file_path,
+        tags: template.tags
+      });
+      setCertificateModalOpen(true);
+    }
+  };
+
+  const handleDownloadTemplate = async (template) => {
+    try {
+      const templateUrl = template.file_url;
+      if (!templateUrl) {
+        showNotification('Template URL not found', 'error');
+        return;
+      }
+
+      // Fetch the template content
+      const response = await fetch(templateUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download template');
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = template.filename || `${template.name.replace(/\s+/g, '_')}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      URL.revokeObjectURL(downloadUrl);
+      
+      showNotification('Template downloaded successfully!', 'success');
+    } catch (error) {
+      
+      showNotification('Failed to download template. Please try again.', 'error');
+    }
   };
 
   const handleSort = (field) => {
@@ -254,17 +340,28 @@ function ManageCertificates() {
                 <p className="mt-1 text-sm text-gray-600">Manage and organize certificate templates</p>
               </div>
               
-              {/* Upload Template Button */}
-              <button
-                onClick={() => {
-                  setIsFloatingPanelOpen(true);
-                  setIsFloatingPanelMinimized(false);
-                }}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-              >
-                <i className="fas fa-plus mr-2"></i>
-                Upload Template
-              </button>
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setIsFloatingPanelOpen(true);
+                    setIsFloatingPanelMinimized(false);
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+                >
+                  <i className="fas fa-plus mr-2"></i>
+                  Upload Template
+                </button>
+                <button
+                  onClick={() => window.open('https://campusconnectldrpcerti.vercel.app/', '_blank')}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Certificate Template
+                </button>
+              </div>
             </div>
           </div>
           {/* Flash Messages */}
@@ -407,6 +504,7 @@ function ManageCertificates() {
               onEdit={handleEditTemplate}
               onDelete={handleDeleteTemplate}
               onPreview={handlePreviewTemplate}
+              onDownload={handleDownloadTemplate}
               sortConfig={sortConfig}
               onSort={handleSort}
               currentPage={currentPage}
@@ -487,6 +585,95 @@ function ManageCertificates() {
         </div>,
         document.body
       )}
+      {/* Certificate Preview Modal */}
+      {certificateModalOpen && currentCertificateTemplate && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/50 z-[99999] animate-in fade-in duration-200">
+          {/* Floating Close Button */}
+          <button
+            onClick={() => {
+              // Clean up blob URL if it exists
+              if (currentCertificateTemplate.url.startsWith('blob:')) {
+                URL.revokeObjectURL(currentCertificateTemplate.url);
+              }
+              setCertificateModalOpen(false);
+              setCurrentCertificateTemplate(null);
+            }}
+            className="fixed top-4 right-4 z-[100000] bg-black/80 hover:bg-black text-white rounded-full p-3 transition-colors shadow-lg"
+            title="Close Preview"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Floating Actions */}
+          <div className="fixed top-4 left-4 z-[100000] flex gap-2">
+            <a
+              href={currentCertificateTemplate.originalUrl || currentCertificateTemplate.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Open Original
+            </a>
+            <button
+              onClick={() => {
+                const template = {
+                  file_url: currentCertificateTemplate.originalUrl,
+                  filename: currentCertificateTemplate.file_path || `${currentCertificateTemplate.name.replace(/\s+/g, '_')}.html`,
+                  name: currentCertificateTemplate.name
+                };
+                handleDownloadTemplate(template);
+              }}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download
+            </button>
+            <div className="bg-black/80 text-white px-4 py-2 rounded-lg text-sm shadow-lg flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {currentCertificateTemplate.name} ({currentCertificateTemplate.category})
+            </div>
+          </div>
+
+          {/* Template Info Bar */}
+          {currentCertificateTemplate.tags && currentCertificateTemplate.tags.length > 0 && (
+            <div className="fixed bottom-4 left-4 z-[100000] flex gap-2">
+              {currentCertificateTemplate.tags.slice(0, 3).map((tag, index) => (
+                <span 
+                  key={index}
+                  className="bg-black/80 text-white px-3 py-1 rounded-full text-xs shadow-lg"
+                >
+                  {tag}
+                </span>
+              ))}
+              {currentCertificateTemplate.tags.length > 3 && (
+                <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs shadow-lg">
+                  +{currentCertificateTemplate.tags.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Full Screen Template Content */}
+          <iframe
+            src={currentCertificateTemplate.url}
+            title={`Certificate Template - ${currentCertificateTemplate.name}`}
+            className="w-full h-full border-0 bg-white"
+            onError={() => {
+              
+            }}
+          />
+        </div>
+      )}
+      
       {/* Edit Modal */}
       {isEditModalOpen && selectedTemplate && (
         <EditModal
@@ -500,16 +687,6 @@ function ManageCertificates() {
           availableTags={availableTags}
         />
       )}
-      
-      {/* Preview Modal */}
-      <PreviewModal
-        template={previewTemplate}
-        isOpen={isPreviewModalOpen}
-        onClose={() => {
-          setIsPreviewModalOpen(false);
-          setPreviewTemplate(null);
-        }}
-      />
     </>
   );
 }

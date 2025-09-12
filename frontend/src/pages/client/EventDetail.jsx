@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { fetchEventWithCache, getAnyEventCache } from '../../utils/eventCache';
 
 function EventDetail() {
   const { eventId } = useParams();
@@ -16,37 +17,54 @@ function EventDetail() {
   const [attendanceMarked, setAttendanceMarked] = useState(false);
 
   useEffect(() => {
-    fetchEventDetails();
-    // Reset state when eventId changes
-    setFeedbackSubmitted(false);
-    setAttendanceMarked(false);
-  }, [eventId]);
+    // Only fetch if eventId exists and is different from current event
+    if (eventId && (!event || event.event_id !== eventId)) {
+      
+      fetchEventDetails();
+      // Reset state when eventId changes
+      setFeedbackSubmitted(false);
+      setAttendanceMarked(false);
+    } else if (event && event.event_id === eventId) {
+      
+      setIsLoading(false);
+    }
+  }, [eventId]); // Only depend on eventId
 
   const fetchEventDetails = async () => {
     try {
       setIsLoading(true);
       setError('');
 
-      const response = await clientAPI.getEventDetails(eventId);
+      // OPTIMIZED: Check for immediate cache hit first
+      
+      let eventData = getAnyEventCache(eventId);
+      
+      if (!eventData) {
+        
+        // OPTIMIZED: Use global cache to prevent duplicate API calls
+        eventData = await fetchEventWithCache(eventId, clientAPI);
+      } else {
+        
+      }
 
-      if (response.data.success) {
-        setEvent(response.data.event);
+      if (eventData && eventData.success) {
+        setEvent(eventData.event);
 
         // Debug: Log the event data to console to check organizers and contacts
-        console.log('Event data received:', response.data.event);
-        console.log('Organizers:', response.data.event.organizers);
-        console.log('Contacts:', response.data.event.contacts);
+        
+        
+        
 
         // Check registration status if user is authenticated
         if (isAuthenticated) {
           // This would be an API call to check if user is registered
-          // setRegistrationStatus(response.data.registrationStatus);
+          // setRegistrationStatus(eventData.registrationStatus);
         }
       } else {
         setError('Failed to load event details');
       }
     } catch (error) {
-      console.error('Event details fetch error:', error);
+      
       setError('Failed to load event details. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -1458,30 +1476,18 @@ function EventDetail() {
                   </span>
                 </div>
 
-                {/* Type - Always shown */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Type</span>
-                  <span className="text-sm font-semibold text-gray-800">                      {event.registration_type ? (
-                    event.registration_type === 'free' ? (
-                      <span className="flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                        </svg>
-                        Free
-                      </span>
-                    ) :
-                      event.registration_type === 'paid' ? (
-                        <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                          </svg>
-                          Paid
-                        </span>
-                      ) :
-                        event.registration_type.charAt(0).toUpperCase() + event.registration_type.slice(1)
-                  ) : 'Not specified'}
-                  </span>
-                </div>
+                {/* Multiple Team Registration - Only show for team-based events when true */}
+                {(event.registration_mode === 'team' || event.event_type === 'team') && event.allow_multiple_team_registrations === true && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-sm font-medium text-gray-600">Multiple Team Registration</span>
+                    <span className="text-sm font-semibold text-blue-600 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Allowed
+                    </span>
+                  </div>
+                )}
 
                 {/* Registration Mode - Only if exists */}
                 {event.registration_mode && (
