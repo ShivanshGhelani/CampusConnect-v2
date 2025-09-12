@@ -278,8 +278,9 @@ async def shutdown_db_client():
 
 # Health check endpoint for debugging API connectivity
 @app.get("/api/health")
+@app.head("/api/health")
 async def health_check(request: Request):
-    """Simple health check endpoint to test API connectivity"""
+    """Simple health check endpoint to test API connectivity - supports both GET and HEAD"""
     from datetime import datetime
     return {
         "status": "healthy",
@@ -289,6 +290,13 @@ async def health_check(request: Request):
         "user_agent": request.headers.get("user-agent"),
         "cors_configured": True
     }
+
+# Even simpler health check for monitoring services
+@app.get("/ping")
+@app.head("/ping")
+async def ping():
+    """Ultra-simple ping endpoint for monitoring services"""
+    return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
