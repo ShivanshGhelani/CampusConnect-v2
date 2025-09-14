@@ -4,32 +4,64 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function LoginPage() {
-  const [activeTab, setActiveTab] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    // Student form data
-    enrollment_no: '',
+    identifier: '', // Single field for enrollment_no, employee_id, or username
     password: '',
     remember_me: false,
-    // Admin form data
-    username: '',
-    admin_password: '',
-    admin_remember_me: false,
-    // Faculty form data
-    employee_id: '',
-    faculty_password: '',
-    faculty_remember_me: false,
   });
+  const [detectedUserType, setDetectedUserType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login, error, clearError, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || (
-    activeTab === 'admin' ? '/admin/dashboard' : 
-    activeTab === 'faculty' ? '/faculty/profile' : 
-    '/client/dashboard'
-  );
+  const from = location.state?.from?.pathname || '/client/dashboard';
+
+  // Function to detect user type based on identifier format
+  const detectUserType = (identifier) => {
+    if (!identifier) return null;
+    
+    // Student enrollment pattern (e.g., 21BECE40015, 22BTECH12345)
+    const enrollmentPattern = /^\d{2}[A-Z]{3,6}\d{4,6}$/;
+    
+    // Faculty employee ID pattern (e.g., EMP001, FAC123, PROF456)
+    const employeePattern = /^(EMP|FAC|PROF|TEACH)\d{3,6}$/i;
+    
+    // Admin username pattern (typically shorter strings without specific format)
+    const adminPattern = /^[a-zA-Z][a-zA-Z0-9_]{2,20}$/;
+    
+    if (enrollmentPattern.test(identifier)) {
+      return 'student';
+    } else if (employeePattern.test(identifier)) {
+      return 'faculty';
+    } else if (adminPattern.test(identifier)) {
+      return 'admin';
+    }
+    
+    // If no specific pattern matches, try to guess based on length and content
+    if (/^\d+[A-Z]+\d+$/.test(identifier) && identifier.length >= 8) {
+      return 'student'; // Likely enrollment number
+    } else if (identifier.length <= 10 && /^[A-Z0-9]+$/i.test(identifier)) {
+      return 'faculty'; // Likely employee ID
+    } else {
+      return 'admin'; // Default to admin for other formats
+    }
+  };
+
+  // Function to get default redirect based on user type
+  const getDefaultRedirect = (userType) => {
+    switch (userType) {
+      case 'student':
+        return '/client/dashboard';
+      case 'faculty':
+        return '/faculty/profile'; // Always go to faculty dashboard first
+      case 'admin':
+        return '/admin/dashboard';
+      default:
+        return '/client/dashboard';
+    }
+  };
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -38,45 +70,21 @@ function LoginPage() {
     }
   }, [isAuthenticated, navigate, from]);
 
-  // Check URL for active tab
+  // Auto-detect user type when identifier changes
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const mode = urlParams.get('mode');
-    const tab = urlParams.get('tab');
-    
-    // Support both 'mode' and 'tab' parameters for backward compatibility
-    const activeMode = tab || mode;
-    
-    if (activeMode === 'admin') {
-      setActiveTab('admin');
-    } else if (activeMode === 'faculty') {
-      setActiveTab('faculty');
-    } else if (activeMode === 'student') {
-      setActiveTab('student');
-    }
-  }, [location.search]);
-
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    clearError();
-    setFormData({
-      enrollment_no: '',
-      password: '',
-      remember_me: false,
-      username: '',
-      admin_password: '',
-      admin_remember_me: false,
-      employee_id: '',
-      faculty_password: '',
-      faculty_remember_me: false,
-    });
-  };
+    const userType = detectUserType(formData.identifier);
+    setDetectedUserType(userType);
+  }, [formData.identifier]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : (name === 'enrollment_no' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') : value)
+      [name]: type === 'checkbox' ? checked : (
+        name === 'identifier' 
+          ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') // Clean identifier input
+          : value
+      )
     }));
     clearError();
   };
@@ -89,32 +97,43 @@ function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
+    // Detect user type from identifier
+    const userType = detectUserType(formData.identifier);
+    
+    if (!userType) {
+      // Handle case where user type cannot be determined
+      setIsLoading(false);
+      // You might want to show an error or provide guidance
+      return;
+    }
+
+    // Prepare login data based on detected user type
     let loginData;
-    if (activeTab === 'student') {
+    if (userType === 'student') {
       loginData = {
-        enrollment_no: formData.enrollment_no,
+        enrollment_no: formData.identifier,
         password: formData.password,
         remember_me: formData.remember_me,
       };
-    } else if (activeTab === 'faculty') {
+    } else if (userType === 'faculty') {
       loginData = {
-        employee_id: formData.employee_id,
-        password: formData.faculty_password,
-        remember_me: formData.faculty_remember_me,
+        employee_id: formData.identifier,
+        password: formData.password,
+        remember_me: formData.remember_me,
       };
-    } else {
+    } else { // admin
       loginData = {
-        username: formData.username,
-        password: formData.admin_password,
-        remember_me: formData.admin_remember_me,
+        username: formData.identifier,
+        password: formData.password,
+        remember_me: formData.remember_me,
       };
     }
 
-    const result = await login(loginData, activeTab);
+    const result = await login(loginData, userType);
     
     if (result.success) {
-      // Use the redirect URL from backend response, or fallback to default
-      const redirectPath = result.redirectUrl || from;
+      // Use the redirect URL from backend response, or fallback to user type default
+      const redirectPath = result.redirectUrl || getDefaultRedirect(userType);
       navigate(redirectPath, { replace: true });
     }
     
@@ -122,7 +141,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-teal-800 to-sky-900 text-white py-2 fixed top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
@@ -134,352 +153,158 @@ function LoginPage() {
         </div>
       </div>
 
-      <div className="max-w-md w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
-        <div className="text-center">
+      <div className="w-full max-w-md mt-16">
+        {/* Header Section */}
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
-            <div className={`h-20 w-20 flex items-center justify-center rounded-full ${
-              activeTab === 'admin' 
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600' 
-                : activeTab === 'faculty'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
-                : 'bg-gradient-to-r from-green-600 to-emerald-600'
-            } shadow-lg`}>
-              <i className={`${
-                activeTab === 'admin' ? 'fas fa-user-shield' : 
-                activeTab === 'faculty' ? 'fas fa-chalkboard-teacher' :
-                'fas fa-user-graduate'
-              } text-white text-3xl`}></i>
+            <div className="h-16 w-16 flex items-center justify-center rounded-2xl bg-blue-600 shadow-lg">
+              <i className="fas fa-university text-white text-2xl"></i>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            {activeTab === 'admin' ? 'Admin Portal' : 
-             activeTab === 'faculty' ? 'Faculty Portal' :
-             'Student Portal'}
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            Welcome back
           </h1>
-          <p className="text-lg text-gray-600">
-            {activeTab === 'admin' 
-              ? 'Administrative access to CampusConnect' 
-              : activeTab === 'faculty'
-              ? 'Faculty portal for event management and participation'
-              : 'Sign in to register for events and activities'
-            }
+          <p className="text-slate-600">
+            Sign in to your CampusConnect account
           </p>
         </div>
 
-        {/* Login Type Selector */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-2">
-          <div className="flex rounded-lg bg-gray-100 p-1">
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('student')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'student'
-                  ? 'bg-green-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <i className="fas fa-user-graduate mr-2"></i>
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('faculty')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'faculty'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <i className="fas fa-chalkboard-teacher mr-2"></i>
-              Faculty
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('admin')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'admin'
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <i className="fas fa-user-shield mr-2"></i>
-              Admin
-            </button>
-          </div>
-        </div>
-
-        {/* Login Form */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-exclamation-triangle text-red-400"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm">{error}</p>
-                </div>
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl">
+              <div className="flex items-center">
+                <i className="fas fa-exclamation-circle mr-3 text-red-500"></i>
+                <p className="text-sm font-medium">{error}</p>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
-            {activeTab === 'student' ? (
-              <>
-                {/* Student Login Fields */}
-                <div>
-                  <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-id-card mr-2 text-green-600"></i>
-                    Enrollment Number
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="enrollment_no"
-                      name="enrollment_no"
-                      type="text"
-                      required
-                      placeholder="e.g., 21BECE40015"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      value={formData.enrollment_no}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-user text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your university enrollment number</p>
+            {/* Username/ID Field */}
+            <div className="space-y-2">
+              <label htmlFor="identifier" className="block text-sm font-semibold text-slate-700">
+                Username
+              </label>
+              <div className="relative">
+                <input
+                  id="identifier"
+                  name="identifier"
+                  type="text"
+                  required
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  placeholder="Enter your username or ID"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400"
+                  value={formData.identifier}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <i className="fas fa-user text-slate-400"></i>
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-lock mr-2 text-green-600"></i>
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter your password"
-                      className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      value={formData.password}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePassword}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : activeTab === 'faculty' ? (
-              <>
-                {/* Faculty Login Fields */}
-                <div>
-                  <label htmlFor="employee_id" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-id-badge mr-2 text-blue-600"></i>
-                    Employee ID
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="employee_id"
-                      name="employee_id"
-                      type="text"
-                      required
-                      placeholder="e.g., EMP001"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      value={formData.employee_id}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-chalkboard-teacher text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your faculty employee ID</p>
-                </div>
+            {/* Password Field */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-semibold text-slate-700">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={togglePassword}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
 
-                <div>
-                  <label htmlFor="faculty_password" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-lock mr-2 text-blue-600"></i>
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="faculty_password"
-                      name="faculty_password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter your password"
-                      className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      value={formData.faculty_password}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePassword}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Admin Login Fields */}
-                <div>
-                  <label htmlFor="username" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-user-shield mr-2 text-purple-600"></i>
-                    Admin Username
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      required
-                      placeholder="Enter admin username"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                      value={formData.username}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-shield-alt text-gray-400"></i>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="admin_password" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-key mr-2 text-purple-600"></i>
-                    Admin Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="admin_password"
-                      name="admin_password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      placeholder="Enter admin password"
-                      className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                      value={formData.admin_password}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePassword}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-
+            {/* Remember me and Forgot password */}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
-                  id={`remember-me-${activeTab}`}
-                  name={activeTab === 'student' ? 'remember_me' : activeTab === 'faculty' ? 'faculty_remember_me' : 'admin_remember_me'}
+                  id="remember-me"
+                  name="remember_me"
                   type="checkbox"
-                  checked={activeTab === 'student' ? formData.remember_me : activeTab === 'faculty' ? formData.faculty_remember_me : formData.admin_remember_me}
+                  checked={formData.remember_me}
                   onChange={handleChange}
-                  className={`h-4 w-4 border-gray-300 rounded focus:ring-2 focus:ring-offset-2 transition-colors ${
-                    activeTab === 'admin'
-                      ? 'text-purple-600 focus:ring-purple-500'
-                      : activeTab === 'faculty'
-                      ? 'text-blue-600 focus:ring-blue-500'
-                      : 'text-green-600 focus:ring-green-500'
-                  }`}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded transition-colors"
                   disabled={isLoading}
                 />
-                <label htmlFor={`remember-me-${activeTab}`} className="ml-2 block text-sm text-gray-700">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600">
                   Remember me
                 </label>
               </div>
-              {(activeTab === 'student' || activeTab === 'faculty') && (
-                <Link
-                  to={`/forgot-password?tab=${activeTab}`}
-                  className={`text-sm font-medium transition-colors ${
-                    activeTab === 'faculty' 
-                      ? 'text-blue-600 hover:text-blue-500'
-                      : 'text-green-600 hover:text-green-500'
-                  }`}
-                >
-                  Forgot password?
-                </Link>
-              )}
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
+            {/* Sign In Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white transition-all duration-200 ${
-                activeTab === 'admin'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:ring-purple-500'
-                  : activeTab === 'faculty'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 focus:ring-blue-500'
-                  : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-green-500'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={isLoading || !formData.identifier || !formData.password}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
               {isLoading ? (
-                <>
+                <div className="flex items-center justify-center">
                   <LoadingSpinner size="sm" className="mr-2" />
                   Signing in...
-                </>
+                </div>
               ) : (
-                <>
+                <div className="flex items-center justify-center">
                   <i className="fas fa-sign-in-alt mr-2"></i>
-                  Sign In to {activeTab === 'admin' ? 'Admin Panel' : 
-                           activeTab === 'faculty' ? 'Faculty Portal' :
-                           'Student Portal'}
-                </>
+                  Sign In
+                </div>
               )}
             </button>
           </form>
 
-          {/* Registration Link (only visible in student and faculty mode) */}
-          {(activeTab === 'student' || activeTab === 'faculty') && (
-            <div className="mt-6">
-              {/* Registration Call-to-Action */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-3 bg-white text-gray-500">New to Campus Connect?</span>
-                </div>
-              </div>
-              {/* Create Account Link */}
-              <div className="text-center">
-                <Link
-                  to={`/auth/register?tab=${activeTab}`}
-                  className={`inline-flex items-center justify-center px-6 py-3 border rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
-                    activeTab === 'faculty'
-                      ? 'border-blue-600 text-blue-600 bg-white hover:bg-blue-600 hover:text-white'
-                      : 'border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white'
-                  }`}
-                >
-                  <i className="fas fa-user-plus mr-2"></i>
-                  Create Account
-                </Link>
-                <p className="mt-3 text-xs text-gray-500">
-                  Join the campus community and never miss an event!
-                </p>
-              </div>
+          {/* Registration Section */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <div className="text-center">
+              <p className="text-slate-600 mb-4">
+                New to CampusConnect?
+              </p>
+              <Link
+                to="/auth/register"
+                className="inline-flex items-center justify-center px-6 py-2.5 border-2 border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <i className="fas fa-user-plus mr-2"></i>
+                Create Account
+              </Link>
+              <p className="mt-3 text-xs text-slate-500">
+                Join the campus community today!
+              </p>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

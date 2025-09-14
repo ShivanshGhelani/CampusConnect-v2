@@ -5,47 +5,52 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 
 function ForgotPasswordPage() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState('student');
   const [formData, setFormData] = useState({
-    // Student form data
-    enrollment_no: '',
+    identifier: '', // Single field for enrollment_no or employee_id
     email: '',
-    // Faculty form data
-    employee_id: '',
-    faculty_email: '',
   });
+  const [detectedUserType, setDetectedUserType] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // Check URL for tab parameter
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const tabParam = urlParams.get('tab');
-    if (tabParam === 'faculty') {
-      setActiveTab('faculty');
-    } else if (tabParam === 'student') {
-      setActiveTab('student');
+  // Function to detect user type based on identifier format (same as LoginPage)
+  const detectUserType = (identifier) => {
+    if (!identifier) return null;
+    
+    // Student enrollment pattern (e.g., 21BECE40015, 22BTECH12345)
+    const enrollmentPattern = /^\d{2}[A-Z]{3,6}\d{4,6}$/;
+    
+    // Faculty employee ID pattern (e.g., EMP001, FAC123, PROF456)
+    const employeePattern = /^(EMP|FAC|PROF|TEACH)\d{3,6}$/i;
+    
+    if (enrollmentPattern.test(identifier)) {
+      return 'student';
+    } else if (employeePattern.test(identifier)) {
+      return 'faculty';
     }
-  }, [location.search]);
-
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    setError('');
-    setMessage('');
-    setFormData({
-      enrollment_no: '',
-      email: '',
-      employee_id: '',
-      faculty_email: '',
-    });
+    
+    // If no specific pattern matches, try to guess based on length and content
+    if (/^\d+[A-Z]+\d+$/.test(identifier) && identifier.length >= 8) {
+      return 'student'; // Likely enrollment number
+    } else if (identifier.length <= 10 && /^[A-Z0-9]+$/i.test(identifier)) {
+      return 'faculty'; // Likely employee ID
+    }
+    
+    return null; // Cannot determine type
   };
+
+  // Auto-detect user type when identifier changes
+  useEffect(() => {
+    const userType = detectUserType(formData.identifier);
+    setDetectedUserType(userType);
+  }, [formData.identifier]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'enrollment_no' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') : value
+      [name]: name === 'identifier' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') : value
     }));
     setError('');
     setMessage('');
@@ -57,34 +62,39 @@ function ForgotPasswordPage() {
     setError('');
     setMessage('');
 
+    // Detect user type from identifier
+    const userType = detectUserType(formData.identifier);
+    
+    if (!userType) {
+      setError('Please enter a valid enrollment number or employee ID.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       let response;
+      let requestData;
 
-      if (activeTab === 'student') {
-        const requestData = {
-          enrollment_no: formData.enrollment_no,
+      if (userType === 'student') {
+        requestData = {
+          enrollment_no: formData.identifier,
           email: formData.email,
         };
-        // Use unified endpoint
         response = await authAPI.forgotPassword('student', requestData);
-      } else {
-        const requestData = {
-          employee_id: formData.employee_id,
-          email: formData.faculty_email,
+      } else { // faculty
+        requestData = {
+          employee_id: formData.identifier,
+          email: formData.email,
         };
-        // Use unified endpoint
         response = await authAPI.forgotPassword('faculty', requestData);
       }
 
       setMessage(response.data.message || 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions.');
       setFormData({
-        enrollment_no: '',
+        identifier: '',
         email: '',
-        employee_id: '',
-        faculty_email: '',
       });
     } catch (error) {
-      
       setError(error.response?.data?.detail || 'Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
@@ -92,7 +102,7 @@ function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-teal-800 to-sky-900 text-white py-2 fixed top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
@@ -104,234 +114,127 @@ function ForgotPasswordPage() {
         </div>
       </div>
 
-      <div className="max-w-md w-full mx-auto space-y-8 mt-10">
+      <div className="w-full max-w-md mt-16">
         {/* Header Section */}
-        <div className="text-center">
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
-            <div className={`h-20 w-20 flex items-center justify-center rounded-full ${
-              activeTab === 'faculty'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
-                : 'bg-gradient-to-r from-green-600 to-emerald-600'
-            } shadow-lg`}>
-              <i className={`${
-                activeTab === 'faculty' ? 'fas fa-chalkboard-teacher' : 'fas fa-user-graduate'
-              } text-white text-3xl`}></i>
+            <div className="h-16 w-16 flex items-center justify-center rounded-2xl bg-blue-600 shadow-lg">
+              <i className="fas fa-key text-white text-2xl"></i>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Reset Your Password
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            Reset Password
           </h1>
-          <p className="text-lg text-gray-600">
-            Enter your credentials to receive a password reset link
+          <p className="text-slate-600">
+            Enter your credentials to receive a reset link
           </p>
         </div>
 
-        {/* User Type Selector */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-2">
-          <div className="flex rounded-lg bg-gray-100 p-1">
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('student')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'student'
-                  ? 'bg-green-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <i className="fas fa-user-graduate mr-2"></i>
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('faculty')}
-              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'faculty'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <i className="fas fa-chalkboard-teacher mr-2"></i>
-              Faculty
-            </button>
-          </div>
-        </div>
-
-        {/* Reset Form */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-8">
+        {/* Reset Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
           {/* Success Message */}
           {message && (
-            <div className="mb-6 bg-green-50 border-l-4 border-green-400 text-green-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-check-circle text-green-400"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm">{message}</p>
-                </div>
+            <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl">
+              <div className="flex items-center">
+                <i className="fas fa-check-circle mr-3 text-green-500"></i>
+                <p className="text-sm font-medium">{message}</p>
               </div>
             </div>
           )}
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <i className="fas fa-exclamation-triangle text-red-400"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm">{error}</p>
-                </div>
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl">
+              <div className="flex items-center">
+                <i className="fas fa-exclamation-circle mr-3 text-red-500"></i>
+                <p className="text-sm font-medium">{error}</p>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
-            {activeTab === 'student' ? (
-              <>
-                {/* Student Reset Fields */}
-                <div>
-                  <label htmlFor="enrollment_no" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-id-card mr-2 text-green-600"></i>
-                    Enrollment Number
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="enrollment_no"
-                      name="enrollment_no"
-                      type="text"
-                      required
-                      placeholder="e.g., 21BECE40015"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      value={formData.enrollment_no}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-user text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your university enrollment number</p>
+            {/* Username/ID Field */}
+            <div className="space-y-2">
+              <label htmlFor="identifier" className="block text-sm font-semibold text-slate-700">
+                Username or ID
+              </label>
+              <div className="relative">
+                <input
+                  id="identifier"
+                  name="identifier"
+                  type="text"
+                  required
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  placeholder="Enter your enrollment number or employee ID"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400"
+                  value={formData.identifier}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <i className="fas fa-user text-slate-400"></i>
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-envelope mr-2 text-green-600"></i>
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      placeholder="your.email@ldrp.ac.in"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      value={formData.email}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-at text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your registered email address</p>
+            {/* Email Field */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-slate-700">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="off"
+                  placeholder="your.email@ldrp.ac.in"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <i className="fas fa-envelope text-slate-400"></i>
                 </div>
-              </>
-            ) : (
-              <>
-                {/* Faculty Reset Fields */}
-                <div>
-                  <label htmlFor="employee_id" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-id-badge mr-2 text-blue-600"></i>
-                    Employee ID
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="employee_id"
-                      name="employee_id"
-                      type="text"
-                      required
-                      placeholder="e.g., EMP001"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      value={formData.employee_id}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-chalkboard-teacher text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your faculty employee ID</p>
-                </div>
+              </div>
+            </div>
 
-                <div>
-                  <label htmlFor="faculty_email" className="block text-sm font-semibold text-gray-800 mb-2">
-                    <i className="fas fa-envelope mr-2 text-blue-600"></i>
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="faculty_email"
-                      name="faculty_email"
-                      type="email"
-                      required
-                      placeholder="faculty.email@ldrp.ac.in"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      value={formData.faculty_email}
-                      onChange={handleChange}
-                      disabled={isLoading}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <i className="fas fa-at text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Enter your registered email address</p>
-                </div>
-              </>
-            )}
-
+            {/* Send Reset Link Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white transition-all duration-200 ${
-                activeTab === 'faculty'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 focus:ring-blue-500'
-                  : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-green-500'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={isLoading || !formData.identifier || !formData.email}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
               {isLoading ? (
-                <>
+                <div className="flex items-center justify-center">
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Sending Reset Link...
-                </>
+                  Sending reset link...
+                </div>
               ) : (
-                <>
+                <div className="flex items-center justify-center">
                   <i className="fas fa-paper-plane mr-2"></i>
                   Send Reset Link
-                </>
+                </div>
               )}
             </button>
           </form>
 
           {/* Back to Login */}
-          <div className="mt-6">
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-gray-500">Remember your password?</span>
-              </div>
-            </div>
+          <div className="mt-8 pt-6 border-t border-slate-200">
             <div className="text-center">
+              <p className="text-slate-600 mb-4">
+                Remember your password?
+              </p>
               <Link
-                to={`/auth/login?tab=${activeTab}`}
-                className={`inline-flex items-center justify-center px-6 py-3 border rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
-                  activeTab === 'faculty'
-                    ? 'border-blue-600 text-blue-600 bg-white hover:bg-blue-600 hover:text-white'
-                    : 'border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white'
-                }`}
+                to="/auth/login"
+                className="inline-flex items-center justify-center px-6 py-2.5 border-2 border-green-600 text-green-600 bg-white hover:bg-green-600 hover:text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <i className="fas fa-arrow-left mr-2"></i>
                 Back to Login
