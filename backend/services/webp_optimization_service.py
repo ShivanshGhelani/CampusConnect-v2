@@ -5,9 +5,17 @@ Converts images to WebP format for better compression and quality
 import io
 import aiohttp
 import asyncio
-from PIL import Image
 from typing import Optional, Tuple
 import logging
+
+# Handle missing PIL gracefully
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("PIL (Pillow) not available - WebP optimization will be disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +42,10 @@ class WebPOptimizationService:
         Returns:
             Tuple of (optimized_webp_bytes, mime_type)
         """
+        if not PIL_AVAILABLE:
+            logger.warning("PIL not available - returning original image without WebP conversion")
+            return image_content, "image/jpeg"  # Return original with generic MIME type
+            
         try:
             # Load image from bytes
             image = Image.open(io.BytesIO(image_content))
