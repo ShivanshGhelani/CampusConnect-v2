@@ -24,9 +24,12 @@ wheels/
 venv/
 env/
 ENV/
-admin/
+# admin/  # COMMENTED OUT - This was excluding our app/v1/admin/ directory!
 campusconnect/
 node_modueles/
+
+# If you need to exclude a specific admin directory, be more specific:
+# /some-other-admin-folder/
 
 # Environment Variables
 .env
