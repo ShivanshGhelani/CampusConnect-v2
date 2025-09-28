@@ -234,9 +234,14 @@ function EventList() {
 
   // Helper function to filter events based on user role and profile
   const getUserFilteredEvents = (events) => {
+    // First, filter out completed events for all users
+    const nonCompletedEvents = events.filter(event => 
+      event.status !== 'completed' && event.status !== 'finished'
+    );
+
     if (!isAuthenticated) {
-      // Show all student events for non-authenticated users
-      return events.filter(event =>
+      // Show all student events for non-authenticated users (except completed)
+      return nonCompletedEvents.filter(event =>
         event.target_audience === 'student' || event.target_audience === 'students'
       );
     } else if (userType === 'student') {
@@ -249,7 +254,7 @@ function EventList() {
 
       
       // Show only events that match student's department AND semester
-      return events.filter(event => {
+      return nonCompletedEvents.filter(event => {
         if (event.target_audience !== 'student' && event.target_audience !== 'students') {
           return false;
         }
@@ -287,12 +292,12 @@ function EventList() {
       });
     } else if (userType === 'faculty') {
       // Show only faculty events for faculty users
-      return events.filter(event =>
+      return nonCompletedEvents.filter(event =>
         event.target_audience === 'faculty'
       );
     } else {
-      // Fallback for admin or other user types - show all events
-      return events;
+      // Fallback for admin or other user types - show all events (excluding completed)
+      return nonCompletedEvents;
     }
   };
 

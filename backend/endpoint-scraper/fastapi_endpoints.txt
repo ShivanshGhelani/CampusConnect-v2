@@ -1,4 +1,4 @@
-Total API Endpoints: 130
+Total API Endpoints: 131
 
 ============================================================
 ENDPOINT 1
@@ -2989,6 +2989,18 @@ Responses:
 ============================================================
 ENDPOINT 122
 Method: GET
+Path: /api/debug/verify-deployment
+Category/Tags: No category
+Summary: Verify Deployment
+Description: Comprehensive deployment verification
+Responses:
+  HTTP 200: Successful Response
+    MIME Type: application/json
+    Schema: {}
+
+============================================================
+ENDPOINT 123
+Method: GET
 Path: /api/debug/imports
 Category/Tags: No category
 Summary: Debug Imports
@@ -2999,7 +3011,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 123
+ENDPOINT 124
 Method: GET
 Path: /ping
 Category/Tags: No category
@@ -3011,7 +3023,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 124
+ENDPOINT 125
 Method: HEAD
 Path: /ping
 Category/Tags: No category
@@ -3023,7 +3035,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 125
+ENDPOINT 126
 Method: GET
 Path: /
 Category/Tags: No category
@@ -3037,7 +3049,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 126
+ENDPOINT 127
 Method: GET
 Path: /favicon.ico
 Category/Tags: No category
@@ -3049,7 +3061,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 127
+ENDPOINT 128
 Method: GET
 Path: /event-categories
 Category/Tags: No category
@@ -3061,7 +3073,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 128
+ENDPOINT 129
 Method: GET
 Path: /health/scheduler
 Category/Tags: No category
@@ -3073,7 +3085,7 @@ Responses:
     Schema: {}
 
 ============================================================
-ENDPOINT 129
+ENDPOINT 130
 Method: GET
 Path: /logo/{filename}
 Category/Tags: No category
@@ -3096,7 +3108,7 @@ Responses:
 }
 
 ============================================================
-ENDPOINT 130
+ENDPOINT 131
 Method: GET
 Path: /signature/{path}
 Category/Tags: No category
