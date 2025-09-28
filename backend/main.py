@@ -192,16 +192,36 @@ async def internal_server_error_handler(request: Request, exc):
     return response
 
 # Include routes - Now all consolidated in APP structure
-from app import router as api_router
-# Removed: from app.legacy.direct_routes import router as legacy_direct_router  # Frontend should handle routing
-from app.v1.storage import router as storage_router
-from app.v1.registrations import router as registrations_router
-
-# Mount routes in correct order (most specific first)
-app.include_router(registrations_router, prefix="/api/v1")  # Registration routes at /api/v1/registrations/...
-app.include_router(storage_router) # Storage routes at /api/v1/storage/...
-app.include_router(api_router)     # API routes at /api/... (includes all admin, auth, email, organizer functionality)
-# Removed: app.include_router(legacy_direct_router)  # Frontend should handle routing instead
+try:
+    from app import router as api_router
+    from app.v1.storage import router as storage_router
+    from app.v1.registrations import router as registrations_router
+    
+    # Mount routes in correct order (most specific first)
+    app.include_router(registrations_router, prefix="/api/v1")  # Registration routes at /api/v1/registrations/...
+    app.include_router(storage_router) # Storage routes at /api/v1/storage/...
+    app.include_router(api_router)     # API routes at /api/... (includes all admin, auth, email, organizer functionality)
+    
+    print(f"✅ Successfully loaded routes - API router has {len(api_router.routes)} routes")
+    
+    # Verify admin routes are loaded
+    admin_routes = [route for route in app.routes if hasattr(route, 'path') and '/admin' in route.path]
+    print(f"✅ Admin routes loaded: {len(admin_routes)} routes")
+    
+except Exception as e:
+    print(f"❌ ERROR loading routes: {e}")
+    import traceback
+    traceback.print_exc()
+    
+    # Fallback: try to load a minimal set of routes
+    try:
+        print("🔄 Attempting fallback route loading...")
+        from app.v1.auth import router as auth_router
+        app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth-fallback"])
+        print("✅ Fallback auth routes loaded")
+    except Exception as fallback_error:
+        print(f"❌ Fallback loading failed: {fallback_error}")
+        raise
 
 # Global variable to keep scheduler task alive
 scheduler_task = None
@@ -290,6 +310,95 @@ async def health_check(request: Request):
         "user_agent": request.headers.get("user-agent"),
         "cors_configured": True
     }
+
+# Debug endpoints for troubleshooting Render deployment
+@app.get("/api/debug/routes")
+async def debug_routes():
+    """Debug endpoint to list all registered routes"""
+    import sys
+    routes_info = []
+    
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            routes_info.append({
+                "path": route.path,
+                "methods": list(route.methods) if route.methods else [],
+                "name": getattr(route, 'name', 'unnamed')
+            })
+    
+    admin_routes = [r for r in routes_info if '/admin' in r['path']]
+    
+    return {
+        "total_routes": len(routes_info),
+        "admin_routes_count": len(admin_routes),
+        "admin_routes": admin_routes[:20],  # First 20 admin routes
+        "sample_routes": routes_info[:10],  # First 10 routes overall
+        "server_info": {
+            "python_version": sys.version,
+            "environment": os.getenv("ENVIRONMENT", "unknown"),
+            "render": os.getenv("RENDER", "not_set"),
+            "port": os.getenv("PORT", "not_set")
+        }
+    }
+
+@app.get("/api/debug/admin-test")
+async def debug_admin_test():
+    """Simple admin endpoint test - no auth required"""
+    from datetime import datetime
+    return {
+        "success": True,
+        "message": "Admin endpoint is reachable",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/api/debug/imports")
+async def debug_imports():
+    """Check if admin router imports are working"""
+    try:
+        from app.v1.admin import router as admin_router
+        admin_route_count = len(admin_router.routes) if hasattr(admin_router, 'routes') else 0
+        
+        # Test individual admin router imports
+        import_status = {}
+        
+        try:
+            from app.v1.admin.events import router as events_router
+            import_status['events'] = len(events_router.routes) if hasattr(events_router, 'routes') else 0
+        except Exception as e:
+            import_status['events'] = f"Import error: {str(e)}"
+            
+        try:
+            from app.v1.admin.users import router as users_router  
+            import_status['users'] = len(users_router.routes) if hasattr(users_router, 'routes') else 0
+        except Exception as e:
+            import_status['users'] = f"Import error: {str(e)}"
+            
+        try:
+            from app.v1.admin.venues import router as venues_router
+            import_status['venues'] = len(venues_router.routes) if hasattr(venues_router, 'routes') else 0
+        except Exception as e:
+            import_status['venues'] = f"Import error: {str(e)}"
+            
+        return {
+            "success": True,
+            "admin_router_routes": admin_route_count,
+            "individual_routers": import_status,
+            "environment": {
+                "ENVIRONMENT": os.getenv("ENVIRONMENT", "not_set"),
+                "RENDER": os.getenv("RENDER", "not_set"),
+                "VERCEL": os.getenv("VERCEL", "not_set")
+            }
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "environment": {
+                "ENVIRONMENT": os.getenv("ENVIRONMENT", "not_set"),
+                "RENDER": os.getenv("RENDER", "not_set"),
+                "VERCEL": os.getenv("VERCEL", "not_set")
+            }
+        }
 
 # Even simpler health check for monitoring services
 @app.get("/ping")
