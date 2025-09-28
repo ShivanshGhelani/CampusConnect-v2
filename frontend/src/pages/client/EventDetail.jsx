@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import RichTextDisplay from '../../components/RichTextDisplay';
 import { fetchEventWithCache, getAnyEventCache } from '../../utils/eventCache';
 
 function EventDetail() {
@@ -357,60 +358,7 @@ function EventDetail() {
     return 'Timeline unavailable';
   };
 
-  // Simple Event Description Component
-  const EventDescription = ({ content, title = "Event Description" }) => {
-    if (!content) return null;
 
-    // Clean and prepare content
-    const cleanContent = typeof content === 'string' ? content.trim() : String(content).trim();
-
-    // Simple text formatting with line breaks
-    const formatText = (text) => {
-      return text
-        // Remove emojis
-        .replace(/[🌀➖🎯⏱⚡💡🔧•]/g, '')
-        // Add line breaks after periods followed by capital letters
-        .replace(/\.\s+(?=[A-Z])/g, '.\n\n')
-        // Add line breaks after colons
-        .replace(/:\s+/g, ':\n')
-        // Add line breaks after quotes
-        .replace(/[""'']\s+/g, '"\n\n')
-        // Clean up multiple spaces and newlines
-        .replace(/\s+/g, ' ')
-        .replace(/\n\s+/g, '\n')
-        .trim();
-    };
-
-    const formattedText = formatText(cleanContent);
-    const paragraphs = formattedText.split('\n\n').filter(p => p.trim().length > 0);
-
-    return (
-      <div className="container mx-auto max-w-5xl px-2 sm:px-4 py-4 sm:py-6">
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8">
-          {/* Header */}
-          <div className="flex items-center mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-200">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
-              <i className="fas fa-align-left text-white text-sm sm:text-base"></i>
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900">{title}</h2>
-          </div>
-
-          {/* Content */}
-          <div className="space-y-3 sm:space-y-4">
-            {paragraphs.map((paragraph, index) => (
-              <p
-                key={index}
-                className="text-gray-700 leading-relaxed text-sm sm:text-base"
-                style={{ lineHeight: '1.6' }}
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -1201,10 +1149,25 @@ function EventDetail() {
       )}
       {/* Event Description */}
       <div className="container mx-auto max-w-5xl px-2 sm:px-4 py-2 mt-2 sm:mt-4">
-        <EventDescription
-          content={event.detailed_description || event.description || event.event_description || event.details || event.about}
-          title="Event Description"
-        />
+        {/* Event Description */}
+        <div className="container mx-auto max-w-5xl px-2 sm:px-4 py-4 sm:py-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8">
+            {/* Header */}
+            <div className="flex items-center mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-200">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
+                <i className="fas fa-align-left text-white text-sm sm:text-base"></i>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Event Description</h2>
+            </div>
+
+            {/* Content */}
+            <RichTextDisplay 
+              content={event.detailed_description || event.description || event.event_description || event.details || event.about}
+              className="text-sm sm:text-base"
+              showReadMore={true}
+            />
+          </div>
+        </div>
       </div>
       {/* Event Details Section */}
       <div className="container mx-auto max-w-5xl px-2 sm:px-4 py-4 sm:py-8">

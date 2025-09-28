@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import EventReportModal from '../../components/EventReportModal';
+import RichTextDisplay from '../../components/RichTextDisplay';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
@@ -1679,7 +1680,12 @@ function EventDetail() {
                   {event.detailed_description && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <div className="text-sm font-medium text-gray-600 mb-2">Description</div>
-                      <p className="text-sm text-gray-900 leading-relaxed">{event.detailed_description}</p>
+                      <RichTextDisplay 
+                        content={event.detailed_description}
+                        className="text-sm"
+                        maxLength={300}
+                        showReadMore={true}
+                      />
                     </div>
                   )}
                 </InfoCard>

@@ -8,6 +8,7 @@ import DateRangePicker from '../../components/common/DateRangePicker';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Dropdown from '../../components/ui/Dropdown';
 import MultiSelect from '../../components/ui/MultiSelect';
+import RichTextEditor from '../../components/RichTextEditor';
 import dropdownOptionsService from '../../services/dropdownOptionsService';
 import AttendancePreview from '../../components/AttendancePreview';
 import { formatDateToLocal } from '../../utils/dateHelpers';
@@ -1493,19 +1494,23 @@ function EditEvent() {
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
-                    Editable
+                    Editable with Rich Text
                   </span>
                 </label>
-                <textarea
-                  name="detailed_description"
+                <RichTextEditor
                   value={formData.detailed_description}
-                  onChange={handleInputChange}
-                  required
-                  rows={4}
-                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect"
-                  className="block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none border-blue-300 focus:border-blue-500"
+                  onChange={(value) => setFormData(prev => ({ ...prev, detailed_description: value }))}
+                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect.
+
+You can use formatting like:
+**Bold text**, *Italic text*, `Code`, # Headers
+- Bullet points
+1. Numbered lists
+[Link text](URL)"
+                  rows={6}
+                  maxLength={2000}
                 />
-                <p className="text-xs text-blue-600 mt-1">✓ This field can be edited to provide updated event details</p>
+                <p className="text-xs text-blue-600 mt-1">✓ Rich text formatting supported for better event descriptions</p>
               </div>
 
               {/* Information Banner */}

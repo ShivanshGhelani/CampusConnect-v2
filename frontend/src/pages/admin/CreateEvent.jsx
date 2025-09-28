@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DateRangePicker from '../../components/common/DateRangePicker';
 import AttendancePreview from '../../components/AttendancePreview';
+import RichTextEditor from '../../components/RichTextEditor';
 import { useAuth } from '../../context/AuthContext';
 import { adminAPI } from '../../api/admin';
 import { formatDateToLocal } from '../../utils/dateHelpers';
@@ -2340,17 +2341,23 @@ function CreateEvent() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Detailed Description <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  name="detailed_description"
+                <RichTextEditor
                   value={form.detailed_description}
-                  onChange={handleChange}
-                  required
-                  rows={4}
-                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect"
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${errors.detailed_description ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500'
-                    }`}
+                  onChange={(value) => setForm(prev => ({ ...prev, detailed_description: value }))}
+                  placeholder="Provide comprehensive details about the event, including objectives, highlights, and what participants can expect. 
+
+You can use formatting like:
+**Bold text**, *Italic text*, `Code`, # Headers
+- Bullet points
+1. Numbered lists
+[Link text](URL)"
+                  rows={6}
+                  error={!!errors.detailed_description}
+                  maxLength={2000}
                 />
-                <p className="text-xs text-gray-500 mt-1">Full description of the event, including agenda, requirements, and other important information</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Rich text formatting supported. Use the toolbar or markdown-style formatting for better presentation.
+                </p>
                 {errors.detailed_description && <p className="text-xs text-red-600 mt-1">{errors.detailed_description}</p>}
               </div>
             </div>
