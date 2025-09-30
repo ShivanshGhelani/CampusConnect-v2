@@ -3521,7 +3521,7 @@ You can use formatting like:
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Create New Event</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Organize Event</h1>
               <p className="text-sm text-gray-600 mt-1">Configure event details and settings</p>
 
               {/* Executive Admin Session Indicator */}

@@ -321,7 +321,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                                 <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                                             </svg>
                                         </div>
-                                        <span className="font-semibold text-sm">Create Event</span>
+                                        <span className="font-semibold text-sm">Organize Event</span>
                                     </Link>
                                 </div>
                             </div>
