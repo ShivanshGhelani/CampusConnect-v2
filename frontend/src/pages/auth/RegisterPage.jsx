@@ -157,18 +157,61 @@ function RegisterPage() {
     const errors = [];
     
     if (currentStep === 1) {
-      // Step 1: Personal Information
-      const requiredFields = userRole === 'student' 
-        ? ['full_name', 'enrollment_no', 'email', 'mobile_no']
-        : ['full_name', 'employee_id', 'email', 'contact_no'];
+      // Step 1: Personal Information (Role, Name, Email, Mobile)
+      if (!userRole) {
+        errors.push('Please select your role');
+        return false;
+      }
+      
+      const requiredFields = ['full_name', 'email'];
+      const mobileField = userRole === 'student' ? 'mobile_no' : 'contact_no';
+      requiredFields.push(mobileField);
       
       requiredFields.forEach(field => {
         if (!formData[field]?.trim()) {
-          errors.push(`${field.replace('_', ' ')} is required`);
+          const fieldName = field === 'contact_no' ? 'contact number' : field.replace('_', ' ');
+          errors.push(`${fieldName} is required`);
         }
       });
+
+      // Check validation errors for email and mobile
+      if (validationErrors.email && formData.email) {
+        errors.push('Please enter a valid email address');
+      }
+      
+      const mobileError = validationErrors[mobileField];
+      if (mobileError && formData[mobileField]) {
+        errors.push('Please enter a valid mobile number');
+      }
+
+      // Check if email/mobile are available (not already registered)
+      if (fieldValidation.email?.available === false) {
+        errors.push('This email is already registered');
+      }
+      
+      if (fieldValidation[mobileField]?.available === false) {
+        errors.push('This mobile number is already registered');
+      }
+
     } else if (currentStep === 2) {
-      // Step 2: Academic/Professional Information
+      // Step 2: Academic/Professional Information (Department + Enrollment/Employee ID)
+      const idField = userRole === 'student' ? 'enrollment_no' : 'employee_id';
+      
+      if (!formData[idField]?.trim()) {
+        const fieldName = userRole === 'student' ? 'enrollment number' : 'employee ID';
+        errors.push(`${fieldName} is required`);
+      }
+
+      // Check validation errors for ID
+      if (validationErrors[idField] && formData[idField]) {
+        errors.push(`Please enter a valid ${userRole === 'student' ? 'enrollment number' : 'employee ID'}`);
+      }
+
+      // Check if ID is available (not already registered)
+      if (fieldValidation[idField]?.available === false) {
+        errors.push(`This ${userRole === 'student' ? 'enrollment number' : 'employee ID'} is already registered`);
+      }
+
       if (userRole === 'student') {
         if (!formData.department) errors.push('Department is required');
         if (!formData.semester) errors.push('Semester is required');
@@ -204,9 +247,9 @@ function RegisterPage() {
   const getStepInfo = (step) => {
     const stepInfo = {
       1: {
-        title: 'Personal Information',
-        description: 'Tell us about yourself',
-        icon: 'fas fa-user'
+        title: 'Who Are You?',
+        description: 'Basic personal information',
+        icon: 'fas fa-user-circle'
       },
       2: {
         title: userRole === 'student' ? 'Academic Details' : 'Professional Details',
@@ -665,33 +708,8 @@ function RegisterPage() {
           </p>
         </div>
 
-        {/* Role Selection Dropdown */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-          <Dropdown
-            label="Who are you?"
-            placeholder="Select your role to continue"
-            options={ROLE_OPTIONS}
-            value={userRole}
-            onChange={handleRoleChange}
-            required={true}
-            size="lg"
-            icon={<i className="fas fa-user-shield text-purple-500"></i>}
-            clearable={false}
-            className="w-full"
-          />
-          {!userRole && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 flex items-center">
-                <i className="fas fa-info-circle mr-2"></i>
-                Please select your role to begin the registration process
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Registration Form - Only show when role is selected */}
-        {userRole && (
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+        {/* Registration Form */}
+        <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
             {/* Step Progress Indicator */}
             <div className="bg-gray-50 px-8 py-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -704,9 +722,9 @@ function RegisterPage() {
                     <div key={step} className="flex items-center flex-1">
                       <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
                         isCompleted
-                          ? `${userRole === 'faculty' ? 'bg-blue-600 border-blue-600' : 'bg-green-600 border-green-600'} text-white`
+                          ? `${userRole === 'faculty' ? 'bg-blue-600 border-blue-600' : userRole === 'student' ? 'bg-green-600 border-green-600' : 'bg-purple-600 border-purple-600'} text-white`
                           : isActive
-                          ? `${userRole === 'faculty' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-green-600 bg-green-50 text-green-600'}`
+                          ? `${userRole === 'faculty' ? 'border-blue-600 bg-blue-50 text-blue-600' : userRole === 'student' ? 'border-green-600 bg-green-50 text-green-600' : 'border-purple-600 bg-purple-50 text-purple-600'}`
                           : 'border-gray-300 bg-white text-gray-400'
                       }`}>
                         {isCompleted ? (
@@ -717,7 +735,9 @@ function RegisterPage() {
                       </div>
                       <div className="ml-4 flex-1">
                         <p className={`text-sm font-semibold ${
-                          isActive ? (userRole === 'faculty' ? 'text-blue-600' : 'text-green-600') : 'text-gray-500'
+                          isActive 
+                            ? (userRole === 'faculty' ? 'text-blue-600' : userRole === 'student' ? 'text-green-600' : 'text-purple-600') 
+                            : 'text-gray-500'
                         }`}>
                           Step {step}
                         </p>
@@ -728,7 +748,7 @@ function RegisterPage() {
                       {step < 3 && (
                         <div className={`w-8 h-0.5 mx-4 ${
                           currentStep > step 
-                            ? (userRole === 'faculty' ? 'bg-blue-600' : 'bg-green-600')
+                            ? (userRole === 'faculty' ? 'bg-blue-600' : userRole === 'student' ? 'bg-green-600' : 'bg-purple-600')
                             : 'bg-gray-200'
                         }`}></div>
                       )}
@@ -771,23 +791,107 @@ function RegisterPage() {
 
               {/* Form Steps */}
               <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
-                {/* Step 1: Personal Information */}
+                {/* Step 1: Who Are You? */}
                 {currentStep === 1 && (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <TextInput
-                        id="full_name"
-                        name="full_name"
-                        type="text"
-                        required
-                        placeholder="Enter your full name"
-                        label="Full Name"
-                        value={formData.full_name}
-                        onChange={handleChange}
-                        disabled={isLoading}
+                    {/* Role Selection */}
+                    <div className="mb-6">
+                      <Dropdown
+                        label="Who are you?"
+                        placeholder="Select your role to continue"
+                        options={ROLE_OPTIONS}
+                        value={userRole}
+                        onChange={handleRoleChange}
+                        required={true}
                         size="lg"
+                        icon={<i className="fas fa-user-shield text-purple-500"></i>}
+                        clearable={false}
+                        className="w-full"
                       />
+                      {!userRole && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800 flex items-center">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            Please select your role to begin the registration process
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
+                    {/* Personal Information - Only show when role is selected */}
+                    {userRole && (
+                      <>
+                        <div className="grid grid-cols-1 gap-6">
+                          <TextInput
+                            id="full_name"
+                            name="full_name"
+                            type="text"
+                            required
+                            placeholder="Enter your full name"
+                            label="Full Name"
+                            value={formData.full_name}
+                            onChange={handleChange}
+                            disabled={isLoading}
+                            size="lg"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <TextInput
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            placeholder="Enter your email address"
+                            label="Email Address"
+                            value={formData.email}
+                            onChange={handleChange}
+                            disabled={isLoading}
+                            loading={validationLoading.email}
+                            error={!!validationErrors.email || fieldValidation.email?.available === false}
+                            success={fieldValidation.email?.available === true}
+                            helperText={
+                              validationErrors.email ||
+                              (fieldValidation.email?.available === true ? 'Email is available' : '')
+                            }
+                            size="lg"
+                          />
+
+                          <TextInput
+                            id={userRole === 'student' ? 'mobile_no' : 'contact_no'}
+                            name={userRole === 'student' ? 'mobile_no' : 'contact_no'}
+                            type="tel"
+                            required
+                            placeholder="10-digit mobile number"
+                            label={userRole === 'student' ? 'Mobile Number' : 'Contact Number'}
+                            value={userRole === 'student' ? formData.mobile_no : formData.contact_no}
+                            onChange={handleChange}
+                            disabled={isLoading}
+                            loading={validationLoading[userRole === 'student' ? 'mobile_no' : 'contact_no']}
+                            error={!!validationErrors[userRole === 'student' ? 'mobile_no' : 'contact_no'] || 
+                                   fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === false}
+                            success={fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === true}
+                            helperText={
+                              validationErrors[userRole === 'student' ? 'mobile_no' : 'contact_no'] ||
+                              (fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === false
+                                ? fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.message || 'Already registered'
+                                : fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === true
+                                ? 'Number is available'
+                                : '')
+                            }
+                            size="lg"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 2: Academic/Professional Information */}
+                {currentStep === 2 && userRole && (
+                  <div className="space-y-6">
+                    {/* ID Field First */}
+                    <div className="grid grid-cols-1 gap-6">
                       <TextInput
                         id={userRole === 'student' ? 'enrollment_no' : 'employee_id'}
                         name={userRole === 'student' ? 'enrollment_no' : 'employee_id'}
@@ -814,58 +918,6 @@ function RegisterPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <TextInput
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="Enter your email address"
-                        label="Email Address"
-                        value={formData.email}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                        loading={validationLoading.email}
-                        error={!!validationErrors.email || fieldValidation.email?.available === false}
-                        success={fieldValidation.email?.available === true}
-                        helperText={
-                          validationErrors.email ||
-                          (fieldValidation.email?.available === true ? 'Email is available' : '')
-                        }
-                        size="lg"
-                      />
-
-                      <TextInput
-                        id={userRole === 'student' ? 'mobile_no' : 'contact_no'}
-                        name={userRole === 'student' ? 'mobile_no' : 'contact_no'}
-                        type="tel"
-                        required
-                        placeholder="10-digit mobile number"
-                        label={userRole === 'student' ? 'Mobile Number' : 'Contact Number'}
-                        value={userRole === 'student' ? formData.mobile_no : formData.contact_no}
-                        onChange={handleChange}
-                        disabled={isLoading}
-                        loading={validationLoading[userRole === 'student' ? 'mobile_no' : 'contact_no']}
-                        error={!!validationErrors[userRole === 'student' ? 'mobile_no' : 'contact_no'] || 
-                               fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === false}
-                        success={fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === true}
-                        helperText={
-                          validationErrors[userRole === 'student' ? 'mobile_no' : 'contact_no'] ||
-                          (fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === false
-                            ? fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.message || 'Already registered'
-                            : fieldValidation[userRole === 'student' ? 'mobile_no' : 'contact_no']?.available === true
-                            ? 'Number is available'
-                            : '')
-                        }
-                        size="lg"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Academic/Professional Information */}
-                {currentStep === 2 && (
-                  <div className="space-y-6">
                     {userRole === 'student' ? (
                       // Student Academic Information
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1051,10 +1103,15 @@ function RegisterPage() {
                     <button
                       type="button"
                       onClick={nextStep}
+                      disabled={currentStep === 1 && !userRole}
                       className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
-                        userRole === 'faculty'
+                        (currentStep === 1 && !userRole)
+                          ? 'bg-gray-300 cursor-not-allowed opacity-50'
+                          : userRole === 'faculty'
                           ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
-                          : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                          : userRole === 'student'
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
                       }`}
                     >
                       Next Step
@@ -1087,7 +1144,6 @@ function RegisterPage() {
               </form>
             </div>
           </div>
-        )}
 
         {/* Login Link */}
         <div className="text-center">
