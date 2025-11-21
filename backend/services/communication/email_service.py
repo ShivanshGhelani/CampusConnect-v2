@@ -112,35 +112,33 @@ class SMTPConnectionPool:
         self._initialize_pool()
     
     def _initialize_pool(self):
-        """Pre-create initial connections with error handling"""
-        for i in range(min(1, self.max_connections)):  # Start with just 1 connection
-            try:
-                conn = self._create_connection_with_retry()
-                if conn:
-                    self.connections.put(conn)
-                    logger.info(f"Pre-created SMTP connection {i+1}")
-            except Exception as e:
-                logger.warning(f"Failed to pre-create SMTP connection {i+1}: {e}")
+        """Pre-create initial connections with error handling - lazy initialization for production"""
+        # Skip pre-creation in production environments to avoid blocking startup
+        # Connections will be created on-demand when first email is sent
+        logger.info("SMTP connection pool initialized (lazy mode - connections created on-demand)")
     
     def _create_connection_with_retry(self, max_retries=3):
         """Create SMTP connection with retry logic and exponential backoff"""
+        last_error = None
+        
         for attempt in range(max_retries):
             try:
                 return self._create_connection()
             except Exception as e:
+                last_error = e
                 with self.lock:
                     self.stats['retry_attempts'] += 1
                 
                 if attempt == max_retries - 1:
                     logger.error(f"Failed to create SMTP connection after {max_retries} attempts: {e}")
-                    raise
+                    raise Exception(f"SMTP Connection error after {max_retries} attempts: {last_error}")
                 
                 # Exponential backoff with jitter
                 delay = (2 ** attempt) + random.uniform(0, 1)
                 logger.warning(f"SMTP connection attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s")
                 time.sleep(delay)
         
-        return None
+        raise Exception(f"Failed to create SMTP connection: {last_error}")
     
     def _create_connection(self):
         """Create a new SMTP connection with proper timeouts"""
@@ -197,26 +195,32 @@ class SMTPConnectionPool:
             # Reset socket timeout to default
             socket.setdefaulttimeout(None)
     
-    def get_connection_with_retry(self, max_retries=2):
+    def get_connection_with_retry(self, max_retries=3):
         """Get a connection from the pool with retry logic"""
+        last_error = None
+        
         for attempt in range(max_retries):
             try:
                 conn = self.get_connection()
                 if conn:
                     return conn
+                
+                last_error = "No connection available from pool"
                     
                 # If no connection available, wait briefly and retry
                 if attempt < max_retries - 1:
-                    logger.warning(f"No SMTP connection available, retrying in 1s (attempt {attempt + 1})")
-                    time.sleep(1)
+                    delay = 1 + (attempt * 0.5)  # 1s, 1.5s, 2s
+                    logger.warning(f"No SMTP connection available, retrying in {delay}s (attempt {attempt + 1})")
+                    time.sleep(delay)
                     
             except Exception as e:
+                last_error = str(e)
                 logger.warning(f"Error getting SMTP connection (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)  # Exponential backoff
         
-        logger.error("Failed to get SMTP connection after all retries")
-        return None
+        logger.error(f"Failed to get SMTP connection after all retries: {last_error}")
+        raise Exception(f"Failed to get SMTP connection: {last_error}")
     
     def get_connection(self):
         """Get a connection from the pool"""
@@ -359,18 +363,23 @@ class CommunicationService:
         try:
             start_time = time.time()
             
-            # Test SMTP connection
-            test_conn = self.smtp_pool._create_connection()
-            if test_conn:
-                test_conn.quit()
-                connection_ok = True
-                connection_time = time.time() - start_time
-            else:
+            # Test SMTP connection with timeout
+            try:
+                test_conn = self.smtp_pool._create_connection()
+                if test_conn:
+                    test_conn.quit()
+                    connection_ok = True
+                    connection_time = time.time() - start_time
+                else:
+                    connection_ok = False
+                    connection_time = None
+            except Exception as conn_error:
+                logger.warning(f"Health check connection test failed: {conn_error}")
                 connection_ok = False
-                connection_time = None
+                connection_time = time.time() - start_time
             
             self.last_health_check = datetime.now()
-            self.health_status = "healthy" if connection_ok else "unhealthy"
+            self.health_status = "healthy" if connection_ok else "degraded"
             
             return {
                 'status': self.health_status,
@@ -378,16 +387,18 @@ class CommunicationService:
                 'connection_time': connection_time,
                 'circuit_breaker': self.circuit_breaker.get_state(),
                 'pool_stats': self.smtp_pool.get_stats(),
-                'last_check': self.last_health_check.isoformat()
+                'last_check': self.last_health_check.isoformat(),
+                'note': 'Service will create connections on-demand when sending emails' if not connection_ok else None
             }
             
         except Exception as e:
-            self.health_status = "unhealthy"
+            self.health_status = "degraded"
             logger.error(f"Health check failed: {e}")
             return {
-                'status': 'unhealthy',
+                'status': 'degraded',
                 'error': str(e),
-                'last_check': datetime.now().isoformat()
+                'last_check': datetime.now().isoformat(),
+                'note': 'Service will create connections on-demand when sending emails'
             }
     
     async def send_email_async(self, to_email: str, subject: str, content: str, 
@@ -421,7 +432,11 @@ class CommunicationService:
             server = None
             try:
                 # Get connection from pool with retry
-                server = self.smtp_pool.get_connection_with_retry()
+                try:
+                    server = self.smtp_pool.get_connection_with_retry()
+                except Exception as conn_error:
+                    raise Exception(f"Failed to establish SMTP connection: {conn_error}")
+                
                 if not server:
                     raise Exception("Failed to get SMTP connection from pool")
                 

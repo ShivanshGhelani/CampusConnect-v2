@@ -136,7 +136,7 @@ const FeedbackForm = () => {
       
       if (response.data.success) {
         alert('Thank you for your feedback!');
-        navigate('/student/dashboard');
+        navigate('/client/dashboard');
       } else {
         throw new Error(response.data.message || 'Failed to submit feedback');
       }
@@ -311,7 +311,7 @@ const FeedbackForm = () => {
           </div>
           <p className="text-gray-700 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/student/dashboard')}
+            onClick={() => navigate('/client/dashboard')}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Dashboard
@@ -331,7 +331,7 @@ const FeedbackForm = () => {
           </div>
           <p className="text-gray-700 mb-4">{eligibility.message}</p>
           <button
-            onClick={() => navigate('/student/dashboard')}
+            onClick={() => navigate('/client/dashboard')}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Dashboard
@@ -359,7 +359,7 @@ const FeedbackForm = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center space-x-4 mb-4">
             <button
-              onClick={() => navigate('/student/dashboard')}
+              onClick={() => navigate('/client/dashboard')}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -400,7 +400,7 @@ const FeedbackForm = () => {
           <div className="mt-8 flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => navigate('/student/dashboard')}
+              onClick={() => navigate('/client/dashboard')}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel

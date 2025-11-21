@@ -349,7 +349,7 @@ function EditProfile() {
 
       // Navigate to dashboard after successful update
       setTimeout(() => {
-        navigate('/student/dashboard');
+        navigate('/client/dashboard');
       }, 1000);
 
     } catch (error) {
