@@ -141,7 +141,7 @@ class SMTPConnectionPool:
         raise Exception(f"Failed to create SMTP connection: {last_error}")
     
     def _create_connection(self):
-        """Create a new SMTP connection with proper timeouts"""
+        """Create a new SMTP connection with proper timeouts and fallback to SSL"""
         try:
             # Set socket timeout for all socket operations
             socket.setdefaulttimeout(self.socket_timeout)
@@ -151,21 +151,57 @@ class SMTPConnectionPool:
             context.check_hostname = False  # Some SMTP servers have cert issues
             context.verify_mode = ssl.CERT_NONE  # For development/testing
             
-            # Create SMTP connection with timeout
-            server = smtplib.SMTP(self.settings.SMTP_SERVER, self.settings.SMTP_PORT, timeout=self.connection_timeout)
-            server.set_debuglevel(0)  # Disable debug output
+            # Try STARTTLS first (port 587)
+            if self.settings.SMTP_PORT == 587:
+                try:
+                    server = smtplib.SMTP(self.settings.SMTP_SERVER, self.settings.SMTP_PORT, timeout=self.connection_timeout)
+                    server.set_debuglevel(0)
+                    server.starttls(context=context)
+                    server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
+                    
+                    with self.lock:
+                        self.stats['connections_created'] += 1
+                    
+                    logger.debug(f"Created SMTP connection (STARTTLS) to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
+                    return server
+                    
+                except (OSError, socket.error) as e:
+                    logger.warning(f"Port 587 failed ({e}), falling back to SSL port 465")
+                    # Fallback to SSL port 465 for platforms that block port 587
+                    server = smtplib.SMTP_SSL(self.settings.SMTP_SERVER, 465, timeout=self.connection_timeout, context=context)
+                    server.set_debuglevel(0)
+                    server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
+                    
+                    with self.lock:
+                        self.stats['connections_created'] += 1
+                    
+                    logger.info(f"Created SMTP_SSL connection (fallback) to {self.settings.SMTP_SERVER}:465")
+                    return server
             
-            # Start TLS with timeout
-            server.starttls(context=context)
+            # If explicitly using port 465, use SMTP_SSL directly
+            elif self.settings.SMTP_PORT == 465:
+                server = smtplib.SMTP_SSL(self.settings.SMTP_SERVER, self.settings.SMTP_PORT, timeout=self.connection_timeout, context=context)
+                server.set_debuglevel(0)
+                server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
+                
+                with self.lock:
+                    self.stats['connections_created'] += 1
+                
+                logger.debug(f"Created SMTP_SSL connection to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
+                return server
             
-            # Login with credentials
-            server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
-            
-            with self.lock:
-                self.stats['connections_created'] += 1
-            
-            logger.debug(f"Created new SMTP connection to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
-            return server
+            # For other ports, use standard SMTP with STARTTLS
+            else:
+                server = smtplib.SMTP(self.settings.SMTP_SERVER, self.settings.SMTP_PORT, timeout=self.connection_timeout)
+                server.set_debuglevel(0)
+                server.starttls(context=context)
+                server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
+                
+                with self.lock:
+                    self.stats['connections_created'] += 1
+                
+                logger.debug(f"Created SMTP connection to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
+                return server
             
         except smtplib.SMTPAuthenticationError as e:
             logger.error(f"SMTP Authentication failed: {e}")
@@ -357,6 +393,7 @@ class CommunicationService:
         logger.info(f"  Email User: {self.settings.EMAIL_USER[:5]}...@{self.settings.EMAIL_USER.split('@')[1] if '@' in self.settings.EMAIL_USER else 'not_set'}")
         logger.info(f"  Development Mode: {self.development_mode}")
         logger.info(f"  Circuit Breaker: Enabled (failure_threshold=5, timeout=300s)")
+        logger.info(f"  Fallback: Port 587 will auto-fallback to SSL port 465 if blocked")
     
     async def health_check(self) -> Dict[str, Any]:
         """Perform health check on email service"""
