@@ -63,7 +63,14 @@ class EventCache:
         redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
         if REDIS_AVAILABLE and redis_url:
             try:
-                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                # Redis-py 5.x automatically handles SSL from rediss:// URL
+                self.redis_client = redis.from_url(
+                    redis_url, 
+                    decode_responses=True,
+                    socket_connect_timeout=10,
+                    socket_timeout=10,
+                    retry_on_timeout=True
+                )
                 self.redis_client.ping()
                 logger.info(f"Redis cache initialized successfully on {mask_redis_url(redis_url)}")
             except Exception as e:

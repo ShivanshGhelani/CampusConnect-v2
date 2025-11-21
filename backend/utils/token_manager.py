@@ -46,7 +46,14 @@ class TokenManager:
             
             if redis_url:
                 try:
-                    self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                    # Redis-py 5.x automatically handles SSL from rediss:// URL
+                    self.redis_client = redis.from_url(
+                        redis_url, 
+                        decode_responses=True,
+                        socket_connect_timeout=10,
+                        socket_timeout=10,
+                        retry_on_timeout=True
+                    )
                     self.redis_client.ping()
                     logger.info(f"Token manager initialized successfully with cloud Redis")
                 except Exception as e:

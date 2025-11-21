@@ -21,7 +21,14 @@ load_dotenv()
 try:
     redis_url = os.getenv("UPSTASH_REDIS_URL") or os.getenv("REDIS_URL")
     if redis_url:
-        redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Redis-py 5.x automatically handles SSL from rediss:// URL
+        redis_client = redis.from_url(
+            redis_url, 
+            decode_responses=True,
+            socket_connect_timeout=10,
+            socket_timeout=10,
+            retry_on_timeout=True
+        )
         redis_client.ping()  # Test connection
         storage_uri = redis_url
     else:
