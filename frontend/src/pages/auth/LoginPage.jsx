@@ -80,11 +80,7 @@ function LoginPage() {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : (
-        name === 'identifier' 
-          ? value.toUpperCase().replace(/[^A-Z0-9]/g, '') // Clean identifier input
-          : value
-      )
+      [name]: type === 'checkbox' ? checked : value
     }));
     clearError();
   };

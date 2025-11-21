@@ -708,7 +708,8 @@ function RegisterPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto space-y-6 mt-16 sm:mt-20">        {/* Header Section */}
+      <div className="max-w-xl mx-auto space-y-6 mt-16 sm:mt-20">        
+        {/* Header Section */}
         <div className="text-center">
           <div className="flex items-center justify-center mb-4 sm:mb-6">
             <div className={`h-16 w-16 sm:h-20 sm:w-20 flex items-center justify-center rounded-full shadow-lg ${
