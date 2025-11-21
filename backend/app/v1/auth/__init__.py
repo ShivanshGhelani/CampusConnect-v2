@@ -47,8 +47,8 @@ class StudentRegisterRequest(BaseModel):
     enrollment_no: str
     email: str
     mobile_no: str
-    gender: str
-    date_of_birth: str
+    gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
     department: str
     semester: int
     password: str
@@ -64,8 +64,8 @@ class FacultyRegisterRequest(BaseModel):
     specialization: str = None
     experience_years: int
     seating: str = None
-    gender: str
-    date_of_birth: str
+    gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
     date_of_joining: str = None
     employment_type: str = None
     password: str
@@ -141,8 +141,8 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         password = register_data.password
         department = register_data.department.strip()
         semester = register_data.semester
-        gender = register_data.gender.strip().lower()  # Normalize to lowercase
-        date_of_birth = register_data.date_of_birth.strip()
+        gender = register_data.gender.strip().lower() if register_data.gender else None
+        date_of_birth = register_data.date_of_birth.strip() if register_data.date_of_birth else None
         
         # Validation
         errors = []
@@ -167,10 +167,8 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         if not any(c.isdigit() for c in password):
             errors.append("Password must contain at least one number")
         
-        # Gender validation
-        if not gender:
-            errors.append("Gender is required")
-        elif gender not in ["male", "female", "other"]:
+        # Gender validation (optional)
+        if gender and gender not in ["male", "female", "other"]:
             errors.append("Please select a valid gender option")
         
         # Department validation
@@ -181,10 +179,8 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         if not semester or not isinstance(semester, int) or semester < 1 or semester > 8:
             errors.append("Valid semester (1-8) is required")
         
-        # Date of birth validation
-        if not date_of_birth:
-            errors.append("Date of birth is required")
-        else:
+        # Date of birth validation (optional)
+        if date_of_birth:
             try:
                 birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
                 today = datetime.now()
@@ -233,19 +229,25 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
                 )
         
         # Create new student
-        new_student = Student(
-            enrollment_no=enrollment_no,
-            full_name=full_name,
-            email=email,
-            mobile_no=mobile_no,
-            password_hash=Student.get_password_hash(password),
-            department=department,
-            semester=semester,
-            gender=gender,
-            date_of_birth=datetime.strptime(date_of_birth, '%Y-%m-%d'),
-            created_at=datetime.utcnow(),
-            is_active=True
-        )
+        student_data = {
+            "enrollment_no": enrollment_no,
+            "full_name": full_name,
+            "email": email,
+            "mobile_no": mobile_no,
+            "password_hash": Student.get_password_hash(password),
+            "department": department,
+            "semester": semester,
+            "created_at": datetime.utcnow(),
+            "is_active": True
+        }
+        
+        # Add optional fields only if provided
+        if gender:
+            student_data["gender"] = gender
+        if date_of_birth:
+            student_data["date_of_birth"] = datetime.strptime(date_of_birth, '%Y-%m-%d')
+        
+        new_student = Student(**student_data)
         
         # Save to database
         result = await DatabaseOperations.insert_one("students", new_student.model_dump())
@@ -290,8 +292,8 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         specialization = register_data.specialization.strip() if register_data.specialization else None
         experience_years = register_data.experience_years
         seating = register_data.seating.strip() if register_data.seating else None
-        gender = register_data.gender.strip().lower()  # Normalize to lowercase
-        date_of_birth = register_data.date_of_birth.strip()
+        gender = register_data.gender.strip().lower() if register_data.gender else None
+        date_of_birth = register_data.date_of_birth.strip() if register_data.date_of_birth else None
         date_of_joining = register_data.date_of_joining.strip() if register_data.date_of_joining else None
         employment_type = register_data.employment_type.strip() if register_data.employment_type else None
         
@@ -319,10 +321,8 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         if not any(c.isdigit() for c in password):
             errors.append("Password must contain at least one number")
         
-        # Gender validation
-        if not gender:
-            errors.append("Gender is required")
-        elif gender not in ["male", "female", "other"]:
+        # Gender validation (optional)
+        if gender and gender not in ["male", "female", "other"]:
             errors.append("Please select a valid gender option")
         
         # Department validation
@@ -341,10 +341,8 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         if experience_years is None or experience_years < 0 or experience_years > 50:
             errors.append("Experience years must be between 0 and 50")
         
-        # Date of birth validation
-        if not date_of_birth:
-            errors.append("Date of birth is required")
-        else:
+        # Date of birth validation (optional)
+        if date_of_birth:
             try:
                 birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
                 today = datetime.now()
@@ -394,7 +392,16 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
         
         # Create new faculty
         hashed_password = pwd_context.hash(password)
-        birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
+        
+        # Handle optional date_of_birth
+        birth_date = None
+        if date_of_birth:
+            try:
+                birth_date = datetime.strptime(date_of_birth, '%Y-%m-%d')
+            except ValueError:
+                pass
+        
+        # Handle optional date_of_joining
         joining_date = None
         if date_of_joining:
             try:
@@ -418,9 +425,6 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
             "email": email,
             "contact_no": contact_no,
             "seating": seating,
-            "gender": gender,
-            "date_of_birth": birth_date,
-            "date_of_joining": joining_date,
             "employment_type": employment_type,
             "event_participation": [],
             "created_at": datetime.utcnow(),
@@ -446,6 +450,14 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
                 "admin.feedback.create"
             ]
         }
+        
+        # Add optional fields only if provided
+        if gender:
+            faculty_doc["gender"] = gender
+        if birth_date:
+            faculty_doc["date_of_birth"] = birth_date
+        if joining_date:
+            faculty_doc["date_of_joining"] = joining_date
         
         # Save to database
         result = await DatabaseOperations.insert_one("faculties", faculty_doc)

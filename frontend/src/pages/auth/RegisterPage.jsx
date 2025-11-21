@@ -174,6 +174,11 @@ function RegisterPage() {
         }
       });
 
+      // Check if validation is still in progress
+      if (validationLoading.email || validationLoading[mobileField]) {
+        errors.push('Please wait while we verify your information...');
+      }
+
       // Check validation errors for email and mobile
       if (validationErrors.email && formData.email) {
         errors.push('Please enter a valid email address');
@@ -218,6 +223,8 @@ function RegisterPage() {
       } else {
         if (!formData.department) errors.push('Department is required');
         if (!formData.designation) errors.push('Designation is required');
+        if (!formData.qualification) errors.push('Qualification is required');
+        if (!formData.experience_years) errors.push('Experience years is required');
       }
     } else if (currentStep === 3) {
       // Step 3: Password
@@ -301,9 +308,21 @@ function RegisterPage() {
 
     // Trigger real-time database validation for specific fields
     const fieldsToValidateRealTime = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
-    if (fieldsToValidateRealTime.includes(name) && processedValue.length >= 3) {
+    if (fieldsToValidateRealTime.includes(name)) {
+      // Clear previous validation state when user starts typing
+      if (processedValue.length > 0) {
+        setFieldValidation(prev => ({
+          ...prev,
+          [name]: { available: null, message: '' }
+        }));
+      }
       
-      debouncedValidation(name, processedValue);
+      // Only trigger API validation for sufficient length
+      if ((name === 'email' && processedValue.length >= 5) ||
+          ((name === 'mobile_no' || name === 'contact_no') && processedValue.length >= 10) ||
+          ((name === 'enrollment_no' || name === 'employee_id') && processedValue.length >= 3)) {
+        debouncedValidation(name, processedValue);
+      }
     }
 
     // Password strength check
@@ -355,9 +374,6 @@ function RegisterPage() {
       }
       case 'mobile_no':
       case 'contact_no': {
-        if (!validators.mobileNumber(value)) {
-          error = 'Mobile number must be exactly 10 digits';
-        }
         if (!validators.mobileNumber(value)) {
           error = 'Mobile number must be exactly 10 digits';
         }
@@ -490,15 +506,22 @@ function RegisterPage() {
         console.log(`🔄 Debouncing validation for ${fieldName}:`, fieldValue);
         clearTimeout(timers[fieldName]);
         
-        // Define fields that need API validation with longer debounce
-        const apiValidationFields = ['email', 'mobile_no', 'contact_no', 'enrollment_no', 'employee_id'];
-        const debounceTime = apiValidationFields.includes(fieldName) ? 1500 : 800; // 1.5s for API fields, 800ms for others
+        // Shorter debounce for email/mobile (Step 1) - faster feedback
+        const step1Fields = ['email', 'mobile_no', 'contact_no'];
+        const step2Fields = ['enrollment_no', 'employee_id'];
+        
+        let debounceTime = 800; // Default
+        if (step1Fields.includes(fieldName)) {
+          debounceTime = 600; // Faster for Step 1 fields
+        } else if (step2Fields.includes(fieldName)) {
+          debounceTime = 800; // Standard for Step 2
+        }
         
         // Check minimum length before making API calls to avoid unnecessary requests
         const shouldValidate = () => {
           if (!fieldValue || fieldValue.trim().length === 0) return false;
           if (fieldName === 'email' && fieldValue.length < 5) return false;
-          if ((fieldName === 'mobile_no' || fieldName === 'contact_no') && fieldValue.length < 7) return false;
+          if ((fieldName === 'mobile_no' || fieldName === 'contact_no') && fieldValue.length < 10) return false;
           if ((fieldName === 'enrollment_no' || fieldName === 'employee_id') && fieldValue.length < 3) return false;
           return true;
         };
@@ -546,10 +569,10 @@ function RegisterPage() {
     const errors = [];
 
     if (userRole === 'student') {
-      // Required fields for student
+      // Required fields for student (gender and date_of_birth are optional - can be added in profile)
       const requiredFields = [
         'full_name', 'enrollment_no', 'email', 'mobile_no',
-        'gender', 'date_of_birth', 'department', 'semester', 'password'
+        'department', 'semester', 'password'
       ];
 
       requiredFields.forEach(key => {
@@ -564,10 +587,10 @@ function RegisterPage() {
         errors.push('Passwords do not match');
       }
     } else if (userRole === 'faculty') {
-      // Required fields for faculty
+      // Required fields for faculty (gender and date_of_birth are optional - can be added in profile)
       const requiredFields = [
         'employee_id', 'full_name', 'email', 'contact_no',
-        'gender', 'date_of_birth', 'department', 'designation',
+        'department', 'designation',
         'qualification', 'experience_years', 'faculty_password'
       ];
 
@@ -603,6 +626,7 @@ function RegisterPage() {
       const {
         confirm_password,
         employee_id, contact_no, seating, faculty_password, faculty_confirm_password,
+        gender, date_of_birth, // Remove optional fields
         ...submitData
       } = formData;
 
@@ -611,6 +635,10 @@ function RegisterPage() {
         ...submitData,
         semester: parseInt(submitData.semester, 10)
       };
+
+      // Add optional fields only if they have values
+      if (gender) registrationData.gender = gender;
+      if (date_of_birth) registrationData.date_of_birth = date_of_birth;
 
       result = await register(registrationData, 'student');
     } else if (userRole === 'faculty') {
@@ -633,11 +661,13 @@ function RegisterPage() {
         specialization: submitData.specialization || '',
         experience_years: parseInt(submitData.experience_years, 10),
         seating: submitData.seating || '',
-        gender: submitData.gender,
-        date_of_birth: submitData.date_of_birth,
         date_of_joining: submitData.date_of_joining || '',
         password: submitData.faculty_password
       };
+
+      // Add optional fields only if they have values
+      if (submitData.gender) registrationData.gender = submitData.gender;
+      if (submitData.date_of_birth) registrationData.date_of_birth = submitData.date_of_birth;
 
       result = await register(registrationData, 'faculty');
     }
@@ -666,22 +696,22 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-6 sm:py-8 lg:py-12 px-4 sm:px-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-teal-800 to-sky-900 text-white py-2 fixed top-0 left-0 right-0 z-10">
+      <div className="bg-gradient-to-r from-teal-800 to-sky-900 text-white py-3 fixed top-0 left-0 right-0 z-50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <i className="fas fa-bullhorn mr-2"></i>
-          Stay updated with the latest campus events and activities!
-          <Link to="/client/events?filter=upcoming" className="underline hover:text-teal-200 ml-2">
-            Check upcoming events
+          Stay updated with the latest campus events!
+          <Link to="/client/events?filter=upcoming" className="underline hover:text-teal-200 ml-2 font-medium">
+            View Events
           </Link>
         </div>
       </div>
 
-      <div className="max-w-2xl w-full mx-auto space-y-8 mt-10">        {/* Header Section */}
+      <div className="max-w-4xl mx-auto space-y-6 mt-16 sm:mt-20">        {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center mb-6">
-            <div className={`h-20 w-20 flex items-center justify-center rounded-full shadow-lg ${
+          <div className="flex items-center justify-center mb-4 sm:mb-6">
+            <div className={`h-16 w-16 sm:h-20 sm:w-20 flex items-center justify-center rounded-full shadow-lg ${
               userRole === 'faculty'
                 ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
                 : userRole === 'student'
@@ -694,11 +724,11 @@ function RegisterPage() {
                   : userRole === 'student'
                   ? 'fas fa-user-graduate'
                   : 'fas fa-users'
-                } text-white text-3xl`}></i>
+                } text-white text-2xl sm:text-3xl lg:text-4xl`}></i>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Join CampusConnect</h1>
-          <p className="text-lg text-gray-600">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-3">Join CampusConnect</h1>
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
             {userRole === 'faculty'
               ? 'Create your faculty account to manage and participate in events'
               : userRole === 'student'
@@ -709,9 +739,9 @@ function RegisterPage() {
         </div>
 
         {/* Registration Form */}
-        <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
             {/* Step Progress Indicator */}
-            <div className="bg-gray-50 px-8 py-6 border-b border-gray-200">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 sm:px-8 lg:px-10 py-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 {[1, 2, 3].map((step) => {
                   const stepInfo = getStepInfo(step);
@@ -720,7 +750,7 @@ function RegisterPage() {
                   
                   return (
                     <div key={step} className="flex items-center flex-1">
-                      <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
+                      <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300 shadow-sm ${
                         isCompleted
                           ? `${userRole === 'faculty' ? 'bg-blue-600 border-blue-600' : userRole === 'student' ? 'bg-green-600 border-green-600' : 'bg-purple-600 border-purple-600'} text-white`
                           : isActive
@@ -728,25 +758,25 @@ function RegisterPage() {
                           : 'border-gray-300 bg-white text-gray-400'
                       }`}>
                         {isCompleted ? (
-                          <i className="fas fa-check text-sm"></i>
+                          <i className="fas fa-check text-xs sm:text-sm"></i>
                         ) : (
-                          <i className={`${stepInfo.icon} text-sm`}></i>
+                          <i className={`${stepInfo.icon} text-xs sm:text-sm`}></i>
                         )}
                       </div>
-                      <div className="ml-4 flex-1">
-                        <p className={`text-sm font-semibold ${
+                      <div className="ml-3 flex-1">
+                        <p className={`text-xs font-semibold ${
                           isActive 
                             ? (userRole === 'faculty' ? 'text-blue-600' : userRole === 'student' ? 'text-green-600' : 'text-purple-600') 
                             : 'text-gray-500'
                         }`}>
                           Step {step}
                         </p>
-                        <p className={`text-xs ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                        <p className={`text-xs hidden sm:block ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
                           {stepInfo.title}
                         </p>
                       </div>
                       {step < 3 && (
-                        <div className={`w-8 h-0.5 mx-4 ${
+                        <div className={`w-6 sm:w-8 h-1 mx-2 sm:mx-3 rounded-full ${
                           currentStep > step 
                             ? (userRole === 'faculty' ? 'bg-blue-600' : userRole === 'student' ? 'bg-green-600' : 'bg-purple-600')
                             : 'bg-gray-200'
@@ -759,18 +789,18 @@ function RegisterPage() {
             </div>
 
             {/* Form Content */}
-            <div className="p-8">
+            <div className="p-6 sm:p-8 lg:p-10">
               {/* Current Step Header */}
               <div className="text-center mb-8">
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${
+                <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg ${
                   userRole === 'faculty' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
                 } mb-4`}>
                   <i className={`${getStepInfo(currentStep).icon} text-2xl`}></i>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   {getStepInfo(currentStep).title}
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-base text-gray-600">
                   {getStepInfo(currentStep).description}
                 </p>
               </div>
@@ -950,35 +980,70 @@ function RegisterPage() {
                       </div>
                     ) : (
                       // Faculty Professional Information
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Dropdown
-                          label="Department"
-                          placeholder="Select your department"
-                          options={dropdownOptionsService.getOptions('faculty', 'departments')}
-                          value={formData.department}
-                          onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
-                          required={true}
-                          disabled={isLoading}
-                          searchable={true}
-                          error={!!validationErrors.department}
-                          helperText={validationErrors.department}
-                          size="lg"
-                        />
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Dropdown
+                            label="Department"
+                            placeholder="Select your department"
+                            options={dropdownOptionsService.getOptions('faculty', 'departments')}
+                            value={formData.department}
+                            onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                            required={true}
+                            disabled={isLoading}
+                            searchable={true}
+                            error={!!validationErrors.department}
+                            helperText={validationErrors.department}
+                            size="lg"
+                          />
 
-                        <Dropdown
-                          label="Designation"
-                          placeholder="Select your designation"
-                          options={dropdownOptionsService.getOptions('faculty', 'designations')}
-                          value={formData.designation}
-                          onChange={(value) => setFormData(prev => ({ ...prev, designation: value }))}
-                          required={true}
-                          disabled={isLoading}
-                          searchable={true}
-                          error={!!validationErrors.designation}
-                          helperText={validationErrors.designation}
-                          size="lg"
-                        />
-                      </div>
+                          <Dropdown
+                            label="Designation"
+                            placeholder="Select your designation"
+                            options={dropdownOptionsService.getOptions('faculty', 'designations')}
+                            value={formData.designation}
+                            onChange={(value) => setFormData(prev => ({ ...prev, designation: value }))}
+                            required={true}
+                            disabled={isLoading}
+                            searchable={true}
+                            error={!!validationErrors.designation}
+                            helperText={validationErrors.designation}
+                            size="lg"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Dropdown
+                            label="Qualification"
+                            placeholder="Select your highest qualification"
+                            options={dropdownOptionsService.getOptions('faculty', 'qualifications')}
+                            value={formData.qualification}
+                            onChange={(value) => setFormData(prev => ({ ...prev, qualification: value }))}
+                            required={true}
+                            disabled={isLoading}
+                            searchable={true}
+                            error={!!validationErrors.qualification}
+                            helperText={validationErrors.qualification}
+                            size="lg"
+                          />
+
+                          <TextInput
+                            id="experience_years"
+                            name="experience_years"
+                            type="number"
+                            required
+                            placeholder="Years of experience"
+                            label="Experience (Years)"
+                            value={formData.experience_years}
+                            onChange={handleChange}
+                            disabled={isLoading}
+                            error={!!validationErrors.experience_years}
+                            helperText={validationErrors.experience_years}
+                            size="lg"
+                            min="0"
+                            max="50"
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -1084,12 +1149,12 @@ function RegisterPage() {
                 )}
 
                 {/* Navigation Buttons */}
-                <div className="flex justify-between pt-6 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between gap-3 pt-8 border-t border-gray-200">
                   <button
                     type="button"
                     onClick={prevStep}
                     disabled={currentStep === 1}
-                    className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    className={`w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-sm ${
                       currentStep === 1
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1104,7 +1169,7 @@ function RegisterPage() {
                       type="button"
                       onClick={nextStep}
                       disabled={currentStep === 1 && !userRole}
-                      className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200 shadow-lg hover:shadow-xl ${
                         (currentStep === 1 && !userRole)
                           ? 'bg-gray-300 cursor-not-allowed opacity-50'
                           : userRole === 'faculty'
@@ -1121,7 +1186,7 @@ function RegisterPage() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`px-8 py-3 rounded-lg font-semibold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${
                         userRole === 'faculty'
                           ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
                           : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
@@ -1147,11 +1212,11 @@ function RegisterPage() {
 
         {/* Login Link */}
         <div className="text-center">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <p className="text-gray-600 mb-4">Already have an account?</p>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+            <p className="text-base text-gray-600 mb-4">Already have an account?</p>
             <Link
               to={`/auth/login?tab=${userRole}`}
-              className={`inline-flex items-center px-6 py-3 border-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              className={`inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 border-2 rounded-xl text-base font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
                 userRole === 'faculty'
                   ? 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
                   : userRole === 'student'
