@@ -204,11 +204,22 @@ class PasswordResetService:
                 ip_address=client_ip
             )
             
+            if not email_sent:
+                logger.warning(f"Password reset email failed to send for student {enrollment_no}")
+            
             logger.info(f"Password reset initiated for student {enrollment_no} from IP {client_ip}")
+            
+            # Prepare response message based on email status
+            if email_sent:
+                message = 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.'
+            else:
+                message = 'Password reset token generated, but email delivery failed. Please contact support with your reset token or try again later.'
+            
             return {
                 'success': True,
-                'message': 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.',
-                'email_sent': email_sent
+                'message': message,
+                'email_sent': email_sent,
+                'token': token if not email_sent else None  # Include token in response if email failed
             }
             
         except Exception as e:
@@ -222,17 +233,21 @@ class PasswordResetService:
     async def initiate_password_reset_faculty(self, employee_id: str, email: str, client_ip: str = "Unknown") -> Dict[str, Any]:
         """Initiate password reset for faculty"""
         try:
+            logger.info(f"🔐 Initiating password reset for faculty {employee_id} with email {email}")
             db = await Database.get_database()
             if db is None:
+                logger.error("❌ Database connection failed")
                 raise Exception("Database connection failed")
             
             # Verify faculty exists with provided employee_id and email
+            logger.debug(f"Looking up faculty: {employee_id.upper()} / {email.lower()}")
             faculty = await db['faculties'].find_one({
                 'employee_id': employee_id.upper(),
                 'email': email.lower()
             })
             
             if not faculty:
+                logger.warning(f"⚠️ No faculty found with employee_id={employee_id} and email={email}")
                 # Don't reveal if user exists or not for security
                 return {
                     'success': True,
@@ -240,13 +255,22 @@ class PasswordResetService:
                     'email_sent': False
                 }
             
+            logger.info(f"✅ Faculty found: {faculty.get('full_name')}")
+            
             # Generate reset token
+            logger.debug(f"Generating reset token for {employee_id}")
             token = self.generate_reset_token(employee_id.upper(), 'faculty', email.lower())
             if not token:
+                logger.error("❌ Failed to generate reset token")
                 raise Exception("Failed to generate reset token")
+            
+            logger.info(f"✅ Reset token generated: {token[:20]}...")
             
             # Send reset email with environment-aware URL
             reset_link = f"{FRONTEND_URL}/auth/reset-password/{token}"
+            logger.info(f"📧 Preparing to send reset email to {email.lower()}")
+            logger.debug(f"Reset link: {reset_link}")
+            
             email_sent = await self.email_service.send_password_reset_email(
                 user_email=email.lower(),
                 user_name=faculty['full_name'],
@@ -255,11 +279,24 @@ class PasswordResetService:
                 ip_address=client_ip
             )
             
+            if not email_sent:
+                logger.error(f"❌ Password reset email failed to send for faculty {employee_id}")
+            else:
+                logger.info(f"✅ Password reset email sent successfully to {email.lower()}")
+            
             logger.info(f"Password reset initiated for faculty {employee_id} from IP {client_ip}")
+            
+            # Prepare response message based on email status
+            if email_sent:
+                message = 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.'
+            else:
+                message = 'Password reset token generated, but email delivery failed. Please contact support or try again later.'
+            
             return {
                 'success': True,
-                'message': 'Password reset link has been sent to your email address. Please check your inbox and follow the instructions. The link will expire in 10 minutes.',
-                'email_sent': email_sent
+                'message': message,
+                'email_sent': email_sent,
+                'token': token if not email_sent else None  # Include token in response if email failed
             }
             
         except Exception as e:

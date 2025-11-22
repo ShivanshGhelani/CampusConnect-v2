@@ -154,28 +154,33 @@ class SMTPConnectionPool:
             # Try STARTTLS first (port 587)
             if self.settings.SMTP_PORT == 587:
                 try:
+                    logger.info(f"Attempting SMTP connection to {self.settings.SMTP_SERVER}:587 (STARTTLS)")
                     server = smtplib.SMTP(self.settings.SMTP_SERVER, self.settings.SMTP_PORT, timeout=self.connection_timeout)
                     server.set_debuglevel(0)
+                    logger.debug("SMTP connection established, initiating STARTTLS")
                     server.starttls(context=context)
+                    logger.debug("STARTTLS successful, attempting login")
                     server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
                     
                     with self.lock:
                         self.stats['connections_created'] += 1
                     
-                    logger.debug(f"Created SMTP connection (STARTTLS) to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
+                    logger.info(f"✅ Created SMTP connection (STARTTLS) to {self.settings.SMTP_SERVER}:{self.settings.SMTP_PORT}")
                     return server
                     
                 except (OSError, socket.error) as e:
-                    logger.warning(f"Port 587 failed ({e}), falling back to SSL port 465")
+                    logger.warning(f"❌ Port 587 failed ({type(e).__name__}: {e}), falling back to SSL port 465")
                     # Fallback to SSL port 465 for platforms that block port 587
+                    logger.info(f"Attempting SMTP_SSL connection to {self.settings.SMTP_SERVER}:465")
                     server = smtplib.SMTP_SSL(self.settings.SMTP_SERVER, 465, timeout=self.connection_timeout, context=context)
                     server.set_debuglevel(0)
+                    logger.debug("SMTP_SSL connection established, attempting login")
                     server.login(self.settings.EMAIL_USER, self.settings.EMAIL_PASSWORD)
                     
                     with self.lock:
                         self.stats['connections_created'] += 1
                     
-                    logger.info(f"Created SMTP_SSL connection (fallback) to {self.settings.SMTP_SERVER}:465")
+                    logger.info(f"✅ Created SMTP_SSL connection (fallback) to {self.settings.SMTP_SERVER}:465")
                     return server
             
             # If explicitly using port 465, use SMTP_SSL directly
@@ -444,6 +449,7 @@ class CommunicationService:
         loop = asyncio.get_event_loop()
         
         try:
+            logger.info(f"Attempting to send email to {to_email}: {subject}")
             return await loop.run_in_executor(
                 self.executor,
                 lambda: self.circuit_breaker.call(
@@ -452,6 +458,7 @@ class CommunicationService:
             )
         except Exception as e:
             logger.error(f"Circuit breaker prevented email to {to_email}: {e}")
+            logger.error(f"Circuit breaker state: {self.circuit_breaker.get_state()}")
             return False
     
     def send_email_sync(self, to_email: str, subject: str, content: str, 
