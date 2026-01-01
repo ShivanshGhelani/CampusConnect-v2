@@ -17,30 +17,6 @@ function EventDetail() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [attendanceMarked, setAttendanceMarked] = useState(false);
 
-  // DEBUG MODE - Press Ctrl+Shift+D to toggle
-  const [debugMode, setDebugMode] = useState(false);
-  const [debugOverrides, setDebugOverrides] = useState({
-    eventStatus: null,
-    registrationStatus: null,
-    feedbackSubmitted: null,
-    certificateAvailable: false,
-    hasCertificates: true, // Whether event offers certificates
-    currentPhase: null,
-    seatsAvailable: true
-  });
-
-  // Debug mode keyboard shortcut (Alt+Shift+D)
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.altKey && e.shiftKey && e.key === 'D') {
-        setDebugMode(prev => !prev);
-        console.log('Debug mode:', !debugMode);
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [debugMode]);
-
   useEffect(() => {
     // Only fetch if eventId exists and is different from current event
     if (eventId && (!event || event.event_id !== eventId)) {
@@ -170,10 +146,7 @@ function EventDetail() {
   const getStatusInfo = () => {
     if (!event) return { bgClass: 'bg-gray-50', textClass: 'text-gray-600', label: 'EVENT', iconPath: 'M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z' };
 
-    // DEBUG MODE: Override status if in debug mode
-    const status = debugMode && debugOverrides.eventStatus
-      ? debugOverrides.eventStatus
-      : (event.sub_status || event.status);
+    const status = event.sub_status || event.status;
 
     switch (status) {
       case 'registration_not_started':
@@ -312,37 +285,6 @@ function EventDetail() {
 
   // Timeline status helper function
   const getCurrentTimelineStatus = (phase) => {
-    // DEBUG MODE: Override timeline based on debug event status
-    if (debugMode && debugOverrides.eventStatus) {
-      const status = debugOverrides.eventStatus;
-
-      switch (phase) {
-        case 'registration_start':
-          return (status === 'registration_open' || status === 'registration_closed' || status === 'ongoing' || status === 'completed') ? 'completed' : 'upcoming';
-
-        case 'registration_end':
-          if (status === 'registration_not_started') return 'upcoming';
-          if (status === 'registration_open') return 'current';
-          return 'completed'; // closed, ongoing, completed
-
-        case 'event_start':
-          return (status === 'ongoing' || status === 'completed') ? 'completed' : 'upcoming';
-
-        case 'event_end':
-          if (status === 'completed') return 'completed';
-          if (status === 'ongoing') return 'current';
-          return 'upcoming';
-
-        case 'certificate':
-          if (!effectiveHasCertificates) return 'hidden'; // Don't show if no certificates
-          return status === 'completed' ? 'current' : 'upcoming';
-
-        default:
-          return 'upcoming';
-      }
-    }
-
-    // Normal logic when not in debug mode
     const now = new Date();
 
     switch (phase) {
@@ -389,78 +331,30 @@ function EventDetail() {
 
   // Get dynamic timeline message based on current phase
   const getDynamicTimelineMessage = () => {
-    // DEBUG MODE: Override timeline message based on debug status
-    if (debugMode && debugOverrides.eventStatus) {
-      const status = debugOverrides.eventStatus;
+    const status = event.sub_status || event.status;
 
-      switch (status) {
-        case 'registration_not_started':
-          return 'Registration opens in 5 days';
-        case 'registration_open':
-          return 'Registration closes in 3 days';
-        case 'registration_closed':
-          return 'Event starts in 2 days';
-        case 'ongoing':
-          return 'Event ends in 4 hours';
-        case 'completed':
-          if (!effectiveHasCertificates) {
-            return effectiveFeedbackSubmitted
-              ? 'Thank you for your feedback!'
-              : 'Submit feedback to complete';
-          }
-          return effectiveFeedbackSubmitted && debugOverrides.certificateAvailable
-            ? 'Certificate available'
-            : effectiveFeedbackSubmitted
-              ? 'Certificate processing'
-              : 'Submit feedback to get certificate';
-        default:
-          return 'Timeline active';
-      }
+    switch (status) {
+      case 'registration_not_started':
+        return 'Registration opens in 5 days';
+      case 'registration_open':
+        return 'Registration closes in 3 days';
+      case 'registration_closed':
+        return 'Event starts in 2 days';
+      case 'ongoing':
+        return 'Event ends in 4 hours';
+      case 'completed':
+        if (!event?.has_certificates) {
+          return feedbackSubmitted
+            ? 'Thank you for your feedback!'
+            : 'Submit feedback to complete';
+        }
+        return feedbackSubmitted
+          ? 'Certificate available'
+          : 'Submit feedback to get certificate';
+      default:
+        return 'Timeline active';
     }
-
-    // Normal logic when not in debug mode
-    const now = new Date();
-
-    // Registration not started
-    if (event.registration_start_date && now < new Date(event.registration_start_date)) {
-      const timeLeft = getTimeRemaining(event.registration_start_date);
-      return timeLeft ? `Registration opens in ${timeLeft}` : 'Registration opening soon';
-    }
-
-    // Registration open
-    if (event.registration_start_date && now >= new Date(event.registration_start_date) &&
-      event.registration_end_date && now < new Date(event.registration_end_date)) {
-      const timeLeft = getTimeRemaining(event.registration_end_date);
-      return timeLeft ? `Registration closes in ${timeLeft}` : 'Registration closing soon';
-    }
-
-    // Registration closed, event not started
-    const eventStartField = event.start_date || event.start_datetime;
-    if (event.registration_end_date && now >= new Date(event.registration_end_date) &&
-      eventStartField && now < new Date(eventStartField)) {
-      const timeLeft = getTimeRemaining(eventStartField);
-      return timeLeft ? `Event starts in ${timeLeft}` : 'Event starting soon';
-    }
-
-    // Event started, not ended
-    const eventStartField2 = event.start_date || event.start_datetime;
-    const eventEndField = event.end_date || event.end_datetime;
-    if (eventStartField2 && now >= new Date(eventStartField2) &&
-      eventEndField && now < new Date(eventEndField)) {
-      const timeLeft = getTimeRemaining(eventEndField);
-      return timeLeft ? `Event ends in ${timeLeft}` : 'Event ending soon';
-    }
-
-    // Event ended
-    const eventEndField2 = event.end_date || event.end_datetime;
-    if (eventEndField2 && now >= new Date(eventEndField2)) {
-      return 'Certificate available';
-    }
-
-    return 'Timeline unavailable';
   };
-
-
 
   if (isLoading) {
     return (
@@ -497,20 +391,9 @@ function EventDetail() {
   const registrationStart = formatDate(event.registration_start_date);
   const registrationEnd = formatDate(event.registration_end_date);
 
-  // DEBUG MODE: Get overridden values
-  const effectiveRegistrationStatus = debugMode && debugOverrides.registrationStatus !== null
-    ? debugOverrides.registrationStatus
-    : registrationStatus;
-  const effectiveFeedbackSubmitted = debugMode && debugOverrides.feedbackSubmitted !== null
-    ? debugOverrides.feedbackSubmitted
-    : feedbackSubmitted;
   // Check if event offers certificates - using actual database field
   // Database uses: is_certificate_based (boolean) and certificate_end_date
   const eventHasCertificates = event ? Boolean(event.is_certificate_based) : false;
-
-  const effectiveHasCertificates = debugMode && debugOverrides.hasCertificates !== null
-    ? debugOverrides.hasCertificates
-    : eventHasCertificates;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -583,107 +466,8 @@ function EventDetail() {
         `}
       </style>
 
-      {/* DEBUG MODE PANEL */}
-      {debugMode && (
-        <div className="fixed bottom-4 right-4 bg-black/90 backdrop-blur-lg text-white p-6 rounded-2xl shadow-2xl border-2 border-yellow-400 z-[9999] max-w-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
-              <h3 className="text-sm font-bold text-yellow-400">DEBUG MODE</h3>
-            </div>
-            <button
-              onClick={() => setDebugMode(false)}
-              className="text-white/60 hover:text-white transition-colors"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {/* Event Status */}
-            <div>
-              <label className="text-white/80 block mb-1">Event Status:</label>
-              <select
-                className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs"
-                value={debugOverrides.eventStatus || ''}
-                onChange={(e) => setDebugOverrides({ ...debugOverrides, eventStatus: e.target.value || null })}
-              >
-                <option value="">-- Use Real --</option>
-                <option value="registration_not_started">Registration Not Started</option>
-                <option value="registration_open">Registration Open</option>
-                <option value="registration_closed">Registration Closed</option>
-                <option value="ongoing">Event Ongoing</option>
-                <option value="completed">Event Completed</option>
-              </select>
-            </div>
-
-            {/* Registration Status */}
-            <div>
-              <label className="text-white/80 block mb-1">Registration:</label>
-              <select
-                className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs"
-                value={debugOverrides.registrationStatus === null ? '' : debugOverrides.registrationStatus}
-                onChange={(e) => setDebugOverrides({ ...debugOverrides, registrationStatus: e.target.value === '' ? null : e.target.value })}
-              >
-                <option value="">-- Use Real --</option>
-                <option value="registered">Registered</option>
-                <option value="not_registered">Not Registered</option>
-                <option value="waitlisted">Waitlisted</option>
-              </select>
-            </div>
-
-            {/* Feedback */}
-            <div>
-              <label className="text-white/80 block mb-1">Feedback:</label>
-              <select
-                className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs"
-                value={debugOverrides.feedbackSubmitted === null ? '' : debugOverrides.feedbackSubmitted}
-                onChange={(e) => setDebugOverrides({ ...debugOverrides, feedbackSubmitted: e.target.value === '' ? null : e.target.value === 'true' })}
-              >
-                <option value="">-- Use Real --</option>
-                <option value="true">Submitted</option>
-                <option value="false">Not Submitted</option>
-              </select>
-            </div>
-
-            {/* Event Has Certificates */}
-            <div>
-              <label className="text-white/80 block mb-1">Event Offers Certificates:</label>
-              <select
-                className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs"
-                value={debugOverrides.hasCertificates}
-                onChange={(e) => setDebugOverrides({ ...debugOverrides, hasCertificates: e.target.value === 'true' })}
-              >
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </div>
-
-            {/* Certificate Available - Only show if event has certificates */}
-            {debugOverrides.hasCertificates && (
-              <div>
-                <label className="text-white/80 block mb-1">Certificate:</label>
-                <select
-                  className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs"
-                  value={debugOverrides.certificateAvailable}
-                  onChange={(e) => setDebugOverrides({ ...debugOverrides, certificateAvailable: e.target.value === 'true' })}
-                >
-                  <option value="false">Not Available</option>
-                  <option value="true">Available</option>
-                </select>
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-white/20 text-white/60 text-[10px]">
-              Press <kbd className="px-1 py-0.5 bg-white/20 rounded">Alt+Shift+D</kbd> to toggle<br />
-              <span className="text-yellow-400">Refresh page to reset</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Hero Section */}
-      <div className="mb-1 relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white overflow-hidden pt-14 sm:pt-22 mb-1 md:pt-36 lg:pt-24">
+      <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white overflow-hidden pt-14 sm:pt-22 md:pt-36 lg:pt-24">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -702,15 +486,9 @@ function EventDetail() {
         <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-pink-300/10 rounded-full blur-xl animate-pulse"></div>
 
         <div className="relative container mx-auto max-w-7xl px-3 sm:px-4 pt-4 sm:pt-6 md:pt-8 lg:pt-6 pb-0 mb-0 sm:mb-6">
-          {/* Debug Mode Indicator */}
-          {debugMode && (
-            <div className="absolute top-2 left-2 z-50 bg-yellow-400 text-black px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-              🛠️ DEBUG MODE
-            </div>
-          )}
-
-          <div className="flex flex-col lg:flex-row items-start justify-between gap-3 sm:gap-4 md:gap-6 lg:gap-8">              <div className="flex-1 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
-            {/* Enhanced Status Badge with Better Visibility */}
+          <div className="flex flex-col lg:flex-row items-start justify-between gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+            <div className="flex-1 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
+              {/* Enhanced Status Badge with Better Visibility */}
             <div className={`inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-full text-xs sm:text-sm md:text-base font-medium border-2 border-white/30 hover:scale-105 transition-all duration-300 shadow-lg ${statusInfo.animate || ''}`}>
               <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1.5 sm:mr-2 md:mr-2.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d={statusInfo.iconPath} clipRule="evenodd" />
@@ -795,7 +573,7 @@ function EventDetail() {
                   </div>
 
                   {/* Action Section */}
-                  {((debugMode && debugOverrides.eventStatus === 'registration_open') || (!debugMode && event.sub_status === 'registration_open')) && (
+                  {event.sub_status === 'registration_open' && (
                     <div className="space-y-2.5">
                       <div className="text-center space-y-1">
                         <div className="w-9 h-9 bg-gradient-to-r from-emerald-400 to-green-500 rounded-xl flex items-center justify-center mx-auto shadow-lg">
@@ -839,7 +617,7 @@ function EventDetail() {
                     </div>
                   )}
 
-                  {((debugMode && debugOverrides.eventStatus === 'registration_not_started') || (!debugMode && event.sub_status === 'registration_not_started')) && (
+                  {event.sub_status === 'registration_not_started' && (
                     <div className="space-y-2.5">
                       <div className="text-center space-y-1">
                         <div className="w-9 h-9 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto shadow-lg">
@@ -876,7 +654,7 @@ function EventDetail() {
                     </div>
                   )}
 
-                  {((debugMode && debugOverrides.eventStatus === 'ongoing') || (!debugMode && (event.sub_status === 'event_started' || event.sub_status === 'ongoing'))) && (
+                  {(event.sub_status === 'event_started' || event.sub_status === 'ongoing') && (
                     <div className="space-y-2.5">
                       <div className="text-center space-y-1">
                         <div className="w-9 h-9 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mx-auto shadow-lg">
@@ -888,7 +666,7 @@ function EventDetail() {
                         <p className="text-orange-100 text-[10px]">Event is happening now</p>
                       </div>
 
-                      {effectiveRegistrationStatus === 'registered' && (
+                      {registrationStatus === 'registered' && (
                         <div className="bg-green-500/20 backdrop-blur-sm rounded-xl p-2 border border-green-300/30">
                           <div className="flex items-center justify-center gap-1.5 text-green-200">
                             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
@@ -899,7 +677,7 @@ function EventDetail() {
                         </div>
                       )}
 
-                      {effectiveRegistrationStatus !== 'registered' && (
+                      {registrationStatus !== 'registered' && (
                         <div className="bg-yellow-500/20 backdrop-blur-sm rounded-xl p-2 border border-yellow-300/30">
                           <p className="text-yellow-100 text-[10px] text-center font-medium">
                             <i className="fas fa-info-circle mr-1"></i>
@@ -910,10 +688,10 @@ function EventDetail() {
                     </div>
                   )}
                   {/* Event Completed / Certificate Available - Show feedback button always, certificate message only if enabled */}
-                  {((debugMode && debugOverrides.eventStatus === 'completed') || (!debugMode && event.sub_status === 'certificate_available')) && (
+                  {event.sub_status === 'certificate_available' && (
                     <div className="space-y-2.5">
                       {/* Certificate ready message - only show if event has certificates */}
-                      {effectiveHasCertificates && (
+                      {event?.has_certificates && (
                         <div className="text-center space-y-0.5">
                           <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto shadow-lg">
                             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -926,7 +704,7 @@ function EventDetail() {
                       )}
 
                       {/* Event completed message - show if no certificates */}
-                      {!effectiveHasCertificates && (
+                      {!event?.has_certificates && (
                         <div className="text-center space-y-0.5">
                           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto shadow-lg">
                             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -941,20 +719,20 @@ function EventDetail() {
                       {/* Feedback Button */}
                       <button
                         onClick={handleFeedback}
-                        disabled={effectiveFeedbackSubmitted}
-                        className={`group relative w-full transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border ${effectiveFeedbackSubmitted
+                        disabled={feedbackSubmitted}
+                        className={`group relative w-full transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border ${feedbackSubmitted
                           ? 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50 cursor-not-allowed'
                           : 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 border-emerald-400/50'
                           } text-white font-bold py-2.5 px-5 rounded-xl`}
                       >
-                        {!effectiveFeedbackSubmitted && (
+                        {!feedbackSubmitted && (
                           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
                         )}
-                        {!effectiveFeedbackSubmitted && (
+                        {!feedbackSubmitted && (
                           <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                         )}
                         <div className="relative flex items-center justify-center gap-1.5">
-                          {effectiveFeedbackSubmitted ? (
+                          {feedbackSubmitted ? (
                             <>
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -974,7 +752,7 @@ function EventDetail() {
                       </button>
 
                       {/* Certificate Download Button */}
-                      {effectiveFeedbackSubmitted && debugOverrides.certificateAvailable && effectiveHasCertificates && (
+                      {feedbackSubmitted && event?.has_certificates && (
                         <button className="group relative w-full bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-600 hover:via-yellow-600 hover:to-orange-600 text-white font-bold py-2.5 px-5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg border border-amber-400/50">
                           <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                           <div className="relative flex items-center justify-center gap-1.5">
@@ -990,7 +768,7 @@ function EventDetail() {
 
                   {/* Fallback for other statuses */}
                   {(() => {
-                    const effectiveStatus = debugMode && debugOverrides.eventStatus ? debugOverrides.eventStatus : event.sub_status;
+                    const effectiveStatus = event.sub_status;
                     return !['registration_open', 'event_started', 'ongoing', 'certificate_available', 'completed', 'registration_not_started'].includes(effectiveStatus);
                   })() && (
                       <div className="space-y-2.5">
@@ -1256,7 +1034,7 @@ function EventDetail() {
                 </div>
 
                 {/* Connecting Line 4 */}
-                {effectiveHasCertificates && (
+                {event?.has_certificates && (
                   <div className="hidden lg:flex flex-1 items-center justify-center px-2">
                     <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${getCurrentTimelineStatus('event_end') === 'completed'
                       ? 'bg-gradient-to-r from-blue-400 to-purple-400'
@@ -1266,7 +1044,7 @@ function EventDetail() {
                 )}
 
                 {/* Certificate Available */}
-                {effectiveHasCertificates && (
+                {event?.has_certificates && (
                   <div className={`flex flex-col items-center group transition-all duration-300 ${getCurrentTimelineStatus('certificate') === 'completed'
                     ? 'scale-105'
                     : getCurrentTimelineStatus('certificate') === 'current'
