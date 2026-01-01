@@ -414,7 +414,7 @@ const formatDate = (dateString) => {
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg inline-flex items-center font-semibold transition-all duration-200 transform hover:scale-105 shadow-md"
                 >
                   <i className="fas fa-plus mr-2"></i>
-                  Create New Event
+                  Organize Event
                 </button>
               </div>
             )}
@@ -916,7 +916,7 @@ const formatDate = (dateString) => {
                       onClick={handleCreateEvent}
                       className="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
                     >
-                      <i className="fas fa-plus mr-2"></i>Create Event
+                      <i className="fas fa-plus mr-2"></i>Organize Event
                     </button>
                   )}
                 </div>
@@ -932,7 +932,7 @@ const formatDate = (dateString) => {
                     onClick={handleCreateEvent}
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                   >
-                    <i className="fas fa-plus mr-2"></i>Create Event
+                    <i className="fas fa-plus mr-2"></i>Organize Event
                   </button>
                   <button
                     onClick={() => navigate('/faculty/profile')}

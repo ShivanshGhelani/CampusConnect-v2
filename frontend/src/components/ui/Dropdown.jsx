@@ -143,7 +143,7 @@ const Dropdown = ({
         {/* Dropdown Menu */}
         {isOpen && (
           <div className={`
-            absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg 
+            absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl 
             max-h-60 overflow-hidden ${dropdownClassName}
           `}>
             {searchable && (

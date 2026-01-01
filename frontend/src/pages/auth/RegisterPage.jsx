@@ -99,6 +99,22 @@ function RegisterPage() {
     }
   }, [isAuthenticated, navigate, userRole]);
 
+  // Auto-dismiss error messages after 5 seconds
+  useEffect(() => {
+    if (error || validationErrors.step) {
+      const timer = setTimeout(() => {
+        clearError();
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.step;
+          return newErrors;
+        });
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [error, validationErrors.step, clearError]);
+
   // Check URL for tab parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -144,11 +160,17 @@ function RegisterPage() {
   // Step navigation functions
   const nextStep = () => {
     if (validateCurrentStep()) {
+      // Clear errors when moving to next step
+      setValidationErrors({});
+      clearError();
       setCurrentStep(prev => Math.min(prev + 1, 3));
     }
   };
 
   const prevStep = () => {
+    // Clear errors when going back
+    setValidationErrors({});
+    clearError();
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
@@ -696,13 +718,13 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-6 sm:py-8 lg:py-12 px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8 lg:py-12 px-4 sm:px-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-teal-800 to-sky-900 text-white py-3 fixed top-0 left-0 right-0 z-50 shadow-lg">
+      <div className="bg-blue-900 text-white py-3 fixed top-0 left-0 right-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm">
           <i className="fas fa-bullhorn mr-2"></i>
           Stay updated with the latest campus events!
-          <Link to="/client/events?filter=upcoming" className="underline hover:text-teal-200 ml-2 font-medium">
+          <Link to="/client/events?filter=upcoming" className="underline hover:text-blue-200 ml-2 font-medium">
             View Events
           </Link>
         </div>
@@ -711,13 +733,19 @@ function RegisterPage() {
       <div className="max-w-xl mx-auto space-y-6 mt-16 sm:mt-20">        
         {/* Header Section */}
         <div className="text-center">
-          <div className="flex items-center justify-center mb-4 sm:mb-6">
-            <div className={`h-16 w-16 sm:h-20 sm:w-20 flex items-center justify-center rounded-full shadow-lg ${
+          {userRole && (
+            <div className="mb-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <i className="fas fa-info-circle"></i>
+              <span>Registering as <strong>{userRole === 'faculty' ? 'Faculty Member' : 'Student'}</strong></span>
+            </div>
+          )}
+          <div className="flex items-center justify-center mb-4">
+            <div className={`h-16 w-16 sm:h-20 sm:w-20 flex items-center justify-center rounded-lg shadow-md ${
               userRole === 'faculty'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600'
+                ? 'bg-blue-600'
                 : userRole === 'student'
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600'
+                ? 'bg-green-600'
+                : 'bg-gray-700'
               }`}>
               <i className={`${
                 userRole === 'faculty' 
@@ -725,97 +753,129 @@ function RegisterPage() {
                   : userRole === 'student'
                   ? 'fas fa-user-graduate'
                   : 'fas fa-users'
-                } text-white text-2xl sm:text-3xl lg:text-4xl`}></i>
+                } text-white text-2xl sm:text-3xl`}></i>
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-3">Join CampusConnect</h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            {userRole === 'faculty'
-              ? 'Create your faculty account to manage and participate in events'
-              : userRole === 'student'
-              ? 'Create your student account to access events and opportunities'
-              : 'Select your role below to get started with your registration'
-            }
-          </p>
+          {userRole ? (
+            <>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+                {userRole === 'faculty' ? 'Faculty Registration' : 'Student Registration'}
+              </h1>
+              <p className="text-sm text-gray-600 max-w-2xl mx-auto">
+                {userRole === 'faculty'
+                  ? 'Complete the registration form to create your faculty account'
+                  : 'Complete the registration form to create your student account'}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+                CampusConnect Registration
+              </h1>
+              <p className="text-sm text-gray-600 max-w-2xl mx-auto">
+                Welcome! Please select your role to begin the registration process
+              </p>
+            </>
+          )}
         </div>
 
         {/* Registration Form */}
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200">
             {/* Step Progress Indicator */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 sm:px-8 lg:px-10 py-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-center gap-2 sm:gap-4 max-w-md mx-auto">
                 {[1, 2, 3].map((step) => {
                   const stepInfo = getStepInfo(step);
                   const isActive = currentStep === step;
                   const isCompleted = currentStep > step;
                   
                   return (
-                    <div key={step} className="flex items-center flex-1">
-                      <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300 shadow-sm ${
-                        isCompleted
-                          ? `${userRole === 'faculty' ? 'bg-blue-600 border-blue-600' : userRole === 'student' ? 'bg-green-600 border-green-600' : 'bg-purple-600 border-purple-600'} text-white`
-                          : isActive
-                          ? `${userRole === 'faculty' ? 'border-blue-600 bg-blue-50 text-blue-600' : userRole === 'student' ? 'border-green-600 bg-green-50 text-green-600' : 'border-purple-600 bg-purple-50 text-purple-600'}`
-                          : 'border-gray-300 bg-white text-gray-400'
-                      }`}>
-                        {isCompleted ? (
-                          <i className="fas fa-check text-xs sm:text-sm"></i>
-                        ) : (
-                          <i className={`${stepInfo.icon} text-xs sm:text-sm`}></i>
-                        )}
-                      </div>
-                      <div className="ml-3 flex-1">
-                        <p className={`text-xs font-semibold ${
-                          isActive 
-                            ? (userRole === 'faculty' ? 'text-blue-600' : userRole === 'student' ? 'text-green-600' : 'text-purple-600') 
-                            : 'text-gray-500'
+                    <React.Fragment key={step}>
+                      <div className="flex flex-col items-center">
+                        <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-200 ${
+                          isCompleted
+                            ? `${userRole === 'faculty' ? 'bg-blue-600 border-blue-600' : userRole === 'student' ? 'bg-green-600 border-green-600' : 'bg-gray-600 border-gray-600'} text-white`
+                            : isActive
+                            ? `${userRole === 'faculty' ? 'border-blue-600 bg-blue-50 text-blue-600' : userRole === 'student' ? 'border-green-600 bg-green-50 text-green-600' : 'border-gray-600 bg-gray-50 text-gray-600'}`
+                            : 'border-gray-300 bg-white text-gray-400'
                         }`}>
-                          Step {step}
-                        </p>
-                        <p className={`text-xs hidden sm:block ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                          {isCompleted ? (
+                            <i className="fas fa-check text-sm"></i>
+                          ) : (
+                            <span className="text-sm font-bold">{step}</span>
+                          )}
+                        </div>
+                        <p className={`text-xs font-medium mt-1.5 whitespace-nowrap ${
+                          isActive 
+                            ? (userRole === 'faculty' ? 'text-blue-600' : userRole === 'student' ? 'text-green-600' : 'text-gray-600') 
+                            : isCompleted
+                            ? 'text-gray-500'
+                            : 'text-gray-400'
+                        }`}>
                           {stepInfo.title}
                         </p>
                       </div>
                       {step < 3 && (
-                        <div className={`w-6 sm:w-8 h-1 mx-2 sm:mx-3 rounded-full ${
+                        <div className={`flex-shrink-0 w-8 sm:w-12 h-0.5 mb-6 rounded-full ${
                           currentStep > step 
-                            ? (userRole === 'faculty' ? 'bg-blue-600' : userRole === 'student' ? 'bg-green-600' : 'bg-purple-600')
+                            ? (userRole === 'faculty' ? 'bg-blue-600' : userRole === 'student' ? 'bg-green-600' : 'bg-gray-600')
                             : 'bg-gray-200'
                         }`}></div>
                       )}
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </div>
             </div>
 
             {/* Form Content */}
-            <div className="p-6 sm:p-8 lg:p-10">
+            <div className="p-6 sm:p-8">
               {/* Current Step Header */}
-              <div className="text-center mb-8">
-                <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg ${
-                  userRole === 'faculty' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
-                } mb-4`}>
-                  <i className={`${getStepInfo(currentStep).icon} text-2xl`}></i>
+              <div className="text-center mb-6">
+                <div className={`inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-md mb-3 ${
+                  userRole === 'faculty' 
+                    ? 'bg-blue-600 text-white' 
+                    : userRole === 'student'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-white'
+                }`}>
+                  <i className={`${getStepInfo(currentStep).icon} text-xl sm:text-2xl`}></i>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   {getStepInfo(currentStep).title}
                 </h2>
-                <p className="text-base text-gray-600">
+                <p className="text-sm text-gray-600">
                   {getStepInfo(currentStep).description}
                 </p>
               </div>
 
               {/* Error Messages */}
               {(error || validationErrors.step) && (
-                <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <i className="fas fa-exclamation-triangle text-red-400"></i>
+                <div className="mb-6 bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-4 rounded-r-md animate-shake">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <i className="fas fa-exclamation-triangle text-red-400 mt-0.5"></i>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm leading-relaxed">{error || validationErrors.step}</p>
+                        <p className="text-xs text-red-500 mt-1 opacity-75">This message will disappear in 5 seconds</p>
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="text-sm">{error || validationErrors.step}</p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearError();
+                        setValidationErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.step;
+                          return newErrors;
+                        });
+                      }}
+                      className="flex-shrink-0 ml-4 text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1213,23 +1273,23 @@ function RegisterPage() {
 
         {/* Login Link */}
         <div className="text-center">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-            <p className="text-base text-gray-600 mb-4">Already have an account?</p>
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-5">
+            <p className="text-sm text-gray-600 mb-4">Already have an account?</p>
             <Link
               to={`/auth/login?tab=${userRole}`}
-              className={`inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 border-2 rounded-xl text-base font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+              className={`inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 border-2 rounded-lg text-sm font-semibold transition-colors ${
                 userRole === 'faculty'
-                  ? 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
+                  ? 'border-blue-600 text-blue-700 hover:bg-blue-50'
                   : userRole === 'student'
-                  ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-300'
-                  : 'border-gray-200 text-gray-700 bg-gray-50 hover:bg-gray-100 hover:border-gray-300'
+                  ? 'border-green-600 text-green-700 hover:bg-green-50'
+                  : 'border-gray-600 text-gray-700 hover:bg-gray-50'
                 }`}
             >
               <i className="fas fa-sign-in-alt mr-2"></i>
               {userRole === 'faculty' 
-                ? 'Sign In to Faculty Portal' 
+                ? 'Sign In as Faculty' 
                 : userRole === 'student'
-                ? 'Sign In to Student Portal'
+                ? 'Sign In as Student'
                 : 'Sign In'
               }
             </Link>

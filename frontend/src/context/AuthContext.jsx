@@ -510,6 +510,40 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Function to transition organizer admin back to faculty
+  const transitionBackToFaculty = async () => {
+    try {
+      // Fetch fresh faculty data from backend
+      const response = await authAPI.facultyStatus();
+      
+      if (response && response.data.authenticated && response.data.user) {
+        const facultyUser = {
+          ...response.data.user,
+          user_type: 'faculty'
+        };
+        
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: {
+            user: facultyUser,
+            userType: 'faculty',
+          },
+        });
+        
+        // Update localStorage
+        localStorage.setItem('user_data', JSON.stringify(facultyUser));
+        localStorage.setItem('user_type', 'faculty');
+        
+        return { success: true };
+      } else {
+        throw new Error('Failed to fetch faculty data');
+      }
+    } catch (error) {
+      console.error('❌ Error transitioning back to faculty:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   // Function to refresh user data (especially assigned_events for organizer admins)
   const refreshUserData = async () => {
     if (!state.user || !state.isAuthenticated) {
@@ -567,6 +601,7 @@ export function AuthProvider({ children }) {
     updateUser,
     checkAuthStatus,
     transitionToOrganizerAdmin,
+    transitionBackToFaculty,
     refreshUserData,
   };
 
