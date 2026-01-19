@@ -19,8 +19,6 @@ import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page (Legacy -
 import UnifiedQRScanner from '../pages/UnifiedQRScanner'; // NEW: Unified QR Scanner with Token Access
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
-import TestMode from '../pages/TestMode'; // Test Mode - All Pages Overview
-import FeedbackPreviewClient from '../pages/test/FeedbackPreviewClient'; // Feedback Test Page
 
 // Student components - new organized structure
 import ProfilePage from '../pages/client/student/Account/ProfilePage';
@@ -29,7 +27,6 @@ import TeamManagement from '../pages/client/student/Account/TeamManagement';
 import Invitations from '../pages/client/student/Account/Invitations';
 import RegistrationRouter from '../components/common/RegistrationRouter';
 import RegistrationSuccess from '../pages/client/student/EventRegistration/RegistrationSuccess';
-import QRTest from '../pages/QRTest';
 // Attendance components
 import MarkAttendance from '../pages/client/student/Attendance/MarkAttendance';
 import AttendanceSuccess from '../pages/client/student/Attendance/AttendanceSuccess';
@@ -92,9 +89,6 @@ function AppRoutes() {
       <ScrollToTop />
       <Routes>
         <Route path='/test-mode' element={<TestMode />} />
-        <Route path= '/qr-test' element={<QRTest />} />
-        <Route path='/test/feedback-preview' element={<FeedbackPreviewClient />} />
-        {/* Auth Routes - No Layout */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -221,18 +215,7 @@ function AppRoutes() {
           {/* Dev/Legacy Routes */}
           <Route path="dev/event-registration/:eventId" element={<RegistrationRouter />} />
           <Route path="dev/event-registration" element={<RegistrationRouter />} />
-          <Route path="dev/team-management" element={<TeamManagement />} />
-          <Route path="dev/team-management/:eventId/:teamId" element={<TeamManagement />} />
           
-          {/* Student Routes */}
-          <Route
-            path="client/dashboard"
-            element={
-              <ProtectedRoute userType="student">
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
           <Route
             path="student/profile"
             element={
