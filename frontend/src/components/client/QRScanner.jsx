@@ -70,15 +70,21 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   };
 
   const onScanSuccess = async (decodedText, decodedResult) => {
+    console.log('🎯 QR CODE SCANNED!');
+    console.log('Raw decoded text:', decodedText);
+    
     try {
       // Parse QR code data
       const qrData = qrCodeService.parseQRData(decodedText);
+      console.log('Parsed QR data:', qrData);
       
       if (!qrData) {
+        console.error('❌ parseQRData returned null - invalid format');
         setError('Invalid QR code format. Please scan a valid event registration QR code.');
         return;
       }
 
+      console.log('✅ Valid QR data, setting scan result...');
       setScanResult(qrData);
       
       // Simulate fetching attendance data from backend
@@ -92,9 +98,12 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       }
       
       // DON'T call onScan here - wait for volunteer to mark attendance and click Save
+      console.log('✅ Attendance UI should now be visible');
       
     } catch (error) {
-      
+      console.error('❌ ERROR in onScanSuccess:', error);
+      console.error('Error message:', error.message);
+      console.error('Stack trace:', error.stack);
       setError('Error processing QR code. Please try again.');
     }
   };
@@ -106,8 +115,13 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
 
   // Simulate fetching attendance data with realistic timing
   const simulateAttendanceDataFetch = async (qrData) => {
+    console.log('📦 Generating mock attendance data for:', qrData);
+    
     // Show loading state
     await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Get user data from multiple possible fields
+    const userData = qrData.student || qrData.user || qrData.leader;
     
     if (qrData.type === 'team') {
       return {
@@ -115,19 +129,22 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         event_name: qrData.event_name,
         team_id: qrData.team?.team_id,
         team_name: qrData.team?.name,
-        registration_id: qrData.reg_id,
+        registration_id: qrData.reg_id || qrData.registration_id,
         scan_time: new Date().toISOString(),
         leader: {
-          ...qrData.leader,
-          attendance_status: Math.random() > 0.5 ? 'present' : 'pending',
-          marked_at: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 3600000).toISOString() : null,
-          marked_by: Math.random() > 0.5 ? 'organizer_001' : null
+          name: userData?.name,
+          enrollment: userData?.enrollment || userData?.id,
+          department: userData?.department,
+          email: userData?.email,
+          attendance_status: 'pending',
+          marked_at: null,
+          marked_by: null
         },
         members: qrData.team?.members?.map(member => ({
           ...member,
-          attendance_status: Math.random() > 0.6 ? 'present' : 'pending',
-          marked_at: Math.random() > 0.6 ? new Date(Date.now() - Math.random() * 3600000).toISOString() : null,
-          marked_by: Math.random() > 0.6 ? 'organizer_001' : null
+          attendance_status: 'pending',
+          marked_at: null,
+          marked_by: null
         })) || []
       };
     } else {
@@ -135,10 +152,13 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       return {
         event_id: qrData.event_id,
         event_name: qrData.event_name,
-        registration_id: qrData.reg_id,
+        registration_id: qrData.reg_id || qrData.registration_id,
         scan_time: new Date().toISOString(),
         student: {
-          ...qrData.leader,
+          name: userData?.name,
+          enrollment: userData?.enrollment || userData?.id,
+          department: userData?.department,
+          email: userData?.email,
           attendance_status: 'pending'
         }
       };

@@ -366,17 +366,26 @@ class QRCodeService {
    */
   parseQRData(qrString) {
     try {
+      console.log('📋 Parsing QR string:', qrString);
       const qrData = JSON.parse(qrString);
+      console.log('📋 Parsed JSON:', qrData);
       
-      // Validate QR data structure - simplified validation
-      if (!qrData.reg_id || !qrData.event_id || !qrData.student) {
-        
+      // Validate QR data structure - accept multiple formats
+      const hasRegistrationId = qrData.reg_id || qrData.registration_id;
+      const hasEventId = qrData.event_id;
+      const hasUserData = qrData.student || qrData.user || qrData.leader;
+      
+      console.log('Validation:', { hasRegistrationId, hasEventId, hasUserData });
+      
+      if (!hasRegistrationId || !hasEventId || !hasUserData) {
+        console.warn('❌ QR validation failed - missing required fields');
         return null;
       }
       
+      console.log('✅ QR data is valid');
       return qrData;
     } catch (error) {
-      
+      console.error('❌ Failed to parse QR data:', error.message);
       return null;
     }
   }

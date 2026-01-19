@@ -17,6 +17,8 @@ const VolunteerScanner = () => {
   const [error, setError] = useState('');
   const [scanHistory, setScanHistory] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
+  const [lastScanResult, setLastScanResult] = useState(null);
+  const [showScanFeedback, setShowScanFeedback] = useState(false);
 
   // Validate invitation on mount
   useEffect(() => {
