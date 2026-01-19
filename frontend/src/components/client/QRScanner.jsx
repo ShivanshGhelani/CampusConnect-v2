@@ -13,25 +13,33 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
 
   // Initialize scanner when modal opens
   useEffect(() => {
+    console.log('📱 QRScanner modal state changed. isOpen:', isOpen);
+    console.log('📱 Scanner ref exists:', !!html5QrcodeScannerRef.current);
+    
     if (isOpen && !html5QrcodeScannerRef.current) {
+      console.log('🚀 Starting scanner initialization...');
       initializeScanner();
     }
     
     return () => {
       if (html5QrcodeScannerRef.current) {
+        console.log('🧹 Cleaning up scanner...');
         html5QrcodeScannerRef.current.clear().catch(console.error);
       }
     };
   }, [isOpen]);
 
   const initializeScanner = async () => {
+    console.log('🎥 INITIALIZING QR SCANNER...');
     try {
       // Check for camera permission
       if (navigator.permissions) {
         const permission = await navigator.permissions.query({ name: 'camera' });
+        console.log('📹 Camera permission status:', permission.state);
         setCameraPermission(permission.state);
         
         permission.onchange = () => {
+          console.log('📹 Camera permission changed to:', permission.state);
           setCameraPermission(permission.state);
         };
       }
@@ -54,17 +62,22 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
       };
 
+      console.log('📋 Scanner config:', config);
+      console.log('🎯 Creating Html5QrcodeScanner instance...');
+      
       html5QrcodeScannerRef.current = new Html5QrcodeScanner(
         "qr-reader",
         config,
         /* verbose= */ false
       );
 
+      console.log('✅ Scanner instance created, rendering...');
       html5QrcodeScannerRef.current.render(onScanSuccess, onScanFailure);
       setIsScanning(true);
+      console.log('✅ Scanner rendered and active!');
       
     } catch (err) {
-      
+      console.error('❌ Scanner initialization error:', err);
       setError('Failed to initialize camera scanner. Please check camera permissions.');
     }
   };
@@ -109,8 +122,10 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   };
 
   const onScanFailure = (error) => {
-    // Don't show errors for scan failures - they're too frequent
-    // 
+    // Only log non-routine scan failures
+    if (error && !error.includes('NotFoundException')) {
+      console.log('⚠️ Scan attempt failed:', error);
+    }
   };
 
   // Simulate fetching attendance data with realistic timing
