@@ -95,6 +95,9 @@ const VolunteerScanner = () => {
 
   const handleScanResult = async (qrData, attendanceData) => {
     try {
+      // Close scanner modal
+      setShowScanner(false);
+      
       // Mark attendance via API
       const result = await volunteerScannerService.markAttendance(
         sessionData.session_id,
@@ -118,14 +121,22 @@ const VolunteerScanner = () => {
         result
       };
       
-      setScanHistory(prev => [scanRecord, ...prev]);
+      // Show visual feedback
+      setLastScanResult(scanRecord);
+      setShowScanFeedback(true);
+      setTimeout(() => {
+        setShowScanFeedback(false);
+        // Auto-reopen scanner for next scan after 2 seconds
+        setShowScanner(true);
+      }, 2000);
       
-      // Show success notification
-      alert(`✅ Attendance marked successfully!\n${totalPresent} person(s) marked present.\nScanned by: ${sessionData.volunteer_name}`);
+      setScanHistory(prev => [scanRecord, ...prev]);
       
     } catch (error) {
       console.error('Failed to mark attendance:', error);
       alert(`❌ Failed to mark attendance: ${error.message}`);
+      // Reopen scanner on error
+      setShowScanner(true);
     }
   };
 

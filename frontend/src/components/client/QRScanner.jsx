@@ -91,9 +91,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         setIsScanning(false);
       }
       
-      if (onScan) {
-        onScan(qrData, mockAttendanceData);
-      }
+      // DON'T call onScan here - wait for volunteer to mark attendance and click Save
       
     } catch (error) {
       
@@ -176,7 +174,12 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   };
 
   const handleSaveAttendance = () => {
-    alert('Attendance saved successfully! (This is a demo)');
+    // Call parent's onScan callback with updated attendance data
+    if (onScan && scanResult && attendanceData) {
+      onScan(scanResult, attendanceData);
+    }
+    
+    // Reset for next scan
     handleReset();
   };
 
