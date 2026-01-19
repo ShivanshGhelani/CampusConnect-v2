@@ -20,7 +20,7 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, userType } = useAuth();
+  const { user, userType, isLoading: authLoading } = useAuth();
 
   // State management
   const [event, setEvent] = useState(null);
@@ -30,17 +30,28 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   const [success, setSuccess] = useState('');
   const [registrationBlocked, setRegistrationBlocked] = useState(false);
 
-  // Form data state
-  const [formData, setFormData] = useState({
-    full_name: '',
-    employee_id: '',      // Changed from faculty_id
-    email: '',
-    contact_no: '',       // Changed from mobile_no  
-    department: '',
-    // REMOVED: designation (not needed per user request)
-    // Removed: gender, date_of_birth (not needed for faculty)
-    team_name: '',
-    participants: []
+  // Form data state - Initialize with user data if available
+  const [formData, setFormData] = useState(() => {
+    const resolveContactNumber = (userData) => {
+      if (!userData) return '';
+      const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
+      for (const field of possibleFields) {
+        if (userData[field] && userData[field].trim()) {
+          return userData[field];
+        }
+      }
+      return '';
+    };
+
+    return {
+      full_name: user?.full_name || '',
+      employee_id: user?.employee_id || '',
+      email: user?.email || '',
+      contact_no: resolveContactNumber(user),
+      department: user?.department || '',
+      team_name: '',
+      participants: []
+    };
   });
 
   // Team registration state
@@ -102,6 +113,31 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
     }
   }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
 
+  // Update form data when user profile loads (e.g., after page refresh)
+  useEffect(() => {
+    if (user && user.employee_id) {
+      const resolveContactNumber = (userData) => {
+        if (!userData) return '';
+        const possibleFields = ['contact_no', 'phone_number', 'mobile_no', 'phone', 'mobile', 'contact'];
+        for (const field of possibleFields) {
+          if (userData[field] && userData[field].trim()) {
+            return userData[field];
+          }
+        }
+        return '';
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        full_name: user.full_name || prev.full_name,
+        employee_id: user.employee_id || prev.employee_id,
+        email: user.email || prev.email,
+        contact_no: resolveContactNumber(user) || prev.contact_no,
+        department: user.department || prev.department
+      }));
+    }
+  }, [user?.full_name, user?.email, user?.contact_no, user?.phone_number, user?.mobile_no, user?.department]);
+
   // Load event details using cached data
   useEffect(() => {
     const loadEventDetails = async () => {
@@ -152,9 +188,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
       } catch (error) {
         
         setError('Failed to load event details');
-      } finally {
-        setLoading(false);
       }
+      // Loading state is now controlled by user data useEffect - don't set it here
     };
 
     loadEventDetails();
@@ -237,6 +272,8 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
         };
 
         setFormData(newFormData);
+        // CRITICAL: Set loading to false after successful profile load
+        setLoading(false);
         console.log('✅ Faculty form data initialized:', newFormData);
       }
     };
@@ -483,14 +520,16 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
   };
 
   // Loading state
-  if (loading) {
+  if (loading || authLoading || !user || !user.employee_id) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <LoadingSpinner size="lg" />
-            <p className="mt-4 text-gray-600">Loading registration form...</p>
-            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
+            <div className="flex justify-center mb-4">
+              <LoadingSpinner size="lg" />
+            </div>
+            <p className="mt-4 text-gray-600 font-medium">Loading registration form...</p>
+            <p className="mt-2 text-sm text-gray-500">Please wait while we prepare your information...</p>
           </div>
         </div>
       </Layout>

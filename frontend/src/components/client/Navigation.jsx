@@ -10,7 +10,7 @@ function ClientNavigation() {
   const { user, userType, logout, isAuthenticated, transitionToOrganizerAdmin } = useAuth();
   
   // Memoize avatar hook to prevent unnecessary calls
-  const { avatarUrl } = useAvatar(user);
+  const { avatarUrl } = useAvatar(user, userType);
   
   const location = useLocation();
   const navigate = useNavigate();

@@ -53,6 +53,7 @@ const UnifiedAttendancePortal = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [tokenError, setTokenError] = useState('');
   const [selectedSessionForToken, setSelectedSessionForToken] = useState('');
+  const [checkingExistingInvitation, setCheckingExistingInvitation] = useState(false);
 
   useEffect(() => {
     loadAttendanceData();
@@ -237,10 +238,21 @@ const UnifiedAttendancePortal = () => {
     });
   };
 
-  const generateScannerToken = async (sessionId = null, expiresInHours = null) => {
+  const generateScannerToken = async (sessionId = null, expiresInHours = null, forceNew = false) => {
     try {
       setTokenLoading(true);
       setTokenError('');
+      
+      // If forcing new, deactivate existing invitations first
+      if (forceNew && scannerToken?.invitation_code) {
+        try {
+          await adminAPI.deactivateScannerInvitation(scannerToken.invitation_code);
+          console.log('✅ Deactivated old invitation:', scannerToken.invitation_code);
+        } catch (err) {
+          console.error('❌ Failed to deactivate old invitation:', err);
+          // Continue anyway
+        }
+      }
       
       // Calculate expiry time if hours provided
       let expiresAt = null;
@@ -277,6 +289,52 @@ const UnifiedAttendancePortal = () => {
     } finally {
       setTokenLoading(false);
     }
+  };
+
+  // Check for existing active invitation when opening modal
+  const checkExistingInvitation = async () => {
+    try {
+      setCheckingExistingInvitation(true);
+      const response = await adminAPI.getScannerInvitationStats(eventId);
+      
+      if (response.data.success && response.data.data.has_active_invitation) {
+        // Found an active invitation, display it
+        const statsData = response.data.data;
+        const expiresAtDate = new Date(statsData.expires_at);
+        const hoursUntilExpiry = Math.ceil((expiresAtDate - new Date()) / (1000 * 60 * 60));
+        
+        // Reconstruct the scanner URL from the invitation code
+        const baseUrl = window.location.origin;
+        const scannerUrl = `${baseUrl}/scan/${statsData.invitation_code}`;
+        
+        const invitationData = {
+          scanner_url: scannerUrl,
+          invitation_code: statsData.invitation_code,
+          expires_at: statsData.expires_at,
+          expires_in_hours: hoursUntilExpiry,
+          event_name: config?.event_name || 'Event',
+          is_existing: true // Flag to indicate this is an existing invitation
+        };
+        
+        setScannerToken(invitationData);
+        console.log('✅ Restored existing active invitation:', statsData.invitation_code);
+      } else {
+        // No active invitation, user can create a new one
+        setScannerToken(null);
+      }
+    } catch (err) {
+      console.error('Error checking existing invitation:', err);
+      // On error, allow creating new invitation
+      setScannerToken(null);
+    } finally {
+      setCheckingExistingInvitation(false);
+    }
+  };
+
+  // Handle opening the scanner modal
+  const handleOpenScannerModal = async () => {
+    setShowScannerModal(true);
+    await checkExistingInvitation();
   };
 
   const copyToClipboard = async (text) => {
@@ -701,7 +759,7 @@ const UnifiedAttendancePortal = () => {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowScannerModal(true)}
+              onClick={handleOpenScannerModal}
               className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
             >
               <QrCode className="w-4 h-4" />
@@ -851,7 +909,12 @@ const UnifiedAttendancePortal = () => {
           headerIcon={<QrCode className="w-5 h-5" />}
         >
           <div className="space-y-6">
-            {!scannerToken ? (
+            {checkingExistingInvitation ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <LoadingSpinner size="lg" />
+                <p className="mt-4 text-gray-600">Checking for existing scanner links...</p>
+              </div>
+            ) : !scannerToken ? (
               <>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
@@ -946,13 +1009,18 @@ const UnifiedAttendancePortal = () => {
               </>
             ) : (
               <>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className={`${scannerToken.is_existing ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'} border rounded-lg p-4`}>
                   <div className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                    <CheckCircle className={`w-5 h-5 ${scannerToken.is_existing ? 'text-blue-600' : 'text-green-600'} mt-0.5`} />
                     <div>
-                      <h4 className="font-medium text-green-800">Scanner Link Generated!</h4>
-                      <p className="text-sm text-green-700 mt-1">
-                        Share this link with volunteers to allow them to mark attendance. The link expires on {new Date(scannerToken.expires_at).toLocaleString()}.
+                      <h4 className={`font-medium ${scannerToken.is_existing ? 'text-blue-800' : 'text-green-800'}`}>
+                        {scannerToken.is_existing ? 'Active Scanner Link Found!' : 'Scanner Link Generated!'}
+                      </h4>
+                      <p className={`text-sm ${scannerToken.is_existing ? 'text-blue-700' : 'text-green-700'} mt-1`}>
+                        {scannerToken.is_existing 
+                          ? 'You have an active scanner link. Share this with volunteers to mark attendance.'
+                          : 'Share this link with volunteers to allow them to mark attendance.'
+                        } The link expires on {new Date(scannerToken.expires_at).toLocaleString()}.
                       </p>
                     </div>
                   </div>
@@ -1015,6 +1083,36 @@ const UnifiedAttendancePortal = () => {
                   <p>• Link automatically expires after the specified time</p>
                   <p>• You can generate new links anytime</p>
                 </div>
+
+                {scannerToken.is_existing && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={async () => {
+                        // Deactivate existing and create new
+                        const hoursSelect = document.getElementById('hours-select');
+                        const hours = parseInt(hoursSelect?.value || '24');
+                        await generateScannerToken(null, hours, true);
+                      }}
+                      disabled={tokenLoading}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    >
+                      {tokenLoading ? (
+                        <>
+                          <LoadingSpinner />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <QrCode className="w-4 h-4" />
+                          Create New Scanner Link
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      This will deactivate the current link and create a new one
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </div>

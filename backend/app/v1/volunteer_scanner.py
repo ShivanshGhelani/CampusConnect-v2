@@ -14,8 +14,12 @@ from database.operations import DatabaseOperations
 from models.admin_user import AdminUser
 from dependencies.auth import require_admin
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+# Development/Testing mode - bypasses time restrictions
+TESTING_MODE = os.getenv("TESTING_MODE", "True").lower() == "true"
 
 router = APIRouter(prefix="/api/scanner", tags=["Volunteer Scanner"])
 
@@ -132,8 +136,17 @@ async def create_invitation_link(
         
         # Generate invitation URL
         from config.settings import settings
-        base_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else "http://localhost:3000"
+        # Use Vercel production URL for scanner links
+        base_url = "https://campusconnect1drp.vercel.app"
         invitation_url = f"{base_url}/scan/{invitation_code}"
+        
+        # Helper function to convert datetime to ISO string
+        def serialize_datetime(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, str):
+                return dt
+            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
         
         return {
             "success": True,
@@ -144,8 +157,8 @@ async def create_invitation_link(
                 "event_name": event.get("event_name"),
                 "expires_at": expires_at.isoformat(),
                 "attendance_window": {
-                    "start": invitation_data.get("attendance_start_time"),
-                    "end": invitation_data.get("attendance_end_time")
+                    "start": serialize_datetime(invitation_data.get("attendance_start_time")),
+                    "end": serialize_datetime(invitation_data.get("attendance_end_time"))
                 }
             }
         }
@@ -284,23 +297,37 @@ async def validate_invitation(invitation_code: str):
         now = datetime.utcnow()
         
         is_active = True
-        if attendance_start and attendance_end:
+        if attendance_start and attendance_end and not TESTING_MODE:
+            # Only enforce time restrictions in production
             if isinstance(attendance_start, str):
                 attendance_start = datetime.fromisoformat(attendance_start.replace('Z', '+00:00'))
             if isinstance(attendance_end, str):
                 attendance_end = datetime.fromisoformat(attendance_end.replace('Z', '+00:00'))
             
             is_active = attendance_start <= now <= attendance_end
+        elif TESTING_MODE:
+            # In testing mode, always allow access if invitation is valid
+            is_active = True
+            logger.info(f"TESTING_MODE: Bypassing time validation for invitation {invitation_code}")
+        
+        # Helper function to serialize datetime
+        def serialize_datetime(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, str):
+                return dt
+            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
         
         return {
             "success": True,
             "data": {
                 "event_id": invitation.get("event_id"),
                 "event_name": invitation.get("event_name"),
-                "attendance_start_time": invitation.get("attendance_start_time"),
-                "attendance_end_time": invitation.get("attendance_end_time"),
-                "expires_at": invitation.get("expires_at"),
-                "is_active": is_active
+                "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
+                "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
+                "expires_at": serialize_datetime(invitation.get("expires_at")),
+                "is_active": is_active,
+                "testing_mode": TESTING_MODE
             }
         }
         

@@ -144,59 +144,62 @@ export function AuthProvider({ children }) {
       const storedUserType = localStorage.getItem('user_type');
       
       if (storedUserData && storedUserType) {
-        // Verify with server
-        let response;
-        if (storedUserType === 'admin') {
-          response = await authAPI.adminStatus();
-        } else if (storedUserType === 'student') {
-          response = await authAPI.studentStatus();
-        } else if (storedUserType === 'faculty') {
-          response = await authAPI.facultyStatus();
-        }
+        // Parse stored user data first
+        const storedUserDataParsed = JSON.parse(storedUserData);
         
-        if (response && response.data.authenticated) {
-          // Merge server data with localStorage data to preserve profile updates
-          const storedUserDataParsed = JSON.parse(storedUserData);
-          const mergedUserData = {
-            ...response.data.user,
-            ...storedUserDataParsed
-          };
-          
-
-
-          
-          dispatch({
-            type: authActions.LOGIN_SUCCESS,
-            payload: {
-              user: mergedUserData,
-              userType: storedUserType,
-            },
-          });
-          
-          // Update localStorage with merged data to ensure consistency
-          localStorage.setItem('user_data', JSON.stringify(mergedUserData));
-          
-          // Initialize session avatar cache on successful auth check
-          
-          sessionAvatarCache.initializeSession(response.data.user);
-          
-        } else {
-          // Clear invalid session data
-          localStorage.removeItem('user_data');
-          localStorage.removeItem('user_type');
-          localStorage.removeItem('auth_token');
-          
-          // Clear avatar cache when session is invalid
+        // IMMEDIATELY restore user session from localStorage (don't wait for API)
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: {
+            user: storedUserDataParsed,
+            userType: storedUserType,
+          },
+        });
+        
+        // Initialize session avatar cache with stored data
+        sessionAvatarCache.initializeSession(storedUserDataParsed);
+        
+        // THEN verify with server in background (non-blocking)
+        setTimeout(async () => {
           try {
-            resetAvatarGlobalState();
-            sessionAvatarCache.clearSession();
+            let response;
+            if (storedUserType === 'admin') {
+              response = await authAPI.adminStatus();
+            } else if (storedUserType === 'student') {
+              response = await authAPI.studentStatus();
+            } else if (storedUserType === 'faculty') {
+              response = await authAPI.facultyStatus();
+            }
             
-          } catch (error) {
-            
+            if (response && response.data.authenticated) {
+              // Merge: Keep stored data as base, only update with fresh server data if present
+              const mergedUserData = {
+                ...storedUserDataParsed,  // Start with stored data (complete profile)
+                ...response.data.user,     // Update with fresh server data
+              };
+              
+              // Update with fresh data from server
+              dispatch({
+                type: authActions.UPDATE_USER,
+                payload: mergedUserData,
+              });
+              
+              // Update localStorage with merged data
+              localStorage.setItem('user_data', JSON.stringify(mergedUserData));
+            } else {
+              // Server says not authenticated - logout
+              dispatch({ type: authActions.LOGOUT });
+              localStorage.removeItem('user_data');
+              localStorage.removeItem('user_type');
+              localStorage.removeItem('auth_token');
+              resetAvatarGlobalState();
+              sessionAvatarCache.clearSession();
+            }
+          } catch (apiError) {
+            // API check failed - keep using stored credentials
+            console.warn('Auth verification failed, keeping local session:', apiError);
           }
-          
-          dispatch({ type: authActions.LOGOUT });
-        }
+        }, 0);
       } else {
         dispatch({ type: authActions.SET_LOADING, payload: false });
       }
@@ -269,6 +272,12 @@ export function AuthProvider({ children }) {
                   event_history
                 });
                 
+                // CRITICAL: Update localStorage with complete profile data
+                localStorage.setItem('user_data', JSON.stringify(profile));
+                
+                // Also update the response user data for immediate use
+                response.data.user = profile;
+                
                 // Also store in session storage as fallback
                 sessionStorage.setItem('complete_profile', JSON.stringify({
                   profile,
@@ -280,6 +289,28 @@ export function AuthProvider({ children }) {
             }
           } catch (profileError) {
             pass;
+            // Don't fail login if profile fetch fails
+          }
+        }
+        
+        // Pre-populate profile cache for faculty (optimized approach)
+        if (userType === 'faculty' && response.data.user?.employee_id) {
+          try {
+            // Use the same profile fetching utility as the profile page
+            const { fetchProfileWithCache } = await import('../utils/profileCache');
+            const profileData = await fetchProfileWithCache('faculty', response.data.user.employee_id, clientAPI);
+            
+            if (profileData && profileData.success) {
+              const { profile } = profileData;
+              if (profile) {
+                // CRITICAL: Update localStorage with complete profile data
+                localStorage.setItem('user_data', JSON.stringify(profile));
+                
+                // Also update the response user data for immediate use
+                response.data.user = profile;
+              }
+            }
+          } catch (profileError) {
             // Don't fail login if profile fetch fails
           }
         }
@@ -365,17 +396,22 @@ export function AuthProvider({ children }) {
     try {
       resetAvatarGlobalState();
       sessionAvatarCache.clearSession();
-      
+      // Also clear persistent avatar state
+      localStorage.removeItem('avatar_global_state_v1');
+      console.log('🗑️ Cleared avatar caches');
     } catch (error) {
-      
+      console.error('❌ Error clearing avatar cache:', error);
     }
     
     // Clear profile cache to prevent showing previous user's profile data
     try {
       clearProfileCache(); // Clear both student and faculty caches
-      
+      // Also clear persistent cache storage
+      localStorage.removeItem('profile_cache_v2');
+      localStorage.removeItem('event_cache_v2');
+      console.log('🗑️ Cleared persistent caches');
     } catch (error) {
-      
+      console.error('❌ Error clearing profile cache:', error);
     }
     
     // Clear data cache manager to prevent cross-user data leaks

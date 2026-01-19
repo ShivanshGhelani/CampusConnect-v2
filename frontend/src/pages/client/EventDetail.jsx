@@ -139,7 +139,7 @@ function EventDetail() {
         hour: '2-digit',
         minute: '2-digit'
       });
-      return `${dateFormatted}\n${startTime} - ${endTime}`;
+      return `${dateFormatted} ${startTime} - ${endTime}`;
     }
   };
 
@@ -489,44 +489,83 @@ function EventDetail() {
           <div className="flex flex-col lg:flex-row items-start justify-between gap-3 sm:gap-4 md:gap-6 lg:gap-8">
             <div className="flex-1 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
               {/* Enhanced Status Badge with Better Visibility */}
-            <div className={`inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-full text-xs sm:text-sm md:text-base font-medium border-2 border-white/30 hover:scale-105 transition-all duration-300 shadow-lg ${statusInfo.animate || ''}`}>
-              <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1.5 sm:mr-2 md:mr-2.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d={statusInfo.iconPath} clipRule="evenodd" />
-              </svg>
-              <span className="font-bold tracking-wide text-xs sm:text-sm md:text-base">{statusInfo.label}</span>
+              <div className={`inline-flex items-center px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-full text-xs sm:text-sm md:text-base font-medium border-2 border-white/30 hover:scale-105 transition-all duration-300 shadow-lg ${statusInfo.animate || ''}`}>
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1.5 sm:mr-2 md:mr-2.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d={statusInfo.iconPath} clipRule="evenodd" />
+                </svg>
+                <span className="font-bold tracking-wide text-xs sm:text-sm md:text-base">{statusInfo.label}</span>
+              </div>
+
+              {/* Event Type Badge */}
+              {(event.event_type || event.category) && (
+                <div className="inline-flex items-center px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-white/15 backdrop-blur-sm rounded-full text-xs sm:text-sm md:text-base font-medium border border-white/20 hover:bg-white/20 transition-all duration-300 ml-2">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2 md:mr-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                  {event.event_type || event.category}
+                </div>
+              )}
+
+              {/* Event Title */}
+              <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold -mt-2 sm:-mt-3 md:-mt-4 lg:-mt-5 mb-2 py-1.5 bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent leading-normal animate-title-glow text-wrap break-words">
+                {event.event_name || event.name || event.title || 'Event Details'}
+              </h1>
+                            {/* Description Preview */}
+              {(event.short_description || event.detailed_description || event.description || event.event_description || event.details || event.about) && (
+                <div className="relative mb-3 sm:mb-4 lg:mb-6">
+                  <p className="text-sm sm:text-base lg:text-lg text-blue-100 -my-1 py-2 sm:py-3 leading-relaxed max-w-4xl font-light relative z-10">
+                    {event.short_description ||
+                      (event.detailed_description && event.detailed_description.substring(0, 100) + '...') ||
+                      (event.description && event.description.substring(0, 100) + '...') ||
+                      (event.event_description && event.event_description.substring(0, 100) + '...') ||
+                      (event.details && event.details.substring(0, 100) + '...') ||
+                      (event.about && event.about.substring(0, 100) + '...')}
+                  </p>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-xl -z-0 blur-xl"></div>
+                </div>
+              )}
+              {/* Venue and Duration */}
+              <div className="mb-4 sm:mb-5 ">
+                <div className="flex flex-wrap gap-4 sm:gap-6">
+                  {/* Venue */}
+                  {event.venue && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-emerald-500/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-emerald-300" fill="white" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-black-200/70 uppercase tracking-wider font-medium">Venue</p>
+                        <p className="text-sm font-semibold text-white/95">{event.venue}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Duration */}
+                  {startDate && endDate && (
+                    <div className="flex flex-row items-center gap-2">
+                      <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-amber-300" fill="white" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div >
+                        <p className="text-[10px] text-black-200/70 uppercase tracking-wider font-medium">Duration</p>
+                        <p className="text-sm font-semibold text-white/95 whitespace-pre-line flex flex-col items-center ">
+                          {calculateDuration(event.start_date || event.start_datetime, event.end_date || event.end_datetime)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+
             </div>
 
-            {/* Event Type Badge */}
-            {(event.event_type || event.category) && (
-              <div className="inline-flex items-center px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-white/15 backdrop-blur-sm rounded-full text-xs sm:text-sm md:text-base font-medium border border-white/20 hover:bg-white/20 transition-all duration-300 ml-2">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 sm:mr-2 md:mr-2.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                </svg>
-                {event.event_type || event.category}
-              </div>
-            )}
-
-            {/* Event Title */}
-            <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold -mt-2 sm:-mt-3 md:-mt-4 lg:-mt-5 mb-2 py-1.5 bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent leading-normal animate-title-glow ext-wrap">
-              {event.event_name || event.name || event.title || 'Event Details'}
-            </h1>                {/* Description Preview */}
-            {(event.short_description || event.detailed_description || event.description || event.event_description || event.details || event.about) && (
-              <div className="relative mb-3 sm:mb-4 lg:mb-6">
-                <p className="text-sm sm:text-base lg:text-lg text-blue-100 -my-1 py-2 sm:py-3 leading-relaxed max-w-4xl font-light relative z-10">
-                  {event.short_description ||
-                    (event.detailed_description && event.detailed_description.substring(0, 100) + '...') ||
-                    (event.description && event.description.substring(0, 100) + '...') ||
-                    (event.event_description && event.event_description.substring(0, 100) + '...') ||
-                    (event.details && event.details.substring(0, 100) + '...') ||
-                    (event.about && event.about.substring(0, 100) + '...')}
-                </p>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-xl -z-0 blur-xl"></div>
-              </div>
-            )}
-          </div>
-
             {/* Professional Integrated Action Panel */}
-            <div className="relative w-full sm:w-auto sm:min-w-[340px]  md:min-w-[380px] mb-6 sm:mb-0">
+            <div className="relative w-full sm:w-auto sm:min-w-[300px] sm:max-w-[360px] md:min-w-[320px] md:max-w-[380px] mb-6 sm:mb-0">
               {/* Action Card */}
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-5 md:p-6 border border-white/20 shadow-xl transition-all duration-500 relative overflow-hidden">
                 {/* Subtle background elements */}
@@ -535,43 +574,6 @@ function EventDetail() {
 
                 {/* Content Container */}
                 <div className="relative z-10 space-y-4">
-                  {/* Event Info Section - Venue and Duration on same line */}
-                  <div className="pb-4 border-b border-white/10">
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Venue */}
-                      {event.venue && (
-                        <div className="flex items-start gap-2">
-                          <div className="w-8 h-8 bg-emerald-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <svg className="w-4 h-4 text-emerald-300" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] text-blue-200/70 uppercase tracking-wider font-medium mb-0.5">Venue</p>
-                            <p className="text-xs font-semibold text-white/90 leading-tight">{event.venue}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Duration */}
-                      {startDate && endDate && (
-                        <div className="flex items-start gap-2">
-                          <div className="w-8 h-8 bg-amber-500/15 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <svg className="w-4 h-4 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[9px] text-blue-200/70 uppercase tracking-wider font-medium mb-0.5">Duration</p>
-                            <p className="text-xs font-semibold text-white/90 leading-tight whitespace-pre-line">
-                              {calculateDuration(event.start_date || event.start_datetime, event.end_date || event.end_datetime)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Action Section */}
                   {event.sub_status === 'registration_open' && (
                     <div className="space-y-2.5">

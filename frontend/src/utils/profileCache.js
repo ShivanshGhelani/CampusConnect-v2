@@ -1,22 +1,56 @@
 // Global profile data cache to prevent duplicate API calls
-
-let profileCache = {
-  student: {
-    data: null,
-    fetchTime: null,
-    isLoading: false,
-    promise: null
-  },
-  faculty: {
-    data: null,
-    fetchTime: null,
-    isLoading: false,
-    promise: null
-  }
-};
+// CRITICAL: Now using localStorage for persistence across page refreshes
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const DUPLICATE_CALL_THRESHOLD = 1000; // 1 second
+const CACHE_STORAGE_KEY = 'profile_cache_v2';
+
+// Initialize cache from localStorage if available
+const initializeCacheFromStorage = () => {
+  try {
+    const storedCache = localStorage.getItem(CACHE_STORAGE_KEY);
+    if (storedCache) {
+      const parsed = JSON.parse(storedCache);
+      console.log('🔄 Restored profile cache from localStorage');
+      return parsed;
+    }
+  } catch (error) {
+    console.error('❌ Failed to restore cache from localStorage:', error);
+  }
+  
+  // Return empty cache structure
+  return {
+    student: { data: null, fetchTime: null, isLoading: false, promise: null },
+    faculty: { data: null, fetchTime: null, isLoading: false, promise: null }
+  };
+};
+
+// Initialize cache (will restore from localStorage if available)
+let profileCache = initializeCacheFromStorage();
+
+// Helper to sync cache to localStorage
+const syncCacheToStorage = () => {
+  try {
+    // Don't store promises or isLoading state
+    const storableCache = {
+      student: {
+        data: profileCache.student.data,
+        fetchTime: profileCache.student.fetchTime,
+        isLoading: false,
+        promise: null
+      },
+      faculty: {
+        data: profileCache.faculty.data,
+        fetchTime: profileCache.faculty.fetchTime,
+        isLoading: false,
+        promise: null
+      }
+    };
+    localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(storableCache));
+  } catch (error) {
+    console.error('❌ Failed to sync cache to localStorage:', error);
+  }
+};
 
 export const clearProfileCache = (userType = null) => {
   if (userType) {
@@ -32,6 +66,9 @@ export const clearProfileCache = (userType = null) => {
     profileCache.faculty = { data: null, fetchTime: null, isLoading: false, promise: null };
   }
   
+  // Sync to localStorage
+  syncCacheToStorage();
+  console.log('🗑️ Profile cache cleared for:', userType || 'all users');
 };
 
 export const getCachedProfile = (userType, userId) => {
@@ -68,6 +105,9 @@ export const setCachedProfile = (userType, data) => {
     isLoading: false,
     promise: null
   };
+  
+  // Sync to localStorage for persistence
+  syncCacheToStorage();
   console.log('💾 Profile cached for:', userType);
 };
 
@@ -84,6 +124,9 @@ export const updateCachedProfile = (userType, updatedProfileData) => {
       }
     };
     cache.fetchTime = Date.now();
+    
+    // Sync to localStorage
+    syncCacheToStorage();
     console.log('🔄 Profile cache updated for:', userType);
     return true;
   }
@@ -119,6 +162,12 @@ export const getAnyCache = (userType) => {
 
 export const fetchProfileWithCache = async (userType, userId, api) => {
   const cache = profileCache[userType];
+  
+  // CRITICAL: Validate API parameter
+  if (!api || typeof api.get !== 'function') {
+    console.error('❌ Invalid API object passed to fetchProfileWithCache:', api);
+    throw new Error('API object is required and must have a .get() method');
+  }
   
   // Check if we have recent cached data (first priority)
   const cachedData = getCachedProfile(userType, userId);
@@ -186,6 +235,12 @@ export const fetchProfileWithCache = async (userType, userId, api) => {
 
 // Check if cache is expired and refresh for active sessions
 export const refreshExpiredCache = async (userType, userId, api, forceRefresh = false) => {
+  // CRITICAL: Validate API parameter
+  if (!api || typeof api.get !== 'function') {
+    console.error('❌ Invalid API object passed to refreshExpiredCache:', api);
+    return null; // Return null instead of throwing to prevent blocking UI
+  }
+  
   const cache = profileCache[userType];
   const now = Date.now();
   

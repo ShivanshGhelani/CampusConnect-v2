@@ -114,14 +114,29 @@ export const useAvatar = (user, userType) => {
     // Add this component to listeners with stable function
     addAvatarListener(stableListener);
     
+    // Check global state FIRST - prioritize cached data
+    const { 
+      currentUserId: cachedUserId, 
+      isAvatarFetched: alreadyFetched, 
+      globalAvatarUrl: cachedAvatar, 
+      isFetching 
+    } = getGlobalAvatarState();
+    
+    // If we have a valid cached avatar for this user, use it immediately
+    if (alreadyFetched && cachedUserId === userId && cachedAvatar) {
+      console.log('✅ Using globally cached avatar for:', userId);
+      setAvatarUrl(cachedAvatar);
+      return () => {
+        removeAvatarListener(stableListener);
+      };
+    }
+    
     // Only run initialization logic once per component instance
     if (!hasInitialized.current && userId && stableUserType) {
       hasInitialized.current = true;
       
-      const { currentUserId: cachedUserId, isAvatarFetched: alreadyFetched, globalAvatarUrl: cachedAvatar, isFetching } = getGlobalAvatarState();
-      
       if (userId !== cachedUserId) {
-        
+        console.log('👤 New user detected, fetching avatar for:', userId);
         
         // Reset for new user
         setGlobalAvatarState({
@@ -135,9 +150,11 @@ export const useAvatar = (user, userType) => {
         // Fetch avatar for new user
         fetchAvatarInternal(userId, stableUserType);
       } else if (!alreadyFetched && !isFetching) {
+        console.log('🔄 No cache found, fetching avatar for:', userId);
         // Fetch if not cached and not currently fetching
         fetchAvatarInternal(userId, stableUserType);
-      } else if (alreadyFetched && cachedUserId === userId) {
+      } else if (alreadyFetched && cachedUserId === userId && cachedAvatar) {
+        console.log('✅ Using cached avatar in initialization for:', userId);
         // Use cached value
         setAvatarUrl(cachedAvatar);
       }

@@ -1,9 +1,47 @@
 // Global event details cache to prevent duplicate API calls
-
-let eventCache = {};
+// CRITICAL: Now using localStorage for persistence across page refreshes
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const DUPLICATE_CALL_THRESHOLD = 1000; // 1 second
+const EVENT_CACHE_STORAGE_KEY = 'event_cache_v2';
+
+// Initialize cache from localStorage if available
+const initializeEventCacheFromStorage = () => {
+  try {
+    const storedCache = localStorage.getItem(EVENT_CACHE_STORAGE_KEY);
+    if (storedCache) {
+      const parsed = JSON.parse(storedCache);
+      console.log('🔄 Restored event cache from localStorage');
+      return parsed;
+    }
+  } catch (error) {
+    console.error('❌ Failed to restore event cache from localStorage:', error);
+  }
+  
+  return {};
+};
+
+// Initialize cache (will restore from localStorage if available)
+let eventCache = initializeEventCacheFromStorage();
+
+// Helper to sync cache to localStorage
+const syncEventCacheToStorage = () => {
+  try {
+    // Don't store promises or isLoading state
+    const storableCache = {};
+    Object.keys(eventCache).forEach(eventId => {
+      storableCache[eventId] = {
+        data: eventCache[eventId].data,
+        fetchTime: eventCache[eventId].fetchTime,
+        isLoading: false,
+        promise: null
+      };
+    });
+    localStorage.setItem(EVENT_CACHE_STORAGE_KEY, JSON.stringify(storableCache));
+  } catch (error) {
+    console.error('❌ Failed to sync event cache to localStorage:', error);
+  }
+};
 
 export const clearEventCache = (eventId = null) => {
   if (eventId) {
@@ -13,6 +51,9 @@ export const clearEventCache = (eventId = null) => {
     eventCache = {};
   }
   
+  // Sync to localStorage
+  syncEventCacheToStorage();
+  console.log('🗑️ Event cache cleared for:', eventId || 'all events');
 };
 
 export const getCachedEvent = (eventId) => {
@@ -41,6 +82,9 @@ export const setCachedEvent = (eventId, data) => {
     promise: null
   };
   
+  // Sync to localStorage for persistence
+  syncEventCacheToStorage();
+  console.log('💾 Event cached:', eventId);
 };
 
 // Fast cache check without validation (for immediate access)

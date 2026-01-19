@@ -16,7 +16,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/client/dashboard';
+  const from = location.state?.from?.pathname;
 
   // Function to detect user type based on identifier format
   const detectUserType = (identifier) => {
@@ -53,22 +53,29 @@ function LoginPage() {
   const getDefaultRedirect = (userType) => {
     switch (userType) {
       case 'student':
-        return '/client/dashboard';
+        return '/client/profile';
       case 'faculty':
-        return '/faculty/profile'; // Always go to faculty dashboard first
+        return '/faculty/profile';
       case 'admin':
         return '/admin/dashboard';
       default:
-        return '/client/dashboard';
+        return '/client/profile';
     }
   };
 
   // Check if user is already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      // Use 'from' if available, otherwise detect user type and redirect accordingly
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        const userType = detectUserType(formData.identifier);
+        const redirectPath = userType ? getDefaultRedirect(userType) : '/client/profile';
+        navigate(redirectPath, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, formData.identifier]);
 
   // Auto-detect user type when identifier changes
   useEffect(() => {
@@ -128,8 +135,8 @@ function LoginPage() {
     const result = await login(loginData, userType);
     
     if (result.success) {
-      // Use the redirect URL from backend response, or fallback to user type default
-      const redirectPath = result.redirectUrl || getDefaultRedirect(userType);
+      // Always use frontend redirect logic instead of backend's redirect_url
+      const redirectPath = getDefaultRedirect(userType);
       navigate(redirectPath, { replace: true });
     }
     

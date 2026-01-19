@@ -14,7 +14,7 @@ import { qrCodeService } from '../../../../services/QRCodeService';
 import api from '../../../../api/base';
 
 function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Create truly stable user object that only changes when core properties change
   const memoizedUser = useMemo(() => {
@@ -144,6 +144,11 @@ function ProfilePage() {
           setProfileData(profile || {});
           setDashboardStats(stats || {});
           setEventHistory(event_history || []);
+          
+          // CRITICAL: Update AuthContext and localStorage with complete profile data
+          if (profile && updateUser) {
+            updateUser(profile);
+          }
         } else {
           
         }

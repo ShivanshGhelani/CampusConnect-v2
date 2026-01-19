@@ -19,7 +19,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, userType } = useAuth();
+  const { user, userType, isLoading: authLoading } = useAuth();
 
   // Refs to track execution state  
   const dataLoadingRef = useRef(false);
@@ -38,18 +38,35 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     
   }, [loading]);
 
-  // Form data state
-  const [formData, setFormData] = useState({
-    full_name: '',
-    enrollment_no: '',
-    email: '',
-    mobile_no: '',
-    department: '',
-    semester: '',
-    gender: '',
-    date_of_birth: '',
-    team_name: '',
-    participants: []
+  // Form data state - Initialize with user data if available
+  const [formData, setFormData] = useState(() => {
+    const transformGender = (gender) => {
+      if (!gender) return '';
+      return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+    };
+    
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const date = new Date(dateString);
+        return date.toISOString().split('T')[0];
+      } catch (error) {
+        return '';
+      }
+    };
+
+    return {
+      full_name: user?.full_name || '',
+      enrollment_no: user?.enrollment_no || user?.enrollment_number || '',
+      email: user?.email || '',
+      mobile_no: user?.mobile_no || user?.phone_number || '',
+      department: user?.department || '',
+      semester: user?.semester || '',
+      gender: transformGender(user?.gender) || '',
+      date_of_birth: user?.date_of_birth ? formatDate(user.date_of_birth) : '',
+      team_name: '',
+      participants: []
+    };
   });
 
   // Team registration state
@@ -107,6 +124,38 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       setTempTeamId(teamIdValue);
     }
   }, [isTeamRegistration, formData.team_name, eventId, user?.full_name]);
+
+  // Update form data when user profile loads (e.g., after page refresh)
+  useEffect(() => {
+    if (user && user.enrollment_no) {
+      const transformGender = (gender) => {
+        if (!gender) return '';
+        return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+      };
+      
+      const formatDate = (dateString) => {
+        if (!dateString) return '';
+        try {
+          const date = new Date(dateString);
+          return date.toISOString().split('T')[0];
+        } catch (error) {
+          return '';
+        }
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        full_name: user.full_name || prev.full_name,
+        enrollment_no: user.enrollment_no || user.enrollment_number || prev.enrollment_no,
+        email: user.email || prev.email,
+        mobile_no: user.mobile_no || user.phone_number || prev.mobile_no,
+        department: user.department || prev.department,
+        semester: user.semester || prev.semester,
+        gender: transformGender(user.gender) || prev.gender,
+        date_of_birth: user.date_of_birth ? formatDate(user.date_of_birth) : prev.date_of_birth
+      }));
+    }
+  }, [user?.full_name, user?.email, user?.mobile_no, user?.phone_number, user?.department, user?.semester, user?.gender, user?.date_of_birth]);
 
   // Utility functions
   const formatDateForInput = (date) => {
@@ -303,6 +352,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         if (mountedRef.current) {
           
           setFormData(formInitData);
+          // CRITICAL: Set loading to false after successful data load
           setLoading(false);
           
           
@@ -968,14 +1018,16 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   };
 
   // Render loading state
-  if (loading) {
+  if (loading || authLoading || !user || !user.enrollment_no) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <LoadingSpinner size="lg" />
-            <p className="mt-4 text-gray-600">Loading registration form...</p>
-            <p className="mt-2 text-sm text-gray-500">Using cached data - no API calls needed!</p>
+            <div className="flex justify-center mb-4">
+              <LoadingSpinner size="lg" />
+            </div>
+            <p className="mt-4 text-gray-600 font-medium">Loading registration form...</p>
+            <p className="mt-2 text-sm text-gray-500">Please wait while we prepare your information...</p>
           </div>
         </div>
       </Layout>

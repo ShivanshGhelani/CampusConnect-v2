@@ -1,4 +1,4 @@
-import { clientAPI } from '../api/client';
+import api from '../api/base';
 
 const STORAGE_KEY_PREFIX = 'volunteer_scanner_session_';
 
@@ -10,7 +10,7 @@ class VolunteerScannerService {
    */
   async validateInvitation(invitationCode) {
     try {
-      const response = await clientAPI.get(`/api/scanner/invitation/${invitationCode}/validate`);
+      const response = await api.get(`/api/scanner/invitation/${invitationCode}/validate`);
       return response.data;
     } catch (error) {
       console.error('Failed to validate invitation:', error);
@@ -27,7 +27,7 @@ class VolunteerScannerService {
    */
   async createSession(invitationCode, volunteerName, volunteerContact) {
     try {
-      const response = await clientAPI.post(`/api/scanner/invitation/${invitationCode}/session`, {
+      const response = await api.post(`/api/scanner/invitation/${invitationCode}/session`, {
         volunteer_name: volunteerName,
         volunteer_contact: volunteerContact
       });
@@ -47,7 +47,7 @@ class VolunteerScannerService {
    */
   async markAttendance(sessionId, qrData, attendanceData) {
     try {
-      const response = await clientAPI.post(`/api/scanner/session/${sessionId}/mark`, {
+      const response = await api.post(`/api/scanner/session/${sessionId}/mark`, {
         qr_data: qrData,
         attendance_data: attendanceData,
         timestamp: new Date().toISOString()
@@ -66,7 +66,7 @@ class VolunteerScannerService {
    */
   async getSessionStatus(sessionId) {
     try {
-      const response = await clientAPI.get(`/api/scanner/session/${sessionId}/status`);
+      const response = await api.get(`/api/scanner/session/${sessionId}/status`);
       return response.data;
     } catch (error) {
       console.error('Failed to get session status:', error);

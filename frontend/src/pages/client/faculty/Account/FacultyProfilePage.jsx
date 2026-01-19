@@ -13,7 +13,7 @@ import api from '../../../../api/base';
 import { fetchProfileWithCache } from '../../../../utils/profileCache';
 
 function FacultyProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   
   // Create truly stable user object that only changes when core properties change
@@ -126,6 +126,11 @@ function FacultyProfilePage() {
           setProfileData(profile || {});
           setDashboardStats(stats || {});
           setEventHistory(event_history || []);
+          
+          // CRITICAL: Update AuthContext and localStorage with complete profile data
+          if (profile && updateUser) {
+            updateUser(profile);
+          }
         }
 
       } catch (error) {
