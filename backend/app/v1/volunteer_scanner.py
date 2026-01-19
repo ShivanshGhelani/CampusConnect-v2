@@ -196,7 +196,8 @@ async def deactivate_invitation(
             {"$set": {"is_active": False, "deactivated_at": datetime.utcnow(), "deactivated_by": current_user.email}}
         )
         
-        if result.modified_count == 0:
+        # DatabaseOperations.update_one returns bool, not pymongo result
+        if not result:
             raise HTTPException(status_code=404, detail="Invitation not found")
         
         logger.info(f"Deactivated invitation {invitation_code} by {current_user.email}")
@@ -466,6 +467,9 @@ async def mark_attendance(
         
         result = await DatabaseOperations.insert_one("attendance_records", attendance_record)
         
+        # DatabaseOperations.insert_one returns string ID directly
+        attendance_id = result if isinstance(result, str) else str(result)
+        
         # Update session activity
         await DatabaseOperations.update_one(
             "volunteer_sessions",
@@ -488,7 +492,7 @@ async def mark_attendance(
         return {
             "success": True,
             "data": {
-                "attendance_id": str(result.inserted_id),
+                "attendance_id": attendance_id,
                 "marked_by": session.get("volunteer_name"),
                 "marked_at": request.timestamp
             }
