@@ -310,7 +310,16 @@ function FacultyProfilePage() {
       
       
       const registrationData = qrData.registration;
-      const eventData = qrData.event;
+      // Ensure event data has event_id properly set
+      const eventData = {
+        ...qrData.event,
+        event_id: qrData.eventId || qrData.event?.event_id || qrData.event?.id,
+        id: qrData.eventId || qrData.event?.event_id || qrData.event?.id,
+        eventId: qrData.eventId || qrData.event?.event_id || qrData.event?.id
+      };
+      
+      
+      
       
       // Generate QR data using backend endpoint
       const backendQRData = await qrCodeService.generateQRData(registrationData, eventData);
@@ -331,8 +340,61 @@ function FacultyProfilePage() {
     } catch (error) {
       
       
-      // Fallback to original simple implementation
-      setSelectedQRData(qrData);
+      // Fallback to original implementation with team enhancement
+      let enhancedQRData = { ...qrData };
+
+      // If this is a team registration, try to fetch full team details with members
+      if (qrData?.registrationType === 'team' && qrData?.eventId) {
+        try {
+          
+          const teamResponse = await clientAPI.getTeamRegistrationDetails(qrData.eventId);
+
+          if (teamResponse.data?.success && teamResponse.data?.team_registration) {
+            
+
+            // Map the team members to the expected format for QR service
+            const mappedTeamMembers = teamResponse.data.team_registration.members?.map(member => ({
+              name: member.faculty?.full_name || member.name,
+              employee_id: member.faculty?.employee_id || member.employee_id,
+              email: member.faculty?.email || member.email,
+              phone: member.faculty?.contact_no || member.phone,
+              department: member.faculty?.department || member.department,
+              designation: member.faculty?.designation || member.designation,
+              is_leader: member.is_team_leader || false,
+              registration_id: member.registration_id
+            })) || [];
+
+            // Enhance the registration data with full team member details
+            enhancedQRData.registration = {
+              ...qrData.registration,
+              team_members: mappedTeamMembers,
+              team_details: {
+                team_name: teamResponse.data.team_registration.team_name,
+                team_leader: teamResponse.data.team_registration.team_leader,
+                team_registration_id: teamResponse.data.team_registration.team_registration_id
+              },
+              // Add any other relevant team data
+              team_size: teamResponse.data.team_registration.team_size || mappedTeamMembers.length || 1
+            };
+
+            // Also enhance event data with event_id if available
+            if (teamResponse.data.team_registration.event?.event_id) {
+              enhancedQRData.event = {
+                ...qrData.event,
+                event_id: teamResponse.data.team_registration.event.event_id
+              };
+            }
+
+            
+            
+          }
+        } catch (teamError) {
+          
+          // Continue with basic data if team fetch fails
+        }
+      }
+
+      setSelectedQRData(enhancedQRData);
       setShowQRCodeModal(true);
     }
   }, []);
@@ -1085,11 +1147,25 @@ function FacultyProfilePage() {
             </div>
             {/* Modal Content */}
             <div className="p-6">
-              <QRCodeDisplay data={selectedQRData} />
+              <QRCodeDisplay 
+                registrationData={selectedQRData?.registration}
+                eventData={selectedQRData?.event}
+                size="large"
+                showDownload={true}
+                showDetails={true}
+                style="blue"
+              />
             </div>
           </div>
         </div>
       )}
+
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        isOpen={showEventDetailModal}
+        onClose={closeEventDetailModal}
+        selectedEventDetail={selectedEventDetail}
+      />
 
       {/* Team Detail Modal */}
       <TeamViewModal

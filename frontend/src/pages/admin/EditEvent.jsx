@@ -1815,11 +1815,21 @@ You can use formatting like:
                         startTime={formData.registration_start_time}
                         endTime={formData.registration_end_time}
                         onDateChange={(startDate, endDate) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            registration_start_date: startDate ? formatDateToLocal(startDate) : '',
-                            registration_end_date: endDate ? formatDateToLocal(endDate) : ''
-                          }));
+                          setFormData(prev => {
+                            const updates = {
+                              ...prev,
+                              registration_start_date: startDate ? formatDateToLocal(startDate) : '',
+                              registration_end_date: endDate ? formatDateToLocal(endDate) : ''
+                            };
+                            // Set default time to 23:59 if date is selected but time is empty
+                            if (startDate && !prev.registration_start_time) {
+                              updates.registration_start_time = '23:59';
+                            }
+                            if (endDate && !prev.registration_end_time) {
+                              updates.registration_end_time = '23:59';
+                            }
+                            return updates;
+                          });
                         }}
                         onTimeChange={(startTime, endTime) => {
                           setFormData(prev => ({
@@ -1848,11 +1858,21 @@ You can use formatting like:
                         startTime={formData.start_time}
                         endTime={formData.end_time}
                         onDateChange={(startDate, endDate) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            start_date: startDate ? formatDateToLocal(startDate) : '',
-                            end_date: endDate ? formatDateToLocal(endDate) : ''
-                          }));
+                          setFormData(prev => {
+                            const updates = {
+                              ...prev,
+                              start_date: startDate ? formatDateToLocal(startDate) : '',
+                              end_date: endDate ? formatDateToLocal(endDate) : ''
+                            };
+                            // Set default time to 23:59 if date is selected but time is empty
+                            if (startDate && !prev.start_time) {
+                              updates.start_time = '23:59';
+                            }
+                            if (endDate && !prev.end_time) {
+                              updates.end_time = '23:59';
+                            }
+                            return updates;
+                          });
                         }}
                         onTimeChange={(startTime, endTime) => {
                           setFormData(prev => ({
@@ -2374,10 +2394,17 @@ You can use formatting like:
                     startTime={formData.certificate_end_time || '23:59'}
                     endTime={null}
                     onDateChange={(startDate, endDate) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        certificate_end_date: startDate ? formatDateToLocal(startDate) : ''
-                      }));
+                      setFormData(prev => {
+                        const updates = {
+                          ...prev,
+                          certificate_end_date: startDate ? formatDateToLocal(startDate) : ''
+                        };
+                        // Set default time to 23:59 if date is selected but time is empty
+                        if (startDate && !prev.certificate_end_time) {
+                          updates.certificate_end_time = '23:59';
+                        }
+                        return updates;
+                      });
                     }}
                     onTimeChange={(startTime, endTime) => {
                       setFormData(prev => ({
