@@ -226,7 +226,7 @@ async def get_invitation_stats(
             }
         
         # Get active sessions
-        sessions = await DatabaseOperations.find(
+        sessions = await DatabaseOperations.find_many(
             "volunteer_sessions",
             {
                 "invitation_code": invitation["invitation_code"],

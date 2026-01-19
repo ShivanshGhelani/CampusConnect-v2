@@ -43,6 +43,9 @@ const VolunteerScanner = () => {
 
       // Validate invitation
       const data = await volunteerScannerService.validateInvitation(invitationCode);
+      console.log('📊 Invitation data received:', data);
+      console.log('📅 Start time:', data.attendance_start_time, typeof data.attendance_start_time);
+      console.log('📅 End time:', data.attendance_end_time, typeof data.attendance_end_time);
       setInvitationData(data);
       
       // Check if invitation is active (within attendance time window)

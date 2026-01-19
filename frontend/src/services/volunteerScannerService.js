@@ -11,7 +11,7 @@ class VolunteerScannerService {
   async validateInvitation(invitationCode) {
     try {
       const response = await api.get(`/api/scanner/invitation/${invitationCode}/validate`);
-      return response.data;
+      return response.data.data; // Extract nested data
     } catch (error) {
       console.error('Failed to validate invitation:', error);
       throw new Error(error.response?.data?.detail || 'Invalid or expired invitation link');
@@ -31,7 +31,7 @@ class VolunteerScannerService {
         volunteer_name: volunteerName,
         volunteer_contact: volunteerContact
       });
-      return response.data;
+      return response.data.data || response.data; // Extract nested data if present
     } catch (error) {
       console.error('Failed to create session:', error);
       throw new Error(error.response?.data?.detail || 'Failed to create scanning session');
@@ -52,7 +52,7 @@ class VolunteerScannerService {
         attendance_data: attendanceData,
         timestamp: new Date().toISOString()
       });
-      return response.data;
+      return response.data.data || response.data; // Extract nested data if present
     } catch (error) {
       console.error('Failed to mark attendance:', error);
       throw new Error(error.response?.data?.detail || 'Failed to mark attendance');
@@ -67,7 +67,7 @@ class VolunteerScannerService {
   async getSessionStatus(sessionId) {
     try {
       const response = await api.get(`/api/scanner/session/${sessionId}/status`);
-      return response.data;
+      return response.data.data || response.data; // Extract nested data if present
     } catch (error) {
       console.error('Failed to get session status:', error);
       throw new Error(error.response?.data?.detail || 'Session expired or invalid');
