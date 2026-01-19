@@ -68,6 +68,22 @@ async def create_invitation_link(
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
+        # Get attendance times from event
+        attendance_config = event.get("attendance_config", {})
+        attendance_start = attendance_config.get("attendance_start_time")
+        attendance_end = attendance_config.get("attendance_end_time")
+        
+        # Fallback: use event date range if attendance_config not set
+        if not attendance_start:
+            event_date = event.get("event_date")
+            if event_date:
+                attendance_start = event_date if isinstance(event_date, datetime) else datetime.fromisoformat(str(event_date).replace('Z', '+00:00'))
+        
+        if not attendance_end:
+            event_end_date = event.get("event_end_date") or event.get("event_date")
+            if event_end_date:
+                attendance_end = event_end_date if isinstance(event_end_date, datetime) else datetime.fromisoformat(str(event_end_date).replace('Z', '+00:00'))
+        
         # Determine expiration time
         if request.expires_at:
             # Use provided expiry
@@ -76,10 +92,7 @@ async def create_invitation_link(
             except:
                 raise HTTPException(status_code=400, detail="Invalid expiry time format")
         else:
-            # Use event attendance end time
-            attendance_config = event.get("attendance_config", {})
-            attendance_end = attendance_config.get("attendance_end_time")
-            
+            # Use attendance end time or fallback
             if attendance_end:
                 try:
                     if isinstance(attendance_end, str):
@@ -87,10 +100,8 @@ async def create_invitation_link(
                     else:
                         expires_at = attendance_end
                 except:
-                    # Fallback to 24 hours from now
                     expires_at = datetime.utcnow() + timedelta(hours=24)
             else:
-                # Fallback to 24 hours from now
                 expires_at = datetime.utcnow() + timedelta(hours=24)
         
         # Check if active invitation already exists
@@ -125,8 +136,8 @@ async def create_invitation_link(
                 "created_at": datetime.utcnow(),
                 "expires_at": expires_at,
                 "is_active": True,
-                "attendance_start_time": event.get("attendance_config", {}).get("attendance_start_time"),
-                "attendance_end_time": event.get("attendance_config", {}).get("attendance_end_time"),
+                "attendance_start_time": attendance_start,
+                "attendance_end_time": attendance_end,
                 "total_scans": 0,
                 "active_sessions": []
             }
