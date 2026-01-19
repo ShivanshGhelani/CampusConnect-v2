@@ -136,8 +136,8 @@ async def create_invitation_link(
         
         # Generate invitation URL
         from config.settings import settings
-        # Use Vercel production URL for scanner links
-        base_url = "https://campusconnect1drp.vercel.app"
+        # Use correct Vercel production URL for scanner links
+        base_url = "https://campusconnectldrp.vercel.app"
         invitation_url = f"{base_url}/scan/{invitation_code}"
         
         # Helper function to convert datetime to ISO string
@@ -240,20 +240,35 @@ async def get_invitation_stats(
             {"invitation_code": invitation["invitation_code"]}
         )
         
+        # Helper function to serialize datetime
+        def serialize_datetime(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, str):
+                return dt
+            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+        
+        # Generate invitation URL
+        base_url = "https://campusconnectldrp.vercel.app"
+        invitation_url = f"{base_url}/scan/{invitation['invitation_code']}"
+        
         return {
             "success": True,
             "data": {
                 "has_active_invitation": True,
                 "invitation_code": invitation["invitation_code"],
-                "created_at": invitation.get("created_at"),
-                "expires_at": invitation.get("expires_at"),
+                "invitation_url": invitation_url,
+                "created_at": serialize_datetime(invitation.get("created_at")),
+                "expires_at": serialize_datetime(invitation.get("expires_at")),
+                "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
+                "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
                 "total_scans": scan_count,
                 "active_volunteers": len(sessions),
                 "volunteers": [
                     {
                         "name": s.get("volunteer_name"),
                         "contact": s.get("volunteer_contact"),
-                        "joined_at": s.get("created_at")
+                        "joined_at": serialize_datetime(s.get("created_at"))
                     }
                     for s in sessions
                 ]

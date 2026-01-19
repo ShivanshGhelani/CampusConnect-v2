@@ -297,15 +297,16 @@ const UnifiedAttendancePortal = () => {
       setCheckingExistingInvitation(true);
       const response = await adminAPI.getScannerInvitationStats(eventId);
       
+      console.log('📊 Stats response:', response.data);
+      
       if (response.data.success && response.data.data.has_active_invitation) {
         // Found an active invitation, display it
         const statsData = response.data.data;
         const expiresAtDate = new Date(statsData.expires_at);
         const hoursUntilExpiry = Math.ceil((expiresAtDate - new Date()) / (1000 * 60 * 60));
         
-        // Reconstruct the scanner URL from the invitation code
-        const baseUrl = window.location.origin;
-        const scannerUrl = `${baseUrl}/scan/${statsData.invitation_code}`;
+        // Use the invitation URL from backend (already has correct domain)
+        const scannerUrl = statsData.invitation_url || `${window.location.origin}/scan/${statsData.invitation_code}`;
         
         const invitationData = {
           scanner_url: scannerUrl,
@@ -313,6 +314,10 @@ const UnifiedAttendancePortal = () => {
           expires_at: statsData.expires_at,
           expires_in_hours: hoursUntilExpiry,
           event_name: config?.event_name || 'Event',
+          attendance_window: {
+            start: statsData.attendance_start_time,
+            end: statsData.attendance_end_time
+          },
           is_existing: true // Flag to indicate this is an existing invitation
         };
         
@@ -320,10 +325,11 @@ const UnifiedAttendancePortal = () => {
         console.log('✅ Restored existing active invitation:', statsData.invitation_code);
       } else {
         // No active invitation, user can create a new one
+        console.log('ℹ️ No active invitation found');
         setScannerToken(null);
       }
     } catch (err) {
-      console.error('Error checking existing invitation:', err);
+      console.error('❌ Error checking existing invitation:', err);
       // On error, allow creating new invitation
       setScannerToken(null);
     } finally {
