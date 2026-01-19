@@ -242,22 +242,38 @@ const UnifiedAttendancePortal = () => {
       setTokenLoading(true);
       setTokenError('');
       
-      // Build the request parameters
-      const params = new URLSearchParams();
-      if (sessionId) params.append('session_id', sessionId);
-      if (expiresInHours) params.append('expires_in_hours', expiresInHours.toString());
+      // Calculate expiry time if hours provided
+      let expiresAt = null;
+      if (expiresInHours) {
+        const expiry = new Date();
+        expiry.setHours(expiry.getHours() + expiresInHours);
+        expiresAt = expiry.toISOString();
+      }
       
-      const response = await adminAPI.generateScannerToken(eventId, params.toString());
+      // Use new invitation-based scanner API
+      const response = await adminAPI.createScannerInvitation(eventId, expiresAt);
       
       if (response.data.success) {
-        setScannerToken(response.data.data);
-        showNotification('Scanner token generated successfully!', 'success');
+        // Transform response to match old format for UI compatibility
+        const expiresAtDate = new Date(response.data.data.expires_at);
+        const hoursUntilExpiry = Math.ceil((expiresAtDate - new Date()) / (1000 * 60 * 60));
+        
+        const invitationData = {
+          scanner_url: response.data.data.invitation_url,
+          invitation_code: response.data.data.invitation_code,
+          expires_at: response.data.data.expires_at,
+          expires_in_hours: hoursUntilExpiry,
+          event_name: response.data.data.event_name,
+          attendance_window: response.data.data.attendance_window
+        };
+        setScannerToken(invitationData);
+        showNotification('Scanner invitation link generated successfully!', 'success');
       } else {
-        setTokenError('Failed to generate scanner token');
+        setTokenError('Failed to generate scanner invitation');
       }
     } catch (err) {
-      
-      setTokenError('Error generating scanner token');
+      console.error('Error generating scanner invitation:', err);
+      setTokenError('Error generating scanner invitation');
     } finally {
       setTokenLoading(false);
     }

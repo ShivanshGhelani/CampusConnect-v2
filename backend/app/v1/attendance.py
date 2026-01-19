@@ -670,188 +670,35 @@ async def get_qr_data_for_event(
         raise HTTPException(status_code=500, detail="Internal server error while fetching QR data")
 
 
-@router.post("/generate-scanner-token/{event_id}")
-async def generate_scanner_token(
-    event_id: str,
-    session_id: Optional[str] = Query(default=None, description="Session ID for session-based events"),
-    expires_in_hours: Optional[int] = Query(default=None, description="Manual override for token expiration in hours"),
-    current_user: AdminUser = Depends(require_admin)
-):
-    """
-    Generate a secure token link for QR scanner access to mark attendance
-    Uses session timing when available, or manual hours override
-    """
-    try:
-        # Get event
-        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event:
-            raise HTTPException(status_code=404, detail="Event not found")
-        
-        attendance_strategy = event.get("attendance_strategy", "single_mark")
-        attendance_config = event.get("attendance_config", {})
-        
-        # Calculate expiration time based on session or manual input
-        expires_at = None
-        session_info = None
-        
-        if session_id and attendance_strategy in ["session_based", "day_based", "milestone_based"]:
-            # Find the specific session
-            sessions = attendance_config.get("sessions", [])
-            target_session = None
-            
-            for session in sessions:
-                if session.get("session_id") == session_id:
-                    target_session = session
-                    break
-            
-            if not target_session:
-                raise HTTPException(status_code=404, detail="Session not found")
-            
-            # Use session end time as expiration
-            session_end = target_session.get("end_time")
-            if session_end:
-                try:
-                    # Parse session end time and add 1 hour buffer
-                    if isinstance(session_end, str):
-                        expires_at = datetime.fromisoformat(session_end.replace('Z', '+00:00')) + timedelta(hours=1)
-                    else:
-                        expires_at = session_end + timedelta(hours=1)
-                except:
-                    expires_at = datetime.utcnow() + timedelta(hours=24)  # Fallback
-            
-            session_info = {
-                "session_id": session_id,
-                "session_name": target_session.get("session_name"),
-                "session_start": target_session.get("start_time"),
-                "session_end": target_session.get("end_time")
-            }
-        
-        # Use manual override if provided or fallback
-        if not expires_at:
-            hours = expires_in_hours if expires_in_hours else 24
-            expires_at = datetime.utcnow() + timedelta(hours=hours)
-        
-        # Generate secure token
-        token_payload = {
-            "event_id": event_id,
-            "session_id": session_id,
-            "type": "scanner_token",
-            "generated_by": current_user.email,
-            "generated_at": datetime.utcnow().isoformat(),
-            "expires_at": expires_at.isoformat(),
-            "permissions": ["mark_attendance", "view_participants"],
-            "testing_mode": TESTING_MODE
-        }
-        
-        scanner_token = jwt.encode(
-            token_payload, 
-            settings.JWT_SECRET_KEY, 
-            algorithm=settings.JWT_ALGORITHM
-        )
-        
-        # Update event with scanner token info
-        scanner_info = {
-            "scanner_token": scanner_token,
-            "session_id": session_id,
-            "session_info": session_info,
-            "token_generated_at": datetime.utcnow().isoformat(),
-            "token_expires_at": expires_at.isoformat(),
-            "token_generated_by": current_user.email,
-            "token_active": True,
-            "testing_mode": TESTING_MODE
-        }
-        
-        await DatabaseOperations.update_one(
-            "events",
-            {"event_id": event_id},
-            {"$set": {"scanner_info": scanner_info}}
-        )
-        
-        # Generate scanner URL
-        base_url = settings.FRONTEND_URL if settings.ENVIRONMENT == "production" else "http://localhost:3000"
-        scanner_url = f"{base_url}/scanner/{scanner_token}"
-        
-        logger.info(f"Generated scanner token for event {event_id} by {current_user.email}")
-        
-        return {
-            "success": True,
-            "data": {
-                "scanner_token": scanner_token,
-                "scanner_url": scanner_url,
-                "expires_at": expires_at.isoformat(),
-                "event_id": event_id,
-                "event_name": event.get("event_name"),
-                "session_info": session_info,
-                "testing_mode": TESTING_MODE
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Error generating scanner token for event {event_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate scanner token: {str(e)}")
+# ==================== OLD JWT TOKEN-BASED SCANNER SYSTEM ====================
+# DEPRECATED: Use /api/scanner/invitation/* endpoints instead (volunteer_scanner.py)
+# This old system is kept disabled for reference only
+# Uncomment if you need backward compatibility
 
-@router.get("/scanner-info/{token}")
-async def get_scanner_info(token: str):
-    """
-    Validate scanner token and return event info for QR scanner
-    Public endpoint - no auth required
-    """
-    try:
-        # Decode token
-        try:
-            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            # Check if we're in testing mode
-            if TESTING_MODE:
-                logger.warning("Token expired but allowing access due to TESTING_MODE")
-                try:
-                    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM], options={"verify_exp": False})
-                except jwt.InvalidTokenError:
-                    raise HTTPException(status_code=401, detail="Invalid scanner token")
-            else:
-                raise HTTPException(status_code=401, detail="Scanner token has expired")
-        except jwt.InvalidTokenError:
-            raise HTTPException(status_code=401, detail="Invalid scanner token")
-        
-        event_id = payload.get("event_id")
-        session_id = payload.get("session_id")
-        if not event_id:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-        
-        # Get event and verify token is still active
-        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
-        if not event:
-            raise HTTPException(status_code=404, detail="Event not found")
-        
-        scanner_info = event.get("scanner_info", {})
-        if not scanner_info.get("token_active", False):
-            raise HTTPException(status_code=401, detail="Scanner token has been deactivated")
-        
-        if scanner_info.get("scanner_token") != token:
-            raise HTTPException(status_code=401, detail="Token mismatch")
-        
-        return {
-            "success": True,
-            "data": {
-                "event_id": event_id,
-                "event_name": event.get("event_name"),
-                "attendance_strategy": event.get("attendance_strategy", "single_mark"),
-                "attendance_config": event.get("attendance_config", {}),
-                "is_team_based": event.get("is_team_based", False),
-                "registration_mode": event.get("registration_mode", "individual"),
-                "session_id": session_id,
-                "session_info": scanner_info.get("session_info"),
-                "token_expires_at": payload.get("expires_at"),
-                "permissions": payload.get("permissions", []),
-                "testing_mode": TESTING_MODE or payload.get("testing_mode", False)
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error validating scanner token: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to validate scanner token")
+# @router.post("/generate-scanner-token/{event_id}")
+# async def generate_scanner_token(
+#     event_id: str,
+#     session_id: Optional[str] = Query(default=None, description="Session ID for session-based events"),
+#     expires_in_hours: Optional[int] = Query(default=None, description="Manual override for token expiration in hours"),
+#     current_user: AdminUser = Depends(require_admin)
+# ):
+#     """
+#     Generate a secure token link for QR scanner access to mark attendance
+#     Uses session timing when available, or manual hours override
+#     """
+#     # OLD CODE - COMMENTED OUT
+#     pass
+
+# @router.get("/scanner-info/{token}")
+# async def get_scanner_info(token: str):
+#     """
+#     Validate scanner token and return event info for QR scanner
+#     Public endpoint - no auth required
+#     """
+#     # OLD CODE - COMMENTED OUT
+#     pass
+
+# ==================== END OF DEPRECATED SCANNER SYSTEM ====================
 
 @router.post("/scan-and-mark")
 async def scan_and_mark_attendance(

@@ -273,9 +273,18 @@ export const adminAPI = {
   // Alias for cache compatibility
   getAttendanceStatistics: (eventId) => api.get(`/api/v1/attendance/analytics/${eventId}`),
 
-  // QR SCANNER TOKEN MANAGEMENT
-  generateScannerToken: (eventId, queryParams = '') => 
-    api.post(`/api/v1/attendance/generate-scanner-token/${eventId}${queryParams ? '?' + queryParams : ''}`),
+  // VOLUNTEER SCANNER - INVITATION BASED (NEW)
+  createScannerInvitation: (eventId, expiresAt = null) => 
+    api.post('/api/scanner/invitation/create', {
+      event_id: eventId,
+      expires_at: expiresAt
+    }),
+  
+  deactivateScannerInvitation: (invitationCode) =>
+    api.delete(`/api/scanner/invitation/${invitationCode}/deactivate`),
+  
+  getScannerInvitationStats: (eventId) =>
+    api.get(`/api/scanner/invitation/${eventId}/stats`),
 
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints

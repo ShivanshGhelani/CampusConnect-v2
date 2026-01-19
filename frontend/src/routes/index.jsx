@@ -15,8 +15,6 @@ import EventListPage from '../pages/client/EventList';
 import EventDetailPage from '../pages/client/EventDetail';
 import FeedbackForm from '../pages/client/FeedbackForm';
 import FeedbackSuccess from '../pages/client/FeedbackSuccess';
-import QRScannerPage from '../pages/QRScannerPage'; // QR Scanner Page (Legacy - Admin/Faculty)
-import UnifiedQRScanner from '../pages/UnifiedQRScanner'; // NEW: Unified QR Scanner with Token Access
 import VolunteerScanner from '../pages/VolunteerScanner'; // Volunteer Scanner (Invitation-based)
 import CreateInvitationLink from '../pages/CreateInvitationLink'; // Create Invitation Links
 
@@ -88,7 +86,7 @@ function AppRoutes() {
     <Router basename="/">
       <ScrollToTop />
       <Routes>
-        <Route path='/test-mode' element={<TestMode />} />
+      
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -489,30 +487,9 @@ function AppRoutes() {
           }
         />
 
-        {/* QR Scanner with Token Access - Public Route */}
-        <Route path="/scanner/:token" element={<UnifiedQRScanner />} />
-        
-        {/* Legacy QR Scanner Routes (Admin/Faculty) */}
+        {/* Volunteer Scanner - Invitation-based Attendance Marking */}
         <Route
-          path="/admin/qr-scanner"
-          element={
-            <ProtectedRoute userType="admin">
-              <QRScannerPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faculty/qr-scanner"
-          element={
-            <ProtectedRoute userType="faculty">
-              <QRScannerPage />
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Reusable Invitation Link System - Production Endpoints */}
-        <Route
-          path="/scan/join/:invitationCode"
+          path="/scan/:invitationCode"
           element={<VolunteerScanner />}
         />
         
