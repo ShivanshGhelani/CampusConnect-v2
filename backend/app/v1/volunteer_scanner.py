@@ -107,22 +107,33 @@ async def create_invitation_link(
             else:
                 expires_at = datetime.utcnow() + timedelta(hours=24)
         
-        # Check if active invitation already exists
+        # Check if active invitation already exists with same target
         existing_invitation = await DatabaseOperations.find_one(
             "volunteer_invitations",
             {
                 "event_id": request.event_id,
                 "is_active": True,
-                "expires_at": {"$gt": datetime.utcnow()}
+                "expires_at": {"$gt": datetime.utcnow()},
+                "target_day": request.target_day,
+                "target_session": request.target_session,
+                "target_round": request.target_round
             }
         )
         
         if existing_invitation:
-            # Return existing invitation
+            # Return existing invitation with same target
             invitation_code = existing_invitation["invitation_code"]
             invitation_data = existing_invitation
             logger.info(f"Returning existing invitation {invitation_code} for event {request.event_id}")
         else:
+            # Deactivate ALL previous invitations for this event (different targets)
+            await DatabaseOperations.update_many(
+                "volunteer_invitations",
+                {"event_id": request.event_id, "is_active": True},
+                {"$set": {"is_active": False, "deactivated_at": datetime.utcnow()}}
+            )
+            logger.info(f"Deactivated previous invitations for event {request.event_id}")
+            
             # Generate new invitation code
             invitation_code = generate_invitation_code()
             
@@ -153,6 +164,8 @@ async def create_invitation_link(
             
             await DatabaseOperations.insert_one("volunteer_invitations", invitation_data)
             logger.info(f"Created invitation {invitation_code} for event {request.event_id} by {current_user.email}")
+            logger.info(f"Stored expires_at: {expires_at} (type: {type(expires_at).__name__})")
+            logger.info(f"Stored expires_at ISO: {expires_at.isoformat() if hasattr(expires_at, 'isoformat') else str(expires_at)}")
         
         # Generate invitation URL
         from config.settings import settings
@@ -166,7 +179,14 @@ async def create_invitation_link(
                 return None
             if isinstance(dt, str):
                 return dt
-            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+            # Ensure datetime is treated as UTC and includes 'Z' suffix
+            if hasattr(dt, 'isoformat'):
+                iso_string = dt.isoformat()
+                # If no timezone info, assume UTC and add 'Z'
+                if '+' not in iso_string and 'Z' not in iso_string:
+                    iso_string += 'Z'
+                return iso_string
+            return str(dt)
         
         return {
             "success": True,
@@ -232,19 +252,23 @@ async def get_invitation_stats(
     Admin/Faculty only endpoint
     """
     try:
-        # Get invitation
-        invitation = await DatabaseOperations.find_one(
+        # Get most recent active invitation (sort by created_at descending)
+        invitations = await DatabaseOperations.find_many(
             "volunteer_invitations",
-            {"event_id": event_id, "is_active": True}
+            {"event_id": event_id, "is_active": True},
+            sort_by=[("created_at", -1)],
+            limit=1
         )
         
-        if not invitation:
+        if not invitations:
             return {
                 "success": True,
                 "data": {
                     "has_active_invitation": False
                 }
             }
+        
+        invitation = invitations[0]
         
         # Get active sessions
         sessions = await DatabaseOperations.find_many(
@@ -267,11 +291,22 @@ async def get_invitation_stats(
                 return None
             if isinstance(dt, str):
                 return dt
-            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+            # Ensure datetime is treated as UTC and includes 'Z' suffix
+            if hasattr(dt, 'isoformat'):
+                iso_string = dt.isoformat()
+                # If no timezone info, assume UTC and add 'Z'
+                if '+' not in iso_string and 'Z' not in iso_string:
+                    iso_string += 'Z'
+                return iso_string
+            return str(dt)
         
         # Generate invitation URL
         base_url = "https://campusconnectldrp.vercel.app"
         invitation_url = f"{base_url}/scan/{invitation['invitation_code']}"
+        
+        # Debug logging
+        logger.info(f"Stats endpoint - Retrieved expires_at: {invitation.get('expires_at')} (type: {type(invitation.get('expires_at')).__name__})")
+        logger.info(f"Stats endpoint - Serialized expires_at: {serialize_datetime(invitation.get('expires_at'))}")
         
         return {
             "success": True,
@@ -283,6 +318,10 @@ async def get_invitation_stats(
                 "expires_at": serialize_datetime(invitation.get("expires_at")),
                 "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
                 "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
+                "target_day": invitation.get("target_day"),
+                "target_session": invitation.get("target_session"),
+                "target_round": invitation.get("target_round"),
+                "attendance_strategy": invitation.get("attendance_strategy"),
                 "total_scans": scan_count,
                 "active_volunteers": len(sessions),
                 "volunteers": [
@@ -517,7 +556,14 @@ async def validate_invitation(invitation_code: str):
                 return None
             if isinstance(dt, str):
                 return dt
-            return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+            # Ensure datetime is treated as UTC and includes 'Z' suffix
+            if hasattr(dt, 'isoformat'):
+                iso_string = dt.isoformat()
+                # If no timezone info, assume UTC and add 'Z'
+                if '+' not in iso_string and 'Z' not in iso_string:
+                    iso_string += 'Z'
+                return iso_string
+            return str(dt)
         
         return {
             "success": True,

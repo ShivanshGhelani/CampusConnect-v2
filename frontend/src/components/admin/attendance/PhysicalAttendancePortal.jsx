@@ -53,6 +53,7 @@ const UnifiedAttendancePortal = () => {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [tokenError, setTokenError] = useState('');
   const [selectedSessionForToken, setSelectedSessionForToken] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState('');
   const [checkingExistingInvitation, setCheckingExistingInvitation] = useState(false);
 
   useEffect(() => {
@@ -250,34 +251,58 @@ const UnifiedAttendancePortal = () => {
           console.log('✅ Deactivated old invitation:', scannerToken.invitation_code);
         } catch (err) {
           console.error('❌ Failed to deactivate old invitation:', err);
-          // Continue anyway
         }
       }
       
-      // Calculate expiry time if hours provided
-      let expiresAt = null;
-      if (expiresInHours) {
-        const expiry = new Date();
-        expiry.setHours(expiry.getHours() + expiresInHours);
-        expiresAt = expiry.toISOString();
+      // Get the selected session/day from state
+      if (!selectedSessionId) {
+        setTokenError('Please select a session/day to create scanner for');
+        setTokenLoading(false);
+        return;
       }
       
-      // Get selected target day/session/round
-      const targetDay = document.getElementById('target-day-select')?.value || null;
-      const targetSession = document.getElementById('target-session-select')?.value || null;
-      const targetRound = document.getElementById('target-round-select')?.value || null;
+      // Find the selected session from config
+      const selectedSession = config?.attendance_config?.sessions?.find(
+        s => s.session_id === selectedSessionId
+      );
       
-      // Use new invitation-based scanner API with target selection
+      if (!selectedSession) {
+        setTokenError('Selected session not found');
+        setTokenLoading(false);
+        return;
+      }
+      
+      // Use session end time + 1 hour as expiry (using UTC to avoid timezone issues)
+      const sessionEndTime = new Date(selectedSession.end_time);
+      const expiresAt = new Date(sessionEndTime.getTime() + (60 * 60 * 1000)).toISOString(); // Add 1 hour in milliseconds
+      
+      // Determine target parameters based on attendance strategy
+      let targetDay = null;
+      let targetSession = null;
+      let targetRound = null;
+      
+      const strategy = config?.attendance_strategy?.strategy || config?.attendance_config?.strategy;
+      
+      if (strategy === 'day_based') {
+        // Extract day number from session_id (e.g., "day_1" -> 1)
+        const dayMatch = selectedSession.session_id.match(/day_(\d+)/);
+        targetDay = dayMatch ? parseInt(dayMatch[1]) : null;
+      } else if (strategy === 'session_based') {
+        targetSession = selectedSession.session_id;
+      } else if (strategy === 'milestone_based' || strategy === 'round_based') {
+        targetRound = selectedSession.session_id;
+      }
+      
+      // Create scanner invitation with target parameters
       const response = await adminAPI.createScannerInvitation(
         eventId, 
         expiresAt,
-        targetDay ? parseInt(targetDay) : null,
+        targetDay,
         targetSession,
         targetRound
       );
       
       if (response.data.success) {
-        // Transform response to match old format for UI compatibility
         const expiresAtDate = new Date(response.data.data.expires_at);
         const hoursUntilExpiry = Math.ceil((expiresAtDate - new Date()) / (1000 * 60 * 60));
         
@@ -290,10 +315,11 @@ const UnifiedAttendancePortal = () => {
           attendance_window: response.data.data.attendance_window,
           target_day: targetDay,
           target_session: targetSession,
-          target_round: targetRound
+          target_round: targetRound,
+          session_name: selectedSession.session_name
         };
         setScannerToken(invitationData);
-        showNotification('Scanner invitation link generated successfully!', 'success');
+        showNotification(`Scanner link created for ${selectedSession.session_name}!`, 'success');
       } else {
         setTokenError('Failed to generate scanner invitation');
       }
@@ -322,18 +348,57 @@ const UnifiedAttendancePortal = () => {
         // Use the invitation URL from backend (already has correct domain)
         const scannerUrl = statsData.invitation_url || `${window.location.origin}/scan/${statsData.invitation_code}`;
         
+        // Find the session info based on the target from backend
+        let sessionName = 'Unknown Session';
+        let sessionId = null;
+        
+        if (statsData.target_day && config?.attendance_config?.sessions) {
+          // For day-based, find session by matching day number in session_id
+          const targetSession = config.attendance_config.sessions.find(s => {
+            const dayMatch = s.session_id.match(/day_(\d+)/);
+            return dayMatch && parseInt(dayMatch[1]) === statsData.target_day;
+          });
+          if (targetSession) {
+            sessionName = targetSession.session_name;
+            sessionId = targetSession.session_id;
+          }
+        } else if (statsData.target_session && config?.attendance_config?.sessions) {
+          // For session-based, find by session_id
+          const targetSession = config.attendance_config.sessions.find(s => s.session_id === statsData.target_session);
+          if (targetSession) {
+            sessionName = targetSession.session_name;
+            sessionId = targetSession.session_id;
+          }
+        } else if (statsData.target_round && config?.attendance_config?.sessions) {
+          // For round/milestone-based
+          const targetSession = config.attendance_config.sessions.find(s => s.session_id === statsData.target_round);
+          if (targetSession) {
+            sessionName = targetSession.session_name;
+            sessionId = targetSession.session_id;
+          }
+        }
+        
         const invitationData = {
           scanner_url: scannerUrl,
           invitation_code: statsData.invitation_code,
           expires_at: statsData.expires_at,
           expires_in_hours: hoursUntilExpiry,
           event_name: config?.event_name || 'Event',
+          session_name: sessionName,
+          target_day: statsData.target_day,
+          target_session: statsData.target_session,
+          target_round: statsData.target_round,
           attendance_window: {
             start: statsData.attendance_start_time,
             end: statsData.attendance_end_time
           },
           is_existing: true // Flag to indicate this is an existing invitation
         };
+        
+        // Also restore the selected session in the dropdown
+        if (sessionId) {
+          setSelectedSessionId(sessionId);
+        }
         
         setScannerToken(invitationData);
         console.log('✅ Restored existing active invitation:', statsData.invitation_code);
@@ -923,6 +988,7 @@ const UnifiedAttendancePortal = () => {
             setScannerToken(null);
             setTokenError('');
             setSelectedSessionForToken('');
+            setSelectedSessionId('');
           }}
           title="Generate QR Scanner Link"
           size="lg"
@@ -942,132 +1008,44 @@ const UnifiedAttendancePortal = () => {
                     <div>
                       <h4 className="font-medium text-blue-800">Secure Scanner Access</h4>
                       <p className="text-sm text-blue-700 mt-1">
-                        Generate a secure, time-limited link that allows volunteers to mark attendance using QR codes without admin access.
+                        Generate a secure link for volunteers to mark attendance for a specific session/day using QR codes.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Target Day/Session/Round Selection - NEW */}
-                {config?.attendance_strategy === 'day_based' && config.attendance_config?.sessions && (
+                {/* Session Selection - Use event's attendance_config.sessions */}
+                {config?.attendance_config?.sessions && config.attendance_config.sessions.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Which Day to Mark <span className="text-red-500">*</span>
-                    </label>
-                    <select 
-                      id="target-day-select"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      defaultValue=""
-                    >
-                      <option value="">Select a day...</option>
-                      {config.attendance_config.sessions.map((session) => {
-                        // Extract day number from session_id (e.g., "day_1" -> 1)
-                        const dayMatch = session.session_id.match(/day_(\d+)/);
-                        const dayNum = dayMatch ? parseInt(dayMatch[1]) : null;
-                        return dayNum ? (
-                          <option key={session.session_id} value={dayNum}>
-                            Day {dayNum} - {session.session_name}
-                          </option>
-                        ) : null;
-                      })}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      This scanner will only mark attendance for the selected day
-                    </p>
+                    <Dropdown
+                      label={`Select ${config.attendance_strategy?.strategy === 'day_based' ? 'Day' : config.attendance_strategy?.strategy === 'session_based' ? 'Session' : 'Milestone/Round'} to Mark`}
+                      placeholder={`Select which ${config.attendance_strategy?.strategy === 'day_based' ? 'day' : 'session'} this scanner will mark...`}
+                      value={selectedSessionId}
+                      onChange={(value) => setSelectedSessionId(value)}
+                      options={config.attendance_config.sessions.map(session => ({
+                        value: session.session_id,
+                        label: session.session_name,
+                        description: `${new Date(session.start_time).toLocaleString()} - ${new Date(session.end_time).toLocaleString()}${session.is_mandatory ? ' (Mandatory)' : ''}`
+                      }))}
+                      required={true}
+                      size="md"
+                      icon={<Calendar className="w-4 h-4" />}
+                      helperText="Scanner will only mark attendance for the selected session. Link expires 1 hour after session ends."
+                    />
                   </div>
                 )}
 
-                {config?.attendance_strategy === 'session_based' && config.attendance_config?.sessions && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Which Session to Mark <span className="text-red-500">*</span>
-                    </label>
-                    <select 
-                      id="target-session-select"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      defaultValue=""
-                    >
-                      <option value="">Select a session...</option>
-                      {config.attendance_config.sessions.map((session) => (
-                        <option key={session.session_id} value={session.session_id}>
-                          {session.session_name}
-                          {session.start_time && ` (${new Date(session.start_time).toLocaleString()})`}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      This scanner will only mark attendance for the selected session
-                    </p>
-                  </div>
-                )}
-
-                {config?.attendance_strategy === 'milestone_based' && config.attendance_config?.sessions && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Which Round/Milestone to Mark <span className="text-red-500">*</span>
-                    </label>
-                    <select 
-                      id="target-round-select"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      defaultValue=""
-                    >
-                      <option value="">Select a round...</option>
-                      {config.attendance_config.sessions.map((session) => (
-                        <option key={session.session_id} value={session.session_id}>
-                          {session.session_name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      This scanner will only mark attendance for the selected round/milestone
-                    </p>
-                  </div>
-                )}
-
-                {/* Session Selection for session-based events */}
-                {config?.attendance_strategy && ['session_based', 'day_based', 'milestone_based'].includes(config.attendance_strategy) && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Session/Day/Milestone
-                    </label>
-                    <select 
-                      value={selectedSessionForToken}
-                      onChange={(e) => setSelectedSessionForToken(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Use manual expiration time</option>
-                      {config.attendance_config?.sessions?.map((session) => (
-                        <option key={session.session_id} value={session.session_id}>
-                          {session.session_name || session.session_id}
-                          {session.start_time && ` (${new Date(session.start_time).toLocaleString()} - ${new Date(session.end_time).toLocaleString()})`}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      If you select a session, the token will automatically expire 1 hour after the session ends.
-                    </p>
-                  </div>
-                )}
-
-                {/* Manual expiration - only show when no session is selected */}
-                {(!selectedSessionForToken) && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Manual Token Expiration
-                    </label>
-                    <select 
-                      id="hours-select"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      defaultValue="24"
-                    >
-                      <option value="1">1 Hour</option>
-                      <option value="6">6 Hours</option>
-                      <option value="12">12 Hours</option>
-                      <option value="24">24 Hours (Recommended)</option>
-                      <option value="48">48 Hours</option>
-                      <option value="72">72 Hours</option>
-                      <option value="168">1 Week</option>
-                    </select>
+                {!config?.attendance_config?.sessions?.length && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-yellow-800">No Sessions Configured</h4>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          This event doesn't have sessions configured. Please configure attendance sessions first.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1081,13 +1059,8 @@ const UnifiedAttendancePortal = () => {
                 )}
 
                 <button
-                  onClick={() => {
-                    const hoursSelect = document.getElementById('hours-select');
-                    const sessionId = selectedSessionForToken || null;
-                    const hours = sessionId ? null : parseInt(hoursSelect?.value || '24');
-                    generateScannerToken(sessionId, hours);
-                  }}
-                  disabled={tokenLoading}
+                  onClick={() => generateScannerToken()}
+                  disabled={tokenLoading || !config?.attendance_config?.sessions?.length}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {tokenLoading ? (
@@ -1149,7 +1122,15 @@ const UnifiedAttendancePortal = () => {
                     <div className="font-medium text-sm">{scannerToken.event_name}</div>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-500 mb-1">Expires In</div>
+                    <div className="text-xs text-gray-500 mb-1">Target Session</div>
+                    <div className="font-medium text-sm">{scannerToken.session_name}</div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="text-xs text-gray-500 mb-1">Valid Until</div>
+                    <div className="font-medium text-sm">{new Date(scannerToken.expires_at).toLocaleString()}</div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="text-xs text-gray-500 mb-1">Link Expires In</div>
                     <div className="font-medium text-sm flex items-center gap-1">
                       <Timer className="w-3 h-3" />
                       {scannerToken.expires_in_hours} hours
@@ -1174,38 +1155,28 @@ const UnifiedAttendancePortal = () => {
                 </div>
 
                 <div className="text-xs text-gray-500 space-y-1">
-                  <p>• This link allows marking attendance without admin login</p>
-                  <p>• Share only with trusted volunteers</p>
-                  <p>• Link automatically expires after the specified time</p>
-                  <p>• You can generate new links anytime</p>
+                  <p>• This link marks attendance for: <strong>{scannerToken.session_name}</strong></p>
+                  <p>• Link expires automatically 1 hour after the session ends</p>
+                  <p>• Share only with trusted volunteers for this specific session</p>
+                  <p>• Attendance will be marked in the same way as manual marking</p>
                 </div>
 
                 {scannerToken.is_existing && (
                   <div className="pt-4 border-t border-gray-200">
                     <button
                       onClick={async () => {
-                        // Deactivate existing and create new
-                        const hoursSelect = document.getElementById('hours-select');
-                        const hours = parseInt(hoursSelect?.value || '24');
-                        await generateScannerToken(null, hours, true);
+                        // Reset and allow creating new
+                        setScannerToken(null);
+                        setTokenError('');
                       }}
                       disabled={tokenLoading}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
                     >
-                      {tokenLoading ? (
-                        <>
-                          <LoadingSpinner />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <QrCode className="w-4 h-4" />
-                          Create New Scanner Link
-                        </>
-                      )}
+                      <QrCode className="w-4 h-4" />
+                      Create New Scanner Link (for different session)
                     </button>
                     <p className="text-xs text-gray-500 text-center mt-2">
-                      This will deactivate the current link and create a new one
+                      Create a scanner for a different session/day
                     </p>
                   </div>
                 )}

@@ -555,49 +555,23 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
                 </div>
               )}
 
-              {/* Individual Student (for individual registrations) */}
+              {/* Individual Student Action Card - Simplified */}
               {attendanceData.student && (
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-medium text-gray-900">{attendanceData.student.name}</h4>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          attendanceData.student.attendance_status === 'present' 
-                            ? 'bg-green-100 text-green-800 border border-green-200' 
-                            : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                        }`}>
-                          {attendanceData.student.attendance_status === 'present' ? (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Present
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Pending
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600">
-                        <p>Enrollment: <span className="font-mono">{attendanceData.student.enrollment}</span></p>
-                        <p>Department: {attendanceData.student.department}</p>
-                        <p>Registration ID: <span className="font-mono">{attendanceData.registration_id}</span></p>
+                      <div className="text-sm text-gray-700">
+                        <span className="font-medium text-gray-900">Registration ID:</span>
+                        <span className="ml-2 font-mono text-base font-semibold text-blue-600">{attendanceData.registration_id}</span>
                       </div>
                     </div>
                     
                     <button
                       onClick={() => handleAttendanceToggle(null, 'individual')}
-                      className={`ml-4 px-4 py-2 rounded-lg font-medium transition-colors ${
+                      className={`ml-4 px-6 py-3 rounded-lg font-semibold transition-all shadow-sm ${
                         attendanceData.student.attendance_status === 'present'
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
-                          : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200'
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border-2 border-red-200'
+                          : 'bg-green-500 text-white hover:bg-green-600 border-2 border-green-600'
                       }`}
                     >
                       {attendanceData.student.attendance_status === 'present' ? 'Mark Absent' : 'Mark Present'}
