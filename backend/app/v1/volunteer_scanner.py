@@ -291,6 +291,100 @@ async def get_invitation_stats(
         logger.error(f"Error getting invitation stats for event {event_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
+@router.get("/registration/{registration_id}/status")
+async def get_registration_attendance_status(
+    registration_id: str
+):
+    """
+    Get current attendance status for a registration
+    Public endpoint - used by scanner to show current status
+    """
+    try:
+        # Get registration
+        registration = await DatabaseOperations.find_one(
+            "registrations",
+            {"registration_id": registration_id}
+        )
+        
+        if not registration:
+            raise HTTPException(status_code=404, detail="Registration not found")
+        
+        # Get event to determine attendance strategy
+        event = await DatabaseOperations.find_one(
+            "events",
+            {"event_id": registration.get("event_id")}
+        )
+        
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Extract attendance info based on registration type
+        attendance_config = event.get("attendance_config", {})
+        attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
+        
+        # Build response
+        response_data = {
+            "registration_id": registration_id,
+            "event_id": registration.get("event_id"),
+            "event_name": event.get("event_name"),
+            "registration_type": registration.get("registration_type"),
+            "attendance_strategy": attendance_strategy,
+            "attendance": registration.get("attendance", {})
+        }
+        
+        # Add student/faculty/team info
+        if registration.get("registration_type") == "team":
+            response_data["team_name"] = registration.get("team", {}).get("team_name")
+            response_data["team_members"] = registration.get("team_members", [])
+            # Add team leader info
+            leader_id = registration.get("student_id") or registration.get("faculty_id")
+            if leader_id:
+                leader_profile = await DatabaseOperations.find_one(
+                    "students" if registration.get("student_id") else "faculty",
+                    {"_id": leader_id}
+                )
+                if leader_profile:
+                    response_data["leader"] = {
+                        "name": leader_profile.get("full_name"),
+                        "enrollment": leader_profile.get("enrollment_no") or leader_profile.get("employee_id"),
+                        "department": leader_profile.get("department"),
+                        "email": leader_profile.get("email")
+                    }
+        else:
+            # Individual registration
+            student_id = registration.get("student_id")
+            faculty_id = registration.get("faculty_id")
+            
+            if student_id:
+                student = await DatabaseOperations.find_one("students", {"_id": student_id})
+                if student:
+                    response_data["student"] = {
+                        "name": student.get("full_name"),
+                        "enrollment": student.get("enrollment_no"),
+                        "department": student.get("department"),
+                        "email": student.get("email")
+                    }
+            elif faculty_id:
+                faculty = await DatabaseOperations.find_one("faculty", {"_id": faculty_id})
+                if faculty:
+                    response_data["faculty"] = {
+                        "name": faculty.get("full_name"),
+                        "employee_id": faculty.get("employee_id"),
+                        "department": faculty.get("department"),
+                        "email": faculty.get("email")
+                    }
+        
+        return {
+            "success": True,
+            "data": response_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting attendance status for {registration_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get attendance status: {str(e)}")
+
 # ==================== PUBLIC ENDPOINTS ====================
 
 @router.get("/invitation/{invitation_code}/validate")
@@ -436,6 +530,7 @@ async def mark_attendance(
 ):
     """
     Mark attendance for a scanned QR code
+    NOW UPDATES ACTUAL REGISTRATION DOCUMENTS!
     Public endpoint - validates session
     """
     try:
@@ -452,22 +547,127 @@ async def mark_attendance(
         if datetime.utcnow() > session.get("expires_at"):
             raise HTTPException(status_code=403, detail="Session has expired")
         
-        # Create attendance record
+        # Extract registration ID from QR data
+        registration_id = request.qr_data.get("registration_id") or request.qr_data.get("reg_id")
+        
+        if not registration_id:
+            raise HTTPException(status_code=400, detail="No registration_id found in QR code")
+        
+        # Fetch registration
+        registration = await DatabaseOperations.find_one(
+            "registrations",
+            {"registration_id": registration_id}
+        )
+        
+        if not registration:
+            raise HTTPException(status_code=404, detail="Registration not found")
+        
+        # Fetch event to get attendance strategy
+        event = await DatabaseOperations.find_one(
+            "events",
+            {"event_id": session.get("event_id")}
+        )
+        
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Get current attendance object from registration
+        current_attendance = registration.get("attendance", {})
+        attendance_config = event.get("attendance_config", {})
+        attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
+        
+        # Get volunteer info for marking
+        marked_by = session.get("volunteer_name", "Unknown Volunteer")
+        marked_at_time = datetime.utcnow()
+        
+        # Update attendance based on strategy
+        attendance_updated = False
+        day_marked = None
+        session_marked = None
+        
+        if attendance_strategy == "day_based":
+            # Get which day to mark (default to day 1 if not specified)
+            day_to_mark = request.attendance_data.get("day", 1)
+            
+            days = current_attendance.get("days", [])
+            for day in days:
+                if day.get("day") == day_to_mark:
+                    day["marked"] = True
+                    day["marked_at"] = marked_at_time.isoformat()
+                    day["marked_by"] = marked_by
+                    attendance_updated = True
+                    day_marked = day_to_mark
+                    break
+            
+            # Calculate percentage for day-based
+            if days:
+                marked_count = sum(1 for d in days if d.get("marked", False))
+                current_attendance["percentage"] = (marked_count / len(days)) * 100
+                current_attendance["status"] = "completed" if marked_count == len(days) else "partial"
+        
+        elif attendance_strategy == "session_based":
+            # Get which session to mark
+            session_id_to_mark = request.attendance_data.get("session_id")
+            
+            if not session_id_to_mark:
+                raise HTTPException(status_code=400, detail="session_id required for session-based attendance")
+            
+            sessions = current_attendance.get("sessions", [])
+            for sess in sessions:
+                if sess.get("session_id") == session_id_to_mark:
+                    sess["marked"] = True
+                    sess["marked_at"] = marked_at_time.isoformat()
+                    sess["marked_by"] = marked_by
+                    attendance_updated = True
+                    session_marked = session_id_to_mark
+                    break
+            
+            # Calculate percentage for session-based
+            if sessions:
+                marked_count = sum(1 for s in sessions if s.get("marked", False))
+                current_attendance["percentage"] = (marked_count / len(sessions)) * 100
+                current_attendance["status"] = "completed" if marked_count == len(sessions) else "partial"
+        
+        elif attendance_strategy == "single_mark":
+            # Simple single mark
+            current_attendance["marked"] = True
+            current_attendance["marked_at"] = marked_at_time.isoformat()
+            current_attendance["marked_by"] = marked_by
+            current_attendance["percentage"] = 100
+            current_attendance["status"] = "completed"
+            attendance_updated = True
+        
+        if not attendance_updated:
+            raise HTTPException(status_code=400, detail=f"Could not mark attendance for strategy: {attendance_strategy}")
+        
+        # Update the registration document
+        update_result = await DatabaseOperations.update_one(
+            "registrations",
+            {"registration_id": registration_id},
+            {"$set": {"attendance": current_attendance}}
+        )
+        
+        if not update_result:
+            raise HTTPException(status_code=500, detail="Failed to update registration attendance")
+        
+        # Create audit trail in attendance_records
         attendance_record = {
             "session_id": session_id,
             "invitation_code": session.get("invitation_code"),
             "event_id": session.get("event_id"),
-            "volunteer_name": session.get("volunteer_name"),
+            "registration_id": registration_id,
+            "volunteer_name": marked_by,
             "volunteer_contact": session.get("volunteer_contact"),
             "qr_data": request.qr_data,
             "attendance_data": request.attendance_data,
-            "marked_at": datetime.fromisoformat(request.timestamp.replace('Z', '+00:00')),
+            "attendance_strategy": attendance_strategy,
+            "day_marked": day_marked,
+            "session_marked": session_marked,
+            "marked_at": marked_at_time,
             "created_at": datetime.utcnow()
         }
         
         result = await DatabaseOperations.insert_one("attendance_records", attendance_record)
-        
-        # DatabaseOperations.insert_one returns string ID directly
         attendance_id = result if isinstance(result, str) else str(result)
         
         # Update session activity
@@ -487,21 +687,27 @@ async def mark_attendance(
             {"$inc": {"total_scans": 1}}
         )
         
-        logger.info(f"Marked attendance via session {session_id} by {session.get('volunteer_name')}")
+        logger.info(f"✅ ATTENDANCE UPDATED: Registration {registration_id} marked by {marked_by} via session {session_id} - Strategy: {attendance_strategy}, Day: {day_marked}, Session: {session_marked}")
         
         return {
             "success": True,
             "data": {
                 "attendance_id": attendance_id,
-                "marked_by": session.get("volunteer_name"),
-                "marked_at": request.timestamp
+                "registration_id": registration_id,
+                "marked_by": marked_by,
+                "marked_at": marked_at_time.isoformat(),
+                "attendance_strategy": attendance_strategy,
+                "day_marked": day_marked,
+                "session_marked": session_marked,
+                "attendance_percentage": current_attendance.get("percentage", 0),
+                "attendance_status": current_attendance.get("status", "unknown")
             }
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error marking attendance for session {session_id}: {str(e)}")
+        logger.error(f"❌ Error marking attendance for session {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to mark attendance: {str(e)}")
 
 @router.get("/session/{session_id}/status")

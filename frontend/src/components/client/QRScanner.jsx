@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import qrCodeService from '../../services/QRCodeService';
+import api from '../../api/base'; // For backend API calls
 
 const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -8,6 +9,8 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [error, setError] = useState('');
   const [cameraPermission, setCameraPermission] = useState('unknown'); // 'granted', 'denied', 'unknown'
+  const [selectedDay, setSelectedDay] = useState(null); // For day-based attendance
+  const [selectedSession, setSelectedSession] = useState(null); // For session-based attendance
   const scannerRef = useRef(null);
   const html5QrcodeScannerRef = useRef(null);
 
@@ -44,22 +47,24 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         };
       }
 
-      // Configure scanner for mobile-first design
+      // Configure scanner for better detection - IMPROVED SETTINGS
       const config = {
-        fps: 10,
+        fps: 20, // Increased from 10 to 20 for faster scanning
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-          // Make QR box responsive
-          const minEdgePercentage = 0.6; // 60% of the smaller edge
+          // Make QR box more forgiving - larger scanning area
+          const minEdgePercentage = 0.7; // Increased from 0.6 to 0.7 (70% of screen)
           const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
           const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
           return {
-            width: Math.min(qrboxSize, 300),
-            height: Math.min(qrboxSize, 300)
+            width: Math.min(qrboxSize, 350), // Increased from 300 to 350
+            height: Math.min(qrboxSize, 350)
           };
         },
         aspectRatio: 1.0,
         disableFlip: false,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        showTorchButtonIfSupported: true, // Enable flashlight if available
+        formatsToSupport: [Html5QrcodeScannerState.QR_CODE] // Only scan QR codes
       };
 
       console.log('📋 Scanner config:', config);
@@ -100,9 +105,11 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       console.log('✅ Valid QR data, setting scan result...');
       setScanResult(qrData);
       
-      // Simulate fetching attendance data from backend
-      const mockAttendanceData = await simulateAttendanceDataFetch(qrData);
-      setAttendanceData(mockAttendanceData);
+      // Fetch REAL attendance data from backend
+      console.log('📡 Fetching REAL attendance data from backend...');
+      const realAttendanceData = await fetchRealAttendanceData(qrData);
+      setAttendanceData(realAttendanceData);
+      console.log('✅ Got real attendance data:', realAttendanceData);
       
       // Pause scanning after successful scan
       if (html5QrcodeScannerRef.current) {
@@ -117,7 +124,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       console.error('❌ ERROR in onScanSuccess:', error);
       console.error('Error message:', error.message);
       console.error('Stack trace:', error.stack);
-      setError('Error processing QR code. Please try again.');
+      setError(`Error processing QR code: ${error.message}`);
     }
   };
 
@@ -128,55 +135,52 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
     }
   };
 
-  // Simulate fetching attendance data with realistic timing
-  const simulateAttendanceDataFetch = async (qrData) => {
-    console.log('📦 Generating mock attendance data for:', qrData);
+  // Fetch real attendance data from backend API
+  const fetchRealAttendanceData = async (qrData) => {
+    console.log('📦 Fetching REAL attendance data for:', qrData);
     
-    // Show loading state
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const registration_id = qrData.registration_id || qrData.reg_id;
     
-    // Get user data from multiple possible fields
-    const userData = qrData.student || qrData.user || qrData.leader;
+    if (!registration_id) {
+      throw new Error('No registration_id found in QR code');
+    }
     
-    if (qrData.type === 'team') {
-      return {
-        event_id: qrData.event_id,
-        event_name: qrData.event_name,
-        team_id: qrData.team?.team_id,
-        team_name: qrData.team?.name,
-        registration_id: qrData.reg_id || qrData.registration_id,
-        scan_time: new Date().toISOString(),
-        leader: {
-          name: userData?.name,
-          enrollment: userData?.enrollment || userData?.id,
-          department: userData?.department,
-          email: userData?.email,
-          attendance_status: 'pending',
-          marked_at: null,
-          marked_by: null
-        },
-        members: qrData.team?.members?.map(member => ({
-          ...member,
-          attendance_status: 'pending',
-          marked_at: null,
-          marked_by: null
-        })) || []
-      };
-    } else {
-      // Individual registration
-      return {
-        event_id: qrData.event_id,
-        event_name: qrData.event_name,
-        registration_id: qrData.reg_id || qrData.registration_id,
-        scan_time: new Date().toISOString(),
-        student: {
-          name: userData?.name,
-          enrollment: userData?.enrollment || userData?.id,
-          department: userData?.department,
-          email: userData?.email,
-          attendance_status: 'pending'
+    try {
+      // Call the NEW backend endpoint that returns real data
+      const response = await api.get(`/api/scanner/registration/${registration_id}/status`);
+      
+      console.log('Backend response:', response.data);
+      
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        // Format data for UI - matches expected structure
+        const formattedData = {
+          event_id: data.event_id,
+          event_name: data.event_name,
+          registration_id: data.registration_id,
+          registration_type: data.registration_type,
+          attendance_strategy: data.attendance_strategy,
+          scan_time: new Date().toISOString(),
+          attendance: data.attendance || {},
+        };
+        
+        // Add student/faculty/team data based on type
+        if (data.registration_type === 'individual') {
+          formattedData.student = data.student || data.faculty || null;
+        } else if (data.registration_type === 'team') {
+          formattedData.team_name = data.team_name;
+          formattedData.leader = data.leader;
+          formattedData.members = data.team_members || [];
         }
-      };
+        
+        return formattedData;
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch attendance data');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching real attendance data:', error);
+      throw new Error(`Failed to fetch attendance: ${error.message}`);
     }
   };
 
@@ -209,9 +213,17 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   };
 
   const handleSaveAttendance = () => {
+    // Enhanced attendance data with day/session info
+    const enhancedAttendanceData = {
+      ...attendanceData,
+      // Add selected day/session for backend
+      day: selectedDay,
+      session_id: selectedSession
+    };
+    
     // Call parent's onScan callback with updated attendance data
-    if (onScan && scanResult && attendanceData) {
-      onScan(scanResult, attendanceData);
+    if (onScan && scanResult && enhancedAttendanceData) {
+      onScan(scanResult, enhancedAttendanceData);
     }
     
     // Reset for next scan
@@ -221,6 +233,8 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   const handleReset = () => {
     setScanResult(null);
     setAttendanceData(null);
+    setSelectedDay(null);
+    setSelectedSession(null);
     setError('');
     
     // Resume scanning
@@ -357,11 +371,143 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">{getPresentCount()}/{getTotalCount()}</div>
-                    <div className="text-sm text-gray-600">Present</div>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                      {attendanceData.registration_type || 'individual'}
+                    </span>
                   </div>
                 </div>
               </div>
+
+              {/* Day/Session Selection - CRITICAL FOR DAY-BASED ATTENDANCE */}
+              {attendanceData.attendance_strategy === 'day_based' && attendanceData.attendance?.days && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Select Day to Mark
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {attendanceData.attendance.days.map((day) => {
+                      const isAlreadyMarked = day.marked;
+                      const isSelected = selectedDay === day.day;
+                      
+                      return (
+                        <button
+                          key={day.day}
+                          onClick={() => setSelectedDay(isSelected ? null : day.day)}
+                          disabled={isAlreadyMarked}
+                          className={`
+                            px-4 py-3 rounded-lg font-medium transition-all text-left
+                            ${isAlreadyMarked 
+                              ? 'bg-green-100 text-green-800 border-2 border-green-300 cursor-not-allowed opacity-75' 
+                              : isSelected
+                                ? 'bg-blue-600 text-white border-2 border-blue-700 shadow-lg'
+                                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Day {day.day}</span>
+                            {isAlreadyMarked && (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                            {isSelected && !isAlreadyMarked && (
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="8"/>
+                              </svg>
+                            )}
+                          </div>
+                          {isAlreadyMarked && day.marked_at && (
+                            <div className="text-xs mt-1 opacity-75">
+                              Marked {new Date(day.marked_at).toLocaleDateString()}
+                            </div>
+                          )}
+                          {day.date && !isAlreadyMarked && (
+                            <div className="text-xs mt-1 opacity-75">
+                              {new Date(day.date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!selectedDay && (
+                    <p className="text-sm text-blue-700 mt-2 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Please select a day to mark attendance
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Session Selection - FOR SESSION-BASED ATTENDANCE */}
+              {attendanceData.attendance_strategy === 'session_based' && attendanceData.attendance?.sessions && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Select Session to Mark
+                  </h4>
+                  <div className="space-y-2">
+                    {attendanceData.attendance.sessions.map((session) => {
+                      const isAlreadyMarked = session.marked;
+                      const isSelected = selectedSession === session.session_id;
+                      
+                      return (
+                        <button
+                          key={session.session_id}
+                          onClick={() => setSelectedSession(isSelected ? null : session.session_id)}
+                          disabled={isAlreadyMarked}
+                          className={`
+                            w-full px-4 py-3 rounded-lg font-medium transition-all text-left
+                            ${isAlreadyMarked 
+                              ? 'bg-green-100 text-green-800 border-2 border-green-300 cursor-not-allowed opacity-75' 
+                              : isSelected
+                                ? 'bg-purple-600 text-white border-2 border-purple-700 shadow-lg'
+                                : 'bg-white text-gray-700 border-2 border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{session.session_name || `Session ${session.session_id}`}</div>
+                              {session.session_time && (
+                                <div className="text-sm opacity-75 mt-1">
+                                  {new Date(session.session_time).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                            {isAlreadyMarked && (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          {isAlreadyMarked && session.marked_at && (
+                            <div className="text-xs mt-1 opacity-75">
+                              Marked by {session.marked_by} on {new Date(session.marked_at).toLocaleString()}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!selectedSession && (
+                    <p className="text-sm text-purple-700 mt-2 flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Please select a session to mark attendance
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Individual Student (for individual registrations) */}
               {attendanceData.student && (
@@ -565,12 +711,30 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   onClick={handleSaveAttendance}
-                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  disabled={
+                    (attendanceData.attendance_strategy === 'day_based' && !selectedDay) ||
+                    (attendanceData.attendance_strategy === 'session_based' && !selectedSession)
+                  }
+                  className={`
+                    flex-1 px-6 py-3 rounded-lg transition-colors font-medium flex items-center justify-center gap-2
+                    ${(attendanceData.attendance_strategy === 'day_based' && !selectedDay) ||
+                      (attendanceData.attendance_strategy === 'session_based' && !selectedSession)
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                    }
+                  `}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Save Attendance ({getPresentCount()}/{getTotalCount()})
+                  {attendanceData.attendance_strategy === 'day_based' && selectedDay
+                    ? `Mark Attendance for Day ${selectedDay}`
+                    : attendanceData.attendance_strategy === 'session_based' && selectedSession
+                    ? 'Mark Attendance for Session'
+                    : attendanceData.attendance_strategy === 'single_mark'
+                    ? 'Mark Attendance'
+                    : 'Select Day/Session First'
+                  }
                 </button>
                 
                 <button
