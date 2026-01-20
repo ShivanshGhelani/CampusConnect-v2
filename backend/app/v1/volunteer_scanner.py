@@ -315,10 +315,17 @@ async def get_registration_attendance_status(
         if not registration:
             raise HTTPException(status_code=404, detail="Registration not found")
         
+        # Extract event info from nested structure
+        event_data = registration.get("event", {})
+        event_id = event_data.get("event_id")
+        
+        if not event_id:
+            raise HTTPException(status_code=404, detail="Event ID not found in registration")
+        
         # Get event to determine attendance strategy
         event = await DatabaseOperations.find_one(
             "events",
-            {"event_id": registration.get("event_id")}
+            {"event_id": event_id}
         )
         
         if not event:
@@ -328,12 +335,16 @@ async def get_registration_attendance_status(
         attendance_config = event.get("attendance_config", {})
         attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
         
+        # Get registration type from nested structure
+        registration_info = registration.get("registration", {})
+        registration_type = registration_info.get("type", "individual")
+        
         # Build response
         response_data = {
             "registration_id": registration_id,
-            "event_id": registration.get("event_id"),
-            "event_name": event.get("event_name"),
-            "registration_type": registration.get("registration_type"),
+            "event_id": event_id,
+            "event_name": event_data.get("event_name", event.get("event_name")),
+            "registration_type": registration_type,
             "attendance_strategy": attendance_strategy,
             "attendance": registration.get("attendance", {})
         }

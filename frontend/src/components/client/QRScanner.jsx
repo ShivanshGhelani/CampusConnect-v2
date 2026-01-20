@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import React, { useState, useEffect } from 'react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import qrCodeService from '../../services/QRCodeService';
 import api from '../../api/base';
 
@@ -11,111 +11,51 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   const [cameraPermission, setCameraPermission] = useState('unknown');
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
-  const videoRef = useRef(null);
-  const codeReaderRef = useRef(null);
-  const scanningRef = useRef(false);
 
-  // Initialize ZXing scanner when modal opens
+  // Check camera permission
   useEffect(() => {
-    console.log('📱 QRScanner modal opened');
-    
-    if (isOpen && !scanningRef.current) {
-      console.log('🚀 Starting ZXing scanner...');
-      initializeScanner();
-    }
-    
-    return () => {
-      cleanup();
-    };
-  }, [isOpen]);
-
-  const initializeScanner = async () => {
-    console.log('🎥 INITIALIZING ZXING SCANNER...');
-    try {
-      // Check camera permission
-      if (navigator.permissions) {
-        const permission = await navigator.permissions.query({ name: 'camera' });
+    if (isOpen && navigator.permissions) {
+      navigator.permissions.query({ name: 'camera' }).then(permission => {
         console.log('📹 Camera permission:', permission.state);
         setCameraPermission(permission.state);
         
         permission.onchange = () => {
           setCameraPermission(permission.state);
         };
-      }
-
-      // Create ZXing reader instance
-      codeReaderRef.current = new BrowserMultiFormatReader();
-      
-      // Get available video devices
-      const videoInputDevices = await codeReaderRef.current.listVideoInputDevices();
-      console.log('📹 Found cameras:', videoInputDevices.length);
-      
-      if (videoInputDevices.length === 0) {
-        throw new Error('No camera found');
-      }
-
-      // Prefer back camera on mobile
-      const backCamera = videoInputDevices.find(device => 
-        /back|rear|environment/i.test(device.label)
-      );
-      const selectedDevice = backCamera || videoInputDevices[0];
-      
-      console.log('✅ Using camera:', selectedDevice.label);
-
-      // Start continuous scanning
-      scanningRef.current = true;
-      setIsScanning(true);
-      
-      codeReaderRef.current.decodeFromVideoDevice(
-        selectedDevice.deviceId,
-        videoRef.current,
-        async (result, error) => {
-          if (result) {
-            console.log('🎯 QR CODE SCANNED!', result.getText());
-            await handleScanSuccess(result.getText());
-          }
-          
-          // ZXing continuously attempts to decode, errors are normal when no QR is visible
-          // Only log unexpected errors
-          if (error && error.message && !error.message.includes('No MultiFormat Readers')) {
-            console.error('⚠️ Scan error:', error);
-          }
-        }
-      );
-
-      console.log('✅ ZXing scanner active!');
-      
-    } catch (err) {
-      console.error('❌ Scanner initialization error:', err);
-      setError(`Failed to initialize scanner: ${err.message}`);
+      });
     }
-  };
+  }, [isOpen]);
 
-  const handleScanSuccess = async (decodedText) => {
-    if (!scanningRef.current) return; // Prevent multiple scans
+  useEffect(() => {
+    if (isOpen) {
+      console.log('📱 QR Scanner opened');
+      setIsScanning(true);
+    } else {
+      setIsScanning(false);
+    }
+  }, [isOpen]);
+
+  const handleScan = async (result) => {
+    if (!result || !result[0] || scanResult) {
+      return; // Ignore empty scans or if already processing
+    }
+    
+    const decodedText = result[0].rawValue;
+    console.log('🎯 QR CODE SCANNED!', decodedText);
     
     try {
-      // Pause scanning temporarily
-      scanningRef.current = false;
-      setIsScanning(false);
-      
-      console.log('📦 Processing QR data...');
-      
-      // Parse QR code
+      // Parse QR code data
       const qrData = qrCodeService.parseQRData(decodedText);
       
       if (!qrData) {
-        setError('Invalid QR code format');
-        // Resume scanning after 2 seconds
-        setTimeout(() => {
-          scanningRef.current = true;
-          setIsScanning(true);
-        }, 2000);
+        console.error('❌ Invalid QR format');
+        setError('Invalid QR code format. Please scan a valid event registration QR code.');
         return;
       }
 
       console.log('✅ Valid QR data:', qrData);
       setScanResult(qrData);
+      setIsScanning(false);
       
       // Fetch real attendance data
       console.log('📡 Fetching attendance data...');
@@ -129,19 +69,20 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       
       // Resume scanning after error
       setTimeout(() => {
-        scanningRef.current = true;
+        setScanResult(null);
         setIsScanning(true);
+        setError('');
       }, 2000);
     }
   };
 
-  const cleanup = () => {
-    console.log('🧹 Cleaning up scanner...');
-    scanningRef.current = false;
+  const handleScanError = (err) => {
+    console.error('❌ Scanner error:', err);
     
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset();
-      codeReaderRef.current = null;
+    if (err?.name === 'NotAllowedError') {
+      setError('Camera access denied. Please allow camera permission.');
+    } else if (err?.name === 'NotFoundError') {
+      setError('No camera found on this device.');
     }
   };
 
@@ -248,12 +189,10 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
     setError('');
     
     // Resume scanning
-    scanningRef.current = true;
     setIsScanning(true);
   };
 
   const handleClose = () => {
-    cleanup();
     setScanResult(null);
     setAttendanceData(null);
     setError('');
@@ -280,10 +219,10 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 z-50">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[95vh] overflow-y-auto shadow-2xl">
         {/* Mobile-optimized Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 rounded-t-xl">
+        <div className="sticky top-0 bg-white border-b border-gray-200 rounded-t-xl z-10">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -345,36 +284,41 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           )}
 
           {/* Scanner Area */}
-          {!attendanceData && (
+          {!attendanceData && isScanning && (
             <div className="mb-4">
-              <div className="relative w-full rounded-lg overflow-hidden bg-black">
-                <video
-                  ref={videoRef}
-                  className="w-full h-auto"
-                  style={{ minHeight: '300px', maxHeight: '500px' }}
-                  autoPlay
-                  playsInline
-                  muted
+              <div className="relative w-full h-[400px] rounded-lg overflow-hidden bg-gray-900">
+                <Scanner
+                  onScan={handleScan}
+                  onError={handleScanError}
+                  constraints={{
+                    facingMode: 'environment'
+                  }}
+                  components={{
+                    audio: false,
+                    onOff: false,
+                    torch: false,
+                    zoom: false,
+                    finder: true
+                  }}
+                  styles={{
+                    container: {
+                      width: '100%',
+                      height: '100%',
+                      position: 'relative'
+                    },
+                    video: {
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }
+                  }}
                 />
-                
-                {/* Scanning overlay */}
-                <div className="absolute inset-0 border-4 border-blue-500/30 pointer-events-none">
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-blue-500 rounded-lg">
-                    {/* Corners */}
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400"></div>
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400"></div>
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400"></div>
-                  </div>
-                </div>
               </div>
               
-              {isScanning && (
-                <div className="mt-3 flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="font-medium">🎯 ZXing Scanner Active - Position QR code in frame</span>
-                </div>
-              )}
+              <div className="mt-3 flex items-center justify-center gap-2 text-sm text-gray-600">
+                <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="font-medium">🎯 Ready to scan - Position QR code in camera view</span>
+              </div>
             </div>
           )}
 

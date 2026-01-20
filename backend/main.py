@@ -199,6 +199,13 @@ try:
     from app.v1.registrations import router as registrations_router
     from app.v1.volunteer_scanner import router as volunteer_scanner_router
     
+    logger.info("=" * 80)
+    logger.info(f"VOLUNTEER SCANNER ROUTER - Routes before include: {len(volunteer_scanner_router.routes)}")
+    for route in volunteer_scanner_router.routes:
+        logger.info(f"  Route: {list(route.methods)} {route.path}")
+    logger.info(f"VOLUNTEER SCANNER ROUTER - Prefix: {volunteer_scanner_router.prefix}")
+    logger.info("=" * 80)
+    
     # Mount routes in correct order (most specific first)
     app.include_router(registrations_router, prefix="/api/v1")  # Registration routes
     app.include_router(storage_router)  # Storage routes
@@ -206,6 +213,13 @@ try:
     app.include_router(api_router)      # API routes (includes admin, auth, email, organizer functionality)
     
     logger.info(f"Successfully loaded {len(api_router.routes)} API routes")
+    
+    # Check if scanner routes are in the app
+    scanner_routes = [r for r in app.routes if hasattr(r, 'path') and '/scanner/' in str(r.path)]
+    logger.info(f"Scanner routes registered in app: {len(scanner_routes)}")
+    for route in scanner_routes:
+        if hasattr(route, 'methods') and hasattr(route, 'path'):
+            logger.info(f"  App Route: {route.methods} {route.path}")
     
 except Exception as e:
     logger.error(f"Error loading routes: {e}")
