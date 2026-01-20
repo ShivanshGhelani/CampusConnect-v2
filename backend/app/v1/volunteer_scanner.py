@@ -709,13 +709,21 @@ async def mark_attendance(
         # Get current attendance object from registration
         current_attendance = registration.get("attendance", {})
         attendance_config = event.get("attendance_config", {})
-        attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
         
         # Get invitation to determine target day/session
         invitation = await DatabaseOperations.find_one(
             "volunteer_invitations",
             {"invitation_code": session.get("invitation_code")}
         )
+        
+        # Get strategy - prioritize invitation's strategy, fallback to event config
+        attendance_strategy = "single_mark"
+        if invitation and invitation.get("attendance_strategy"):
+            attendance_strategy = invitation.get("attendance_strategy")
+        elif attendance_config.get("strategy"):
+            attendance_strategy = attendance_config.get("strategy")
+        elif current_attendance.get("strategy"):
+            attendance_strategy = current_attendance.get("strategy")
         
         # Get volunteer info for marking
         marked_by = session.get("volunteer_name", "Unknown Volunteer")
@@ -832,7 +840,6 @@ async def mark_attendance(
         return {
             "success": True,
             "data": {
-                "attendance_id": attendance_id,
                 "registration_id": registration_id,
                 "marked_by": marked_by,
                 "marked_at": marked_at_time.isoformat(),
