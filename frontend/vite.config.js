@@ -25,7 +25,7 @@ export default defineConfig({
           // Monaco Editor - separate chunk due to size
           'code-editor': ['@monaco-editor/react'],
           // Image processing
-          'image-processing': ['react-image-crop', 'html5-qrcode', '@yudiel/react-qr-scanner'],
+          'image-processing': ['react-image-crop', '@yudiel/react-qr-scanner'],
           // API and networking
           'api-networking': ['axios', '@supabase/supabase-js'],
           // Forms and validation
