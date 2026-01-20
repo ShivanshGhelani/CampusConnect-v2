@@ -300,11 +300,17 @@ async def get_registration_attendance_status(
     Public endpoint - used by scanner to show current status
     """
     try:
-        # Get registration
+        # Get registration - try student_registrations first, then faculty_registrations
         registration = await DatabaseOperations.find_one(
-            "registrations",
+            "student_registrations",
             {"registration_id": registration_id}
         )
+        
+        if not registration:
+            registration = await DatabaseOperations.find_one(
+                "faculty_registrations",
+                {"registration_id": registration_id}
+            )
         
         if not registration:
             raise HTTPException(status_code=404, detail="Registration not found")
@@ -553,11 +559,20 @@ async def mark_attendance(
         if not registration_id:
             raise HTTPException(status_code=400, detail="No registration_id found in QR code")
         
-        # Fetch registration
+        # Fetch registration - try student_registrations first, then faculty_registrations
         registration = await DatabaseOperations.find_one(
-            "registrations",
+            "student_registrations",
             {"registration_id": registration_id}
         )
+        
+        collection_name = "student_registrations"
+        
+        if not registration:
+            registration = await DatabaseOperations.find_one(
+                "faculty_registrations",
+                {"registration_id": registration_id}
+            )
+            collection_name = "faculty_registrations"
         
         if not registration:
             raise HTTPException(status_code=404, detail="Registration not found")
@@ -640,9 +655,9 @@ async def mark_attendance(
         if not attendance_updated:
             raise HTTPException(status_code=400, detail=f"Could not mark attendance for strategy: {attendance_strategy}")
         
-        # Update the registration document
+        # Update the registration document in the correct collection
         update_result = await DatabaseOperations.update_one(
-            "registrations",
+            collection_name,  # Use the correct collection (student_registrations or faculty_registrations)
             {"registration_id": registration_id},
             {"$set": {"attendance": current_attendance}}
         )
