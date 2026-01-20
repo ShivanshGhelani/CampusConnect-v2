@@ -47,24 +47,26 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         };
       }
 
-      // Configure scanner for better detection - IMPROVED SETTINGS
+      // ULTRA-AGGRESSIVE SCANNER CONFIG - Scan entire frame, maximum speed
       const config = {
-        fps: 20, // Increased from 10 to 20 for faster scanning
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          // Make QR box more forgiving - larger scanning area
-          const minEdgePercentage = 0.7; // Increased from 0.6 to 0.7 (70% of screen)
-          const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-          const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
-          return {
-            width: Math.min(qrboxSize, 350), // Increased from 300 to 350
-            height: Math.min(qrboxSize, 350)
-          };
-        },
+        fps: 60, // MAXIMUM FPS - scan as fast as possible
+        qrbox: { width: 400, height: 400 }, // LARGE scan area
         aspectRatio: 1.0,
         disableFlip: false,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        showTorchButtonIfSupported: true, // Enable flashlight if available
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] // Only scan QR codes
+        videoConstraints: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          focusMode: "continuous" // Auto-focus continuously
+        },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        // CRITICAL: Don't restrict scanning to just the box
+        defaultZoomValueIfSupported: 2 // Zoom in for better QR recognition
       };
 
       console.log('📋 Scanner config:', config);
