@@ -1,139 +1,147 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import qrCodeService from '../../services/QRCodeService';
-import api from '../../api/base'; // For backend API calls
+import api from '../../api/base';
 
 const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [attendanceData, setAttendanceData] = useState(null);
   const [error, setError] = useState('');
-  const [cameraPermission, setCameraPermission] = useState('unknown'); // 'granted', 'denied', 'unknown'
-  const [selectedDay, setSelectedDay] = useState(null); // For day-based attendance
-  const [selectedSession, setSelectedSession] = useState(null); // For session-based attendance
-  const scannerRef = useRef(null);
-  const html5QrcodeScannerRef = useRef(null);
+  const [cameraPermission, setCameraPermission] = useState('unknown');
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const videoRef = useRef(null);
+  const codeReaderRef = useRef(null);
+  const scanningRef = useRef(false);
 
-  // Initialize scanner when modal opens
+  // Initialize ZXing scanner when modal opens
   useEffect(() => {
-    console.log('📱 QRScanner modal state changed. isOpen:', isOpen);
-    console.log('📱 Scanner ref exists:', !!html5QrcodeScannerRef.current);
+    console.log('📱 QRScanner modal opened');
     
-    if (isOpen && !html5QrcodeScannerRef.current) {
-      console.log('🚀 Starting scanner initialization...');
+    if (isOpen && !scanningRef.current) {
+      console.log('🚀 Starting ZXing scanner...');
       initializeScanner();
     }
     
     return () => {
-      if (html5QrcodeScannerRef.current) {
-        console.log('🧹 Cleaning up scanner...');
-        html5QrcodeScannerRef.current.clear().catch(console.error);
-      }
+      cleanup();
     };
   }, [isOpen]);
 
   const initializeScanner = async () => {
-    console.log('🎥 INITIALIZING QR SCANNER...');
+    console.log('🎥 INITIALIZING ZXING SCANNER...');
     try {
-      // Check for camera permission
+      // Check camera permission
       if (navigator.permissions) {
         const permission = await navigator.permissions.query({ name: 'camera' });
-        console.log('📹 Camera permission status:', permission.state);
+        console.log('📹 Camera permission:', permission.state);
         setCameraPermission(permission.state);
         
         permission.onchange = () => {
-          console.log('📹 Camera permission changed to:', permission.state);
           setCameraPermission(permission.state);
         };
       }
 
-      // ULTRA-AGGRESSIVE SCANNER CONFIG - Scan entire frame, maximum speed
-      const config = {
-        fps: 60, // MAXIMUM FPS - scan as fast as possible
-        qrbox: { width: 400, height: 400 }, // LARGE scan area
-        aspectRatio: 1.0,
-        disableFlip: false,
-        videoConstraints: {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          focusMode: "continuous" // Auto-focus continuously
-        },
-        rememberLastUsedCamera: true,
-        showTorchButtonIfSupported: true,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        },
-        // CRITICAL: Don't restrict scanning to just the box
-        defaultZoomValueIfSupported: 2 // Zoom in for better QR recognition
-      };
-
-      console.log('📋 Scanner config:', config);
-      console.log('🎯 Creating Html5QrcodeScanner instance...');
+      // Create ZXing reader instance
+      codeReaderRef.current = new BrowserMultiFormatReader();
       
-      html5QrcodeScannerRef.current = new Html5QrcodeScanner(
-        "qr-reader",
-        config,
-        /* verbose= */ false
+      // Get available video devices
+      const videoInputDevices = await codeReaderRef.current.listVideoInputDevices();
+      console.log('📹 Found cameras:', videoInputDevices.length);
+      
+      if (videoInputDevices.length === 0) {
+        throw new Error('No camera found');
+      }
+
+      // Prefer back camera on mobile
+      const backCamera = videoInputDevices.find(device => 
+        /back|rear|environment/i.test(device.label)
+      );
+      const selectedDevice = backCamera || videoInputDevices[0];
+      
+      console.log('✅ Using camera:', selectedDevice.label);
+
+      // Start continuous scanning
+      scanningRef.current = true;
+      setIsScanning(true);
+      
+      codeReaderRef.current.decodeFromVideoDevice(
+        selectedDevice.deviceId,
+        videoRef.current,
+        async (result, error) => {
+          if (result) {
+            console.log('🎯 QR CODE SCANNED!', result.getText());
+            await handleScanSuccess(result.getText());
+          }
+          
+          // ZXing continuously attempts to decode, errors are normal when no QR is visible
+          // Only log unexpected errors
+          if (error && error.message && !error.message.includes('No MultiFormat Readers')) {
+            console.error('⚠️ Scan error:', error);
+          }
+        }
       );
 
-      console.log('✅ Scanner instance created, rendering...');
-      html5QrcodeScannerRef.current.render(onScanSuccess, onScanFailure);
-      setIsScanning(true);
-      console.log('✅ Scanner rendered and active!');
+      console.log('✅ ZXing scanner active!');
       
     } catch (err) {
       console.error('❌ Scanner initialization error:', err);
-      setError('Failed to initialize camera scanner. Please check camera permissions.');
+      setError(`Failed to initialize scanner: ${err.message}`);
     }
   };
 
-  const onScanSuccess = async (decodedText, decodedResult) => {
-    console.log('🎯 QR CODE SCANNED!');
-    console.log('Raw decoded text:', decodedText);
+  const handleScanSuccess = async (decodedText) => {
+    if (!scanningRef.current) return; // Prevent multiple scans
     
     try {
-      // Parse QR code data
+      // Pause scanning temporarily
+      scanningRef.current = false;
+      setIsScanning(false);
+      
+      console.log('📦 Processing QR data...');
+      
+      // Parse QR code
       const qrData = qrCodeService.parseQRData(decodedText);
-      console.log('Parsed QR data:', qrData);
       
       if (!qrData) {
-        console.error('❌ parseQRData returned null - invalid format');
-        setError('Invalid QR code format. Please scan a valid event registration QR code.');
+        setError('Invalid QR code format');
+        // Resume scanning after 2 seconds
+        setTimeout(() => {
+          scanningRef.current = true;
+          setIsScanning(true);
+        }, 2000);
         return;
       }
 
-      console.log('✅ Valid QR data, setting scan result...');
+      console.log('✅ Valid QR data:', qrData);
       setScanResult(qrData);
       
-      // Fetch REAL attendance data from backend
-      console.log('📡 Fetching REAL attendance data from backend...');
+      // Fetch real attendance data
+      console.log('📡 Fetching attendance data...');
       const realAttendanceData = await fetchRealAttendanceData(qrData);
       setAttendanceData(realAttendanceData);
-      console.log('✅ Got real attendance data:', realAttendanceData);
-      
-      // Pause scanning after successful scan
-      if (html5QrcodeScannerRef.current) {
-        html5QrcodeScannerRef.current.pause();
-        setIsScanning(false);
-      }
-      
-      // DON'T call onScan here - wait for volunteer to mark attendance and click Save
-      console.log('✅ Attendance UI should now be visible');
+      console.log('✅ Got attendance data:', realAttendanceData);
       
     } catch (error) {
-      console.error('❌ ERROR in onScanSuccess:', error);
-      console.error('Error message:', error.message);
-      console.error('Stack trace:', error.stack);
-      setError(`Error processing QR code: ${error.message}`);
+      console.error('❌ Error processing QR:', error);
+      setError(`Error: ${error.message}`);
+      
+      // Resume scanning after error
+      setTimeout(() => {
+        scanningRef.current = true;
+        setIsScanning(true);
+      }, 2000);
     }
   };
 
-  const onScanFailure = (error) => {
-    // Only log non-routine scan failures
-    if (error && !error.includes('NotFoundException')) {
-      console.log('⚠️ Scan attempt failed:', error);
+  const cleanup = () => {
+    console.log('🧹 Cleaning up scanner...');
+    scanningRef.current = false;
+    
+    if (codeReaderRef.current) {
+      codeReaderRef.current.reset();
+      codeReaderRef.current = null;
     }
   };
 
@@ -240,17 +248,12 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
     setError('');
     
     // Resume scanning
-    if (html5QrcodeScannerRef.current) {
-      html5QrcodeScannerRef.current.resume();
-      setIsScanning(true);
-    }
+    scanningRef.current = true;
+    setIsScanning(true);
   };
 
   const handleClose = () => {
-    if (html5QrcodeScannerRef.current) {
-      html5QrcodeScannerRef.current.clear().catch(console.error);
-      html5QrcodeScannerRef.current = null;
-    }
+    cleanup();
     setScanResult(null);
     setAttendanceData(null);
     setError('');
@@ -344,16 +347,32 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           {/* Scanner Area */}
           {!attendanceData && (
             <div className="mb-4">
-              <div 
-                id="qr-reader" 
-                className="w-full rounded-lg overflow-hidden bg-gray-100"
-                style={{ minHeight: '300px' }}
-              ></div>
+              <div className="relative w-full rounded-lg overflow-hidden bg-black">
+                <video
+                  ref={videoRef}
+                  className="w-full h-auto"
+                  style={{ minHeight: '300px', maxHeight: '500px' }}
+                  autoPlay
+                  playsInline
+                  muted
+                />
+                
+                {/* Scanning overlay */}
+                <div className="absolute inset-0 border-4 border-blue-500/30 pointer-events-none">
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-blue-500 rounded-lg">
+                    {/* Corners */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-blue-400"></div>
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400"></div>
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-blue-400"></div>
+                  </div>
+                </div>
+              </div>
               
               {isScanning && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <div className="animate-pulse w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span>Position QR code within the frame to scan</span>
+                  <div className="animate-pulse w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="font-medium">🎯 ZXing Scanner Active - Position QR code in frame</span>
                 </div>
               )}
             </div>
