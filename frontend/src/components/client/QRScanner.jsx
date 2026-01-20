@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import qrCodeService from '../../services/QRCodeService';
 import api from '../../api/base'; // For backend API calls
 
@@ -64,7 +64,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         disableFlip: false,
         supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
         showTorchButtonIfSupported: true, // Enable flashlight if available
-        formatsToSupport: [Html5QrcodeScannerState.QR_CODE] // Only scan QR codes
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] // Only scan QR codes
       };
 
       console.log('📋 Scanner config:', config);
