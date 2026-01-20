@@ -100,7 +100,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
       // Call the NEW backend endpoint that returns real data
       const response = await api.get(`/api/scanner/registration/${registration_id}/status`);
       
-      console.log('Backend response:', response.data);
+      console.log('✅ Backend response:', response.data);
       
       if (response.data.success) {
         const data = response.data.data;
@@ -114,17 +114,20 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           attendance_strategy: data.attendance_strategy,
           scan_time: new Date().toISOString(),
           attendance: data.attendance || {},
+          participant: data.participant || {}, // NEW: Participant info
+          team_members: data.team_members || null // NEW: Team members if team-based
         };
         
-        // Add student/faculty/team data based on type
+        // Add participant data based on type
         if (data.registration_type === 'individual') {
-          formattedData.student = data.student || data.faculty || null;
+          formattedData.student = data.participant || null;
         } else if (data.registration_type === 'team') {
-          formattedData.team_name = data.team_name;
-          formattedData.leader = data.leader;
+          formattedData.team_name = data.participant?.team_name;
+          formattedData.leader = data.participant?.team_leader;
           formattedData.members = data.team_members || [];
         }
         
+        console.log('📊 Formatted attendance data:', formattedData);
         return formattedData;
       } else {
         throw new Error(response.data.error || 'Failed to fetch attendance data');
@@ -342,6 +345,84 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
                   </div>
                 </div>
               </div>
+
+              {/* Participant Info Card - NEW */}
+              {attendanceData.participant && attendanceData.registration_type === 'individual' && (
+                <div className="bg-white border-2 border-teal-200 rounded-lg p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 text-lg">{attendanceData.participant.name}</h4>
+                      <div className="mt-2 space-y-1 text-sm text-gray-600">
+                        {attendanceData.participant.enrollment_no && (
+                          <p><span className="font-medium">Enrollment:</span> {attendanceData.participant.enrollment_no}</p>
+                        )}
+                        {attendanceData.participant.employee_id && (
+                          <p><span className="font-medium">Employee ID:</span> {attendanceData.participant.employee_id}</p>
+                        )}
+                        {attendanceData.participant.department && (
+                          <p><span className="font-medium">Department:</span> {attendanceData.participant.department}</p>
+                        )}
+                        {attendanceData.participant.year && (
+                          <p><span className="font-medium">Year:</span> {attendanceData.participant.year}</p>
+                        )}
+                        {attendanceData.participant.designation && (
+                          <p><span className="font-medium">Designation:</span> {attendanceData.participant.designation}</p>
+                        )}
+                        <p><span className="font-medium">Email:</span> {attendanceData.participant.email}</p>
+                        <p><span className="font-medium">Phone:</span> {attendanceData.participant.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Team Members Info - NEW */}
+              {attendanceData.team_members && attendanceData.registration_type === 'team' && (
+                <div className="bg-white border-2 border-purple-200 rounded-lg p-4 shadow-sm">
+                  <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Team Members ({attendanceData.team_members.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {attendanceData.team_members.map((member, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg border-2 ${member.is_leader ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900">{member.name}</p>
+                              {member.is_leader && (
+                                <span className="px-2 py-0.5 bg-yellow-200 text-yellow-800 text-xs rounded-full font-medium">
+                                  Leader
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{member.enrollment_no} • {member.department}</p>
+                          </div>
+                          <div className="flex-shrink-0">
+                            {member.attendance_marked ? (
+                              <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Marked
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 text-sm">Pending</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Day/Session Selection - CRITICAL FOR DAY-BASED ATTENDANCE */}
               {attendanceData.attendance_strategy === 'day_based' && attendanceData.attendance?.days && (

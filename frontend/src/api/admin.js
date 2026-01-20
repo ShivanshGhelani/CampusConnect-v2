@@ -274,10 +274,13 @@ export const adminAPI = {
   getAttendanceStatistics: (eventId) => api.get(`/api/v1/attendance/analytics/${eventId}`),
 
   // VOLUNTEER SCANNER - INVITATION BASED (NEW)
-  createScannerInvitation: (eventId, expiresAt = null) => 
+  createScannerInvitation: (eventId, expiresAt = null, targetDay = null, targetSession = null, targetRound = null) => 
     api.post('/api/scanner/invitation/create', {
       event_id: eventId,
-      expires_at: expiresAt
+      expires_at: expiresAt,
+      target_day: targetDay,
+      target_session: targetSession,
+      target_round: targetRound
     }),
   
   deactivateScannerInvitation: (invitationCode) =>

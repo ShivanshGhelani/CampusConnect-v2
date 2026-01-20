@@ -262,8 +262,19 @@ const UnifiedAttendancePortal = () => {
         expiresAt = expiry.toISOString();
       }
       
-      // Use new invitation-based scanner API
-      const response = await adminAPI.createScannerInvitation(eventId, expiresAt);
+      // Get selected target day/session/round
+      const targetDay = document.getElementById('target-day-select')?.value || null;
+      const targetSession = document.getElementById('target-session-select')?.value || null;
+      const targetRound = document.getElementById('target-round-select')?.value || null;
+      
+      // Use new invitation-based scanner API with target selection
+      const response = await adminAPI.createScannerInvitation(
+        eventId, 
+        expiresAt,
+        targetDay ? parseInt(targetDay) : null,
+        targetSession,
+        targetRound
+      );
       
       if (response.data.success) {
         // Transform response to match old format for UI compatibility
@@ -276,7 +287,10 @@ const UnifiedAttendancePortal = () => {
           expires_at: response.data.data.expires_at,
           expires_in_hours: hoursUntilExpiry,
           event_name: response.data.data.event_name,
-          attendance_window: response.data.data.attendance_window
+          attendance_window: response.data.data.attendance_window,
+          target_day: targetDay,
+          target_session: targetSession,
+          target_round: targetRound
         };
         setScannerToken(invitationData);
         showNotification('Scanner invitation link generated successfully!', 'success');
@@ -933,6 +947,82 @@ const UnifiedAttendancePortal = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Target Day/Session/Round Selection - NEW */}
+                {config?.attendance_strategy === 'day_based' && config.attendance_config?.sessions && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Which Day to Mark <span className="text-red-500">*</span>
+                    </label>
+                    <select 
+                      id="target-day-select"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      defaultValue=""
+                    >
+                      <option value="">Select a day...</option>
+                      {config.attendance_config.sessions.map((session) => {
+                        // Extract day number from session_id (e.g., "day_1" -> 1)
+                        const dayMatch = session.session_id.match(/day_(\d+)/);
+                        const dayNum = dayMatch ? parseInt(dayMatch[1]) : null;
+                        return dayNum ? (
+                          <option key={session.session_id} value={dayNum}>
+                            Day {dayNum} - {session.session_name}
+                          </option>
+                        ) : null;
+                      })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This scanner will only mark attendance for the selected day
+                    </p>
+                  </div>
+                )}
+
+                {config?.attendance_strategy === 'session_based' && config.attendance_config?.sessions && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Which Session to Mark <span className="text-red-500">*</span>
+                    </label>
+                    <select 
+                      id="target-session-select"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      defaultValue=""
+                    >
+                      <option value="">Select a session...</option>
+                      {config.attendance_config.sessions.map((session) => (
+                        <option key={session.session_id} value={session.session_id}>
+                          {session.session_name}
+                          {session.start_time && ` (${new Date(session.start_time).toLocaleString()})`}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This scanner will only mark attendance for the selected session
+                    </p>
+                  </div>
+                )}
+
+                {config?.attendance_strategy === 'milestone_based' && config.attendance_config?.sessions && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Which Round/Milestone to Mark <span className="text-red-500">*</span>
+                    </label>
+                    <select 
+                      id="target-round-select"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      defaultValue=""
+                    >
+                      <option value="">Select a round...</option>
+                      {config.attendance_config.sessions.map((session) => (
+                        <option key={session.session_id} value={session.session_id}>
+                          {session.session_name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This scanner will only mark attendance for the selected round/milestone
+                    </p>
+                  </div>
+                )}
 
                 {/* Session Selection for session-based events */}
                 {config?.attendance_strategy && ['session_based', 'day_based', 'milestone_based'].includes(config.attendance_strategy) && (

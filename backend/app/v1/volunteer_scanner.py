@@ -28,6 +28,9 @@ router = APIRouter(prefix="/api/scanner", tags=["Volunteer Scanner"])
 class CreateInvitationRequest(BaseModel):
     event_id: str = Field(..., description="Event ID for which to create invitation")
     expires_at: Optional[str] = Field(None, description="Manual expiry time (ISO format). If not provided, uses event attendance end time")
+    target_day: Optional[int] = Field(None, description="Specific day number for day-based attendance (e.g., 1, 2, 3)")
+    target_session: Optional[str] = Field(None, description="Specific session ID for session-based attendance")
+    target_round: Optional[str] = Field(None, description="Specific round ID for round-based attendance")
 
 class CreateSessionRequest(BaseModel):
     volunteer_name: str = Field(..., min_length=2, max_length=100, description="Volunteer's full name")
@@ -138,6 +141,12 @@ async def create_invitation_link(
                 "is_active": True,
                 "attendance_start_time": attendance_start,
                 "attendance_end_time": attendance_end,
+                "target_day": request.target_day,
+                "target_session": request.target_session,
+                "target_round": request.target_round,
+                "attendance_strategy": attendance_config.get("attendance_strategy", "single_mark"),
+                "target_audience": event.get("target_audience"),
+                "is_team_based": event.get("is_team_based", False),
                 "total_scans": 0,
                 "active_sessions": []
             }
@@ -339,6 +348,58 @@ async def get_registration_attendance_status(
         registration_info = registration.get("registration", {})
         registration_type = registration_info.get("type", "individual")
         
+        # Extract participant info based on type
+        participant_info = {}
+        team_members = []
+        
+        if registration_type == "team":
+            # Team-based registration
+            team_data = registration.get("team", {})
+            participant_info = {
+                "type": "team",
+                "team_name": team_data.get("team_name"),
+                "team_leader": team_data.get("leader", {}),
+                "team_size": len(team_data.get("members", []))
+            }
+            
+            # Get all team members with their attendance status
+            for member in team_data.get("members", []):
+                member_info = {
+                    "enrollment_no": member.get("enrollment_no"),
+                    "name": member.get("name"),
+                    "email": member.get("email"),
+                    "phone": member.get("phone"),
+                    "department": member.get("department"),
+                    "is_leader": member.get("is_leader", False),
+                    "attendance_marked": member.get("attendance_marked", False)
+                }
+                team_members.append(member_info)
+        else:
+            # Individual registration
+            student_data = registration.get("student", {})
+            faculty_data = registration.get("faculty", {})
+            
+            if student_data:
+                participant_info = {
+                    "type": "individual",
+                    "enrollment_no": student_data.get("enrollment_no"),
+                    "name": student_data.get("name"),
+                    "email": student_data.get("email"),
+                    "phone": student_data.get("phone"),
+                    "department": student_data.get("department"),
+                    "year": student_data.get("year")
+                }
+            elif faculty_data:
+                participant_info = {
+                    "type": "individual",
+                    "employee_id": faculty_data.get("employee_id"),
+                    "name": faculty_data.get("name"),
+                    "email": faculty_data.get("email"),
+                    "phone": faculty_data.get("phone"),
+                    "department": faculty_data.get("department"),
+                    "designation": faculty_data.get("designation")
+                }
+        
         # Build response
         response_data = {
             "registration_id": registration_id,
@@ -346,7 +407,9 @@ async def get_registration_attendance_status(
             "event_name": event_data.get("event_name", event.get("event_name")),
             "registration_type": registration_type,
             "attendance_strategy": attendance_strategy,
-            "attendance": registration.get("attendance", {})
+            "attendance": registration.get("attendance", {}),
+            "participant": participant_info,
+            "team_members": team_members if team_members else None
         }
         
         # Add student/faculty/team info
@@ -602,6 +665,12 @@ async def mark_attendance(
         attendance_config = event.get("attendance_config", {})
         attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
         
+        # Get invitation to determine target day/session
+        invitation = await DatabaseOperations.find_one(
+            "volunteer_invitations",
+            {"invitation_code": session.get("invitation_code")}
+        )
+        
         # Get volunteer info for marking
         marked_by = session.get("volunteer_name", "Unknown Volunteer")
         marked_at_time = datetime.utcnow()
@@ -612,8 +681,14 @@ async def mark_attendance(
         session_marked = None
         
         if attendance_strategy == "day_based":
-            # Get which day to mark (default to day 1 if not specified)
-            day_to_mark = request.attendance_data.get("day", 1)
+            # Use target_day from invitation, or from request, or default to day 1
+            day_to_mark = None
+            if invitation and invitation.get("target_day"):
+                day_to_mark = invitation.get("target_day")
+            elif request.attendance_data.get("day"):
+                day_to_mark = request.attendance_data.get("day")
+            else:
+                raise HTTPException(status_code=400, detail="Day number required for day-based attendance")
             
             days = current_attendance.get("days", [])
             for day in days:
@@ -625,17 +700,24 @@ async def mark_attendance(
                     day_marked = day_to_mark
                     break
             
+            if not attendance_updated:
+                raise HTTPException(status_code=400, detail=f"Day {day_to_mark} not found in event configuration")
+            
             # Calculate percentage for day-based
             if days:
                 marked_count = sum(1 for d in days if d.get("marked", False))
                 current_attendance["percentage"] = (marked_count / len(days)) * 100
+                current_attendance["days_attended"] = marked_count
                 current_attendance["status"] = "completed" if marked_count == len(days) else "partial"
         
         elif attendance_strategy == "session_based":
-            # Get which session to mark
-            session_id_to_mark = request.attendance_data.get("session_id")
-            
-            if not session_id_to_mark:
+            # Use target_session from invitation or from request
+            session_id_to_mark = None
+            if invitation and invitation.get("target_session"):
+                session_id_to_mark = invitation.get("target_session")
+            elif request.attendance_data.get("session_id"):
+                session_id_to_mark = request.attendance_data.get("session_id")
+            else:
                 raise HTTPException(status_code=400, detail="session_id required for session-based attendance")
             
             sessions = current_attendance.get("sessions", [])
@@ -647,6 +729,9 @@ async def mark_attendance(
                     attendance_updated = True
                     session_marked = session_id_to_mark
                     break
+            
+            if not attendance_updated:
+                raise HTTPException(status_code=400, detail=f"Session {session_id_to_mark} not found in event configuration")
             
             # Calculate percentage for session-based
             if sessions:
@@ -666,7 +751,10 @@ async def mark_attendance(
         if not attendance_updated:
             raise HTTPException(status_code=400, detail=f"Could not mark attendance for strategy: {attendance_strategy}")
         
-        # Update the registration document in the correct collection
+        # Update last_updated timestamp
+        current_attendance["last_updated"] = marked_at_time.isoformat()
+        
+        # Update the registration document in the correct collection - ONLY UPDATE attendance field
         update_result = await DatabaseOperations.update_one(
             collection_name,  # Use the correct collection (student_registrations or faculty_registrations)
             {"registration_id": registration_id},
@@ -675,26 +763,6 @@ async def mark_attendance(
         
         if not update_result:
             raise HTTPException(status_code=500, detail="Failed to update registration attendance")
-        
-        # Create audit trail in attendance_records
-        attendance_record = {
-            "session_id": session_id,
-            "invitation_code": session.get("invitation_code"),
-            "event_id": session.get("event_id"),
-            "registration_id": registration_id,
-            "volunteer_name": marked_by,
-            "volunteer_contact": session.get("volunteer_contact"),
-            "qr_data": request.qr_data,
-            "attendance_data": request.attendance_data,
-            "attendance_strategy": attendance_strategy,
-            "day_marked": day_marked,
-            "session_marked": session_marked,
-            "marked_at": marked_at_time,
-            "created_at": datetime.utcnow()
-        }
-        
-        result = await DatabaseOperations.insert_one("attendance_records", attendance_record)
-        attendance_id = result if isinstance(result, str) else str(result)
         
         # Update session activity
         await DatabaseOperations.update_one(
