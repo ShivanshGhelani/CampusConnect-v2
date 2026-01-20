@@ -155,7 +155,7 @@ async def create_invitation_link(
                 "target_day": request.target_day,
                 "target_session": request.target_session,
                 "target_round": request.target_round,
-                "attendance_strategy": attendance_config.get("attendance_strategy", "single_mark"),
+                "attendance_strategy": attendance_config.get("strategy", "single_mark"),
                 "target_audience": event.get("target_audience"),
                 "is_team_based": event.get("is_team_based", False),
                 "total_scans": 0,
@@ -745,8 +745,25 @@ async def mark_attendance(
                 raise HTTPException(status_code=400, detail="Day number required for day-based attendance")
             
             days = current_attendance.get("days", [])
+            already_marked = False
             for day in days:
                 if day.get("day") == day_to_mark:
+                    # Check if already marked
+                    if day.get("marked"):
+                        already_marked = True
+                        return {
+                            "success": True,
+                            "data": {
+                                "registration_id": registration_id,
+                                "already_marked": True,
+                                "marked_by": day.get("marked_by", "Unknown"),
+                                "marked_at": day.get("marked_at"),
+                                "message": f"Attendance for Day {day_to_mark} already marked",
+                                "attendance_percentage": current_attendance.get("percentage", 0),
+                                "attendance_status": current_attendance.get("status", "unknown")
+                            }
+                        }
+                    
                     day["marked"] = True
                     day["marked_at"] = marked_at_time.isoformat()
                     day["marked_by"] = marked_by

@@ -654,15 +654,13 @@ const UnifiedAttendancePortal = () => {
                                     <>
                                       <button
                                         onClick={() => markAttendance(member.registration_id, 'present', null, memberIndex)}
-                                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
-                                        disabled={memberAttendance.status === 'present'}
+                                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                                       >
                                         Present
                                       </button>
                                       <button
                                         onClick={() => markAttendance(member.registration_id, 'absent', null, memberIndex)}
-                                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 disabled:opacity-50"
-                                        disabled={memberAttendance.status === 'absent'}
+                                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                                       >
                                         Absent
                                       </button>
@@ -756,14 +754,12 @@ const UnifiedAttendancePortal = () => {
                         <button
                           onClick={() => markAttendance(participant.registration_id, 'present')}
                           className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                          disabled={attendance.status === 'present'}
                         >
                           Present
                         </button>
                         <button
                           onClick={() => markAttendance(participant.registration_id, 'absent')}
                           className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                          disabled={attendance.status === 'absent'}
                         >
                           Absent
                         </button>
