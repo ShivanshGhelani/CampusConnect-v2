@@ -131,6 +131,12 @@ async def get_complete_profile(student: Student = Depends(require_student_login_
             if event_id:
                 event = await DatabaseOperations.find_one("events", {"event_id": event_id})
                 if event:
+                    # Fetch full registration document for attendance, feedback, certificate data
+                    registration_doc = await DatabaseOperations.find_one(
+                        "student_registrations",
+                        {"registration_id": participation.get('registration_id')}
+                    )
+                    
                     history_item = {
                         "event_id": event_id,
                         "event_name": event.get('event_name', ''),
@@ -156,7 +162,11 @@ async def get_complete_profile(student: Student = Depends(require_student_login_
                             "feedback_date": participation.get('feedback_submitted_at'),
                             "certificate_earned": bool(participation.get('certificate_id')),
                             "certificate_id": participation.get('certificate_id')
-                        }
+                        },
+                        # Add actual attendance, feedback, certificate data from registration document
+                        "attendance": registration_doc.get('attendance') if registration_doc else None,
+                        "feedback": registration_doc.get('feedback') if registration_doc else None,
+                        "certificate": registration_doc.get('certificate') if registration_doc else None
                     }
                     event_history.append(history_item)
         
@@ -314,6 +324,19 @@ async def get_faculty_complete_profile(faculty: Faculty = Depends(require_facult
                 
                 participation_data = participations_dict.get(event_id, {})
                 
+                # Fetch full registration document for attendance, feedback, certificate data
+                registration_id = (
+                    participation_data.get("registration_id") or
+                    registration.get("registration_id", "N/A") if registration else "N/A"
+                )
+                
+                registration_doc = None
+                if registration_id and registration_id != "N/A":
+                    registration_doc = await DatabaseOperations.find_one(
+                        "faculty_registrations",
+                        {"registration_id": registration_id}
+                    )
+                
                 history_item = {
                     "event_id": event_id,
                     "event_name": event.get("event_name", "Unknown Event"),
@@ -323,10 +346,7 @@ async def get_faculty_complete_profile(faculty: Faculty = Depends(require_facult
                     "status": event.get("status", "unknown"),
                     "sub_status": event.get("sub_status", "unknown"),
                     "registration_data": {
-                        "registration_id": (
-                            participation_data.get("registration_id") or
-                            registration.get("registration_id", "N/A") if registration else "N/A"
-                        ),
+                        "registration_id": registration_id,
                         "registration_type": (
                             participation_data.get("registration_type") or
                             registration.get("registration", {}).get("registration_type", "individual") if registration else "individual"
@@ -340,7 +360,11 @@ async def get_faculty_complete_profile(faculty: Faculty = Depends(require_facult
                             registration.get("registration", {}).get("status", "confirmed") if registration else "confirmed"
                         )
                     },
-                    "participation_status": participation_data.get("status", "registered")
+                    "participation_status": participation_data.get("status", "registered"),
+                    # Add actual attendance, feedback, certificate data from registration document
+                    "attendance": registration_doc.get('attendance') if registration_doc else None,
+                    "feedback": registration_doc.get('feedback') if registration_doc else None,
+                    "certificate": registration_doc.get('certificate') if registration_doc else None
                 }
                 
                 event_history.append(history_item)

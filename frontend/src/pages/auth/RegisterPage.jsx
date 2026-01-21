@@ -94,7 +94,7 @@ function RegisterPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectPath = userRole === 'faculty' ? '/faculty/profile' : '/client/dashboard';
+      const redirectPath = userRole === 'faculty' ? '/faculty/profile' : '/client/profile';
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, userRole]);
@@ -695,7 +695,7 @@ function RegisterPage() {
     }
 
     if (result.success) {
-      const redirectPath = userRole === 'faculty' ? '/faculty/profile' : '/client/dashboard';
+      const redirectPath = userRole === 'faculty' ? '/faculty/profile' : '/client/profile';
       navigate(redirectPath, { replace: true });
       addToast({
         type: 'success',

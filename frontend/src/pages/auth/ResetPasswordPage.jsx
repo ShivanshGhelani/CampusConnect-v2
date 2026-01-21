@@ -117,7 +117,7 @@ function ResetPasswordPage() {
           if (loginResult.success) {
             const redirectPath = tokenValidation.userType === 'faculty' 
               ? '/faculty/profile' 
-              : '/client/dashboard';
+              : '/client/profile';
             navigate(redirectPath, { replace: true });
           } else {
             // If auto-login fails, redirect to login page

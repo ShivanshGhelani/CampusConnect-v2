@@ -125,6 +125,7 @@ function ProfilePage() {
         
         let data = getAnyCache('student');
         
+        // If no cache or cache is empty, fetch fresh data
         if (!data) {
           
           // OPTIMIZED: Use global cache to prevent duplicate API calls
@@ -160,13 +161,19 @@ function ProfilePage() {
       }
     };
 
-    // Only fetch if user exists and we haven't fetched profile data yet (prevent duplicate calls)
-    if (user?.enrollment_no && !profileData?.enrollment_no) {
-      
-      fetchData();
-    } else if (profileData?.enrollment_no) {
-      
-      setLoading(false); // Ensure loading is false if data is already available
+    // Fetch data if user exists and either:
+    // 1. No profile data loaded yet, OR
+    // 2. Coming back from another page (refetch to get latest events)
+    if (user?.enrollment_no) {
+      // Check if cache is empty (cleared after registration)
+      const cachedData = getAnyCache('student');
+      if (!cachedData || !profileData?.enrollment_no) {
+        
+        fetchData();
+      } else if (profileData?.enrollment_no) {
+        
+        setLoading(false); // Ensure loading is false if data is already available
+      }
     }
   }, [user?.enrollment_no, user?.name]); // Wait for user to be fully loaded before fetching
 
@@ -184,7 +191,11 @@ function ProfilePage() {
         category: item.category
       },
       registration: item.registration_data,
-      participation_status: item.participation_status
+      participation_status: item.participation_status,
+      // Add attendance, feedback, and certificate data for EventDetailModal
+      attendance: item.attendance,
+      feedback: item.feedback,
+      certificate: item.certificate
     };
   });
 

@@ -117,8 +117,12 @@ function FacultyProfilePage() {
       try {
         setLoading(true);
 
-        // OPTIMIZED: Use global cache to prevent duplicate API calls
-        const data = await fetchProfileWithCache('faculty', user?.employee_id, api);
+        // Check if cache exists first
+        const cachedData = getAnyCache('faculty');
+        
+        // If cache is cleared (after registration), always fetch fresh data
+        // Otherwise use cached data to avoid unnecessary API calls
+        const data = cachedData || await fetchProfileWithCache('faculty', user?.employee_id, api);
         
         if (data && data.success) {
           const { profile, stats, event_history } = data;
@@ -140,7 +144,9 @@ function FacultyProfilePage() {
       }
     };
 
-    if (user && user.user_type === 'faculty') {
+    // Fetch data whenever component mounts or employee_id changes
+    // This ensures fresh data after registration (when cache is cleared)
+    if (user && user.user_type === 'faculty' && user.employee_id) {
       fetchData();
     }
   }, [user?.employee_id]); // Only depend on employee_id for consistency
@@ -169,7 +175,11 @@ function FacultyProfilePage() {
       team_name: item.registration_data?.team_name || null,
       team_registration_id: item.registration_data?.team_registration_id || null
     },
-    participation_status: item.participation_status
+    participation_status: item.participation_status,
+    // Add attendance, feedback, and certificate data for EventDetailModal
+    attendance: item.attendance,
+    feedback: item.feedback,
+    certificate: item.certificate
   }));
 
   // Sort events by registration time, latest first

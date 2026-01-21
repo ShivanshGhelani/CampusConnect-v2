@@ -347,9 +347,9 @@ function EditProfile() {
         confirm_new_password: ''
       }));
 
-      // Navigate to dashboard after successful update
+      // Navigate to profile after successful update
       setTimeout(() => {
-        navigate('/client/dashboard');
+        navigate('/client/profile');
       }, 1000);
 
     } catch (error) {
@@ -763,11 +763,11 @@ function EditProfile() {
             <nav className="flex" aria-label="Breadcrumb">
               <ol className="inline-flex items-center space-x-1 md:space-x-3">
                 <li className="inline-flex items-center">
-                  <Link to="/client/dashboard" className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-purple-600">
+                  <Link to="/client/profile" className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-purple-600">
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                     </svg>
-                    Dashboard
+                    Profile
                   </Link>
                 </li>
                 <li>
@@ -1060,7 +1060,7 @@ function EditProfile() {
               {/* Submit Button */}
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <Link
-                  to="/client/dashboard"
+                  to="/client/profile"
                   className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium"
                 >
                   Cancel

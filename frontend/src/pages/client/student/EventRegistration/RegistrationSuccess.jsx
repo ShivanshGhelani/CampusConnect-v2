@@ -146,10 +146,10 @@ const RegistrationSuccess = () => {
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Registration Not Found</h2>
             <p className="text-gray-600 mb-4">{error || 'Unable to load registration data'}</p>
             <button
-              onClick={() => navigate('/client/dashboard')}
+              onClick={() => navigate('/client/profile')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              Return to Dashboard
+              Return to Profile
             </button>
           </div>
         </div>
@@ -422,11 +422,11 @@ const RegistrationSuccess = () => {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             <button
-              onClick={() => navigate('/client/dashboard')}
+              onClick={() => navigate('/client/profile')}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center"
             >
               <i className="fas fa-tachometer-alt mr-2"></i>
-              Go to Dashboard
+              Go to Profile
             </button>
             <button
               onClick={() => navigate('/client/events')}

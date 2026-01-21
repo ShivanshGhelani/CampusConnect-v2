@@ -240,26 +240,33 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                       </svg>
                       <span className="text-xs lg:text-sm font-semibold text-slate-900">Attendance</span>
                     </div>
-                    {selectedEventDetail.participation_status?.attended ? (
+                    {selectedEventDetail.attendance?.status === 'present' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Marked
+                        Present (100%)
                       </span>
-                    ) : selectedEventDetail.event.status === 'completed' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded-lg text-xs font-medium">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Not Marked
-                      </span>
-                    ) : selectedEventDetail.event.status === 'ongoing' ? (
+                    ) : selectedEventDetail.attendance?.status === 'partial' ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Available Soon
+                        Partial ({selectedEventDetail.attendance.percentage}%)
+                      </span>
+                    ) : selectedEventDetail.attendance?.status === 'absent' || (selectedEventDetail.event.status === 'completed' && !selectedEventDetail.attendance?.sessions?.length) ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded-lg text-xs font-medium">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Absent
+                      </span>
+                    ) : selectedEventDetail.event.status === 'ongoing' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-medium">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Ongoing - Mark Now
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
@@ -271,103 +278,84 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                     )}
                   </div>
 
-                  {selectedEventDetail.participation_status?.attended && (
+                  {/* Attendance Completion Stats */}
+                  {selectedEventDetail.attendance && selectedEventDetail.attendance.total_sessions > 0 && (
                     <div className="space-y-3">
-                      {/* Attendance Details */}
-                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <svg className="w-3 h-3 lg:w-4 lg:h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span className="text-xs lg:text-sm font-semibold text-emerald-800">Attendance Confirmed</span>
+                      {/* Progress Bar */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-slate-700">Completion Progress</span>
+                          <span className="font-bold text-slate-900">{selectedEventDetail.attendance.percentage || 0}%</span>
                         </div>
-                        <div className="text-xs text-emerald-700 space-y-1">
-                          <p><strong>Attendance ID:</strong> <span className="font-mono bg-white px-2 py-0.5 rounded border">{selectedEventDetail.participation_status.attendance_id}</span></p>
-                          {selectedEventDetail.participation_status.attendance_date && (
-                            <p><strong>Marked At:</strong> {new Date(selectedEventDetail.participation_status.attendance_date).toLocaleString('en-US', {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}</p>
+                        <div className="w-full bg-slate-200 rounded-full h-2.5">
+                          <div 
+                            className={`h-2.5 rounded-full transition-all duration-500 ${
+                              selectedEventDetail.attendance.percentage === 100 ? 'bg-emerald-500' :
+                              selectedEventDetail.attendance.percentage >= 50 ? 'bg-blue-500' :
+                              selectedEventDetail.attendance.percentage > 0 ? 'bg-orange-500' : 'bg-slate-300'
+                            }`}
+                            style={{ width: `${selectedEventDetail.attendance.percentage || 0}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-600">
+                          <span>Sessions: {selectedEventDetail.attendance.sessions_attended || 0} / {selectedEventDetail.attendance.total_sessions}</span>
+                          {selectedEventDetail.attendance.last_updated && (
+                            <span>Updated: {new Date(selectedEventDetail.attendance.last_updated).toLocaleDateString()}</span>
                           )}
                         </div>
                       </div>
 
-                      {/* Attendance Type Indicators */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-blue-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-blue-800">Physical</span>
-                          <svg className="w-3 h-3 text-emerald-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                      {/* Attended Sessions List */}
+                      {selectedEventDetail.attendance.sessions && selectedEventDetail.attendance.sessions.length > 0 && (
+                        <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-3 h-3 lg:w-4 lg:h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-xs lg:text-sm font-semibold text-emerald-800">Attended Sessions</span>
+                          </div>
+                          <div className="space-y-2">
+                            {selectedEventDetail.attendance.sessions.map((session, idx) => (
+                              <div key={idx} className="bg-white rounded-lg p-2 border border-emerald-300">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-slate-900 truncate">{session.session_name}</p>
+                                    <p className="text-xs text-slate-600 mt-0.5">
+                                      Marked by: {session.marked_by || 'System'}
+                                    </p>
+                                    {session.marked_at && (
+                                      <p className="text-xs text-slate-500">
+                                        {new Date(session.marked_at).toLocaleString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-purple-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-purple-800">Virtual</span>
-                          <svg className="w-3 h-3 text-emerald-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                      )}
 
-                  {selectedEventDetail.event.status === 'ongoing' && !selectedEventDetail.participation_status?.attended && (
-                    <div className="space-y-3 mt-3">
-                      <p className="text-xs text-slate-600">
-                        Attendance marking is now available! Choose your attendance method:
-                      </p>
-
-                      {/* Attendance Options */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-blue-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-blue-800">Physical</span>
-                          <svg className="w-3 h-3 text-orange-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                      {/* No Attendance Message */}
+                      {(!selectedEventDetail.attendance.sessions || selectedEventDetail.attendance.sessions.length === 0) && (
+                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                          <p className="text-xs text-slate-600 text-center">
+                            {selectedEventDetail.event.status === 'ongoing' 
+                              ? '📍 Attendance marking available - Please mark your attendance'
+                              : selectedEventDetail.event.status === 'upcoming'
+                              ? '⏳ Attendance marking will be available during the event'
+                              : '❌ No attendance recorded for this event'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-purple-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-purple-800">Virtual</span>
-                          <svg className="w-3 h-3 text-orange-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
-                        <p><strong>Physical:</strong> Be present at the venue and use QR code or location-based marking.</p>
-                        <p><strong>Virtual:</strong> Join online session and mark attendance through the platform.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedEventDetail.event.status === 'upcoming' && (
-                    <div className="mt-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 opacity-75">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-blue-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-blue-800">Physical</span>
-                          <svg className="w-3 h-3 text-slate-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200 opacity-75">
-                          <div className="w-2 h-2 lg:w-3 lg:h-3 bg-purple-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-purple-800">Virtual</span>
-                          <svg className="w-3 h-3 text-slate-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-2">
-                        Both physical and virtual attendance options will be available during the event.
-                      </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -381,7 +369,7 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                       </svg>
                       <span className="text-xs lg:text-sm font-semibold text-slate-900">Feedback</span>
                     </div>
-                    {selectedEventDetail.participation_status?.feedback_submitted ? (
+                    {selectedEventDetail.feedback?.submitted ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-medium">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -408,15 +396,28 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                       </span>
                     )}
                   </div>
-                  {selectedEventDetail.participation_status?.feedback_submitted && (
-                    <div className="text-xs text-slate-600">
-                      <p><strong>Feedback ID:</strong> {selectedEventDetail.participation_status.feedback_id}</p>
-                      {selectedEventDetail.participation_status.feedback_date && (
-                        <p><strong>Submitted At:</strong> {new Date(selectedEventDetail.participation_status.feedback_date).toLocaleString()}</p>
-                      )}
+                  {selectedEventDetail.feedback?.submitted && (
+                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                      <div className="text-xs text-purple-700 space-y-1">
+                        {selectedEventDetail.feedback.rating && (
+                          <p><strong>Rating:</strong> <span className="text-lg">{'⭐'.repeat(selectedEventDetail.feedback.rating)}</span> ({selectedEventDetail.feedback.rating}/5)</p>
+                        )}
+                        {selectedEventDetail.feedback.submitted_at && (
+                          <p><strong>Submitted:</strong> {new Date(selectedEventDetail.feedback.submitted_at).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</p>
+                        )}
+                        {selectedEventDetail.feedback.comments && (
+                          <p className="mt-2"><strong>Comment:</strong> "{selectedEventDetail.feedback.comments}"</p>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {(selectedEventDetail.event.status === 'completed' || selectedEventDetail.event.status === 'ongoing') && !selectedEventDetail.participation_status?.feedback_submitted && (
+                  {(selectedEventDetail.event.status === 'completed' || selectedEventDetail.event.status === 'ongoing') && !selectedEventDetail.feedback?.submitted && (
                     <p className="text-xs text-slate-600 mt-2">
                       Your feedback helps us improve future events. Please take a moment to share your experience.
                     </p>
@@ -432,7 +433,7 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                       </svg>
                       <span className="text-xs lg:text-sm font-semibold text-slate-900">Certificate</span>
                     </div>
-                    {selectedEventDetail.participation_status?.certificate_earned ? (
+                    {selectedEventDetail.certificate?.issued ? (
                       <Link
                         to="/client/certificates"
                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
@@ -443,7 +444,7 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                         </svg>
                         Download
                       </Link>
-                    ) : selectedEventDetail.event.status === 'completed' && selectedEventDetail.participation_status?.attended ? (
+                    ) : selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -459,19 +460,47 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                       </span>
                     )}
                   </div>
-                  {selectedEventDetail.participation_status?.certificate_earned && (
-                    <div className="text-xs text-slate-600">
-                      <p><strong>Certificate ID:</strong> {selectedEventDetail.participation_status.certificate_id}</p>
+                  {selectedEventDetail.certificate?.issued && (
+                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-3 h-3 lg:w-4 lg:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs lg:text-sm font-semibold text-orange-800">Certificate Ready</span>
+                      </div>
+                      <div className="text-xs text-orange-700 space-y-1">
+                        <p><strong>Certificate ID:</strong> <span className="font-mono bg-white px-2 py-0.5 rounded border">{selectedEventDetail.certificate.certificate_id}</span></p>
+                        {selectedEventDetail.certificate.issued_at && (
+                          <p><strong>Issued:</strong> {new Date(selectedEventDetail.certificate.issued_at).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</p>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {selectedEventDetail.event.status === 'completed' && selectedEventDetail.participation_status?.attended && !selectedEventDetail.participation_status?.certificate_earned && (
-                    <p className="text-xs text-slate-600 mt-2">
-                      Your certificate is being processed. It will be available in your certificates section once ready.
-                    </p>
+                  {selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued && (
+                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200 mt-2">
+                      <p className="text-xs text-orange-700">
+                        ✅ You are eligible for a certificate! It's being processed and will be available soon in your certificates section.
+                      </p>
+                    </div>
                   )}
-                  {(!selectedEventDetail.participation_status?.attended && selectedEventDetail.event.status === 'completed') && (
+                  {!selectedEventDetail.certificate?.eligible && selectedEventDetail.event.status === 'completed' && (
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 mt-2">
+                      <p className="text-xs text-slate-600">
+                        {selectedEventDetail.attendance?.percentage < 100 
+                          ? `⚠️ Certificate requires 100% attendance. You have ${selectedEventDetail.attendance?.percentage || 0}% attendance.`
+                          : '❌ Certificate not available for this event or eligibility criteria not met.'}
+                      </p>
+                    </div>
+                  )}
+                  {selectedEventDetail.event.status === 'upcoming' && (
                     <p className="text-xs text-slate-600 mt-2">
-                      Attendance is required to receive a certificate for this event.
+                      Certificate eligibility will be determined after event completion based on attendance and other criteria.
                     </p>
                   )}
                 </div>

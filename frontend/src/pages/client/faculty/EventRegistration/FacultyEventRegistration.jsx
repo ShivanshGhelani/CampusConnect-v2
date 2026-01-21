@@ -13,7 +13,7 @@ import {
   idValidators
 } from '../../../../utils/idGenerator';
 // Import cache utilities for optimized data loading
-import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache, clearProfileCache } from '../../../../utils/profileCache';
 import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const FacultyEventRegistration = ({ forceTeamMode = false }) => {
@@ -505,6 +505,10 @@ const FacultyEventRegistration = ({ forceTeamMode = false }) => {
 
       if (response.data.success) {
         setSuccess('Registration successful! Redirecting...');
+        
+        // Clear profile cache so the profile page will refetch fresh data with the new event
+        clearProfileCache('faculty');
+        
         setTimeout(() => {
           navigate(`/faculty/events/${eventId}/registration-success`);
         }, 2000);

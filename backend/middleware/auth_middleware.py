@@ -88,8 +88,14 @@ class AuthMiddleware:
             except jwt.ExpiredSignatureError:
                 logger.warning("JWT token expired")
                 token_data = None
+            except jwt.DecodeError as e:
+                # Silently handle malformed tokens (common for OPTIONS requests)
+                logger.debug(f"Malformed JWT token: {e}")
+                token_data = None
             except Exception as e:
-                logger.error(f"Failed to validate JWT: {e}")
+                # Only log as warning for unexpected errors (not malformed tokens)
+                if "Not enough segments" not in str(e):
+                    logger.warning(f"Failed to validate JWT: {e}")
                 token_data = None
         
         if not token_data:

@@ -12,7 +12,7 @@ import {
   idValidators 
 } from '../../../../utils/idGenerator';
 // Import cache utilities for optimized data loading
-import { fetchProfileWithCache, getAnyCache, refreshExpiredCache } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getAnyCache, refreshExpiredCache, clearProfileCache } from '../../../../utils/profileCache';
 import { fetchEventWithCache, getAnyEventCache } from '../../../../utils/eventCache';
 
 const StudentEventRegistration = ({ forceTeamMode = false }) => {
@@ -989,6 +989,9 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         },
         event: event
       };
+      
+      // Clear profile cache so the profile page will refetch fresh data with the new event
+      clearProfileCache('student');
       
       // Redirect to success page
       setTimeout(() => {

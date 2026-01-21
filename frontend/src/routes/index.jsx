@@ -101,6 +101,9 @@ function AppRoutes() {
         
         {/* Faculty legacy redirects */}
         <Route path="/faculty/dashboard" element={<Navigate to="/faculty/profile" replace />} />
+        
+        {/* Student legacy redirects */}
+        <Route path="/client/dashboard" element={<Navigate to="/client/profile" replace />} />
 
         {/* Client Routes with Persistent Navigation */}
         <Route path="/" element={<PersistentClientLayout />}>

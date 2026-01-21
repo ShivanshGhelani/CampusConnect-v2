@@ -128,9 +128,19 @@ class EventActionLogger:
         """Log event update with both audit and status logging"""
         try:
             # 1. Log to audit_logs for administrative tracking
+            # Truncate description to stay under 500 character limit
+            fields_text = ', '.join(updated_fields)
+            description_base = f"Event updated: {event_name} (Fields: "
+            max_fields_length = 500 - len(description_base) - 20  # Reserve space for closing and ellipsis
+            
+            if len(fields_text) > max_fields_length:
+                fields_text = fields_text[:max_fields_length] + f"... +{len(updated_fields) - fields_text[:max_fields_length].count(',')} more"
+            
+            action_description = f"{description_base}{fields_text})"
+            
             await self.audit_service.log_action(
                 action_type=AuditActionType.EVENT_UPDATED,
-                action_description=f"Event updated: {event_name} (Fields: {', '.join(updated_fields)})",
+                action_description=action_description,
                 performed_by_username=updated_by_username,
                 performed_by_role=updated_by_role,
                 target_type="event",
