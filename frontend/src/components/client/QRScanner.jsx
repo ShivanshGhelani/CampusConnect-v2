@@ -135,21 +135,40 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
         formattedData.isFullyMarked = false;
         formattedData.alreadyMarkedMessage = '';
         
+        console.log('🔍 Checking already marked status:');
+        console.log('   Strategy:', data.attendance_strategy);
+        console.log('   SessionData:', sessionData);
+        console.log('   Target Day:', sessionData?.target_day);
+        console.log('   Attendance Sessions:', data.attendance?.sessions);
+        
         if (data.attendance_strategy === 'single_mark' && data.attendance?.marked) {
           formattedData.isFullyMarked = true;
           formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
+          console.log('✅ Single mark detected as already marked');
         } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
           // Check if TARGET day is already marked (from sessionData)
           const targetDayNum = sessionData?.target_day; // From session
+          console.log('   Checking day_based - Target Day:', targetDayNum);
+          console.log('   Sessions:', data.attendance.sessions);
+          
           if (targetDayNum && data.attendance.sessions.length > 0) {
             const targetSession = data.attendance.sessions.find(s => {
+              console.log('     Checking session:', s.session_id);
               const match = s.session_id?.match(/day_(\d+)/);
+              if (match) {
+                console.log('       Matched day:', match[1], 'vs target:', targetDayNum);
+              }
               return match && parseInt(match[1]) === targetDayNum;
             });
             if (targetSession) {
               formattedData.isFullyMarked = true;
               formattedData.alreadyMarkedMessage = `✓ Day ${targetDayNum} Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+              console.log('✅ Day already marked:', targetSession);
+            } else {
+              console.log('❌ Target day not found in sessions');
             }
+          } else {
+            console.log('❌ Missing targetDayNum or no sessions');
           }
         } else if (data.attendance_strategy === 'session_based' && data.attendance?.sessions) {
           // Check if TARGET session is already marked (from sessionData)
@@ -159,9 +178,12 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
             if (targetSession) {
               formattedData.isFullyMarked = true;
               formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+              console.log('✅ Session already marked');
             }
           }
         }
+        
+        console.log('🎯 Final isFullyMarked:', formattedData.isFullyMarked);
         
         return formattedData;
       } else {

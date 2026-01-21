@@ -289,6 +289,11 @@ export const adminAPI = {
   getScannerInvitationStats: (eventId) =>
     api.get(`/api/scanner/invitation/${eventId}/stats`),
 
+  getScannerHistory: (eventId, invitationCode) =>
+    api.get(`/api/scanner/invitation/${eventId}/history`, {
+      params: { invitation_code: invitationCode }
+    }),
+
   // DESIGN PRINCIPLE: 
   // System management features implemented using existing optimized endpoints
   // with parameters to specify focus areas, maintaining your 62-endpoint optimization

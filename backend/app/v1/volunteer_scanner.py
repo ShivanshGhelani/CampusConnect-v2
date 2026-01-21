@@ -21,6 +21,22 @@ logger = logging.getLogger(__name__)
 # Development/Testing mode - bypasses time restrictions
 TESTING_MODE = os.getenv("TESTING_MODE", "True").lower() == "true"
 
+# Helper function to serialize datetime objects
+def serialize_datetime(dt):
+    """Convert datetime to ISO string format with timezone"""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        return dt
+    # Ensure datetime is treated as UTC and includes 'Z' suffix
+    if hasattr(dt, 'isoformat'):
+        iso_string = dt.isoformat()
+        # If no timezone info, assume UTC and add 'Z'
+        if '+' not in iso_string and 'Z' not in iso_string:
+            iso_string += 'Z'
+        return iso_string
+    return str(dt)
+
 router = APIRouter(prefix="/api/scanner", tags=["Volunteer Scanner"])
 
 # ==================== MODELS ====================
@@ -339,6 +355,164 @@ async def get_invitation_stats(
         logger.error(f"Error getting invitation stats for event {event_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
+@router.get("/invitation/{event_id}/history")
+async def get_scanner_history(event_id: str, invitation_code: Optional[str] = None):
+    """
+    Get detailed scan history for an event
+    Shows all scans made via scanner and volunteer sessions
+    """
+    try:
+        # Find active invitations for the event
+        invitation_filter = {"event_id": event_id, "is_active": True}
+        if invitation_code:
+            invitation_filter["invitation_code"] = invitation_code
+        
+        invitations = await DatabaseOperations.find_many(
+            "volunteer_invitations",
+            invitation_filter,
+            limit=10
+        )
+        
+        if not invitations:
+            return {
+                "success": True,
+                "data": {
+                    "scans": [],
+                    "volunteer_sessions": [],
+                    "stats": {
+                        "total_scans": 0,
+                        "total_volunteers": 0,
+                        "unique_attendees": 0,
+                        "active_sessions": 0
+                    }
+                }
+            }
+        
+        invitation_codes = [inv["invitation_code"] for inv in invitations]
+        
+        # Get all volunteer sessions for these invitations
+        volunteer_sessions = await DatabaseOperations.find_many(
+            "volunteer_sessions",
+            {"invitation_code": {"$in": invitation_codes}},
+            limit=100
+        )
+        
+        # Get all registrations with scans marked via scanner
+        # We'll look for attendance.sessions where notes contain "QR Scanner"
+        registrations_student = await DatabaseOperations.find_many(
+            "student_registrations",
+            {
+                "event.event_id": event_id,
+                "attendance.sessions": {
+                    "$elemMatch": {
+                        "notes": {"$regex": "QR Scanner", "$options": "i"}
+                    }
+                }
+            },
+            limit=500
+        )
+        
+        registrations_faculty = await DatabaseOperations.find_many(
+            "faculty_registrations",
+            {
+                "event.event_id": event_id,
+                "attendance.sessions": {
+                    "$elemMatch": {
+                        "notes": {"$regex": "QR Scanner", "$options": "i"}
+                    }
+                }
+            },
+            limit=500
+        )
+        
+        all_registrations = registrations_student + registrations_faculty
+        
+        # Build scan history
+        scans = []
+        unique_attendees = set()
+        
+        for registration in all_registrations:
+            registration_id = registration.get("registration_id")
+            attendance = registration.get("attendance", {})
+            sessions = attendance.get("sessions", [])
+            
+            # Get participant info
+            participant_name = "Unknown"
+            participant_type = "unknown"
+            
+            if registration.get("student"):
+                participant_name = registration["student"].get("name") or registration["student"].get("full_name", "Unknown")
+                participant_type = "student"
+            elif registration.get("faculty"):
+                participant_name = registration["faculty"].get("name") or registration["faculty"].get("full_name", "Unknown")
+                participant_type = "faculty"
+            elif registration.get("team"):
+                participant_name = registration["team"].get("team_name", "Unknown Team")
+                participant_type = "team"
+            
+            # Extract scanner-marked sessions
+            for session in sessions:
+                if "QR Scanner" in session.get("notes", ""):
+                    unique_attendees.add(registration_id)
+                    scans.append({
+                        "registration_id": registration_id,
+                        "participant_name": participant_name,
+                        "participant_type": participant_type,
+                        "marked_by": session.get("marked_by"),
+                        "marked_at": serialize_datetime(session.get("marked_at")),
+                        "session_id": session.get("session_id"),
+                        "session_name": session.get("session_name"),
+                        "attendance_status": attendance.get("status"),
+                        "attendance_percentage": attendance.get("percentage"),
+                        "notes": session.get("notes"),
+                        "already_marked": False  # Can enhance this by checking previous scans
+                    })
+        
+        # Sort scans by time (most recent first)
+        scans.sort(key=lambda x: x["marked_at"] if x["marked_at"] else "", reverse=True)
+        
+        # Count unique scans per volunteer (not re-scans)
+        volunteer_unique_scans = {}
+        for scan in scans:
+            volunteer_name = scan["marked_by"]
+            if volunteer_name:
+                if volunteer_name not in volunteer_unique_scans:
+                    volunteer_unique_scans[volunteer_name] = set()
+                volunteer_unique_scans[volunteer_name].add(scan["registration_id"])
+        
+        # Count active sessions
+        active_sessions = sum(1 for s in volunteer_sessions if s.get("expires_at") and s["expires_at"] > datetime.utcnow())
+        
+        # Build response with corrected scan counts
+        return {
+            "success": True,
+            "data": {
+                "scans": scans,
+                "volunteer_sessions": [
+                    {
+                        "session_id": s.get("session_id"),
+                        "volunteer_name": s.get("volunteer_name"),
+                        "volunteer_contact": s.get("volunteer_contact"),
+                        "created_at": serialize_datetime(s.get("created_at")),
+                        "expires_at": serialize_datetime(s.get("expires_at")),
+                        "last_activity": serialize_datetime(s.get("last_activity")),
+                        "total_scans": len(volunteer_unique_scans.get(s.get("volunteer_name"), set()))  # Unique scans only
+                    }
+                    for s in volunteer_sessions
+                ],
+                "stats": {
+                    "total_scans": len(scans),
+                    "total_volunteers": len(volunteer_sessions),
+                    "unique_attendees": len(unique_attendees),
+                    "active_sessions": active_sessions
+                }
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting scanner history for event {event_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get scanner history: {str(e)}")
+
 @router.get("/registration/{registration_id}/status")
 async def get_registration_attendance_status(
     registration_id: str
@@ -381,7 +555,7 @@ async def get_registration_attendance_status(
         
         # Extract attendance info based on registration type
         attendance_config = event.get("attendance_config", {})
-        attendance_strategy = attendance_config.get("attendance_strategy", "single_mark")
+        attendance_strategy = attendance_config.get("strategy", "single_mark")  # FIX: Use "strategy" not "attendance_strategy"
         
         # Get registration type from nested structure
         registration_info = registration.get("registration", {})
@@ -639,7 +813,11 @@ async def create_volunteer_session(
                 "volunteer_contact": request.volunteer_contact,
                 "event_id": invitation.get("event_id"),
                 "event_name": invitation.get("event_name"),
-                "expires_at": session_expires.isoformat()
+                "expires_at": session_expires.isoformat(),
+                "target_day": invitation.get("target_day"),  # Add target_day from invitation
+                "target_session": invitation.get("target_session"),  # Add target_session from invitation
+                "target_round": invitation.get("target_round"),  # Add target_round from invitation
+                "attendance_strategy": invitation.get("attendance_strategy")  # Add attendance_strategy
             }
         }
         

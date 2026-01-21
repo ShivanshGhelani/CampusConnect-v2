@@ -252,17 +252,19 @@ const VolunteerScanner = () => {
               
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <h3 className="font-semibold text-gray-900">{invitationData.event_name}</h3>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>
-                    <strong>Attendance Window:</strong>
-                  </p>
-                  <p>
-                    📅 Start: {formatDateTime(invitationData.attendance_start_time)}
-                  </p>
-                  <p>
-                    📅 End: {formatDateTime(invitationData.attendance_end_time)}
-                  </p>
-                </div>
+                {invitationData.attendance_start_time && invitationData.attendance_end_time && (
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>
+                      <strong>Attendance Window:</strong>
+                    </p>
+                    <p>
+                      📅 Start: {formatDateTime(invitationData.attendance_start_time)}
+                    </p>
+                    <p>
+                      📅 End: {formatDateTime(invitationData.attendance_end_time)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -327,9 +329,13 @@ const VolunteerScanner = () => {
                 </div>
                 <div className="text-sm text-green-800 space-y-1">
                   <p><strong>Event:</strong> {invitationData.event_name}</p>
-                  <p><strong>Attendance Window:</strong></p>
-                  <p className="ml-4">Start: {formatDateTime(invitationData.attendance_start_time)}</p>
-                  <p className="ml-4">End: {formatDateTime(invitationData.attendance_end_time)}</p>
+                  {invitationData.attendance_start_time && invitationData.attendance_end_time && (
+                    <>
+                      <p><strong>Attendance Window:</strong></p>
+                      <p className="ml-4">Start: {formatDateTime(invitationData.attendance_start_time)}</p>
+                      <p className="ml-4">End: {formatDateTime(invitationData.attendance_end_time)}</p>
+                    </>
+                  )}
                 </div>
               </div>
             )}

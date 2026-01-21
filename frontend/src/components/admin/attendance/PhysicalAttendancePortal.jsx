@@ -20,7 +20,8 @@ import {
   Timer,
   Shield,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  BarChart3
 } from 'lucide-react';
 import AdminLayout from '../AdminLayout';
 import LoadingSpinner from '../../LoadingSpinner';
@@ -28,6 +29,7 @@ import Modal from '../../ui/Modal';
 import Toast from '../../ui/Toast';
 import SearchBox from '../../ui/SearchBox';
 import Dropdown from '../../ui/Dropdown';
+import ScanHistoryModal from './ScanHistoryModal';
 import { adminAPI } from '../../../api/admin';
 
 const UnifiedAttendancePortal = () => {
@@ -55,10 +57,30 @@ const UnifiedAttendancePortal = () => {
   const [selectedSessionForToken, setSelectedSessionForToken] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [checkingExistingInvitation, setCheckingExistingInvitation] = useState(false);
+  
+  // Scan history modal state
+  const [showScanHistoryModal, setShowScanHistoryModal] = useState(false);
+  const [hasActiveScanner, setHasActiveScanner] = useState(false);
 
   useEffect(() => {
     loadAttendanceData();
+    // Check if there's an active scanner
+    checkForActiveScanner();
   }, [eventId]);
+
+  const checkForActiveScanner = async () => {
+    try {
+      const response = await adminAPI.getScannerInvitationStats(eventId);
+      if (response.data.success && response.data.data.has_active_invitation) {
+        setHasActiveScanner(true);
+      } else {
+        setHasActiveScanner(false);
+      }
+    } catch (err) {
+      console.error('Error checking for active scanner:', err);
+      setHasActiveScanner(false);
+    }
+  };
 
   useEffect(() => {
     filterParticipants();
@@ -319,6 +341,7 @@ const UnifiedAttendancePortal = () => {
           session_name: selectedSession.session_name
         };
         setScannerToken(invitationData);
+        setHasActiveScanner(true);
         showNotification(`Scanner link created for ${selectedSession.session_name}!`, 'success');
       } else {
         setTokenError('Failed to generate scanner invitation');
@@ -401,11 +424,13 @@ const UnifiedAttendancePortal = () => {
         }
         
         setScannerToken(invitationData);
+        setHasActiveScanner(true);
         console.log('✅ Restored existing active invitation:', statsData.invitation_code);
       } else {
         // No active invitation, user can create a new one
         console.log('ℹ️ No active invitation found');
         setScannerToken(null);
+        setHasActiveScanner(false);
       }
     } catch (err) {
       console.error('❌ Error checking existing invitation:', err);
@@ -846,6 +871,27 @@ const UnifiedAttendancePortal = () => {
               <QrCode className="w-4 h-4" />
               Generate Scanner
             </button>
+            <div className="relative group">
+              <button
+                onClick={() => setShowScanHistoryModal(true)}
+                disabled={!hasActiveScanner && !scannerToken}
+                className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                  hasActiveScanner || scannerToken
+                    ? 'bg-purple-500 text-white hover:bg-purple-600'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={hasActiveScanner || scannerToken ? 'View scan history' : 'Create scanner first'}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Scans
+              </button>
+              {!hasActiveScanner && !scannerToken && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Create scanner first
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              )}
+            </div>
             <button
               onClick={loadAttendanceData}
               className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -985,6 +1031,8 @@ const UnifiedAttendancePortal = () => {
             setTokenError('');
             setSelectedSessionForToken('');
             setSelectedSessionId('');
+            // Refresh active scanner status after closing modal
+            checkForActiveScanner();
           }}
           title="Generate QR Scanner Link"
           size="lg"
@@ -1180,6 +1228,15 @@ const UnifiedAttendancePortal = () => {
             )}
           </div>
         </Modal>
+
+        {/* Scan History Modal */}
+        <ScanHistoryModal
+          
+          isOpen={showScanHistoryModal}
+          onClose={() => setShowScanHistoryModal(false)}
+          eventId={eventId}
+          invitationCode={scannerToken?.invitation_code}
+        />
       </div>
     </AdminLayout>
   );
