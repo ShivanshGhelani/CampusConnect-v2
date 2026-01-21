@@ -63,6 +63,15 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
       setAttendanceData(realAttendanceData);
       console.log('✅ Got attendance data:', realAttendanceData);
       
+      // AUTO-SELECT target day/session from scanner if available
+      if (sessionData?.target_day && !realAttendanceData.isFullyMarked) {
+        setSelectedDay(sessionData.target_day);
+        console.log('🎯 Auto-selected target day:', sessionData.target_day);
+      } else if (sessionData?.target_session && !realAttendanceData.isFullyMarked) {
+        setSelectedSession(sessionData.target_session);
+        console.log('🎯 Auto-selected target session:', sessionData.target_session);
+      }
+      
     } catch (error) {
       console.error('❌ Error processing QR:', error);
       setError(`Error: ${error.message}`);
@@ -537,8 +546,8 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
                 </div>
               )}
 
-              {/* Day/Session Selection - CRITICAL FOR DAY-BASED ATTENDANCE */}
-              {attendanceData.attendance_strategy === 'day_based' && attendanceData.attendance?.days && (
+              {/* Day/Session Selection - ONLY SHOW IF NO TARGET DAY FROM SCANNER */}
+              {attendanceData.attendance_strategy === 'day_based' && attendanceData.attendance?.days && !sessionData?.target_day && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,8 +613,8 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
                 </div>
               )}
 
-              {/* Session Selection - FOR SESSION-BASED ATTENDANCE */}
-              {attendanceData.attendance_strategy === 'session_based' && attendanceData.attendance?.sessions && (
+              {/* Session Selection - ONLY SHOW IF NO TARGET SESSION FROM SCANNER */}
+              {attendanceData.attendance_strategy === 'session_based' && attendanceData.attendance?.sessions && !sessionData?.target_session && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                   <h4 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -671,6 +671,18 @@ const UnifiedAttendancePortal = () => {
                                       </div>
                                     )}
                                   </div>
+                                  
+                                  {/* Show which specific days/sessions are marked */}
+                                  {memberAttendance.sessions && memberAttendance.sessions.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {memberAttendance.sessions.map((session, idx) => (
+                                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                          <CheckCircle className="w-3 h-3" />
+                                          {session.session_name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Attendance Marking Buttons for Team Members */}
@@ -771,6 +783,18 @@ const UnifiedAttendancePortal = () => {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Show which specific days/sessions are marked */}
+                    {attendance.sessions && attendance.sessions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {attendance.sessions.map((session, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            <CheckCircle className="w-3 h-3" />
+                            {session.session_name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2">
