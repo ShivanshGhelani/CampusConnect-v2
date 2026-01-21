@@ -48,12 +48,10 @@ function EventDetail() {
   const [attendanceStats, setAttendanceStats] = useState(null);
   const [recentRegistrations, setRecentRegistrations] = useState([]);
   const [allRegistrations, setAllRegistrations] = useState([]);
-  const [attendeesList, setAttendeesList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [registrationsModalOpen, setRegistrationsModalOpen] = useState(false);
-  const [attendeesModalOpen, setAttendeesModalOpen] = useState(false);
   const [attendanceStatsModalOpen, setAttendanceStatsModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -259,24 +257,25 @@ function EventDetail() {
 
       // Process attendance statistics
       if (allData.attendanceStats?.success && allData.attendanceStats.event_id) {
-        const stats = allData.attendanceStats;
+        // Backend returns data nested inside "data" object
+        const statsData = allData.attendanceStats.data || allData.attendanceStats;
 
         // Add timestamp to track freshness
         const timestamp = Date.now();
-        stats._fetchedAt = timestamp;
 
-        // Ensure all required fields are present and valid
+        // Ensure all required fields are present and valid using new system fields
         const validatedStats = {
-          ...stats,
-          total_registrations: Math.max(0, stats.total_registrations || 0),
-          virtual_attendance_count: Math.max(0, stats.virtual_attendance_count || 0),
-          physical_attendance_count: Math.max(0, stats.physical_attendance_count || 0),
-          present_count: Math.max(0, stats.present_count || 0),
-          virtual_only_count: Math.max(0, stats.virtual_only_count || 0),
-          physical_only_count: Math.max(0, stats.physical_only_count || 0),
-          absent_count: Math.max(0, stats.absent_count || 0),
-          attendance_percentage: Math.min(100, Math.max(0, stats.attendance_percentage || 0)),
-          user_type: allData.stats?.stats?.user_type || 'mixed'
+          _fetchedAt: timestamp,
+          event_id: allData.attendanceStats.event_id,
+          total_registrations: Math.max(0, statsData.total_registered || statsData.total_registrations || 0),
+          present_count: Math.max(0, statsData.total_present || statsData.present_count || statsData.by_status?.present || 0),
+          partial_count: Math.max(0, statsData.total_partial || statsData.partial_count || statsData.by_status?.partial || 0),
+          absent_count: Math.max(0, statsData.total_absent || statsData.absent_count || statsData.by_status?.absent || 0),
+          pending_count: Math.max(0, statsData.total_pending || statsData.pending_count || statsData.by_status?.pending || 0),
+          attendance_percentage: Math.min(100, Math.max(0, statsData.attendance_rate || statsData.attendance_percentage || 0)),
+          user_type: allData.stats?.stats?.user_type || 'mixed',
+          by_status: statsData.by_status || {},
+          by_type: statsData.by_type || {}
         };
 
         setAttendanceStats(validatedStats);
@@ -537,51 +536,10 @@ function EventDetail() {
     }
   };
 
-  const fetchAttendees = async () => {
-    try {
-      setModalLoading(true);
-      
-
-      // Use cached fetch for participants with attendance details
-      const response = await fetchParticipantsWithCache(eventId, adminAPI, { include_attendance: true });
-
-      if (response?.success) {
-        // The API returns participants in response.participants structure
-        const allParticipants = response.participants || [];
-        
-
-        // For now, let's show all attendees to debug the issue
-        // Filter for participants who have BOTH virtual and physical attendance (present status)
-        const presentParticipants = allParticipants.filter(participant => {
-          const hasVirtual = participant.virtual_attendance_id;
-          const hasPhysical = participant.physical_attendance_id;
-          const isPresent = participant.final_attendance_status === 'present';
-          return isPresent || (hasVirtual && hasPhysical);
-        });
-        setAttendeesList(presentParticipants);
-      } else {
-        
-        setAttendeesList([]);
-      }
-    } catch (error) {
-      
-      setAttendeesList([]);
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
   const handleViewAllRegistrations = async () => {
     setRegistrationsModalOpen(true);
     if (allRegistrations.length === 0) {
       await fetchAllRegistrations();
-    }
-  };
-
-  const handleViewAttendees = async () => {
-    setAttendeesModalOpen(true);
-    if (attendeesList.length === 0) {
-      await fetchAttendees();
     }
   };
 
@@ -1290,20 +1248,23 @@ function EventDetail() {
                     </div>
                     <div className="ml-4">
                       <p className="text-gray-500 text-sm font-medium">
-                        Present Count
-                        {attendanceStats && (
-                          <i className="fas fa-shield-check text-green-500 ml-1 text-xs" title="Dual-layer verified attendance"></i>
-                        )}
+                        Attendance Count
                       </p>
                       <p className="text-2xl font-bold text-gray-800">
-                        {attendanceStats ? attendanceStats.present_count : (eventStats?.attendance_count || 0)}
+                        {attendanceStats ? 
+                          (attendanceStats.present_count + (attendanceStats.partial_count || 0)) : 
+                          (eventStats?.attendance_count || 0)
+                        }
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {attendanceStats ? (
                           <>
                             {attendanceStats.attendance_percentage}% attendance rate
                             <br />
-                            <span className="text-green-600 font-medium">Virtual + Physical verified</span>
+                            <span className="text-green-600 font-medium">
+                              {attendanceStats.present_count} present
+                              {attendanceStats.partial_count > 0 && ` • ${attendanceStats.partial_count} partial`}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -2525,343 +2486,7 @@ function EventDetail() {
             </div>
           )}
 
-          {/* Attendees Modal */}
-          {attendeesModalOpen && (
-            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-              <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
-                {/* Modal Header */}
-                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                      <i className="fas fa-check-double text-green-500"></i>
-                      Present Students
-                    </h2>
-                    <p className="text-gray-600 mt-1">
-                      {attendeesList.length} students with both virtual and physical attendance for {event?.event_name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setAttendeesModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 text-2xl"
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-
-                {/* Modal Content */}
-                <div className="flex-1 p-6 overflow-auto">
-                  {modalLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <i className="fas fa-spinner fa-spin text-3xl text-green-500 mr-3"></i>
-                      <span className="text-lg text-gray-600">Loading present students...</span>
-                    </div>
-                  ) : attendeesList.length > 0 ? (
-                    <div className="space-y-4">
-                      {/* Attendees Table */}
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-green-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider min-w-[280px]">Student Details</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider min-w-[220px]">Contact Information</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Semester</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-green-700 uppercase tracking-wider min-w-[200px]">Attendance Timeline</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {attendeesList.map((attendee, index) => (
-                              <tr key={index} className="hover:bg-green-50 transition-colors">
-                                {/* Student Details Column */}
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                      <span className="text-white font-semibold text-sm">
-                                        {(attendee.student_data?.full_name || attendee.full_name || attendee.name)?.charAt(0)?.toUpperCase() || 'S'}
-                                      </span>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="text-sm font-semibold text-gray-900 truncate leading-tight">
-                                        {attendee.student_data?.full_name || attendee.full_name || attendee.name || 'N/A'}
-                                      </div>
-                                      <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
-                                        <span className="font-mono">{attendee.student_data?.enrollment_no || attendee.enrollment_no || 'N/A'}</span>
-                                        <span className="truncate">{attendee.student_data?.department || attendee.department || 'No Dept'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Contact Information Column */}
-                                <td className="px-6 py-4">
-                                  <div className="space-y-1">
-                                    <div className="text-sm text-gray-700 truncate flex items-center" title={attendee.student_data?.email || attendee.email}>
-                                      <i className="fas fa-envelope text-green-500 mr-2 w-4"></i>
-                                      <span className="truncate">{attendee.student_data?.email || attendee.email || 'N/A'}</span>
-                                    </div>
-                                    <div className="text-sm text-gray-700 flex items-center" title={attendee.student_data?.mobile_no || attendee.mobile_no || attendee.phone}>
-                                      <i className="fas fa-phone text-blue-500 mr-2 w-4"></i>
-                                      <span>{attendee.student_data?.mobile_no || attendee.mobile_no || attendee.phone || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Semester Column */}
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    {formatOrdinalNumber(attendee.student_data?.semester || attendee.semester) || 'N/A'}
-                                  </span>
-                                </td>
-
-                                {/* Attendance Timeline Column */}
-                                <td className="px-6 py-4">
-                                  <div className="space-y-2">
-                                    {/* Virtual Attendance */}
-                                    <div className="flex items-center text-sm">
-                                      <div className="flex items-center min-w-[90px]">
-                                        <i className="fas fa-desktop text-green-500 mr-2 w-4"></i>
-                                        <span className="text-green-600 font-medium text-xs">Virtual:</span>
-                                      </div>
-                                      <span className="text-gray-700 ml-2">
-                                        {attendee.virtual_attendance_timestamp ? formatCompactDateTime(attendee.virtual_attendance_timestamp) : 'Not marked'}
-                                      </span>
-                                    </div>
-
-                                    {/* Physical Attendance */}
-                                    <div className="flex items-center text-sm">
-                                      <div className="flex items-center min-w-[90px]">
-                                        <i className="fas fa-user-check text-blue-500 mr-2 w-4"></i>
-                                        <span className="text-blue-600 font-medium text-xs">Physical:</span>
-                                      </div>
-                                      <span className="text-gray-700 ml-2">
-                                        {attendee.physical_attendance_timestamp ? formatCompactDateTime(attendee.physical_attendance_timestamp) : 'Not marked'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-                        <i className="fas fa-check-double text-2xl text-green-500"></i>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Present Students Yet</h3>
-                      <p className="text-gray-500">No students have completed both virtual and physical attendance verification yet.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-6 border-t border-gray-200 flex justify-end">
-                  <button
-                    onClick={() => setAttendeesModalOpen(false)}
-                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Attendance Breakdown Modal */}
-          {attendanceStatsModalOpen && (
-            <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-              <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
-                {/* Modal Header */}
-                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                      <i className="fas fa-chart-pie text-purple-500"></i>
-                      Attendance Breakdown
-                    </h2>
-                    <p className="text-gray-600 mt-1">
-                      Detailed dual-layer attendance statistics for {event?.event_name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setAttendanceStatsModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 text-2xl"
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-
-                {/* Modal Content */}
-                <div className="flex-1 p-6 overflow-auto">
-                  {attendanceStats ? (
-                    <div className="space-y-6">
-                      {/* Summary Cards */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-green-600">{attendanceStats.present_count}</div>
-                          <div className="text-sm font-medium text-green-700">Present</div>
-                          <div className="text-xs text-green-600 mt-1">Both Virtual & Physical</div>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-blue-600">{attendanceStats.virtual_only_count}</div>
-                          <div className="text-sm font-medium text-blue-700">Virtual Only</div>
-                          <div className="text-xs text-blue-600 mt-1">Self-marked attendance</div>
-                        </div>
-
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-orange-600">{attendanceStats.physical_only_count}</div>
-                          <div className="text-sm font-medium text-orange-700">Physical Only</div>
-                          <div className="text-xs text-orange-600 mt-1">Admin verified only</div>
-                        </div>
-
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                          <div className="text-2xl font-bold text-red-600">{attendanceStats.absent_count}</div>
-                          <div className="text-sm font-medium text-red-700">Absent</div>
-                          <div className="text-xs text-red-600 mt-1">No attendance</div>
-                        </div>
-                      </div>
-
-                      {/* Data Validation Status */}
-                      {attendanceStats._fetchedAt && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                          <div className="flex items-center">
-                            <i className="fas fa-shield-check text-green-600 mr-2"></i>
-                            <div>
-                              <div className="text-sm font-medium text-green-800">Data Validated & Current</div>
-                              <div className="text-xs text-green-600">
-                                Dual-layer attendance system • Fetched at {new Date(attendanceStats._fetchedAt).toLocaleTimeString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Detailed Breakdown */}
-                      <div className="bg-gray-50 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Attendance Analytics</h3>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Total Statistics */}
-                          <div className="space-y-4">
-                            <h4 className="font-medium text-gray-700">Total Statistics</h4>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span className="text-gray-600">Total Registrations:</span>
-                                <span className="font-semibold text-gray-900">{attendanceStats.total_registrations}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span className="text-gray-600">Virtual Attendance:</span>
-                                <span className="font-semibold text-blue-600">{attendanceStats.virtual_attendance_count}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                <span className="text-gray-600">Physical Attendance:</span>
-                                <span className="font-semibold text-orange-600">{attendanceStats.physical_attendance_count}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2">
-                                <span className="text-gray-600">Overall Attendance Rate:</span>
-                                <span className="font-semibold text-purple-600">{attendanceStats.attendance_percentage}%</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Status Breakdown */}
-                          <div className="space-y-4">
-                            <h4 className="font-medium text-gray-700">Status Breakdown</h4>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <i className="fas fa-check-double text-green-600"></i>
-                                  <span className="font-medium text-green-700">Present (Both)</span>
-                                </div>
-                                <span className="font-bold text-green-600">{attendanceStats.present_count}</span>
-                              </div>
-
-                              <div className="flex items-center justify-between p-3 bg-blue-100 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <i className="fas fa-laptop text-blue-600"></i>
-                                  <span className="font-medium text-blue-700">Virtual Only</span>
-                                </div>
-                                <span className="font-bold text-blue-600">{attendanceStats.virtual_only_count}</span>
-                              </div>
-
-                              <div className="flex items-center justify-between p-3 bg-orange-100 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <i className="fas fa-user-check text-orange-600"></i>
-                                  <span className="font-medium text-orange-700">Physical Only</span>
-                                </div>
-                                <span className="font-bold text-orange-600">{attendanceStats.physical_only_count}</span>
-                              </div>
-
-                              <div className="flex items-center justify-between p-3 bg-red-100 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <i className="fas fa-user-times text-red-600"></i>
-                                  <span className="font-medium text-red-700">Absent</span>
-                                </div>
-                                <span className="font-bold text-red-600">{attendanceStats.absent_count}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Information Box */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <i className="fas fa-info-circle text-blue-500 text-lg mt-0.5"></i>
-                          <div className="text-blue-800">
-                            <h4 className="font-semibold mb-1">Understanding Attendance Status</h4>
-                            <ul className="text-sm space-y-1">
-                              <li><strong>Present:</strong> Students who have marked both virtual attendance (self-marked) and physical attendance (admin verified)</li>
-                              <li><strong>Virtual Only:</strong> Students who self-marked attendance but haven't been physically verified</li>
-                              <li><strong>Physical Only:</strong> Students who were verified by admin but didn't self-mark attendance</li>
-                              <li><strong>Absent:</strong> Students who haven't marked any form of attendance</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex justify-center gap-4 pt-4">
-                        <button
-                          onClick={handleViewAttendees}
-                          className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                        >
-                          <i className="fas fa-users"></i>
-                          View All Attendees
-                        </button>
-                        <button
-                          onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
-                          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                        >
-                          <i className="fas fa-user-check"></i>
-                          Attendance Portal
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                        <i className="fas fa-chart-pie text-2xl text-gray-400"></i>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Data</h3>
-                      <p className="text-gray-500">Attendance statistics are not available for this event yet.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-6 border-t border-gray-200 flex justify-end">
-                  <button
-                    onClick={() => setAttendanceStatsModalOpen(false)}
-                    className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          
 
           {/* Event Poster Modal */}
           {posterModalOpen && (
