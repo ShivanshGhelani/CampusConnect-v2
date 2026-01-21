@@ -128,6 +128,30 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         }
         
         console.log('📊 Formatted attendance data:', formattedData);
+        
+        // Check if attendance is already fully marked
+        formattedData.isFullyMarked = false;
+        formattedData.alreadyMarkedMessage = '';
+        
+        if (data.attendance_strategy === 'single_mark' && data.attendance?.marked) {
+          formattedData.isFullyMarked = true;
+          formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
+        } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
+          // Check if all days are marked (using sessions array)
+          const allMarked = data.attendance.sessions.length === data.attendance.total_sessions;
+          if (allMarked) {
+            formattedData.isFullyMarked = true;
+            formattedData.alreadyMarkedMessage = `✓ All Days Marked\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})\n\nAll days have been marked.`;
+          }
+        } else if (data.attendance_strategy === 'session_based' && data.attendance?.sessions) {
+          // Check if all sessions are marked
+          const allMarked = data.attendance.sessions.length === data.attendance.total_sessions;
+          if (allMarked) {
+            formattedData.isFullyMarked = true;
+            formattedData.alreadyMarkedMessage = `✓ All Sessions Marked\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})\n\nAll sessions have been marked.`;
+          }
+        }
+        
         return formattedData;
       } else {
         throw new Error(response.data.error || 'Failed to fetch attendance data');
@@ -326,7 +350,47 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           )}
 
           {/* Scan Result & Attendance Interface */}
-          {attendanceData && (
+          {attendanceData && attendanceData.isFullyMarked && (
+            <div className="space-y-4">
+              {/* Already Marked Display */}
+              <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-green-900 mb-2">Already Marked!</h3>
+                <div className="bg-white rounded-lg p-4 mt-4 text-left">
+                  <p className="text-sm text-gray-700 whitespace-pre-line">{attendanceData.alreadyMarkedMessage}</p>
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-green-800 mb-2">Registration Details:</p>
+                  <div className="bg-white rounded-lg p-3 text-sm text-gray-600">
+                    {attendanceData.participant && (
+                      <>
+                        <p><strong>Name:</strong> {attendanceData.participant.name}</p>
+                        <p><strong>Registration ID:</strong> {attendanceData.registration_id}</p>
+                      </>
+                    )}
+                    {attendanceData.team_name && <p><strong>Team:</strong> {attendanceData.team_name}</p>}
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleReset}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Scan Another QR Code
+              </button>
+            </div>
+          )}
+          
+          {/* Regular Attendance Marking - Show when NOT fully marked */}
+          {attendanceData && !attendanceData.isFullyMarked && (
             <div className="space-y-4">
               {/* Event Info Header */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">

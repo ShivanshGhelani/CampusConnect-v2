@@ -19,6 +19,20 @@ const VolunteerScanner = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [lastScanResult, setLastScanResult] = useState(null);
   const [showScanFeedback, setShowScanFeedback] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
+  // Restore scan history from localStorage on mount
+  useEffect(() => {
+    const storedHistory = localStorage.getItem(`scan_history_${invitationCode}`);
+    if (storedHistory) {
+      try {
+        const parsed = JSON.parse(storedHistory);
+        setScanHistory(parsed);
+      } catch (error) {
+        console.error('Failed to parse scan history:', error);
+      }
+    }
+  }, [invitationCode]);
 
   // Validate invitation on mount
   useEffect(() => {
@@ -151,7 +165,12 @@ const VolunteerScanner = () => {
         setShowScanner(true);
       }, 2000);
       
-      setScanHistory(prev => [scanRecord, ...prev]);
+      setScanHistory(prev => {
+        const newHistory = [scanRecord, ...prev];
+        // Save to localStorage
+        localStorage.setItem(`scan_history_${invitationCode}`, JSON.stringify(newHistory));
+        return newHistory;
+      });
       
     } catch (error) {
       console.error('Failed to mark attendance:', error);
@@ -443,17 +462,44 @@ const VolunteerScanner = () => {
             {/* Scan History */}
             {scanHistory.length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Recent Scans ({scanHistory.length})</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900">Recent Scans ({scanHistory.length})</h4>
+                  {scanHistory.length > 5 && (
+                    <button
+                      onClick={() => setShowAllHistory(!showAllHistory)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      {showAllHistory ? (
+                        <>
+                          Show Less
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                          </svg>
+                        </>
+                      ) : (
+                        <>
+                          Show All
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {scanHistory.map((scan) => (
+                  {(showAllHistory ? scanHistory : scanHistory.slice(0, 5)).map((scan) => (
                     <div key={scan.id} className="bg-white border border-gray-200 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="font-medium text-gray-900 text-sm">
-                            {scan.attendanceData.team_name || scan.attendanceData.student?.name || 'Registration'}
+                            {scan.attendanceData.team_name || scan.attendanceData.student?.name || scan.attendanceData.participant?.name || 'Registration'}
                           </p>
                           <p className="text-xs text-gray-600">
                             {new Date(scan.timestamp).toLocaleTimeString()}
+                            {scan.alreadyMarked && (
+                              <span className="ml-2 text-orange-600 font-medium">• Re-scan</span>
+                            )}
                           </p>
                         </div>
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
