@@ -129,12 +129,22 @@ const VolunteerScanner = () => {
         qrData,
         attendanceData,
         totalPresent,
-        result
+        result,
+        // Include already_marked flag from backend response
+        alreadyMarked: result.already_marked || false,
+        previousMarkedBy: result.previous_marked_by,
+        message: result.message
       };
       
-      // Show visual feedback
+      // Show visual feedback with appropriate message
       setLastScanResult(scanRecord);
       setShowScanFeedback(true);
+      
+      // Show appropriate alert message
+      if (result.already_marked) {
+        alert(`✓ Already Marked!\n\n${result.message || 'This attendance was already recorded.'}\n\nAttendance has been re-confirmed.`);
+      }
+      
       setTimeout(() => {
         setShowScanFeedback(false);
         // Auto-reopen scanner for next scan after 2 seconds

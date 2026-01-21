@@ -730,12 +730,13 @@ async def mark_attendance(
         marked_at_time = datetime.utcnow()
         
         # Update attendance based on strategy
+        # UPDATED to match attendance.py logic exactly - allows re-marking/toggling
         attendance_updated = False
         day_marked = None
         session_marked = None
         
         if attendance_strategy == "day_based":
-            # Use target_day from invitation, or from request, or default to day 1
+            # Use target_day from invitation, or from request
             day_to_mark = None
             if invitation and invitation.get("target_day"):
                 day_to_mark = invitation.get("target_day")
@@ -744,42 +745,81 @@ async def mark_attendance(
             else:
                 raise HTTPException(status_code=400, detail="Day number required for day-based attendance")
             
-            days = current_attendance.get("days", [])
-            already_marked = False
-            for day in days:
-                if day.get("day") == day_to_mark:
-                    # Check if already marked
-                    if day.get("marked"):
-                        already_marked = True
-                        return {
-                            "success": True,
-                            "data": {
-                                "registration_id": registration_id,
-                                "already_marked": True,
-                                "marked_by": day.get("marked_by", "Unknown"),
-                                "marked_at": day.get("marked_at"),
-                                "message": f"Attendance for Day {day_to_mark} already marked",
-                                "attendance_percentage": current_attendance.get("percentage", 0),
-                                "attendance_status": current_attendance.get("status", "unknown")
-                            }
-                        }
-                    
-                    day["marked"] = True
-                    day["marked_at"] = marked_at_time.isoformat()
-                    day["marked_by"] = marked_by
-                    attendance_updated = True
-                    day_marked = day_to_mark
-                    break
+            # Get ALL configured days/sessions from event config
+            all_sessions = attendance_config.get("sessions", [])
+            if not all_sessions:
+                raise HTTPException(status_code=400, detail="No days configured in event")
             
-            if not attendance_updated:
+            # Find the target day configuration
+            target_day_config = None
+            for day_config in all_sessions:
+                # Extract day number from session_id (e.g., "day_1" -> 1)
+                if day_config.get("session_id"):
+                    day_match = day_config.get("session_id", "").split("_")
+                    if len(day_match) >= 2 and day_match[0] == "day":
+                        try:
+                            config_day_num = int(day_match[1])
+                            if config_day_num == day_to_mark:
+                                target_day_config = day_config
+                                break
+                        except ValueError:
+                            continue
+            
+            if not target_day_config:
                 raise HTTPException(status_code=400, detail=f"Day {day_to_mark} not found in event configuration")
             
-            # Calculate percentage for day-based
-            if days:
-                marked_count = sum(1 for d in days if d.get("marked", False))
-                current_attendance["percentage"] = (marked_count / len(days)) * 100
-                current_attendance["days_attended"] = marked_count
-                current_attendance["status"] = "completed" if marked_count == len(days) else "partial"
+            # Use SAME structure as attendance.py - sessions array with session_id
+            attended_sessions = current_attendance.get("sessions", [])
+            
+            # Check if already marked for this day (for notification only)
+            already_marked = any(s.get("session_id") == target_day_config.get("session_id") for s in attended_sessions)
+            previous_marked_by = None
+            previous_marked_at = None
+            if already_marked:
+                for s in attended_sessions:
+                    if s.get("session_id") == target_day_config.get("session_id"):
+                        previous_marked_by = s.get("marked_by")
+                        previous_marked_at = s.get("marked_at")
+                        break
+            
+            # Remove existing entry for this day (allows re-marking/toggling)
+            attended_sessions = [s for s in attended_sessions if s.get("session_id") != target_day_config.get("session_id")]
+            
+            # Always mark as present when scanning QR (scanner = attendance confirmation)
+            attended_sessions.append({
+                "session_id": target_day_config.get("session_id"),
+                "session_name": target_day_config.get("session_name", f"Day {day_to_mark}"),
+                "marked_at": marked_at_time.isoformat(),
+                "marked_by": marked_by,
+                "weight": target_day_config.get("weight", 1),
+                "notes": f"Marked via QR Scanner"
+            })
+            
+            attendance_updated = True
+            day_marked = day_to_mark
+            
+            # Calculate percentage based on weights (SAME as attendance.py)
+            total_weight = sum(s.get("weight", 1) for s in all_sessions)
+            attended_weight = sum(s.get("weight", 1) for s in attended_sessions)
+            percentage = (attended_weight / total_weight * 100) if total_weight > 0 else 0
+            
+            # Determine status based on percentage
+            minimum_percentage = attendance_config.get("minimum_percentage", 75)
+            if percentage >= minimum_percentage:
+                status = "present"
+            elif percentage > 0:
+                status = "partial"
+            else:
+                status = "absent"
+            
+            current_attendance.update({
+                "strategy": attendance_strategy,
+                "sessions": attended_sessions,
+                "total_sessions": len(all_sessions),
+                "sessions_attended": len(attended_sessions),
+                "percentage": round(percentage, 2),
+                "status": status
+            })
         
         elif attendance_strategy == "session_based":
             # Use target_session from invitation or from request
@@ -791,32 +831,82 @@ async def mark_attendance(
             else:
                 raise HTTPException(status_code=400, detail="session_id required for session-based attendance")
             
-            sessions = current_attendance.get("sessions", [])
-            for sess in sessions:
-                if sess.get("session_id") == session_id_to_mark:
-                    sess["marked"] = True
-                    sess["marked_at"] = marked_at_time.isoformat()
-                    sess["marked_by"] = marked_by
-                    attendance_updated = True
-                    session_marked = session_id_to_mark
+            # Get ALL configured sessions from event config
+            all_sessions = attendance_config.get("sessions", [])
+            if not all_sessions:
+                raise HTTPException(status_code=400, detail="No sessions configured in event")
+            
+            # Find the target session configuration
+            target_session_config = None
+            for sess_config in all_sessions:
+                if sess_config.get("session_id") == session_id_to_mark:
+                    target_session_config = sess_config
                     break
             
-            if not attendance_updated:
+            if not target_session_config:
                 raise HTTPException(status_code=400, detail=f"Session {session_id_to_mark} not found in event configuration")
             
-            # Calculate percentage for session-based
-            if sessions:
-                marked_count = sum(1 for s in sessions if s.get("marked", False))
-                current_attendance["percentage"] = (marked_count / len(sessions)) * 100
-                current_attendance["status"] = "completed" if marked_count == len(sessions) else "partial"
+            # Use SAME structure as attendance.py
+            attended_sessions = current_attendance.get("sessions", [])
+            
+            # Check if already marked for this session (for notification only)
+            already_marked = any(s.get("session_id") == session_id_to_mark for s in attended_sessions)
+            previous_marked_by = None
+            previous_marked_at = None
+            if already_marked:
+                for s in attended_sessions:
+                    if s.get("session_id") == session_id_to_mark:
+                        previous_marked_by = s.get("marked_by")
+                        previous_marked_at = s.get("marked_at")
+                        break
+            
+            # Remove existing entry for this session (allows re-marking/toggling)
+            attended_sessions = [s for s in attended_sessions if s.get("session_id") != session_id_to_mark]
+            
+            # Always mark as present when scanning QR
+            attended_sessions.append({
+                "session_id": session_id_to_mark,
+                "session_name": target_session_config.get("session_name", session_id_to_mark),
+                "marked_at": marked_at_time.isoformat(),
+                "marked_by": marked_by,
+                "weight": target_session_config.get("weight", 1),
+                "notes": f"Marked via QR Scanner"
+            })
+            
+            attendance_updated = True
+            session_marked = session_id_to_mark
+            
+            # Calculate percentage based on weights (SAME as attendance.py)
+            total_weight = sum(s.get("weight", 1) for s in all_sessions)
+            attended_weight = sum(s.get("weight", 1) for s in attended_sessions)
+            percentage = (attended_weight / total_weight * 100) if total_weight > 0 else 0
+            
+            # Determine status based on percentage
+            minimum_percentage = attendance_config.get("minimum_percentage", 75)
+            if percentage >= minimum_percentage:
+                status = "present"
+            elif percentage > 0:
+                status = "partial"
+            else:
+                status = "absent"
+            
+            current_attendance.update({
+                "strategy": attendance_strategy,
+                "sessions": attended_sessions,
+                "total_sessions": len(all_sessions),
+                "sessions_attended": len(attended_sessions),
+                "percentage": round(percentage, 2),
+                "status": status
+            })
         
         elif attendance_strategy == "single_mark":
-            # Simple single mark
+            # Simple single mark - QR scan = present
+            current_attendance["strategy"] = attendance_strategy
             current_attendance["marked"] = True
             current_attendance["marked_at"] = marked_at_time.isoformat()
             current_attendance["marked_by"] = marked_by
             current_attendance["percentage"] = 100
-            current_attendance["status"] = "completed"
+            current_attendance["status"] = "present"
             attendance_updated = True
         
         if not attendance_updated:
@@ -854,18 +944,31 @@ async def mark_attendance(
         
         logger.info(f"✅ ATTENDANCE UPDATED: Registration {registration_id} marked by {marked_by} via session {session_id} - Strategy: {attendance_strategy}, Day: {day_marked}, Session: {session_marked}")
         
+        # Prepare response with already_marked flag if applicable
+        response_data = {
+            "registration_id": registration_id,
+            "marked_by": marked_by,
+            "marked_at": marked_at_time.isoformat(),
+            "attendance_strategy": attendance_strategy,
+            "day_marked": day_marked,
+            "session_marked": session_marked,
+            "attendance_percentage": current_attendance.get("percentage", 0),
+            "attendance_status": current_attendance.get("status", "unknown")
+        }
+        
+        # Add already_marked flag and message if this was a re-mark
+        if 'already_marked' in locals() and already_marked:
+            response_data["already_marked"] = True
+            response_data["previous_marked_by"] = previous_marked_by
+            response_data["previous_marked_at"] = previous_marked_at
+            if day_marked:
+                response_data["message"] = f"✓ Attendance re-confirmed for Day {day_marked} (previously marked by {previous_marked_by})"
+            elif session_marked:
+                response_data["message"] = f"✓ Attendance re-confirmed for session (previously marked by {previous_marked_by})"
+        
         return {
             "success": True,
-            "data": {
-                "registration_id": registration_id,
-                "marked_by": marked_by,
-                "marked_at": marked_at_time.isoformat(),
-                "attendance_strategy": attendance_strategy,
-                "day_marked": day_marked,
-                "session_marked": session_marked,
-                "attendance_percentage": current_attendance.get("percentage", 0),
-                "attendance_status": current_attendance.get("status", "unknown")
-            }
+            "data": response_data
         }
         
     except HTTPException:
