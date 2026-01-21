@@ -195,7 +195,14 @@ const VolunteerScanner = () => {
   };
 
   const formatDateTime = (dateString) => {
+    if (!dateString) {
+      return 'Not Set';
+    }
     const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -537,6 +544,7 @@ const VolunteerScanner = () => {
       {showScanner && (
         <QRScanner
           isOpen={showScanner}
+          sessionData={sessionData}
           onClose={() => {
             console.log('🚪 Scanner modal closing...');
             setShowScanner(false);

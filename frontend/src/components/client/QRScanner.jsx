@@ -3,7 +3,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import qrCodeService from '../../services/QRCodeService';
 import api from '../../api/base';
 
-const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
+const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [attendanceData, setAttendanceData] = useState(null);
@@ -115,7 +115,9 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           scan_time: new Date().toISOString(),
           attendance: data.attendance || {},
           participant: data.participant || {}, // NEW: Participant info
-          team_members: data.team_members || null // NEW: Team members if team-based
+          team_members: data.team_members || null, // NEW: Team members if team-based
+          target_day: data.target_day, // Target day from invitation (for day_based)
+          target_session: data.target_session // Target session from invitation (for session_based)
         };
         
         // Add participant data based on type
@@ -129,7 +131,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
         
         console.log('📊 Formatted attendance data:', formattedData);
         
-        // Check if attendance is already fully marked
+        // Check if attendance is already marked (target session/day)
         formattedData.isFullyMarked = false;
         formattedData.alreadyMarkedMessage = '';
         
@@ -137,18 +139,27 @@ const QRScanner = ({ isOpen, onClose, onScan, onError }) => {
           formattedData.isFullyMarked = true;
           formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
         } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
-          // Check if all days are marked (using sessions array)
-          const allMarked = data.attendance.sessions.length === data.attendance.total_sessions;
-          if (allMarked) {
-            formattedData.isFullyMarked = true;
-            formattedData.alreadyMarkedMessage = `✓ All Days Marked\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})\n\nAll days have been marked.`;
+          // Check if TARGET day is already marked (from sessionData)
+          const targetDayNum = sessionData?.target_day; // From session
+          if (targetDayNum && data.attendance.sessions.length > 0) {
+            const targetSession = data.attendance.sessions.find(s => {
+              const match = s.session_id?.match(/day_(\d+)/);
+              return match && parseInt(match[1]) === targetDayNum;
+            });
+            if (targetSession) {
+              formattedData.isFullyMarked = true;
+              formattedData.alreadyMarkedMessage = `✓ Day ${targetDayNum} Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+            }
           }
         } else if (data.attendance_strategy === 'session_based' && data.attendance?.sessions) {
-          // Check if all sessions are marked
-          const allMarked = data.attendance.sessions.length === data.attendance.total_sessions;
-          if (allMarked) {
-            formattedData.isFullyMarked = true;
-            formattedData.alreadyMarkedMessage = `✓ All Sessions Marked\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})\n\nAll sessions have been marked.`;
+          // Check if TARGET session is already marked (from sessionData)
+          const targetSessionId = sessionData?.target_session; // From session
+          if (targetSessionId && data.attendance.sessions.length > 0) {
+            const targetSession = data.attendance.sessions.find(s => s.session_id === targetSessionId);
+            if (targetSession) {
+              formattedData.isFullyMarked = true;
+              formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+            }
           }
         }
         
