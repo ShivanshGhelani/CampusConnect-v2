@@ -97,12 +97,32 @@ json._default_encoder = CustomJSONEncoder()
 # Add session middleware for student authentication
 session_secret = os.getenv("SESSION_SECRET_KEY", "development-secret-key-for-cors-debugging")
 
+# Determine cookie settings based on environment
+# iOS Safari blocks SameSite=None cookies on HTTP connections
+# Android is more lenient, but we need proper settings for iOS compatibility
+is_production = os.getenv("ENVIRONMENT", "development") == "production"
+is_https = settings.BACKEND_URL.startswith("https://")
+
+# For iOS compatibility:
+# - Development (HTTP): Use SameSite=Lax, https_only=False
+# - Production (HTTPS): Use SameSite=None, https_only=True
+if is_production or is_https:
+    # Production mode with HTTPS (works on both iOS and Android)
+    same_site_policy = "none"
+    https_only_flag = True
+    logger.info("🔒 Session cookies: SameSite=None, Secure=True (HTTPS mode)")
+else:
+    # Development mode with HTTP (iOS-compatible)
+    same_site_policy = "lax"
+    https_only_flag = False
+    logger.info("🔓 Session cookies: SameSite=Lax, Secure=False (HTTP mode - iOS compatible)")
+
 app.add_middleware(
     SessionMiddleware, 
     secret_key=session_secret,
     max_age=3600,            # 1 hour
-    same_site="none",        # Required for cross-origin requests (Vercel -> ngrok)
-    https_only=True,         # Required for same_site="none" and ngrok uses HTTPS
+    same_site=same_site_policy,
+    https_only=https_only_flag,
 )
 
 # Mount static files
