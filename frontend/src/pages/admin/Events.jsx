@@ -199,7 +199,13 @@ function Events() {
       
       if (response.data.success) {
         const eventsData = response.data.events || [];
-        setAllEvents(eventsData);
+        // Sort events by created_at in descending order (newest first)
+        const sortedEvents = eventsData.sort((a, b) => {
+          const dateA = new Date(a.created_at || a.start_datetime);
+          const dateB = new Date(b.created_at || b.start_datetime);
+          return dateB - dateA; // Descending order (newest first)
+        });
+        setAllEvents(sortedEvents);
         setError('');
         
         // Cache the data in localStorage
