@@ -146,64 +146,56 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
           formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
           console.log('✅ Single mark detected as already marked');
         } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
-          // Check if TARGET day is already marked
-          const targetDayNum = sessionData?.target_day; // From volunteer session (if exists)
-          console.log('   Checking day_based - Target Day:', targetDayNum);
-          console.log('   Sessions:', data.attendance.sessions);
+          // ALWAYS check the TARGET day from scanner session
+          const targetDayNum = sessionData?.target_day;
+          console.log('🎯 Target Day from scanner:', targetDayNum);
+          console.log('📋 Attendance sessions:', data.attendance.sessions);
           
-          if (targetDayNum && data.attendance.sessions.length > 0) {
-            // Volunteer scanner: Check specific target day
+          if (targetDayNum) {
+            // Check if THIS SPECIFIC day is already marked
             const targetSession = data.attendance.sessions.find(s => {
-              console.log('     Checking session:', s.session_id);
               const match = s.session_id?.match(/day_(\d+)/);
-              if (match) {
-                console.log('       Matched day:', match[1], 'vs target:', targetDayNum);
-              }
               return match && parseInt(match[1]) === targetDayNum;
             });
+            
             if (targetSession) {
+              // This specific day is already marked
               formattedData.isFullyMarked = true;
               formattedData.alreadyMarkedMessage = `✓ Day ${targetDayNum} Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
-              console.log('✅ Day already marked:', targetSession);
+              console.log('✅ Target day already marked');
             } else {
-              console.log('❌ Target day not found in sessions');
-            }
-          } else if (!targetDayNum && data.attendance.sessions.length > 0) {
-            // Admin/Manual scanner: Check if ALL days are marked (fully attended)
-            // Only show "Already Marked" if attendance is 100% complete
-            if (data.attendance.percentage === 100 && data.attendance.status === 'present') {
-              const latestSession = data.attendance.sessions[data.attendance.sessions.length - 1];
-              formattedData.isFullyMarked = true;
-              formattedData.alreadyMarkedMessage = `✓ All Days Marked (100%)\n\nLast marked by: ${latestSession.marked_by || 'Unknown'}\nLast marked at: ${new Date(latestSession.marked_at).toLocaleString()}\n\nTotal: ${data.attendance.sessions_attended}/${data.attendance.total_sessions} days`;
-              console.log('✅ All days marked (100% attendance)');
-            } else {
-              console.log('ℹ️ Partial attendance - allow marking');
+              // This day is NOT marked yet - allow marking
+              formattedData.isFullyMarked = false;
+              console.log('✅ Target day not marked - allow marking');
             }
           } else {
-            console.log('❌ Missing targetDayNum or no sessions');
+            // No target day in sessionData - this should not happen!
+            console.error('❌ ERROR: No target_day in sessionData for day_based scanner!');
+            formattedData.isFullyMarked = false;
           }
         } else if (data.attendance_strategy === 'session_based' && data.attendance?.sessions) {
-          // Check if TARGET session is already marked
-          const targetSessionId = sessionData?.target_session; // From volunteer session (if exists)
+          // ALWAYS check the TARGET session from scanner session
+          const targetSessionId = sessionData?.target_session;
+          console.log('🎯 Target Session from scanner:', targetSessionId);
           
-          if (targetSessionId && data.attendance.sessions.length > 0) {
-            // Volunteer scanner: Check specific target session
+          if (targetSessionId) {
+            // Check if THIS SPECIFIC session is already marked
             const targetSession = data.attendance.sessions.find(s => s.session_id === targetSessionId);
+            
             if (targetSession) {
+              // This specific session is already marked
               formattedData.isFullyMarked = true;
               formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
-              console.log('✅ Session already marked');
-            }
-          } else if (!targetSessionId && data.attendance.sessions.length > 0) {
-            // Admin/Manual scanner: Check if ALL sessions are marked (fully attended)
-            if (data.attendance.percentage === 100 && data.attendance.status === 'present') {
-              const latestSession = data.attendance.sessions[data.attendance.sessions.length - 1];
-              formattedData.isFullyMarked = true;
-              formattedData.alreadyMarkedMessage = `✓ All Sessions Marked (100%)\n\nLast marked by: ${latestSession.marked_by || 'Unknown'}\nLast marked at: ${new Date(latestSession.marked_at).toLocaleString()}\n\nTotal: ${data.attendance.sessions_attended}/${data.attendance.total_sessions} sessions`;
-              console.log('✅ All sessions marked (100% attendance)');
+              console.log('✅ Target session already marked');
             } else {
-              console.log('ℹ️ Partial attendance - allow marking');
+              // This session is NOT marked yet - allow marking
+              formattedData.isFullyMarked = false;
+              console.log('✅ Target session not marked - allow marking');
             }
+          } else {
+            // No target session in sessionData - error!
+            console.error('❌ ERROR: No target_session in sessionData for session_based scanner!');
+            formattedData.isFullyMarked = false;
           }
         }
         
