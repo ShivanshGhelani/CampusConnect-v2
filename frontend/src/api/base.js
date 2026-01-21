@@ -62,23 +62,6 @@ api.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      const currentPath = window.location.pathname;
-      
-      // CRITICAL FIX: Don't clear auth on public routes
-      // The volunteer scanner is public and doesn't require authentication
-      // If a logged-in user visits it and gets a 401, don't clear their session
-      const isPublicRoute = currentPath.startsWith('/scan/') || 
-                           currentPath.includes('/login') ||
-                           currentPath.includes('/register');
-      
-      if (isPublicRoute) {
-        // On public routes, just return the error without clearing auth
-        return Promise.reject(error);
-      }
-      
-      // Unauthorized - clear auth data and redirect to login
-      // Clear both localStorage tokens and user data for hybrid auth
-      localStorage.removeItem('access_token');
       // Unauthorized - clear auth data and redirect to login
       // Clear both localStorage tokens and user data for hybrid auth
       localStorage.removeItem('access_token');
@@ -88,6 +71,23 @@ api.interceptors.response.use(
       
       // Check if user is on admin dashboard and redirect appropriately
       const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/admin')) {
+        // Redirect admin to admin login - use window.location to navigate within SPA
+        window.location.href = '/auth/login?tab=admin&reason=session_expired';
+      } else if (currentPath.startsWith('/faculty')) {
+        // Redirect faculty to faculty login
+        window.location.href = '/auth/login?tab=faculty&reason=session_expired';
+      } else if (!currentPath.includes('/login')) {
+        // Redirect to general login for students or other users
+        window.location.href = '/auth/login?tab=student&reason=session_expired';
+      }
+    }
+    
+    if (error.response?.status === 403) {
+      // Forbidden - user doesn't have permission
+      
+    }
+    
     if (error.response?.status >= 500) {
       // Server error
       
