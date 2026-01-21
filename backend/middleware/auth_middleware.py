@@ -60,7 +60,37 @@ class AuthMiddleware:
             return None
         
         # Validate access token
-        token_data = token_manager.validate_access_token(access_token)
+        token_data = None
+        
+        # First try Redis-backed token validation
+        if token_manager.is_available():
+            token_data = token_manager.validate_access_token(access_token)
+        
+        # Fallback: Validate as stateless JWT (for iOS users when Redis unavailable)
+        if not token_data:
+            try:
+                import jwt
+                from config.settings import get_settings
+                settings = get_settings()
+                
+                decoded = jwt.decode(
+                    access_token,
+                    settings.JWT_SECRET_KEY,
+                    algorithms=[settings.JWT_ALGORITHM]
+                )
+                
+                token_data = {
+                    "user_id": decoded.get("user_id"),
+                    "user_type": decoded.get("user_type"),
+                    "user_data": decoded.get("user_data", {})
+                }
+                logger.info(f"Validated stateless JWT for {token_data.get('user_type')} {token_data.get('user_id')}")
+            except jwt.ExpiredSignatureError:
+                logger.warning("JWT token expired")
+                token_data = None
+            except Exception as e:
+                logger.error(f"Failed to validate JWT: {e}")
+                token_data = None
         
         if not token_data:
             # Access token invalid or expired, try to refresh

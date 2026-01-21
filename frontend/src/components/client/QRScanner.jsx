@@ -146,12 +146,13 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
           formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
           console.log('✅ Single mark detected as already marked');
         } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
-          // Check if TARGET day is already marked (from sessionData)
-          const targetDayNum = sessionData?.target_day; // From session
+          // Check if TARGET day is already marked
+          const targetDayNum = sessionData?.target_day; // From volunteer session (if exists)
           console.log('   Checking day_based - Target Day:', targetDayNum);
           console.log('   Sessions:', data.attendance.sessions);
           
           if (targetDayNum && data.attendance.sessions.length > 0) {
+            // Volunteer scanner: Check specific target day
             const targetSession = data.attendance.sessions.find(s => {
               console.log('     Checking session:', s.session_id);
               const match = s.session_id?.match(/day_(\d+)/);
@@ -167,18 +168,41 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
             } else {
               console.log('❌ Target day not found in sessions');
             }
+          } else if (!targetDayNum && data.attendance.sessions.length > 0) {
+            // Admin/Manual scanner: Check if ALL days are marked (fully attended)
+            // Only show "Already Marked" if attendance is 100% complete
+            if (data.attendance.percentage === 100 && data.attendance.status === 'present') {
+              const latestSession = data.attendance.sessions[data.attendance.sessions.length - 1];
+              formattedData.isFullyMarked = true;
+              formattedData.alreadyMarkedMessage = `✓ All Days Marked (100%)\n\nLast marked by: ${latestSession.marked_by || 'Unknown'}\nLast marked at: ${new Date(latestSession.marked_at).toLocaleString()}\n\nTotal: ${data.attendance.sessions_attended}/${data.attendance.total_sessions} days`;
+              console.log('✅ All days marked (100% attendance)');
+            } else {
+              console.log('ℹ️ Partial attendance - allow marking');
+            }
           } else {
             console.log('❌ Missing targetDayNum or no sessions');
           }
         } else if (data.attendance_strategy === 'session_based' && data.attendance?.sessions) {
-          // Check if TARGET session is already marked (from sessionData)
-          const targetSessionId = sessionData?.target_session; // From session
+          // Check if TARGET session is already marked
+          const targetSessionId = sessionData?.target_session; // From volunteer session (if exists)
+          
           if (targetSessionId && data.attendance.sessions.length > 0) {
+            // Volunteer scanner: Check specific target session
             const targetSession = data.attendance.sessions.find(s => s.session_id === targetSessionId);
             if (targetSession) {
               formattedData.isFullyMarked = true;
               formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
               console.log('✅ Session already marked');
+            }
+          } else if (!targetSessionId && data.attendance.sessions.length > 0) {
+            // Admin/Manual scanner: Check if ALL sessions are marked (fully attended)
+            if (data.attendance.percentage === 100 && data.attendance.status === 'present') {
+              const latestSession = data.attendance.sessions[data.attendance.sessions.length - 1];
+              formattedData.isFullyMarked = true;
+              formattedData.alreadyMarkedMessage = `✓ All Sessions Marked (100%)\n\nLast marked by: ${latestSession.marked_by || 'Unknown'}\nLast marked at: ${new Date(latestSession.marked_at).toLocaleString()}\n\nTotal: ${data.attendance.sessions_attended}/${data.attendance.total_sessions} sessions`;
+              console.log('✅ All sessions marked (100% attendance)');
+            } else {
+              console.log('ℹ️ Partial attendance - allow marking');
             }
           }
         }

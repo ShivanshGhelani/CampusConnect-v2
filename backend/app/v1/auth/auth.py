@@ -232,15 +232,53 @@ async def unified_login(request: Request, login_data: UnifiedLoginRequest):
             if isinstance(value, datetime):
                 user_data[key] = value.isoformat()
         
-        # Generate tokens if Redis is available
+        # Generate tokens - CRITICAL FIX: Always generate for iOS compatibility
+        # iOS Safari blocks third-party cookies, so we MUST use Bearer tokens
         tokens = {}
-        if token_manager.is_available():
-            tokens = token_manager.generate_tokens(
-                user_id=user_id,
-                user_type=user_type,
-                user_data=user_data,
-                remember_me=remember_me
-            )
+        try:
+            if token_manager.is_available():
+                # Use Redis-backed tokens if available
+                tokens = token_manager.generate_tokens(
+                    user_id=user_id,
+                    user_type=user_type,
+                    user_data=user_data,
+                    remember_me=remember_me
+                )
+            else:
+                # Fallback: Generate JWT tokens without Redis (stateless)
+                # This ensures iOS users can login via Bearer tokens
+                import jwt
+                from datetime import timedelta
+                from config.settings import get_settings
+                settings = get_settings()
+                
+                expires_in = 30 * 24 * 3600 if remember_me else 3600  # 30 days or 1 hour
+                exp_time = datetime.utcnow() + timedelta(seconds=expires_in)
+                
+                token_payload = {
+                    "user_id": user_id,
+                    "user_type": user_type,
+                    "user_data": user_data,
+                    "exp": exp_time,
+                    "iat": datetime.utcnow()
+                }
+                
+                access_token = jwt.encode(
+                    token_payload,
+                    settings.JWT_SECRET_KEY,
+                    algorithm=settings.JWT_ALGORITHM
+                )
+                
+                tokens = {
+                    "access_token": access_token,
+                    "expires_in": expires_in,
+                    "token_type": "Bearer"
+                }
+                
+                logger.info(f"Generated stateless JWT token for {user_type} {user_id} (Redis unavailable)")
+        except Exception as e:
+            logger.error(f"Failed to generate tokens: {e}")
+            # Continue anyway - session-based auth will be used
         
         # Store in session as fallback
         user_data["login_time"] = current_time.isoformat()
