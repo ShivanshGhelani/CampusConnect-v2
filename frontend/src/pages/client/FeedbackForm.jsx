@@ -65,9 +65,10 @@ const FeedbackForm = () => {
   const checkEligibility = async () => {
     try {
       const response = await clientAPI.checkFeedbackEligibility(eventId);
+      console.log('Eligibility Check:', response.data);
       setEligibility(response.data);
     } catch (error) {
-      
+      console.error('Eligibility Error:', error.response?.data);
       setEligibility({ 
         eligible: false, 
         reason: 'error',
@@ -350,6 +351,35 @@ const FeedbackForm = () => {
         </div>
       </div>
     );
+  }
+
+  // Check if feedback collection period has ended for non-certificate events
+  if (event && !event.is_certificate_based && event.feedback_end_date) {
+    const now = new Date();
+    const feedbackEndDate = new Date(event.feedback_end_date);
+    
+    if (now > feedbackEndDate) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+            <div className="flex items-center space-x-2 text-amber-600 mb-4">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium">Feedback Period Ended</span>
+            </div>
+            <p className="text-gray-700 mb-4">
+              The feedback collection period for this event ended on{' '}
+              {feedbackEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+            </p>
+            <button
+              onClick={() => navigate('/client/dashboard')}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (

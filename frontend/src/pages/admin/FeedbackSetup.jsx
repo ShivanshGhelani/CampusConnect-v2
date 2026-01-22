@@ -11,7 +11,8 @@ import {
   CheckSquare, 
   Circle, 
   Hash, 
-  Calendar, 
+  Calendar,
+  Clock,
   Type, 
   AlignLeft, 
   List, 
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminAPI } from '../../api/admin';
+import DateRangePicker from '../../components/common/DateRangePicker';
 
 // Reusable Action Button Component
 const ActionButton = ({ 
@@ -59,9 +61,12 @@ function FeedbackSetup() {
   const navigate = useNavigate();
 
   // Form state
+  const [event, setEvent] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [formTitle, setFormTitle] = useState('Event Feedback Form');
   const [formDescription, setFormDescription] = useState('Please share your feedback about this event.');
   const [formElements, setFormElements] = useState([]);
+  const [feedbackEndDate, setFeedbackEndDate] = useState('');
   const [selectedElement, setSelectedElement] = useState(null);
   const [showElementSelector, setShowElementSelector] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -580,6 +585,11 @@ function FeedbackSetup() {
         is_active: true
       };
 
+      // Add feedback_end_date for non-certificate events
+      if (event && !event.is_certificate_based && feedbackEndDate) {
+        formData.feedback_end_date = feedbackEndDate;
+      }
+
       
       
       // Call the API to save the feedback form
@@ -602,9 +612,45 @@ function FeedbackSetup() {
 
   // Load existing feedback form or add default elements on component mount
   useEffect(() => {
-    const loadFeedbackForm = async () => {
+    const loadEventAndFeedbackForm = async () => {
       try {
+        setIsLoading(true);
+        console.log('🔍 Loading event details for:', eventId);
         
+        // Load event details first
+        const eventResponse = await adminAPI.getEvent(eventId);
+        console.log('📦 Event API response:', eventResponse);
+        console.log('📦 Event data:', eventResponse.data);
+        
+        if (eventResponse.data.success && eventResponse.data.event) {
+          const eventData = eventResponse.data.event;
+          setEvent(eventData);
+          
+          console.log('✅ Event loaded:', eventData.event_name);
+          console.log('📋 is_certificate_based:', eventData.is_certificate_based);
+          console.log('🎯 Should show feedback end date field:', !eventData.is_certificate_based);
+          
+          // Set feedback_end_date if it exists
+          if (eventData.feedback_end_date) {
+            // Convert to YYYY-MM-DD format for input
+            const date = new Date(eventData.feedback_end_date);
+            const formattedDate = date.toISOString().split('T')[0];
+            setFeedbackEndDate(formattedDate);
+            console.log('📅 Loaded existing feedback end date:', formattedDate);
+          } else if (!eventData.is_certificate_based && eventData.end_datetime) {
+            // Default to 7 days after event end for non-certificate events
+            const eventEnd = new Date(eventData.end_datetime);
+            eventEnd.setDate(eventEnd.getDate() + 7);
+            const formattedDate = eventEnd.toISOString().split('T')[0];
+            setFeedbackEndDate(formattedDate);
+            console.log('📅 Set default feedback end date:', formattedDate);
+          }
+        } else {
+          console.error('❌ Event response did not have success or event data');
+          console.error('Response:', eventResponse.data);
+        }
+        
+        // Load feedback form
         const response = await adminAPI.getFeedbackForm(eventId);
         
         
@@ -620,9 +666,12 @@ function FeedbackSetup() {
           createDefaultElements();
         }
       } catch (error) {
-        
+        console.error('❌ Error loading event or feedback form:', error);
+        console.error('Error details:', error.response?.data || error.message);
         
         createDefaultElements();
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -655,7 +704,7 @@ function FeedbackSetup() {
       }
     };
 
-    loadFeedbackForm();
+    loadEventAndFeedbackForm();
   }, [eventId]);
 
   return (
@@ -732,6 +781,32 @@ function FeedbackSetup() {
                       placeholder="Enter form description..."
                     />
                   </div>
+                  
+                  {/* Feedback End Date - Only for non-certificate events */}
+                  {!isLoading && event && !event.is_certificate_based && (
+                    <DateRangePicker
+                      label="Feedback Collection Deadline"
+                      description="Since this event doesn't distribute certificates, set a deadline for feedback collection. Participants can submit feedback until this date. Recommended: 7-14 days after event ends."
+                      startDate={feedbackEndDate ? new Date(feedbackEndDate) : null}
+                      endDate={null}
+                      startTime="23:59"
+                      endTime={null}
+                      onDateChange={(date) => {
+                        if (date) {
+                          setFeedbackEndDate(date.toISOString().split('T')[0]);
+                        } else {
+                          setFeedbackEndDate('');
+                        }
+                      }}
+                      onTimeChange={null}
+                      minDate={event.end_datetime ? new Date(event.end_datetime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                      singleDate={true}
+                      includeTime={false}
+                      theme="green"
+                      placeholder="Select feedback deadline date"
+                      required={true}
+                    />
+                  )}
                 </div>
               </div>
 

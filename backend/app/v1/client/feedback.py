@@ -46,16 +46,22 @@ async def submit_feedback(
     try:
         body = await request.json()
         
+        logger.info(f"Feedback submission received - Body keys: {body.keys()}")
+        
         event_id = body.get("event_id")
         feedback_responses = body.get("feedback_responses", {})
         is_test_mode = body.get("_test_mode", False)
         test_enrollment = body.get("_test_enrollment")
         test_registration_id = body.get("_test_registration_id")
         
+        logger.info(f"Event ID: {event_id}, Responses count: {len(feedback_responses)}, Test mode: {is_test_mode}")
+        
         if not event_id:
+            logger.error("Event ID is missing")
             raise HTTPException(status_code=400, detail="Event ID is required")
         
         if not feedback_responses:
+            logger.error("Feedback responses are missing")
             raise HTTPException(status_code=400, detail="Feedback responses are required")
         
         # Use test enrollment if in test mode
@@ -80,12 +86,13 @@ async def submit_feedback(
         if result["success"]:
             return JSONResponse(status_code=200, content=result)
         else:
+            logger.error(f"Feedback submission failed: {result.get('message')}")
             raise HTTPException(status_code=400, detail=result["message"])
             
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error submitting feedback: {str(e)}")
+        logger.error(f"Error submitting feedback: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error submitting feedback: {str(e)}")
 
 @router.get("/eligibility/{event_id}")

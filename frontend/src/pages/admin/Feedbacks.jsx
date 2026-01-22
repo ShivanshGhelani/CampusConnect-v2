@@ -520,7 +520,7 @@ function Feedbacks() {
 
           {/* Recent Responses */}
           {allResponses.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-t-4xl p-6 max-w-7xl mx-auto ">
+            <div className="bg-white border border-gray-200 rounded-t-xl p-6 max-w-6xl mx-auto ">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Recent Responses 

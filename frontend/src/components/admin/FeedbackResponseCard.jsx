@@ -16,8 +16,13 @@ const FeedbackResponseCard = ({
       const date = new Date(dateString);
       const now = new Date();
       const diffTime = Math.abs(now - date);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+      if (diffMinutes < 1) return 'Just now';
+      if (diffMinutes < 60) return `${diffMinutes}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) return `${diffDays}d ago`;
       
@@ -286,12 +291,14 @@ const FeedbackResponseCard = ({
 
       {/* Main Content */}
       <div className="px-4 pb-4 space-y-3">
-        {/* Individual Ratings (if more than one) */}
-        {categories.ratings.length > 1 && (
+        {/* Individual Ratings (excluding overall_rating which is shown in header) */}
+        {categories.ratings.filter(r => r.element.id !== 'overall_rating').length > 0 && (
           <div className="space-y-2">
-            {categories.ratings.map(({ element, value }) => (
-              <div key={element.id} className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">{element.label}</span>
+            {categories.ratings.filter(r => r.element.id !== 'overall_rating').map(({ element, value }) => (
+              <div key={element.id} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-gray-600 truncate flex-shrink-0 max-w-[120px]">
+                  {element.label?.length > 20 ? element.label.substring(0, 20) + '...' : element.label}
+                </span>
                 <div className="flex items-center gap-1">
                   {[...Array(element.props?.max || element.properties?.max || 5)].map((_, i) => (
                     <Star
@@ -310,8 +317,10 @@ const FeedbackResponseCard = ({
           <div className="space-y-2">
             {categories.text.map(({ element, value }) => (
               <div key={element.id}>
-                {element.label && categories.text.length > 1 && (
-                  <div className="text-sm font-medium text-gray-700 mb-1">{element.label}</div>
+                {element.label && (
+                  <div className="text-xs font-medium text-gray-500 mb-1 truncate">
+                    {element.label.length > 35 ? element.label.substring(0, 35) + '...' : element.label}
+                  </div>
                 )}
                 <div className="text-sm text-gray-800 leading-relaxed">
                   {element.type === 'textarea' ? (
@@ -330,8 +339,10 @@ const FeedbackResponseCard = ({
           <div className="space-y-2">
             {categories.choices.map(({ element, value }) => (
               <div key={element.id} className="space-y-1">
-                {element.label && categories.choices.length > 1 && (
-                  <div className="text-sm text-gray-700">{element.label}</div>
+                {element.label && (
+                  <div className="text-xs text-gray-500 truncate">
+                    {element.label.length > 30 ? element.label.substring(0, 30) + '...' : element.label}
+                  </div>
                 )}
                 <div className="flex flex-wrap gap-1">
                   {element.type === 'checkbox' || element.type === 'checkboxes' ? (

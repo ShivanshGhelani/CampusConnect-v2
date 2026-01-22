@@ -51,10 +51,14 @@ function EventDetail() {
       if (eventData && eventData.success) {
         setEvent(eventData.event);
 
-        // Debug: Log the event data to console to check organizers and contacts
-
-
-
+        // Debug: Check feedback end date conditions
+        console.log('EventDetail - Event Data:', {
+          sub_status: eventData.event.sub_status,
+          is_certificate_based: eventData.event.is_certificate_based,
+          feedback_end_date: eventData.event.feedback_end_date,
+          now: new Date().toISOString(),
+          feedbackDeadlinePassed: eventData.event.feedback_end_date ? new Date() > new Date(eventData.event.feedback_end_date) : 'no deadline'
+        });
 
         // Check registration status if user is authenticated
         if (isAuthenticated) {
@@ -768,10 +772,79 @@ function EventDetail() {
                     </div>
                   )}
 
+                  {/* Event Ended - Feedback collection period for non-certificate events */}
+                  {event.sub_status === 'event_ended' && !event.is_certificate_based && event.feedback_end_date && (() => {
+                    const now = new Date();
+                    const feedbackEndDate = new Date(event.feedback_end_date);
+                    return now <= feedbackEndDate;
+                  })() && (
+                    <div className="space-y-2.5">
+                      {/* Event completed message */}
+                      <div className="text-center space-y-0.5">
+                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto shadow-lg">
+                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-bold text-white mt-1">Event Completed</h3>
+                        <p className="text-blue-100 text-[10px]">Share your feedback!</p>
+                      </div>
+
+                      {/* Feedback collection notice */}
+                      <div className="bg-blue-500/20 backdrop-blur-sm rounded-xl p-2.5 border border-blue-300/30">
+                        <div className="flex items-center gap-2 text-blue-100">
+                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-medium">
+                              Feedback deadline: {new Date(event.feedback_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feedback Button */}
+                      <button
+                        onClick={handleFeedback}
+                        disabled={feedbackSubmitted}
+                        className={`group relative w-full transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border ${feedbackSubmitted
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 border-emerald-400/50'
+                          } text-white font-bold py-2.5 px-5 rounded-xl`}
+                      >
+                        {!feedbackSubmitted && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
+                        )}
+                        {!feedbackSubmitted && (
+                          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        )}
+                        <div className="relative flex items-center justify-center gap-1.5">
+                          {feedbackSubmitted ? (
+                            <>
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-xs font-extrabold tracking-wide">Thank You!</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4 8.5 8.5 0 0 1-6.6 3.1 8.38 8.38 0 0 1-5.4-1.9L3 21l1.9-4.1a8.38 8.38 0 0 1-1.9-5.4 8.5 8.5 0 0 1 3.1-6.6 8.38 8.38 0 0 1 5.4-1.9h.5" />
+                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L14 13l-4 1 1-4 7.5-7.5z" />
+                              </svg>
+                              <span className="text-xs font-extrabold tracking-wide">Submit Feedback</span>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Fallback for other statuses */}
                   {(() => {
                     const effectiveStatus = event.sub_status;
-                    return !['registration_open', 'event_started', 'ongoing', 'certificate_available', 'completed', 'registration_not_started'].includes(effectiveStatus);
+                    return !['registration_open', 'event_started', 'ongoing', 'certificate_available', 'completed', 'registration_not_started', 'event_ended'].includes(effectiveStatus);
                   })() && (
                       <div className="space-y-2.5">
                         <div className="text-center space-y-1">
@@ -1025,7 +1098,6 @@ function EventDetail() {
                       {endDate ? (
                         <>
                           <div className="font-medium">{endDate.dayWithSuffix}</div>
-                          {console.log("event: ", event)}
                           <div className="text-gray-500 text-xs">at {event.end_time || endDate.time}</div>
                         </>
                       ) : (

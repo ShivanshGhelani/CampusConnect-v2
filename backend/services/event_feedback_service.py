@@ -66,16 +66,27 @@ class EventFeedbackService:
                 if "id" not in element:
                     element["id"] = f"element_{i+1}"
             
-            # Update event with feedback form
+            # Prepare update data
+            update_data = {
+                "feedback_form": feedback_form,
+                "updated_at": datetime.utcnow()
+            }
+            
+            # Add feedback_end_date for non-certificate events
+            if "feedback_end_date" in feedback_form_data and feedback_form_data["feedback_end_date"]:
+                # Parse the date string and store as datetime
+                try:
+                    from dateutil import parser
+                    feedback_end_date = parser.parse(feedback_form_data["feedback_end_date"])
+                    update_data["feedback_end_date"] = feedback_end_date
+                except Exception as e:
+                    logger.warning(f"Failed to parse feedback_end_date: {e}")
+            
+            # Update event with feedback form and feedback_end_date
             update_result = await DatabaseOperations.update_one(
                 self.events_collection,
                 {"event_id": event_id},
-                {
-                    "$set": {
-                        "feedback_form": feedback_form,
-                        "updated_at": datetime.utcnow()
-                    }
-                }
+                {"$set": update_data}
             )
             
             if update_result:
@@ -187,13 +198,13 @@ class EventFeedbackService:
                     "message": "Feedback form is not available"
                 }
             
-            # Check if student is registered for the event
+            # Check if student is registered for the event (any status accepted)
+            # Registration model uses: student.enrollment_no and event.event_id
             registration = await DatabaseOperations.find_one(
                 self.registrations_collection,
                 {
-                    "event_info.event_id": event_id,
-                    "student_info.enrollment_no": student_enrollment,
-                    "registration_details.status": "active"
+                    "event.event_id": event_id,
+                    "student.enrollment_no": student_enrollment
                 }
             )
             
@@ -205,7 +216,7 @@ class EventFeedbackService:
             
             # Check if feedback already submitted
             existing_feedback = await DatabaseOperations.find_one(
-                self.feedbacks_collection,
+                self.student_feedbacks_collection,
                 {
                     "event_id": event_id,
                     "student_enrollment": student_enrollment
@@ -218,12 +229,19 @@ class EventFeedbackService:
                     "message": "You have already submitted feedback for this event"
                 }
             
-            # Get student info
-            student = await DatabaseOperations.find_one(
-                self.students_collection,
-                {"enrollment_no": student_enrollment},
-                {"name": 1, "email": 1, "department": 1}
+            # Get student info from registration document (more reliable than separate query)
+            student_data = registration.get("student", {})
+            
+            # Get registration_id from multiple possible locations in registration document
+            reg_id = (
+                registration.get("registration", {}).get("registration_id") or 
+                registration.get("registration", {}).get("additional_data", {}).get("registration_id") or
+                registration.get("registration_id")  # Some old documents might have it at root
             )
+            
+            if not reg_id and registration.get("_id"):
+                # Last resort: generate from MongoDB _id
+                reg_id = f"REG_{str(registration['_id'])[:8].upper()}"
             
             # Create feedback document
             feedback_document = {
@@ -231,11 +249,11 @@ class EventFeedbackService:
                 "event_id": event_id,
                 "event_name": event["event_name"],
                 "student_enrollment": student_enrollment,
-                "registration_id": registration["registration_details"]["registration_id"],
+                "registration_id": reg_id or "N/A",
                 "student_info": {
-                    "name": student.get("name", "") if student else "",
-                    "email": student.get("email", "") if student else "",
-                    "department": student.get("department", "") if student else ""
+                    "name": student_data.get("name", ""),
+                    "email": student_data.get("email", ""),
+                    "department": student_data.get("department", "")
                 },
                 "responses": feedback_responses,
                 "submitted_at": datetime.utcnow(),
@@ -245,22 +263,23 @@ class EventFeedbackService:
             
             # Insert feedback document
             feedback_id = await DatabaseOperations.insert_one(
-                self.feedbacks_collection,
+                self.student_feedbacks_collection,
                 feedback_document
             )
             
             if feedback_id:
                 # Update registration to mark feedback as submitted
+                # Registration model uses: student.enrollment_no and event.event_id
                 await DatabaseOperations.update_one(
                     self.registrations_collection,
                     {
-                        "event_info.event_id": event_id,
-                        "student_info.enrollment_no": student_enrollment
+                        "event.event_id": event_id,
+                        "student.enrollment_no": student_enrollment
                     },
                     {
                         "$set": {
-                            "feedback_info.submitted": True,
-                            "feedback_info.submitted_at": datetime.utcnow()
+                            "feedback.submitted": True,
+                            "feedback.submitted_at": datetime.utcnow()
                         }
                     }
                 )
@@ -289,7 +308,7 @@ class EventFeedbackService:
         event_id: str,
         student_enrollment: str,
         feedback_responses: Dict[str, Any],
-        test_registration_id: str = None
+        test_registration_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Submit test feedback for an event (bypasses eligibility checks)"""
         try:
@@ -336,7 +355,7 @@ class EventFeedbackService:
             
             # Insert feedback document
             feedback_id = await DatabaseOperations.insert_one(
-                self.feedbacks_collection,
+                self.student_feedbacks_collection,
                 feedback_document
             )
             
@@ -389,25 +408,23 @@ class EventFeedbackService:
             # Collect feedback from both collections
             all_feedbacks = []
             
-            # Get student feedbacks if applicable
-            if target_audience.get("students", False):
-                student_feedbacks = await DatabaseOperations.find_many(
-                    self.student_feedbacks_collection,
-                    {"event_id": event_id},
-                    projection={"_id": 0},
-                    sort_by=[("submitted_at", -1)]
-                )
-                all_feedbacks.extend(list(student_feedbacks))
+            # Always get student feedbacks (no target_audience check needed for feedback viewing)
+            student_feedbacks = await DatabaseOperations.find_many(
+                self.student_feedbacks_collection,
+                {"event_id": event_id},
+                projection={"_id": 0},
+                sort_by=[("submitted_at", -1)]
+            )
+            all_feedbacks.extend(list(student_feedbacks))
             
-            # Get faculty feedbacks if applicable
-            if target_audience.get("faculty", False):
-                faculty_feedbacks = await DatabaseOperations.find_many(
-                    self.faculty_feedbacks_collection,
-                    {"event_id": event_id},
-                    projection={"_id": 0},
-                    sort_by=[("submitted_at", -1)]
-                )
-                all_feedbacks.extend(list(faculty_feedbacks))
+            # Always get faculty feedbacks (no target_audience check needed for feedback viewing)
+            faculty_feedbacks = await DatabaseOperations.find_many(
+                self.faculty_feedbacks_collection,
+                {"event_id": event_id},
+                projection={"_id": 0},
+                sort_by=[("submitted_at", -1)]
+            )
+            all_feedbacks.extend(list(faculty_feedbacks))
             
             # Sort all feedbacks by submitted_at (most recent first)
             all_feedbacks.sort(key=lambda x: x.get("submitted_at", datetime.min), reverse=True)
@@ -423,10 +440,16 @@ class EventFeedbackService:
             # Serialize datetime objects in feedbacks
             serialized_feedbacks = []
             for feedback in paginated_feedbacks:
+                # Safety check: ensure feedback is a dict
+                if not isinstance(feedback, dict):
+                    logger.warning(f"Skipping invalid feedback entry (not a dict): {type(feedback)}")
+                    continue
+                    
                 serialized_feedback = {}
                 for key, value in feedback.items():
                     if isinstance(value, datetime):
-                        serialized_feedback[key] = value.isoformat()
+                        # Add 'Z' suffix to indicate UTC timezone
+                        serialized_feedback[key] = value.isoformat() + 'Z' if not value.isoformat().endswith('Z') else value.isoformat()
                     else:
                         serialized_feedback[key] = value
                 serialized_feedbacks.append(serialized_feedback)
@@ -488,26 +511,19 @@ class EventFeedbackService:
             total_registrations = 0
             
             # Count student registrations if applicable
-            if target_audience.get("students", False):
-                student_registrations = await DatabaseOperations.count_documents(
-                    self.registrations_collection,
-                    {
-                        "event_info.event_id": event_id,
-                        "registration_details.status": "active"
-                    }
-                )
-                total_registrations += student_registrations
+            # Registration model uses: event.event_id (not event_info.event_id)
+            student_registrations = await DatabaseOperations.count_documents(
+                self.registrations_collection,
+                {"event.event_id": event_id}
+            )
+            total_registrations += student_registrations
             
-            # Count faculty registrations if applicable
-            if target_audience.get("faculty", False):
-                faculty_registrations = await DatabaseOperations.count_documents(
-                    self.faculty_registrations_collection,
-                    {
-                        "event_info.event_id": event_id,
-                        "registration_details.status": "active"
-                    }
-                )
-                total_registrations += faculty_registrations
+            # Count faculty registrations if applicable  
+            faculty_registrations = await DatabaseOperations.count_documents(
+                self.faculty_registrations_collection,
+                {"event.event_id": event_id}
+            )
+            total_registrations += faculty_registrations
             
             # Get feedback responses from both collections
             student_feedbacks = await DatabaseOperations.find_many(
@@ -634,15 +650,21 @@ class EventFeedbackService:
     ) -> Dict[str, Any]:
         """Check if student is eligible to submit feedback"""
         try:
-            # Check if student is registered for the event
+            logger.info(f"Checking eligibility for student {student_enrollment} in event {event_id}")
+            
+            # Check if student is registered for the event (any status accepted for feedback)
+            # Registration model uses: student.enrollment_no and event.event_id
             registration = await DatabaseOperations.find_one(
                 self.registrations_collection,
                 {
-                    "event_info.event_id": event_id,
-                    "student_info.enrollment_no": student_enrollment,
-                    "registration_details.status": "active"
+                    "event.event_id": event_id,
+                    "student.enrollment_no": student_enrollment
                 }
             )
+            
+            logger.info(f"Registration found: {registration is not None}")
+            if registration:
+                logger.info(f"Registration data: {registration.get('registration', {}).get('registration_id')} - Status: {registration.get('registration', {}).get('status')}")
             
             if not registration:
                 return {
@@ -653,7 +675,7 @@ class EventFeedbackService:
             
             # Check if feedback already submitted
             existing_feedback = await DatabaseOperations.find_one(
-                self.feedbacks_collection,
+                self.student_feedbacks_collection,
                 {
                     "event_id": event_id,
                     "student_enrollment": student_enrollment
