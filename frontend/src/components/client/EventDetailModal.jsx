@@ -403,7 +403,8 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                           <p><strong>Rating:</strong> <span className="text-lg">{'⭐'.repeat(selectedEventDetail.feedback.rating)}</span> ({selectedEventDetail.feedback.rating}/5)</p>
                         )}
                         {selectedEventDetail.feedback.submitted_at && (
-                          <p><strong>Submitted:</strong> {new Date(selectedEventDetail.feedback.submitted_at).toLocaleString('en-US', {
+                          <p><strong>Submitted:</strong> {new Date(selectedEventDetail.feedback.submitted_at).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',

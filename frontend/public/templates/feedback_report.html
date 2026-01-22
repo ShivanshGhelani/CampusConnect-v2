@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{DOCUMENT_TITLE}}</title>
+  <style>
+    @page {
+      margin: 0.5in;
+      size: A4;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Arial', sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
+      color: #000;
+      background: white;
+    }
+    
+    .page-header {
+      text-align: center;
+      border-bottom: 3px solid #1f4e78;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      position: relative;
+    }
+    
+    .header-logos {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo-left {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    
+    .brand-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .brand-name .campus {
+      color: #000;
+    }
+    
+    .brand-name .connect {
+      color: #3b82f6;
+    }
+    
+    .event-id {
+      text-align: right;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #1f4e78;
+    }
+    
+    .event-title-header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 8px;
+    }
+    
+    .generated-info {
+      font-size: 10pt;
+      color: #666;
+      margin-top: 10px;
+    }
+    
+    .section {
+      margin-bottom: 25px;
+      border: 1px solid #d1d5db;
+      padding: 15px;
+      page-break-inside: avoid;
+    }
+    
+    .table-section {
+      margin-bottom: 25px;
+      padding: 0;
+      page-break-inside: avoid;
+      overflow: hidden;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin: -15px -15px 15px -15px;
+    }
+    
+    .table-section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin: 0;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .info-item {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .info-label {
+      font-weight: bold;
+      color: #374151;
+      margin-right: 8px;
+    }
+    
+    .info-value {
+      color: #6b7280;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .stat-box {
+      text-align: center;
+      padding: 15px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+    }
+    
+    .stat-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1f4e78;
+      display: block;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 5px;
+    }
+    
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 12px;
+      background: #fffbeb;
+      margin-bottom: 8px;
+      border-left: 4px solid #fbbf24;
+    }
+    
+    .rating-row:first-child {
+      margin-top: 0;
+    }
+    
+    .rating-label {
+      font-weight: bold;
+      flex: 1;
+      color: #374151;
+    }
+    
+    .rating-stars {
+      color: #fbbf24;
+      font-size: 18px;
+      letter-spacing: 2px;
+    }
+    
+    .rating-value {
+      font-weight: bold;
+      color: #1f4e78;
+      font-size: 14px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+    
+    th {
+      background: #1f4e78;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      font-size: 10px;
+    }
+    
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    
+    .response-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 0;
+      padding: 15px;
+    }
+    
+    .response-card {
+      border: 1px solid #d1d5db;
+      page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .response-header {
+      background: #1f4e78;
+      color: white;
+      padding: 10px;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+    
+    .response-name {
+      font-weight: bold;
+      font-size: 11px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .response-meta {
+      font-size: 9px;
+      opacity: 0.9;
+    }
+    
+    .response-table {
+      margin: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+    
+    .response-table td {
+      border: 1px solid #d1d5db;
+      word-wrap: break-word;
+    }
+    
+    .response-table .question {
+      font-weight: bold;
+      background: #f3f4f6;
+      width: 35%;
+      color: #374151;
+    }
+    
+    .response-table .answer {
+      width: 65%;
+    }
+    
+    .stars {
+      color: #fbbf24;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #1f4e78;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    @media print {
+      .section {
+        break-inside: avoid;
+      }
+      
+      .response-card {
+        break-inside: avoid;
+      }
+      
+      .response-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-logos">
+      <div class="logo-section">
+        <img src="{{LOGO_URL}}" alt="Logo" class="logo-left">
+        <div class="brand-name">
+          <span class="campus">Campus</span><span class="connect">Connect</span>
+        </div>
+      </div>
+      <div class="event-id">Event ID: {{EVENT_ID}}</div>
+    </div>
+    <h1>Feedback Analysis Report</h1>
+    <div class="event-title-header">{{EVENT_NAME}}</div>
+    <div class="generated-info">Generated on: {{GENERATION_DATE}}</div>
+  </div>
+
+  <!-- Event Information -->
+  <div class="section">
+    <div class="section-title">Event Information</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-label">Event Name:</span>
+        <span class="info-value">{{EVENT_NAME}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Event ID:</span>
+        <span class="info-value">{{EVENT_ID}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Organizer:</span>
+        <span class="info-value">{{ORGANIZER}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Department/Club:</span>
+        <span class="info-value">{{DEPARTMENT_CLUB}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Start Date:</span>
+        <span class="info-value">{{START_DATE}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">End Date:</span>
+        <span class="info-value">{{END_DATE}}</span>
+      </div>
+      <div class="info-item" style="grid-column: span 2;">
+        <span class="info-label">Venue:</span>
+        <span class="info-value">{{VENUE}}</span>
+      </div>
+      <div class="info-item" style="grid-column: span 2;">
+        <span class="info-label">Description:</span>
+        <span class="info-value">{{SHORT_DESCRIPTION}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics & Overall Ratings -->
+  <div class="section">
+    <div class="section-title">Statistics & Overall Ratings</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <span class="stat-number">{{TOTAL_REGISTRATIONS}}</span>
+        <span class="stat-label">Total Registrations</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number">{{ATTENDANCE_COUNT}}</span>
+        <span class="stat-label">Attendance Marked</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number">{{TOTAL_RESPONSES}}</span>
+        <span class="stat-label">Feedback Responses</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number">{{RESPONSE_RATE}}%</span>
+        <span class="stat-label">Response Rate</span>
+      </div>
+    </div>
+    <div style="margin-top: 20px;">
+      {{RATINGS_HTML}}
+    </div>
+  </div>
+
+  <!-- Feedback Summary Table -->
+  <div class="table-section">
+    <div class="table-section-title">Feedback Summary</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ID</th>
+          <th>Reg ID</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Submitted</th>
+          <th>Rating</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{TABLE_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detailed Responses -->
+  <div class="table-section">
+    <div class="table-section-title">Detailed Responses</div>
+    <div class="response-grid">
+      {{DETAILED_RESPONSES}}
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>This report was generated automatically by CampusConnect Event Management System</p>
+    <p>Report Date: {{GENERATION_DATE}}</p>
+    <p>© {{CURRENT_YEAR}} - All Rights Reserved</p>
+  </div>
+</body>
+</html>

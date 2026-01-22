@@ -5,6 +5,8 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FeedbackResponseCard from '../../components/admin/FeedbackResponseCard';
 import { adminAPI } from '../../api/admin';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   ArrowLeft, 
   Settings, 
@@ -176,12 +178,201 @@ function Feedbacks() {
 
   const handleExportData = async () => {
     try {
-      // This could be implemented as a CSV/Excel export
-      alert('Export functionality will be implemented here');
-    } catch (error) {
+      if (!event || !event.feedback_form || allResponses.length === 0) {
+        alert('No feedback data available to export');
+        return;
+      }
+
+      // Fetch HTML template
+      const templateResponse = await fetch('/templates/feedback_report.html');
+      let htmlTemplate = await templateResponse.text();
       
-      alert('Failed to export data');
+      // Replace placeholders with actual data
+      htmlTemplate = populateTemplate(htmlTemplate);
+      
+      // Create a new window for PDF generation
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlTemplate);
+      printWindow.document.close();
+      
+      // Wait for content to load then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export feedback data. Please try again.');
     }
+  };
+
+  const populateTemplate = (template) => {
+    const genDate = new Date().toLocaleDateString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    
+    const responseRate = event.feedback_analytics?.summary?.response_rate || 
+                        (event.registrations_count > 0 ? Math.round((allResponses.length / event.registrations_count) * 100) : 0);
+    
+    const startDate = event.start_datetime ? new Date(event.start_datetime).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : 'N/A';
+    
+    const endDate = event.end_datetime ? new Date(event.end_datetime).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : 'N/A';
+
+    // Format organizer details
+    let organizerInfo = 'N/A';
+    if (event.organizer_details && event.organizer_details.length > 0) {
+      organizerInfo = event.organizer_details
+        .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+        .join(' | ');
+    } else if (event.contacts && event.contacts.length > 0) {
+      organizerInfo = event.contacts[0].name;
+    }
+
+    // Generate ratings HTML
+    let ratingsHTML = '';
+    if (event.feedback_analytics?.element_analytics) {
+      Object.entries(event.feedback_analytics.element_analytics).forEach(([elementId, analytics]) => {
+        if (analytics.type === 'rating' && analytics.average && typeof analytics.average === 'number') {
+          const rating = Math.round(analytics.average);
+          const filledStars = '★'.repeat(rating);
+          const emptyStars = '☆'.repeat(5 - rating);
+          ratingsHTML += `
+            <div class="rating-row">
+              <span class="rating-label">${analytics.label || 'Rating'}</span>
+              <span class="rating-stars">${filledStars}${emptyStars}</span>
+              <span class="rating-value">${analytics.average.toFixed(1)}/5</span>
+            </div>
+          `;
+        }
+      });
+    }
+    
+    if (!ratingsHTML) {
+      ratingsHTML = '<p style="padding: 10px; color: #666;">No rating data available</p>';
+    }
+
+    // Generate table rows
+    let tableRows = '';
+    allResponses.forEach((response, index) => {
+      const rating = event.feedback_form?.elements?.find(el => el.type === 'rating' || el.type === 'star_rating');
+      const ratingValue = rating ? (response.responses?.[rating.id] || 'N/A') : 'N/A';
+      const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+      const submitTime = new Date(response.submitted_at).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      tableRows += `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${enrollmentId}</td>
+          <td>${response.registration_id || 'N/A'}</td>
+          <td>${response.student_info?.name || response.faculty_info?.name || 'Anonymous'}</td>
+          <td>${response.student_info?.department || response.faculty_info?.department || 'N/A'}</td>
+          <td>${submitTime}</td>
+          <td>${ratingValue !== 'N/A' ? `${ratingValue}/5` : 'N/A'}</td>
+        </tr>
+      `;
+    });
+
+    // Generate detailed responses
+    let detailedResponses = '';
+    allResponses.forEach((response, index) => {
+      const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+      const respondent = response.student_info?.name || response.faculty_info?.name || 'Anonymous';
+      const submitTime = new Date(response.submitted_at).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      let qaHTML = '';
+      if (event.feedback_form?.elements && response.responses) {
+        event.feedback_form.elements.forEach(element => {
+          const value = response.responses[element.id];
+          if (value !== null && value !== undefined && value !== '') {
+            let displayValue = value;
+            if (element.type === 'rating' || element.type === 'star_rating') {
+              const filledStars = '★'.repeat(parseInt(value));
+              const emptyStars = '☆'.repeat(5 - parseInt(value));
+              displayValue = `${value}/5 <span class="stars">${filledStars}${emptyStars}</span>`;
+            } else if (Array.isArray(value)) {
+              displayValue = value.join(', ');
+            } else {
+              displayValue = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            qaHTML += `
+              <tr>
+                <td class="question">${element.label || element.id}</td>
+                <td class="answer">${displayValue}</td>
+              </tr>
+            `;
+          }
+        });
+      }
+
+      detailedResponses += `
+        <div class="response-card">
+          <div class="response-header">
+            <span class="response-name">#${index + 1} - ${respondent}</span>
+            <div class="response-meta">ID: ${enrollmentId} | Reg: ${response.registration_id || 'N/A'}<br>${submitTime}</div>
+          </div>
+          <table class="response-table">
+            ${qaHTML}
+          </table>
+        </div>
+      `;
+    });
+
+    // Replace template placeholders
+    return template
+      .replace(/{{DOCUMENT_TITLE}}/g, `Feedback Report - ${event.event_name}`)
+      .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+      .replace(/{{EVENT_ID}}/g, eventId)
+      .replace(/{{EVENT_NAME}}/g, event.event_name)
+      .replace(/{{GENERATION_DATE}}/g, genDate)
+      .replace(/{{START_DATE}}/g, startDate)
+      .replace(/{{END_DATE}}/g, endDate)
+      .replace(/{{VENUE}}/g, event.venue || 'N/A')
+      .replace(/{{SHORT_DESCRIPTION}}/g, event.short_description || 'N/A')
+      .replace(/{{ORGANIZER}}/g, organizerInfo)
+      .replace(/{{DEPARTMENT_CLUB}}/g, event.organizing_department || 'N/A')
+      .replace(/{{TOTAL_REGISTRATIONS}}/g, event.registrations_count || 0)
+      .replace(/{{ATTENDANCE_COUNT}}/g, event.event_stats?.attendance_marked || 0)
+      .replace(/{{TOTAL_RESPONSES}}/g, allResponses.length)
+      .replace(/{{RESPONSE_RATE}}/g, responseRate)
+      .replace(/{{RATINGS_HTML}}/g, ratingsHTML)
+      .replace(/{{TABLE_ROWS}}/g, tableRows)
+      .replace(/{{DETAILED_RESPONSES}}/g, detailedResponses)
+      .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
   };
 
   const ActionButton = ({ onClick, variant = 'secondary', icon: Icon, children, disabled = false, className = "" }) => {
