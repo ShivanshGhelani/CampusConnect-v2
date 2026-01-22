@@ -217,7 +217,7 @@ function EventDetail() {
       await fetchEventDetails();
     } catch (error) {
       setError('Failed to refresh data');
-      
+
     } finally {
       setIsLoading(false);
     }
@@ -228,7 +228,7 @@ function EventDetail() {
       setIsLoading(true);
       setError('');
 
-      
+
 
       // Use cached batch fetch to prevent duplicate API calls
       const allData = await fetchAllEventDataWithCache(eventId, adminAPI, {
@@ -241,7 +241,7 @@ function EventDetail() {
       // Process event details
       if (allData.event?.success) {
         setEvent(allData.event.event);
-        
+
       } else {
         throw new Error(allData.event?.message || 'Failed to fetch event details');
       }
@@ -279,9 +279,9 @@ function EventDetail() {
         };
 
         setAttendanceStats(validatedStats);
-        
+
       } else {
-        
+
       }
 
       // Process recent participants/registrations
@@ -360,7 +360,7 @@ function EventDetail() {
       }
     } catch (error) {
       setError('Failed to load event details');
-      
+
     } finally {
       setIsLoading(false);
     }
@@ -387,7 +387,7 @@ function EventDetail() {
       });
       setCertificateModalOpen(true);
     } catch (error) {
-      
+
       // Fallback to original URL if fetch fails
       setCurrentCertificateTemplate({
         url: templateUrl,
@@ -529,7 +529,7 @@ function EventDetail() {
         setAllRegistrations([]);
       }
     } catch (error) {
-      
+
       setAllRegistrations([]);
     } finally {
       setModalLoading(false);
@@ -627,19 +627,19 @@ function EventDetail() {
   const handleEventReportGeneration = async (reportData) => {
     try {
       setError(''); // Clear any previous errors
-      
+
       // Generate event report with uploaded data
       const response = await adminAPI.generateEventReport(eventId, {
         ...reportData,
         format: 'html'
       });
-      
+
       if (response.data) {
         // Open the generated report in a new window
         const newWindow = window.open('', '_blank');
         newWindow.document.write(response.data);
         newWindow.document.close();
-        
+
         // Optional: Trigger print dialog after a short delay
         setTimeout(() => {
           newWindow.print();
@@ -647,7 +647,7 @@ function EventDetail() {
       } else {
         throw new Error('No report data received');
       }
-      
+
     } catch (error) {
       console.error('Error generating event report:', error);
       setError('Failed to generate event report. Please try again.');
@@ -688,40 +688,40 @@ function EventDetail() {
   // Helper function to check if attendance can be taken (3 hours before event start)
   const canTakeAttendanceNow = () => {
     if (isSuperAdmin) return true; // Super admin can always take attendance
-    
+
     if (!event?.start_date || !event?.start_time) return false;
-    
+
     try {
       // Combine start_date and start_time to create event start datetime
       // Ensure proper format handling for different date/time formats
       const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
       const timeStr = event.start_time;
       const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
-      
+
       // Validate the date
       if (isNaN(eventStartDateTime.getTime())) {
         console.error('Invalid event start date/time:', event.start_date, event.start_time);
         return false;
       }
-      
+
       const currentTime = new Date();
-      
+
       // Calculate time difference in milliseconds
       const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
-      
+
       // Convert 3 hours to milliseconds (3 * 60 * 60 * 1000)
       const threeHoursInMs = 3 * 60 * 60 * 1000;
-      
+
       // Allow attendance if current time is within 3 hours of event start (or after event has started)
       const canTake = timeDifference <= threeHoursInMs;
-      
+
       console.log('Attendance availability check:', {
         eventStart: eventStartDateTime.toLocaleString(),
         currentTime: currentTime.toLocaleString(),
         timeDifference: Math.round(timeDifference / (1000 * 60)) + ' minutes',
         canTakeAttendance: canTake
       });
-      
+
       return canTake;
     } catch (error) {
       console.error('Error calculating attendance availability:', error);
@@ -732,37 +732,37 @@ function EventDetail() {
   // Helper function to get attendance availability message
   const getAttendanceAvailabilityMessage = () => {
     if (isSuperAdmin) return null; // Super admin doesn't need this message
-    
+
     if (!event?.start_date || !event?.start_time) return "Event start time not set";
-    
+
     try {
       // Ensure proper format handling for different date/time formats
       const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
       const timeStr = event.start_time;
       const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
-      
+
       // Validate the date
       if (isNaN(eventStartDateTime.getTime())) {
         return "Invalid event start time";
       }
-      
+
       const currentTime = new Date();
       const timeDifference = eventStartDateTime.getTime() - currentTime.getTime();
       const threeHoursInMs = 3 * 60 * 60 * 1000;
-      
+
       if (timeDifference <= threeHoursInMs) {
         return null; // Attendance is available
       }
-      
+
       // Calculate when attendance will be available (3 hours before event)
       const attendanceAvailableTime = new Date(eventStartDateTime.getTime() - threeHoursInMs);
       const timeUntilAvailable = attendanceAvailableTime.getTime() - currentTime.getTime();
-      
+
       if (timeUntilAvailable > 0) {
         const daysUntil = Math.floor(timeUntilAvailable / (1000 * 60 * 60 * 24));
         const hoursUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutesUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         if (daysUntil > 0) {
           return `Attendance will be available in ${daysUntil}d ${hoursUntil}h (3 hours before event start)`;
         } else if (hoursUntil > 0) {
@@ -771,7 +771,7 @@ function EventDetail() {
           return `Attendance will be available in ${minutesUntil} minutes`;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error calculating attendance message:', error);
@@ -939,10 +939,10 @@ function EventDetail() {
                 onClick={() => {
                   // Navigate to feedback management page with registration data
                   navigate(`/admin/events/${eventId}/feedback`, {
-                    state: { 
+                    state: {
                       registrations_count: eventStats?.registrations_count || allRegistrations?.length || 0,
                       event_data: event,
-                      event_stats: eventStats 
+                      event_stats: eventStats
                     }
                   });
                 }}
@@ -1036,12 +1036,12 @@ function EventDetail() {
                               try {
                                 // Generate budget report
                                 const response = await adminAPI.generateBudgetReport(eventId, { format: 'html' });
-                                
+
                                 // Open in new window for printing/downloading
                                 const newWindow = window.open('', '_blank');
                                 newWindow.document.write(response.data);
                                 newWindow.document.close();
-                                
+
                               } catch (error) {
                                 console.error('Error generating budget report:', error);
                                 alert('Failed to generate budget report. Please try again.');
@@ -1059,17 +1059,17 @@ function EventDetail() {
                               try {
                                 // Generate sign sheet PDF
                                 const response = await adminAPI.generateSignSheet(eventId, { format: 'html' });
-                                
+
                                 // Open in new window for printing/downloading
                                 const newWindow = window.open('', '_blank');
                                 newWindow.document.write(response.data);
                                 newWindow.document.close();
-                                
+
                                 // Optional: Trigger print dialog
                                 setTimeout(() => {
                                   newWindow.print();
                                 }, 1000);
-                                
+
                               } catch (error) {
                                 console.error('Error generating sign sheet:', error);
                                 alert('Failed to generate sign sheet. Please try again.');
@@ -1087,12 +1087,12 @@ function EventDetail() {
                               try {
                                 // Generate attendance report
                                 const response = await adminAPI.generateAttendanceReport(eventId, { format: 'html' });
-                                
+
                                 // Open in new window for printing/downloading
                                 const newWindow = window.open('', '_blank');
                                 newWindow.document.write(response.data);
                                 newWindow.document.close();
-                                
+
                               } catch (error) {
                                 console.error('Error generating attendance report:', error);
                                 alert('Failed to generate attendance report. Please try again.');
@@ -1110,12 +1110,12 @@ function EventDetail() {
                               try {
                                 // Generate feedback report
                                 const response = await adminAPI.generateFeedbackReport(eventId, { format: 'html' });
-                                
+
                                 // Open in new window for printing/downloading
                                 const newWindow = window.open('', '_blank');
                                 newWindow.document.write(response.data);
                                 newWindow.document.close();
-                                
+
                               } catch (error) {
                                 console.error('Error generating feedback report:', error);
                                 alert('Failed to generate feedback report. Please try again.');
@@ -1154,7 +1154,7 @@ function EventDetail() {
                 )}
               </div>
 
-              
+
               {/* Mobile/Tablet: More Actions Dropdown */}
               <div className="relative lg:hidden">
                 <ActionButton
@@ -1202,7 +1202,7 @@ function EventDetail() {
 
           {/* Statistics Cards */}
           {eventStats && recentRegistrations && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ">
               <div className="bg-white rounded-lg stats-card border-l-4 border-blue-500 p-6 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -1235,7 +1235,7 @@ function EventDetail() {
               </div>
 
               <div
-                className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:bg-purple-50"
+                className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300"
                 onClick={handleViewAttendanceBreakdown}
                 title="Click to view detailed attendance breakdown"
               >
@@ -1250,32 +1250,23 @@ function EventDetail() {
                       <p className="text-gray-500 text-sm font-medium">
                         Attendance Count
                       </p>
-                      <p className="text-2xl font-bold text-gray-800">
-                        {attendanceStats ? 
-                          (attendanceStats.present_count + (attendanceStats.partial_count || 0)) : 
+                      <p className="text-2xl flex flex-col font-bold text-gray-800">
+                        {attendanceStats ?
+                          (attendanceStats.present_count + (attendanceStats.partial_count || 0)) :
                           (eventStats?.attendance_count || 0)
                         }
+                        
+                        <span className="text-green-600  text-xs font-medium">
+                          {attendanceStats ?
+                            `${attendanceStats.attendance_percentage || 0}% Attendance Rate` :
+                            `${eventStats.attendance_count && eventStats.registrations_count ?
+                              Math.round((eventStats.attendance_count / eventStats.registrations_count) * 100) :
+                              0
+                            }% Attendance Rate`
+                          }
+                        </span>
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {attendanceStats ? (
-                          <>
-                            {attendanceStats.attendance_percentage}% attendance rate
-                            <br />
-                            <span className="text-green-600 font-medium">
-                              {attendanceStats.present_count} present
-                              {attendanceStats.partial_count > 0 && ` • ${attendanceStats.partial_count} partial`}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            {eventStats?.registrations_count > 0 ?
-                              `${Math.round((eventStats.attendance_count / eventStats.registrations_count) * 100)}% attendance rate` :
-                              '0% attendance rate'
-                            }
-                            <br />
-                          </>
-                        )}
-                      </p>
+                     
                     </div>
                   </div>
                   <div className="text-purple-500">
@@ -1641,7 +1632,7 @@ function EventDetail() {
                   {event.detailed_description && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <div className="text-sm font-medium text-gray-600 mb-2">Description</div>
-                      <RichTextDisplay 
+                      <RichTextDisplay
                         content={event.detailed_description}
                         className="text-sm"
                         maxLength={300}
@@ -2248,6 +2239,7 @@ function EventDetail() {
                         size="md"
                       />
                       <Dropdown
+                      size='sm'
                         options={[
                           { value: "all", label: "All Registrations" },
                           { value: "attended", label: "Attended Only" },
@@ -2486,7 +2478,7 @@ function EventDetail() {
             </div>
           )}
 
-          
+
 
           {/* Event Poster Modal */}
           {posterModalOpen && (
@@ -2563,7 +2555,7 @@ function EventDetail() {
                 title={`${currentCertificateTemplate.type} Certificate Template`}
                 className="w-full h-full border-0 bg-white"
                 onError={() => {
-                  
+
                 }}
               />
             </div>
