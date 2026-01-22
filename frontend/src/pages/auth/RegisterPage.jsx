@@ -384,7 +384,7 @@ function RegisterPage() {
       }
       case 'employee_id': {
         if (!validators.facultyId(value)) {
-          error = 'Faculty ID must be 6-12 alphanumeric characters';
+          error = 'Faculty ID must be 3-8 characters (letters, numbers, or both)';
         }
         break;
       }

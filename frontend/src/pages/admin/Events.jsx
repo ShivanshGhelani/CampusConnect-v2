@@ -9,7 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 
 function Events() {
   const navigate = useNavigate();
-  const { user, transitionToOrganizerAdmin } = useAuth();
+
+  const { user, logout, transitionBackToFaculty, transitionToOrganizerAdmin } = useAuth();
   const [events, setEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]); // Store all events for client-side filtering
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +38,7 @@ function Events() {
           return true;
         }
       } catch (error) {
-        
+
       }
     }
     return false;
@@ -52,16 +53,16 @@ function Events() {
   const filteredEvents = useMemo(() => {
     let filtered = [...allEvents];
 
-        // Apply status filter
-        if (currentFilter !== 'all') {
-          if (currentFilter === 'pending_approval') {
-            // Special case: filter by event_approval_status for pending approval
-            filtered = filtered.filter(event => event.event_approval_status === 'pending_approval');
-          } else {
-            // Normal case: filter by status
-            filtered = filtered.filter(event => event.status === currentFilter);
-          }
-        }    // Apply audience filter
+    // Apply status filter
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'pending_approval') {
+        // Special case: filter by event_approval_status for pending approval
+        filtered = filtered.filter(event => event.event_approval_status === 'pending_approval');
+      } else {
+        // Normal case: filter by status
+        filtered = filtered.filter(event => event.status === currentFilter);
+      }
+    }    // Apply audience filter
     if (audienceFilter !== 'all') {
       filtered = filtered.filter(event => event.target_audience === audienceFilter);
     }
@@ -91,16 +92,16 @@ function Events() {
   // Enhanced page change handler with smooth scroll
   const handlePageChange = (newPage) => {
     if (newPage === currentPage) return;
-    
+
     setIsChangingPage(true);
     setCurrentPage(newPage);
-    
+
     // Smooth scroll to events grid
     setTimeout(() => {
       const eventsGrid = document.querySelector('.grid');
       if (eventsGrid) {
-        eventsGrid.scrollIntoView({ 
-          behavior: 'smooth', 
+        eventsGrid.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -117,7 +118,7 @@ function Events() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
+
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
         handlePageChange(currentPage - 1);
@@ -172,7 +173,7 @@ function Events() {
             return;
           }
         } catch (parseError) {
-          
+
           localStorage.removeItem(CACHE_KEY);
         }
       }
@@ -180,7 +181,7 @@ function Events() {
       // Fetch fresh data if cache is stale or missing
       await fetchEventsFromAPI();
     } catch (error) {
-      
+
       setError('Failed to load events');
       setIsLoading(false);
     }
@@ -190,13 +191,13 @@ function Events() {
   const fetchEventsFromAPI = async () => {
     try {
       // Fetch ALL events by setting a high limit for client-side pagination
-      const response = await adminAPI.getEvents({ 
-        status: 'all', 
+      const response = await adminAPI.getEvents({
+        status: 'all',
         target_audience: 'all',
         limit: 1000, // Request up to 1000 events
         page: 1
       });
-      
+
       if (response.data.success) {
         const eventsData = response.data.events || [];
         // Sort events by created_at in descending order (newest first)
@@ -207,7 +208,7 @@ function Events() {
         });
         setAllEvents(sortedEvents);
         setError('');
-        
+
         // Cache the data in localStorage
         const cacheData = {
           events: eventsData,
@@ -219,7 +220,7 @@ function Events() {
         throw new Error(response.data.message || 'Failed to fetch events');
       }
     } catch (error) {
-      
+
       setError('Failed to load events');
     } finally {
       setIsLoading(false);
@@ -283,7 +284,7 @@ function Events() {
     return counts;
   };
 
-const formatDate = (dateString) => {
+  const formatDate = (dateString) => {
     const date = new Date(dateString);
     return {
       dateOnly: date.toLocaleDateString('en-US', {
@@ -330,7 +331,7 @@ const formatDate = (dateString) => {
         alert(`Failed to approve event: ${response.data.message}`);
       }
     } catch (error) {
-      
+
       alert(`Error approving event: ${error.response?.data?.detail || error.message}`);
     }
   };
@@ -355,7 +356,7 @@ const formatDate = (dateString) => {
         alert(`Failed to decline event: ${response.data.message}`);
       }
     } catch (error) {
-      
+
       alert(`Error declining event: ${error.response?.data?.detail || error.message}`);
     }
   };
@@ -363,23 +364,23 @@ const formatDate = (dateString) => {
   // Helper function to check if user can approve/decline events
   const canApproveDecline = (event) => {
     if (!user) return false;
-    
+
     // Only pending approval events can be approved/declined
     if (event.event_approval_status !== 'pending_approval') {
       return false;
     }
-    
+
     // Super Admin can approve/decline any pending event
     if (user.role === 'super_admin') {
       return true;
     }
-    
+
     // Organizer Admin can approve/decline events assigned to them
     if (user.role === 'organizer_admin') {
       const facultyOrganizers = event.faculty_organizers || [];
       return user.employee_id && facultyOrganizers.includes(user.employee_id);
     }
-    
+
     return false;
   };
 
@@ -406,12 +407,12 @@ const formatDate = (dateString) => {
                 {user && user.role === 'organizer_admin' ? 'My Assigned Events' : 'Events Management'}
               </h1>
               <p className="text-gray-600">
-                {user && user.role === 'organizer_admin' 
-                  ? 'Manage the events assigned to you' 
+                {user && user.role === 'organizer_admin'
+                  ? 'Manage the events assigned to you'
                   : 'Manage and monitor all campus events'
                 }
               </p>
-              
+
             </div>
             {user && ['super_admin', 'executive_admin'].includes(user.role) && (
               <div className="flex items-center space-x-3">
@@ -425,7 +426,7 @@ const formatDate = (dateString) => {
               </div>
             )}
           </div>
-          
+
           {/* Quick Stats */}
           {events.length > 0 && (
             <div className="mt-6 pt-6 border-t border-blue-200">
@@ -479,35 +480,35 @@ const formatDate = (dateString) => {
                   )}
                 </div>
               </div>
-              
+
               {/* Audience Statistics - Only show if there are events with audience data */}
-              {(events.filter(event => event.target_audience === 'student').length > 0 || 
-                events.filter(event => event.target_audience === 'faculty').length > 0 || 
+              {(events.filter(event => event.target_audience === 'student').length > 0 ||
+                events.filter(event => event.target_audience === 'faculty').length > 0 ||
                 events.filter(event => event.target_audience === 'both').length > 0) && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Audience Distribution (filtered):</span>
-                  <div className="flex items-center space-x-6">
-                    {events.filter(event => event.target_audience === 'student').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                        <span className="text-emerald-600 font-medium">{events.filter(event => event.target_audience === 'student').length} Student</span>
-                      </div>
-                    )}
-                    {events.filter(event => event.target_audience === 'faculty').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                        <span className="text-indigo-600 font-medium">{events.filter(event => event.target_audience === 'faculty').length} Faculty</span>
-                      </div>
-                    )}
-                    {events.filter(event => event.target_audience === 'both').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
-                        <span className="text-cyan-600 font-medium">{events.filter(event => event.target_audience === 'both').length} Both</span>
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Audience Distribution (filtered):</span>
+                    <div className="flex items-center space-x-6">
+                      {events.filter(event => event.target_audience === 'student').length > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                          <span className="text-emerald-600 font-medium">{events.filter(event => event.target_audience === 'student').length} Student</span>
+                        </div>
+                      )}
+                      {events.filter(event => event.target_audience === 'faculty').length > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                          <span className="text-indigo-600 font-medium">{events.filter(event => event.target_audience === 'faculty').length} Faculty</span>
+                        </div>
+                      )}
+                      {events.filter(event => event.target_audience === 'both').length > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
+                          <span className="text-cyan-600 font-medium">{events.filter(event => event.target_audience === 'both').length} Both</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           )}
         </div>
@@ -519,35 +520,32 @@ const formatDate = (dateString) => {
             <span className="text-sm font-medium text-gray-700 mr-2">Filter by Status:</span>
             <button
               onClick={() => setCurrentFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                currentFilter === 'all' 
-                  ? 'bg-blue-600 text-white shadow-md' 
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+                }`}
             >
               <i className="fas fa-list mr-1"></i> All Events
             </button>
             {statusCounts.ongoing > 0 && (
               <button
                 onClick={() => setCurrentFilter('ongoing')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentFilter === 'ongoing' 
-                    ? 'bg-green-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'ongoing'
+                    ? 'bg-green-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
-                <i className={`fas fa-circle ${currentFilter === 'ongoing' ? 'text-white animate-pulse' : 'text-green-500'} mr-1`}></i> 
+                <i className={`fas fa-circle ${currentFilter === 'ongoing' ? 'text-white animate-pulse' : 'text-green-500'} mr-1`}></i>
                 Live / Ongoing ({statusCounts.ongoing})
               </button>
             )}
             {statusCounts.upcoming > 0 && (
               <button
                 onClick={() => setCurrentFilter('upcoming')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentFilter === 'upcoming' 
-                    ? 'bg-blue-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'upcoming'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <i className="fas fa-clock mr-1"></i> Upcoming ({statusCounts.upcoming})
               </button>
@@ -555,11 +553,10 @@ const formatDate = (dateString) => {
             {statusCounts.pending_approval > 0 && (
               <button
                 onClick={() => setCurrentFilter('pending_approval')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentFilter === 'pending_approval' 
-                    ? 'bg-orange-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'pending_approval'
+                    ? 'bg-orange-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <i className="fas fa-hourglass-half mr-1"></i> Pending Approval ({statusCounts.pending_approval})
               </button>
@@ -567,11 +564,10 @@ const formatDate = (dateString) => {
             {statusCounts.completed > 0 && (
               <button
                 onClick={() => setCurrentFilter('completed')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentFilter === 'completed' 
-                    ? 'bg-gray-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'completed'
+                    ? 'bg-gray-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <i className="fas fa-check-circle mr-1"></i> Completed ({statusCounts.completed})
               </button>
@@ -579,39 +575,36 @@ const formatDate = (dateString) => {
             {statusCounts.cancelled > 0 && (
               <button
                 onClick={() => setCurrentFilter('cancelled')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentFilter === 'cancelled' 
-                    ? 'bg-red-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${currentFilter === 'cancelled'
+                    ? 'bg-red-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <i className="fas fa-ban mr-1"></i> Cancelled ({statusCounts.cancelled})
               </button>
             )}
           </div>
-          
+
           {/* Audience Filters - Only show if there are events with audience data */}
           {(audienceCounts.student > 0 || audienceCounts.faculty > 0 || audienceCounts.both > 0) && (
             <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200">
               <span className="text-sm font-medium text-gray-700 mr-2">Filter by Audience:</span>
               <button
                 onClick={() => setAudienceFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  audienceFilter === 'all' 
-                    ? 'bg-purple-600 text-white shadow-md' 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${audienceFilter === 'all'
+                    ? 'bg-purple-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <i className="fas fa-users mr-1"></i> All Audiences
               </button>
               {audienceCounts.student > 0 && (
                 <button
                   onClick={() => setAudienceFilter('student')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    audienceFilter === 'student' 
-                      ? 'bg-emerald-600 text-white shadow-md' 
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${audienceFilter === 'student'
+                      ? 'bg-emerald-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <i className="fas fa-graduation-cap mr-1"></i> Student Events ({audienceCounts.student})
                 </button>
@@ -619,11 +612,10 @@ const formatDate = (dateString) => {
               {audienceCounts.faculty > 0 && (
                 <button
                   onClick={() => setAudienceFilter('faculty')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    audienceFilter === 'faculty' 
-                      ? 'bg-indigo-600 text-white shadow-md' 
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${audienceFilter === 'faculty'
+                      ? 'bg-indigo-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <i className="fas fa-chalkboard-teacher mr-1"></i> Faculty Events ({audienceCounts.faculty})
                 </button>
@@ -631,11 +623,10 @@ const formatDate = (dateString) => {
               {audienceCounts.both > 0 && (
                 <button
                   onClick={() => setAudienceFilter('both')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    audienceFilter === 'both' 
-                      ? 'bg-cyan-600 text-white shadow-md' 
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${audienceFilter === 'both'
+                      ? 'bg-cyan-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <i className="fas fa-user-friends mr-1"></i> Both ({audienceCounts.both})
                 </button>
@@ -657,143 +648,143 @@ const formatDate = (dateString) => {
                 </div>
               )}
               {!isChangingPage && events.map((event) => {
-              const statusConfig = {
-                ongoing: { bgClass: 'bg-green-50', textClass: 'text-green-700', dotClass: 'bg-green-500 animate-pulse', label: 'LIVE NOW' },
-                upcoming: { bgClass: 'bg-blue-50', textClass: 'text-blue-700', dotClass: 'bg-blue-500', label: 'UPCOMING' },
-                pending_approval: { bgClass: 'bg-orange-50', textClass: 'text-orange-700', dotClass: 'bg-orange-500', label: 'PENDING APPROVAL' },
-                completed: { bgClass: 'bg-gray-50', textClass: 'text-gray-600', dotClass: 'bg-gray-400', label: 'COMPLETED' },
-                cancelled: { bgClass: 'bg-red-50', textClass: 'text-red-600', dotClass: 'bg-red-500', label: 'CANCELLED' }
-              };
-              
-              const config = statusConfig[event.status] || statusConfig.upcoming;
-              
-              return (
-                <div key={event.event_id} className="event-card bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 flex flex-col h-full">
-                  {/* Status Header */}
-                  <div className={`px-4 py-3 ${config.bgClass}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 ${config.dotClass} rounded-full`}></div>
-                        <span className={`${config.textClass} font-bold text-sm uppercase tracking-wide`}>
-                          {config.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500 font-medium bg-white px-2 py-1 rounded-full">
-                          ID: {event.event_id}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Event Content */}
-                  <div className="p-5 flex-grow flex flex-col">
-                    <h3 className="font-bold text-xl text-gray-900 mb-2 leading-tight line-clamp-2">
-                      {event.event_name}
-                    </h3>
-                    
-                    <div className="mb-4 flex-grow">
-                      {event.short_description ? (
-                        <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
-                          {event.short_description}
-                        </p>
-                      ) : (
-                        <p className="text-gray-400 text-sm italic">No description available</p>
-                      )}
-                    </div>
-                    
-                    {/* Event Details with consistent height */}
-                    <div className="space-y-2 mb-5 flex flex-col">
-                      <div className="flex items-center text-sm">
-                        <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
-                          <i className="fas fa-calendar text-gray-600 text-xs"></i>
+                const statusConfig = {
+                  ongoing: { bgClass: 'bg-green-50', textClass: 'text-green-700', dotClass: 'bg-green-500 animate-pulse', label: 'LIVE NOW' },
+                  upcoming: { bgClass: 'bg-blue-50', textClass: 'text-blue-700', dotClass: 'bg-blue-500', label: 'UPCOMING' },
+                  pending_approval: { bgClass: 'bg-orange-50', textClass: 'text-orange-700', dotClass: 'bg-orange-500', label: 'PENDING APPROVAL' },
+                  completed: { bgClass: 'bg-gray-50', textClass: 'text-gray-600', dotClass: 'bg-gray-400', label: 'COMPLETED' },
+                  cancelled: { bgClass: 'bg-red-50', textClass: 'text-red-600', dotClass: 'bg-red-500', label: 'CANCELLED' }
+                };
+
+                const config = statusConfig[event.status] || statusConfig.upcoming;
+
+                return (
+                  <div key={event.event_id} className="event-card bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 flex flex-col h-full">
+                    {/* Status Header */}
+                    <div className={`px-4 py-3 ${config.bgClass}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 ${config.dotClass} rounded-full`}></div>
+                          <span className={`${config.textClass} font-bold text-sm uppercase tracking-wide`}>
+                            {config.label}
+                          </span>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 text-xs truncate">
-                            {formatDate(event.start_datetime).dateOnly}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            {formatDate(event.start_datetime).weekday}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center text-sm">
-                        <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
-                          <i className="fas fa-clock text-gray-600 text-xs"></i>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 text-xs">
-                            {formatDate(event.start_datetime).timeOnly}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            Duration: {duration(event.start_datetime, event.end_datetime)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
-                          <i className="fas fa-building text-gray-600 text-xs"></i>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 text-xs truncate">
-                            {event.venue || 'Venue TBA'}
-                          </div>
-                          <div className="text-gray-500 text-xs truncate">
-                            {event.organizing_department || 'Event Location'}
-                          </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500 font-medium bg-white px-2 py-1 rounded-full">
+                            ID: {event.event_id}
+                          </span>
                         </div>
                       </div>
                     </div>
-                      
-                    
-                    {/* Action Buttons with conditional rendering based on event status and user permissions */}
-                    <div className="mt-auto">
-                      {event.event_approval_status === 'pending_approval' && canApproveDecline(event) ? (
-                        // Show approve/decline buttons for pending events that user can approve
-                        <div className="space-y-2">
-                          {/* View Details Button */}
+
+                    {/* Event Content */}
+                    <div className="p-5 flex-grow flex flex-col">
+                      <h3 className="font-bold text-xl text-gray-900 mb-2 leading-tight line-clamp-2">
+                        {event.event_name}
+                      </h3>
+
+                      <div className="mb-4 flex-grow">
+                        {event.short_description ? (
+                          <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+                            {event.short_description}
+                          </p>
+                        ) : (
+                          <p className="text-gray-400 text-sm italic">No description available</p>
+                        )}
+                      </div>
+
+                      {/* Event Details with consistent height */}
+                      <div className="space-y-2 mb-5 flex flex-col">
+                        <div className="flex items-center text-sm">
+                          <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                            <i className="fas fa-calendar text-gray-600 text-xs"></i>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900 text-xs truncate">
+                              {formatDate(event.start_datetime).dateOnly}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {formatDate(event.start_datetime).weekday}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center text-sm">
+                          <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                            <i className="fas fa-clock text-gray-600 text-xs"></i>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900 text-xs">
+                              {formatDate(event.start_datetime).timeOnly}
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              Duration: {duration(event.start_datetime, event.end_datetime)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                            <i className="fas fa-building text-gray-600 text-xs"></i>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-gray-900 text-xs truncate">
+                              {event.venue || 'Venue TBA'}
+                            </div>
+                            <div className="text-gray-500 text-xs truncate">
+                              {event.organizing_department || 'Event Location'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+
+                      {/* Action Buttons with conditional rendering based on event status and user permissions */}
+                      <div className="mt-auto">
+                        {event.event_approval_status === 'pending_approval' && canApproveDecline(event) ? (
+                          // Show approve/decline buttons for pending events that user can approve
+                          <div className="space-y-2">
+                            {/* View Details Button */}
+                            <button
+                              onClick={() => handleViewEvent(event.event_id)}
+                              className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
+                            >
+                              View Details
+                            </button>
+
+                            {/* Approve and Decline Buttons */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handleApproveEvent(event.event_id, event.event_name)}
+                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
+                              >
+                                <i className="fas fa-check mr-1"></i>
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleDeclineEvent(event.event_id, event.event_name)}
+                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
+                              >
+                                <i className="fas fa-times mr-1"></i>
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // Show only view details for other events
                           <button
                             onClick={() => handleViewEvent(event.event_id)}
-                            className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
+                            className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
                           >
                             View Details
                           </button>
-                          
-                          {/* Approve and Decline Buttons */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => handleApproveEvent(event.event_id, event.event_name)}
-                              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
-                            >
-                              <i className="fas fa-check mr-1"></i>
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleDeclineEvent(event.event_id, event.event_name)}
-                              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-center py-2 px-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-xs"
-                            >
-                              <i className="fas fa-times mr-1"></i>
-                              Decline
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        // Show only view details for other events
-                        <button
-                          onClick={() => handleViewEvent(event.event_id)}
-                          className="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-center py-2.5 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-sm text-sm"
-                        >
-                          View Details
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
-            
+
             {/* Enhanced Pagination Component */}
             {totalPages > 1 && (
               <div className="mt-8 flex justify-center">
@@ -815,7 +806,7 @@ const formatDate = (dateString) => {
                     disabled={isChangingPage}
                     aria-label="Events pagination navigation"
                   />
-                  
+
                   {/* Advanced pagination controls for large datasets */}
                   {totalPages > 10 && (
                     <div className="mt-4 pt-4 border-t border-blue-200">
@@ -842,7 +833,7 @@ const formatDate = (dateString) => {
                             }}
                           />
                         </div>
-                        
+
                         <div className="flex items-center space-x-4">
                           <div className="text-xs text-gray-500">
                             Showing {eventsPerPage} events per page
@@ -867,7 +858,7 @@ const formatDate = (dateString) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Keyboard shortcuts hint */}
                   <div className="mt-3 pt-3 border-t border-blue-100">
                     <div className="text-xs text-gray-400 text-center">
@@ -941,7 +932,12 @@ const formatDate = (dateString) => {
                     <i className="fas fa-plus mr-2"></i>Organize Event
                   </button>
                   <button
-                    onClick={() => navigate('/faculty/profile')}
+                    onClick={async () => {
+                      const result = await transitionBackToFaculty();
+                      if (result.success) {
+                        navigate('/faculty/profile');
+                      }
+                    }}
                     className="inline-block px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
                   >
                     <i className="fas fa-user mr-2"></i>Go to Profile

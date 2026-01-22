@@ -10,7 +10,7 @@ import TeamViewModal from '../../../../components/client/TeamViewModal';
 import EventDetailModal from '../../../../components/client/EventDetailModal';
 import { qrCodeService } from '../../../../services/QRCodeService';
 import api from '../../../../api/base';
-import { fetchProfileWithCache } from '../../../../utils/profileCache';
+import { fetchProfileWithCache, getAnyCache } from '../../../../utils/profileCache';
 
 function FacultyProfilePage() {
   const { user, updateUser } = useAuth();

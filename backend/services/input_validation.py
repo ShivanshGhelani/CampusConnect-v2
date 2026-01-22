@@ -216,8 +216,9 @@ class SecureFacultyModel(BaseModel):
     
     @validator('employee_id')
     def validate_employee_id(cls, v):
-        if not re.match(r'^[A-Za-z0-9\-_]+$', v):
-            raise ValueError("Employee ID contains invalid characters")
+        # Allow numeric-only, alphabetic-only, or alphanumeric (3-8 characters)
+        if not re.match(r'^[A-Za-z0-9]{3,8}$', v):
+            raise ValueError("Employee ID must be 3-8 characters (letters, numbers, or both)")
         return InputSanitizer.sanitize_string(v)
     
     @validator('department', 'designation')

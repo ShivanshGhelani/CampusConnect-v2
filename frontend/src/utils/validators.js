@@ -13,8 +13,8 @@ const VALIDATION_PATTERNS = {
   // Also supports: 2-4 letters + 2 digits + 2-4 letters + 4 digits (e.g., CS21CS1001)
   ENROLLMENT_NUMBER: /^(\d{2}[A-Z]{2,4}\d{4,5}|[A-Z]{2,4}\d{2}[A-Z]{2,4}\d{4})$/,
   
-  // Faculty ID: 6-12 alphanumeric characters
-  FACULTY_ID: /^[A-Z0-9]{6,12}$/,
+  // Faculty ID: 3-8 characters - can be numeric only, alphabetic only, or alphanumeric
+  FACULTY_ID: /^([A-Z]{3,8}|[0-9]{3,8}|[A-Z0-9]{3,8})$/,
   
   // Email validation (RFC 5322 compliant)
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -44,7 +44,7 @@ const VALIDATION_PATTERNS = {
 // Error messages for validation failures
 const ERROR_MESSAGES = {
   ENROLLMENT_NUMBER: 'Invalid enrollment number format (e.g., 21BECE40015)',
-  FACULTY_ID: 'Faculty ID must be 6-12 alphanumeric characters',
+  FACULTY_ID: 'Faculty ID must be 3-8 characters (letters, numbers, or both)',
   EMAIL: 'Please enter a valid email address',
   MOBILE_NUMBER: 'Mobile number must be exactly 10 digits',
   DATE_FORMAT: 'Date must be in YYYY-MM-DD format',
