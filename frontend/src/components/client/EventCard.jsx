@@ -88,8 +88,8 @@ const EventCard = ({ event }) => {
       } else if (event.sub_status === 'event_started') {
         return {
           bgClass: 'bg-orange-600 hover:bg-orange-700',
-          icon: 'fas fa-user-check',
-          text: 'Mark Attendance'
+          icon: 'fas fa-broadcast-tower',
+          text: 'Event Live'
         };
       } else {
         return {

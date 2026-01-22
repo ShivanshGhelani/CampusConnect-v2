@@ -1311,18 +1311,26 @@ async def get_event_stats(
             "is_team_based": event.get('is_team_based', False)
         }
         
-        # Get additional details like feedback data for average rating
-        feedback_responses = await DatabaseOperations.find_many(
-            "feedback", {"event_id": event_id}
+        # Get feedback data from both student and faculty feedback collections
+        student_feedbacks = await DatabaseOperations.find_many(
+            "student_feedbacks", {"event_id": event_id}
         )
+        faculty_feedbacks = await DatabaseOperations.find_many(
+            "faculty_feedbacks", {"event_id": event_id}
+        )
+        
+        # Combine all feedback responses
+        all_feedbacks = list(student_feedbacks) + list(faculty_feedbacks)
+        total_feedbacks = len(all_feedbacks)
+        event_stats["total_feedbacks"] = total_feedbacks
+        
         user_type = event.get("target_audience", {})
-        # Calculate average rating if feedback exists
+        # Calculate average rating from overall_rating field
         avg_rating = None
-        if feedback_responses:
-            avg_rating = round(
-                sum(f.get("rating", 0) for f in feedback_responses) / len(feedback_responses),
-                1,
-            )
+        if all_feedbacks:
+            ratings = [f.get("responses", {}).get("overall_rating", 0) for f in all_feedbacks if f.get("responses", {}).get("overall_rating")]
+            if ratings:
+                avg_rating = round(sum(ratings) / len(ratings), 1)
         
         # Prepare comprehensive stats for frontend
         stats = {

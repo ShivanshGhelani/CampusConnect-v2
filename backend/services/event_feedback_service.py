@@ -20,13 +20,17 @@ class EventFeedbackService:
     """
     Professional service for event feedback operations.
     Handles feedback form creation, updates, and response collection.
+    Supports both student and faculty feedback.
     """
     
     def __init__(self):
         self.events_collection = "events"
-        self.feedbacks_collection = "student_feedbacks"
+        self.student_feedbacks_collection = "student_feedbacks"
+        self.faculty_feedbacks_collection = "faculty_feedbacks"
         self.registrations_collection = "student_registrations"
+        self.faculty_registrations_collection = "faculty_registrations"
         self.students_collection = "students"
+        self.faculty_collection = "faculties"
     
     async def create_feedback_form(
         self,
@@ -363,36 +367,62 @@ class EventFeedbackService:
         page: int = 1,
         limit: int = 50
     ) -> Dict[str, Any]:
-        """Get all feedback responses for an event (admin use)"""
+        """Get all feedback responses for an event from both student and faculty collections (admin use)"""
         try:
             skip = (page - 1) * limit
             
-            # Get feedback responses
-            feedbacks = await DatabaseOperations.find_many(
-                self.feedbacks_collection,
-                {"event_id": event_id},
-                projection={"_id": 0},
-                limit=limit,
-                skip=skip,
-                sort_by=[("submitted_at", -1)]
-            )
-            
-            # Get total count
-            total_responses = await DatabaseOperations.count_documents(
-                self.feedbacks_collection,
-                {"event_id": event_id}
-            )
-            
-            # Get event info
+            # Get event info to determine target audience
             event = await DatabaseOperations.find_one(
                 self.events_collection,
                 {"event_id": event_id},
-                {"event_name": 1, "feedback_form": 1}
+                {"event_name": 1, "feedback_form": 1, "target_audience": 1}
             )
+            
+            if not event:
+                return {
+                    "success": False,
+                    "message": "Event not found"
+                }
+            
+            target_audience = event.get("target_audience", {})
+            
+            # Collect feedback from both collections
+            all_feedbacks = []
+            
+            # Get student feedbacks if applicable
+            if target_audience.get("students", False):
+                student_feedbacks = await DatabaseOperations.find_many(
+                    self.student_feedbacks_collection,
+                    {"event_id": event_id},
+                    projection={"_id": 0},
+                    sort_by=[("submitted_at", -1)]
+                )
+                all_feedbacks.extend(list(student_feedbacks))
+            
+            # Get faculty feedbacks if applicable
+            if target_audience.get("faculty", False):
+                faculty_feedbacks = await DatabaseOperations.find_many(
+                    self.faculty_feedbacks_collection,
+                    {"event_id": event_id},
+                    projection={"_id": 0},
+                    sort_by=[("submitted_at", -1)]
+                )
+                all_feedbacks.extend(list(faculty_feedbacks))
+            
+            # Sort all feedbacks by submitted_at (most recent first)
+            all_feedbacks.sort(key=lambda x: x.get("submitted_at", datetime.min), reverse=True)
+            
+            # Get total count
+            total_responses = len(all_feedbacks)
+            
+            # Apply pagination
+            paginated_feedbacks = all_feedbacks[skip:skip + limit]
+            # Apply pagination
+            paginated_feedbacks = all_feedbacks[skip:skip + limit]
             
             # Serialize datetime objects in feedbacks
             serialized_feedbacks = []
-            for feedback in feedbacks:
+            for feedback in paginated_feedbacks:
                 serialized_feedback = {}
                 for key, value in feedback.items():
                     if isinstance(value, datetime):
@@ -437,13 +467,13 @@ class EventFeedbackService:
             }
     
     async def get_feedback_analytics(self, event_id: str) -> Dict[str, Any]:
-        """Get feedback analytics and summary for an event"""
+        """Get feedback analytics and summary for an event (both student and faculty)"""
         try:
             # Get event and feedback form
             event = await DatabaseOperations.find_one(
                 self.events_collection,
                 {"event_id": event_id},
-                {"event_name": 1, "feedback_form": 1}
+                {"event_name": 1, "feedback_form": 1, "target_audience": 1}
             )
             
             if not event or not event.get("feedback_form"):
@@ -452,30 +482,52 @@ class EventFeedbackService:
                     "message": "Event or feedback form not found"
                 }
             
-            # Get total registrations
-            total_registrations = await DatabaseOperations.count_documents(
-                self.registrations_collection,
-                {
-                    "event_info.event_id": event_id,
-                    "registration_details.status": "active"
-                }
-            )
+            target_audience = event.get("target_audience", {})
             
-            # Get total feedback responses
-            total_responses = await DatabaseOperations.count_documents(
-                self.feedbacks_collection,
-                {"event_id": event_id}
-            )
+            # Get total registrations based on target audience
+            total_registrations = 0
             
-            # Calculate response rate
-            response_rate = (total_responses / total_registrations * 100) if total_registrations > 0 else 0
+            # Count student registrations if applicable
+            if target_audience.get("students", False):
+                student_registrations = await DatabaseOperations.count_documents(
+                    self.registrations_collection,
+                    {
+                        "event_info.event_id": event_id,
+                        "registration_details.status": "active"
+                    }
+                )
+                total_registrations += student_registrations
             
-            # Get all responses for analysis
-            all_responses = await DatabaseOperations.find_many(
-                self.feedbacks_collection,
+            # Count faculty registrations if applicable
+            if target_audience.get("faculty", False):
+                faculty_registrations = await DatabaseOperations.count_documents(
+                    self.faculty_registrations_collection,
+                    {
+                        "event_info.event_id": event_id,
+                        "registration_details.status": "active"
+                    }
+                )
+                total_registrations += faculty_registrations
+            
+            # Get feedback responses from both collections
+            student_feedbacks = await DatabaseOperations.find_many(
+                self.student_feedbacks_collection,
                 {"event_id": event_id},
                 {"responses": 1, "submitted_at": 1}
             )
+            
+            faculty_feedbacks = await DatabaseOperations.find_many(
+                self.faculty_feedbacks_collection,
+                {"event_id": event_id},
+                {"responses": 1, "submitted_at": 1}
+            )
+            
+            # Combine all responses
+            all_responses = list(student_feedbacks) + list(faculty_feedbacks)
+            total_responses = len(all_responses)
+            
+            # Calculate response rate
+            response_rate = (total_responses / total_registrations * 100) if total_registrations > 0 else 0
             
             # Analyze responses by form elements
             element_analytics = {}

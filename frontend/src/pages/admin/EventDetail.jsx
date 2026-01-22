@@ -1203,23 +1203,23 @@ function EventDetail() {
           {/* Statistics Cards */}
           {eventStats && recentRegistrations && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ">
-              <div className="bg-white rounded-lg stats-card border-l-4 border-blue-500 p-6 hover:shadow-lg transition-all duration-300">
+              <div className="bg-white rounded-lg stats-card border-l-4 border-blue-500 p-4 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-users text-blue-500 text-xl"></i>
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i className="fas fa-users text-blue-500 text-lg"></i>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <p className="text-gray-500 text-sm font-medium">Total Registrations</p>
+                    <div className="ml-3">
+                      <p className="text-gray-500 text-xs font-medium">Total Registrations</p>
                       <p className="text-lg font-bold text-gray-800">
                         {eventStats.is_team_based ?
                           `Teams: ${recentRegistrations.length || 0}` :
                           `Registrations: ${recentRegistrations.length || 0}`
                         }
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400">
 
                         {eventStats.is_team_based ?
                           `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (eventStats.user_type === 'student' ?
@@ -1235,28 +1235,28 @@ function EventDetail() {
               </div>
 
               <div
-                className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-6 hover:shadow-lg transition-all duration-300"
+                className="bg-white rounded-lg stats-card border-l-4 border-purple-500 p-4 hover:shadow-lg transition-all duration-300"
                 onClick={handleViewAttendanceBreakdown}
                 title="Click to view detailed attendance breakdown"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-check-circle text-purple-500 text-xl"></i>
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i className="fas fa-check-circle text-purple-500 text-lg"></i>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <p className="text-gray-500 text-sm font-medium">
+                    <div className="ml-3">
+                      <p className="text-gray-500 text-xs font-medium">
                         Attendance Count
                       </p>
-                      <p className="text-2xl flex flex-col font-bold text-gray-800">
+                      <p className="text-xl flex flex-col font-bold text-gray-800">
                         {attendanceStats ?
                           (attendanceStats.present_count + (attendanceStats.partial_count || 0)) :
                           (eventStats?.attendance_count || 0)
                         }
                         
-                        <span className="text-green-600  text-xs font-medium">
+                        <span className="text-green-600 text-xs font-medium">
                           {attendanceStats ?
                             `${attendanceStats.attendance_percentage || 0}% Attendance Rate` :
                             `${eventStats.attendance_count && eventStats.registrations_count ?
@@ -1270,45 +1270,49 @@ function EventDetail() {
                     </div>
                   </div>
                   <div className="text-purple-500">
-                    <i className="fas fa-chart-pie text-lg"></i>
+                    <i className="fas fa-chart-pie text-base"></i>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg stats-card border-l-4 border-yellow-500 p-6 hover:shadow-lg transition-all duration-300">
+              <div className="bg-white rounded-lg stats-card border-l-4 border-yellow-500 p-4 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-comments text-yellow-500 text-xl"></i>
+                      <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <i className="fas fa-comments text-yellow-500 text-lg"></i>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <p className="text-gray-500 text-sm font-medium">Total Feedbacks</p>
-                      <p className="text-2xl font-bold text-gray-800">{eventStats.feedback_count || 0}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {eventStats.attendance_count > 0 ?
-                          `${Math.round((eventStats.feedback_count / eventStats.attendance_count) * 100)}% feedback rate` :
-                          '0% feedback rate'
-                        }
+                    <div className="ml-3">
+                      <p className="text-gray-500 text-xs font-medium">Total Feedbacks</p>
+                      <p className="text-xl font-bold text-gray-800">{eventStats.feedback_count || 0}</p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        {eventStats.avg_rating ? (
+                          <>
+                            <i className="fas fa-star text-yellow-400"></i>
+                            <span>{eventStats.avg_rating}/5 avg rating</span>
+                          </>
+                        ) : (
+                          <span>No ratings yet</span>
+                        )}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg stats-card border-l-4 border-green-500 p-6 hover:shadow-lg transition-all duration-300">
+              <div className="bg-white rounded-lg stats-card border-l-4 border-green-500 p-4 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-certificate text-green-500 text-xl"></i>
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i className="fas fa-certificate text-green-500 text-lg"></i>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <p className="text-gray-500 text-sm font-medium">Certificates Issued</p>
-                      <p className="text-2xl font-bold text-gray-800">{eventStats.certificates_count || 0}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                    <div className="ml-3">
+                      <p className="text-gray-500 text-xs font-medium">Certificates Issued</p>
+                      <p className="text-xl font-bold text-gray-800">{eventStats.certificates_count || 0}</p>
+                      <p className="text-xs text-gray-400">
                         {eventStats.feedback_count > 0 ?
                           `${Math.round((eventStats.certificates_count / eventStats.feedback_count) * 100)}% completion rate` :
                           '0% completion rate'

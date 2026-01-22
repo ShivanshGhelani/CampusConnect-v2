@@ -565,7 +565,7 @@ function EventDetail() {
             </div>
 
             {/* Professional Integrated Action Panel */}
-            <div className="relative w-full sm:w-auto sm:min-w-[300px] sm:max-w-[360px] md:min-w-[320px] md:max-w-[380px] mb-6 sm:mb-0">
+            <div className="relative w-full mt-5 sm:w-auto sm:min-w-[120px] sm:max-w-[160px] md:min-w-[290px] md:max-w-[300px] mb-6 sm:mb-0">
               {/* Action Card */}
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-5 md:p-6 border border-white/20 shadow-xl transition-all duration-500 relative overflow-hidden">
                 {/* Subtle background elements */}
@@ -1480,26 +1480,39 @@ function EventDetail() {
                     <span className="text-sm font-semibold text-green-600">₹{event.registration_fee}</span>
                   </div>
                 )}
-                {/* Current Registrations */}
-                {event.registration_stats && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-sm font-medium text-gray-600">Registered</span>
-                    {event.registration_mode && event.registration_mode.toLowerCase() === 'team' ? (
-                      <div className="text-right">
-                        <span className="text-sm font-semibold text-blue-600">
-                          {event.registration_stats.total_teams || 0} teams
-                        </span>
-                        {/* {event.registration_stats.total_participants && event.registration_stats.total_participants > 0 && (
-                            <div className="text-xs text-gray-500">{event.registration_stats.total_participants} total participants</div>
-                          )} */}
-                      </div>
-                    ) : (
-                      <span className="text-sm font-semibold text-blue-600">
-                        {event.registration_stats.total_participants || event.registration_stats.total_registrations || 0} participants
+
+                {/* Current Registrations - Always show */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-100 space-y-1 sm:space-y-0">
+                  <span className="text-xs sm:text-sm font-medium text-gray-600">Registered</span>
+                  {event.registration_mode && event.registration_mode.toLowerCase() === 'team' ? (
+                    <div className="text-right">
+                      <span className="text-xs sm:text-sm font-semibold text-blue-600 flex items-center justify-end">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                          <path d="M6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                        </svg>
+                        {event.registration_stats?.team_count || 
+                         event.registration_stats?.total_teams || 
+                         (event.team_registrations ? Object.keys(event.team_registrations).length : 0)} Teams
                       </span>
-                    )}
-                  </div>
-                )}
+                      {(event.registration_stats?.total_participants || 0) > 0 && (
+                        <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                          {event.registration_stats.total_participants} total participants
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-blue-600 flex items-center justify-end">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                      {event.registration_stats?.individual_count || 
+                       event.registration_stats?.total_participants || 
+                       event.registration_stats?.total_registrations || 
+                       (event.registered_students ? Object.keys(event.registered_students).length : 0)} Participants
+                    </span>
+                  )}
+                </div>
 
                 {/* Fee Details - Only if registration fee exists */}
                 {event.registration_fee && event.registration_fee > 0 && (
