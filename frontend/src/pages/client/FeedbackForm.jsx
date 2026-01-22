@@ -136,8 +136,8 @@ const FeedbackForm = () => {
       const response = await clientAPI.submitEventFeedback(eventId, responses);
       
       if (response.data.success) {
-        alert('Thank you for your feedback!');
-        navigate('/client/dashboard');
+        // Navigate to the feedback success page
+        navigate(`/client/events/${eventId}/feedback/success`);
       } else {
         throw new Error(response.data.message || 'Failed to submit feedback');
       }

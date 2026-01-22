@@ -178,10 +178,39 @@ const FeedbackResponseCard = ({
     
     const avgRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
     
-    if (avgRating >= 80) return { label: '😍', color: 'green', bgColor: 'bg-green-100', textColor: 'text-green-800' };
-    if (avgRating >= 60) return { label: '😊', color: 'blue', bgColor: 'bg-blue-100', textColor: 'text-blue-800' };
-    if (avgRating >= 40) return { label: '😐', color: 'yellow', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' };
-    return { label: '😞', color: 'red', bgColor: 'bg-red-100', textColor: 'text-red-800' };
+    // Return sentiment with dot color based on rating percentage
+    if (avgRating >= 80) return { 
+      label: '😍', 
+      color: 'green', 
+      bgColor: 'bg-green-100', 
+      textColor: 'text-green-800',
+      dotColor: 'bg-green-500',
+      tooltip: 'Excellent feedback'
+    };
+    if (avgRating >= 60) return { 
+      label: '😊', 
+      color: 'blue', 
+      bgColor: 'bg-blue-100', 
+      textColor: 'text-blue-800',
+      dotColor: 'bg-blue-500',
+      tooltip: 'Good feedback'
+    };
+    if (avgRating >= 40) return { 
+      label: '😐', 
+      color: 'yellow', 
+      bgColor: 'bg-yellow-100', 
+      textColor: 'text-yellow-800',
+      dotColor: 'bg-amber-500',
+      tooltip: 'Average feedback'
+    };
+    return { 
+      label: '😞', 
+      color: 'red', 
+      bgColor: 'bg-red-100', 
+      textColor: 'text-red-800',
+      dotColor: 'bg-red-500',
+      tooltip: 'Needs improvement'
+    };
   };
 
   const sentiment = getOverallSentiment();
@@ -267,21 +296,27 @@ const FeedbackResponseCard = ({
               {/* Ratings Summary */}
               <div className="flex items-center gap-2">
                 {categories.ratings.length > 0 && (
-                  <div className="flex">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${
-                          i < Math.round(categories.ratings.reduce((acc, {value}) => acc + parseInt(value), 0) / categories.ratings.length) 
-                            ? 'fill-current text-yellow-400' 
-                            : 'text-gray-300'
-                        }`}
+                  <>
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-4 w-4 ${
+                            i < Math.round(categories.ratings.reduce((acc, {value}) => acc + parseInt(value), 0) / categories.ratings.length) 
+                              ? 'fill-current text-yellow-400' 
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {/* Sentiment Indicator Dot */}
+                    {sentiment && (
+                      <div 
+                        className={`w-2.5 h-2.5 rounded-full ${sentiment.dotColor} shadow-sm`}
+                        title={sentiment.tooltip}
                       />
-                    ))}
-                  </div>
-                )}
-                {completionPercentage === 100 && (
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

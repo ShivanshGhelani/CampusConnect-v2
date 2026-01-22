@@ -71,20 +71,24 @@ const FeedbackSuccess = () => {
       const eventResponse = await clientAPI.getEventDetails(eventId);
       if (eventResponse.data.success) {
         setEvent(eventResponse.data.event);
-        
-        
-        
+        console.log('📅 Event Data:', eventResponse.data.event);
+        console.log('📜 Certificate Templates:', eventResponse.data.event.certificate_templates);
+        console.log('🎓 Is Certificate Based:', eventResponse.data.event.certificate_based);
       } else {
         throw new Error('Failed to fetch event details');
       }
 
       // Fetch registration status to get registration details
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
+      console.log('🎟️ Full Registration Response:', registrationResponse.data);
       if (registrationResponse.data.success) {
-        setRegistration(registrationResponse.data.registration);
-        
+        const regData = registrationResponse.data.registration;
+        console.log('📋 Registration Data:', regData);
+        console.log('🔑 Registration ID:', regData?.registration_id);
+        console.log('👤 Registrar ID:', regData?.registrar_id);
+        setRegistration(regData);
       } else {
-        
+        console.error('❌ Failed to fetch registration');
       }
 
       // Fetch user profile - OPTIMIZED: Use cached profile data
@@ -251,137 +255,80 @@ const FeedbackSuccess = () => {
   }
 
   return (
-    <div>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="py-8 md:min-h-[calc(100vh-120px)] md:flex md:items-center md:justify-center px-4">
+      <div className="w-full max-w-2xl mx-auto space-y-6">
         {/* Success Message with Animation */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-block p-4 rounded-full bg-green-100 mb-4 animate-success-pop">
-            <svg className="w-12 h-12 text-green-600 animate-success-check" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center space-y-3">
+          <div className="inline-flex p-3 rounded-full bg-green-100">
+            <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Thank You for Your Feedback!</h1>
-          <p className="text-lg text-gray-600 mb-8">Your feedback will help us improve future events.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Thank You for Your Feedback!</h1>
+          <p className="text-gray-600">Your feedback will help us improve future events.</p>
         </div>
 
-        {/* Event Details Card */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-8 transform hover:scale-[1.02] transition-all duration-300">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-            <svg className="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/>
-            </svg>
-            Event Details
-          </h2>
-          <div className="border-t border-gray-200 pt-4">
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="transform hover:-translate-y-1 transition-all duration-200">
-                <dt className="text-sm font-medium text-gray-500">Registration ID</dt>
-                <dd className="mt-1 text-lg font-medium text-gray-900 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
-                  </svg>
-                  {registration?.registrar_id || registration?.registration_id || 'N/A'}
-                </dd>
-              </div>
-              <div className="transform hover:-translate-y-1 transition-all duration-200">
-                <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="mt-1 text-lg text-gray-900 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
-                  </svg>
-                  {registration?.full_name || user?.full_name || user?.name || 'N/A'}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Next Steps Card */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-8 transform hover:scale-[1.02] transition-all duration-300">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-6 h-6 mr-2 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-            </svg>
-            Next Steps
-          </h2>
-          <div className="space-y-4">
-            <p className="text-gray-600">Your feedback has been successfully submitted! You can now proceed to collect your certificate.</p>
+        {/* Certificate Collection Section - Only show if certificates are available */}
+        {event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6 space-y-4">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+              </svg>
+              Collect Your Certificate
+            </h2>
             
-            {attendance && attendance.attendance_id && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                  </svg>
-                  <div>
-                    <p className="font-medium">Certificate Eligibility Confirmed</p>
-                    <p className="text-sm">Registration ID: {registration?.registrar_id || registration?.registration_id} | Attendance ID: {attendance.attendance_id}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <p className="text-sm text-gray-600">Your certificate is ready for download!</p>
             
-            {/* Certificate Download Section */}
-            <div className="space-y-4">
-              {certificateMessage && (
-                <div className={`p-3 rounded-lg text-sm ${
-                  certificateMessage.includes('✅') 
-                    ? 'bg-green-50 text-green-700 border border-green-200' 
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                }`}>
-                  {certificateMessage}
-                </div>
+            {certificateMessage && (
+              <div className={`p-3 rounded-lg text-sm ${
+                certificateMessage.includes('✅') 
+                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}>
+                {certificateMessage}
+              </div>
               )}
               
-              {event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">Available certificates:</p>
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    {Object.keys(event.certificate_templates).map((templateName) => (
-                      <button
-                        key={templateName}
-                        onClick={() => handleCertificateDownload(templateName)}
-                        disabled={isGeneratingCertificate}
-                        className="group bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-6 rounded-lg inline-flex items-center transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:transform-none disabled:cursor-not-allowed"
-                      >
-                        {isGeneratingCertificate ? (
-                          <>
-                            <svg className="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5 mr-2 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                            </svg>
-                            Download {templateName}
-                          </>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
-                  <p className="text-sm">Certificate templates are not available for this event yet. Please contact the event organizers.</p>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-3 justify-center">
+                {Object.keys(event.certificate_templates).map((templateName) => (
+                  <button
+                    key={templateName}
+                    onClick={() => handleCertificateDownload(templateName)}
+                    disabled={isGeneratingCertificate}
+                    className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-2.5 px-5 rounded-lg inline-flex items-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingCertificate ? (
+                      <>
+                        <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                        </svg>
+                        Download {templateName}
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
+          
+        )}
 
         {/* Navigation Links */}
-        <div className="mt-8 text-center">
+        <div className="text-center">
           <Link 
             to="/client/events"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group transition-all duration-200"
+            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors"
           >
-            <svg className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
             </svg>
             Back to Events
