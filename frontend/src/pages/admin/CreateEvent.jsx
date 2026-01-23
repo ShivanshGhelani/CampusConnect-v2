@@ -2045,11 +2045,10 @@ function CreateEvent() {
         event_poster_url: eventPosterUrl,
 
         // Attendance configuration - only include if attendance is mandatory
+        // Consolidated into single attendance_strategy field
         attendance_mandatory: form.attendance_mandatory,
-        ...(form.attendance_mandatory && {
-          attendance_strategy: customAttendanceStrategy?.strategy || null,
-          attendance_criteria: customAttendanceStrategy?.criteria || null,
-          custom_attendance_config: customAttendanceStrategy || null,
+        ...(form.attendance_mandatory && customAttendanceStrategy && {
+          attendance_strategy: customAttendanceStrategy
         }),
 
         // Set status and approval based on user role

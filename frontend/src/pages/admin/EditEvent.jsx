@@ -1185,6 +1185,121 @@ function EditEvent() {
         return `${date}T${time}:00.000+05:30`; // Explicit IST timezone
       };
 
+      // Check if event dates have changed - compare properly by converting both to date strings
+      const hasDateChanged = event && (() => {
+        try {
+          const newStartDate = combineDateAndTime(formData.start_date, formData.start_time);
+          const newEndDate = combineDateAndTime(formData.end_date, formData.end_time);
+          
+          // Extract date portions for comparison (YYYY-MM-DD HH:mm)
+          const getDateComparison = (dateStr) => {
+            if (!dateStr) return null;
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+          };
+          
+          const newStart = getDateComparison(newStartDate);
+          const newEnd = getDateComparison(newEndDate);
+          const oldStart = getDateComparison(event.start_datetime);
+          const oldEnd = getDateComparison(event.end_datetime);
+          
+          const changed = newStart !== oldStart || newEnd !== oldEnd;
+          
+          if (changed) {
+            console.log('🔄 Date change detected:', {
+              oldStart, newStart,
+              oldEnd, newEnd
+            });
+          }
+          
+          return changed;
+        } catch (error) {
+          console.error('Error comparing dates:', error);
+          return false;
+        }
+      })();
+
+      // If dates changed and we have an attendance strategy, regenerate it with new dates
+      let finalAttendanceStrategy = attendanceStrategy || formData.attendance_strategy;
+      if (hasDateChanged && finalAttendanceStrategy) {
+        console.log('⚠️ Date changed - regenerating attendance strategy with new dates');
+        console.log('📋 Current attendance strategy:', finalAttendanceStrategy);
+        
+        try {
+          // Call the attendance strategy validation API to get new strategy with updated dates
+          setUploadStatus('Regenerating attendance strategy with new dates...');
+          
+          // Send the strategy object with required fields for validation
+          // Backend will generate NEW sessions anyway, but validation requires valid structure
+          const updatedStrategy = {
+            type: finalAttendanceStrategy.strategy,  // 'strategy' -> 'type'
+            criteria: finalAttendanceStrategy.criteria,
+            sessions: finalAttendanceStrategy.sessions?.map((session) => ({
+              name: session.name || session.session_name || `Session ${session.day || ''}`,
+              start_time: session.start_time || new Date().toISOString(),  // Keep old time for validation
+              description: session.description || '',
+              day: session.day
+            }))
+          };
+          
+          console.log('📦 Updated strategy being sent:', updatedStrategy);
+          
+          const strategyPayload = {
+            event_name: formData.event_name,
+            event_type: formData.event_type,
+            start_datetime: combineDateAndTime(formData.start_date, formData.start_time),
+            end_datetime: combineDateAndTime(formData.end_date, formData.end_time),
+            registration_mode: formData.registration_mode,
+            min_participants: formData.min_participants ? parseInt(formData.min_participants) : 1,
+            max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
+            custom_strategy: updatedStrategy
+          };
+          
+          console.log('📤 Sending strategy validation payload:', strategyPayload);
+          
+          const strategyResponse = await adminAPI.validateCustomStrategy(strategyPayload);
+          
+          console.log('📥 Strategy validation response:', strategyResponse);
+          
+          if (strategyResponse.data?.success && strategyResponse.data?.custom_strategy) {
+            // Backend returns custom_strategy with new sessions
+            const responseData = strategyResponse.data.custom_strategy;
+            const newStrategy = {
+              strategy: responseData.type,
+              criteria: responseData.criteria,
+              sessions: responseData.sessions.map(session => ({
+                session_id: session.session_id,
+                session_name: session.session_name,
+                session_type: session.session_type,
+                start_time: session.start_time,
+                end_time: session.end_time,
+                duration_minutes: session.duration_minutes,
+                is_mandatory: session.is_mandatory,
+                weight: session.weight
+              })),
+              warnings: responseData.warnings || [],
+              recommendations: strategyResponse.data.recommendations || [],
+              minimum_percentage: responseData.criteria?.minimum_percentage || 75
+            };
+            
+            finalAttendanceStrategy = newStrategy;
+            console.log('✅ New attendance strategy generated:', finalAttendanceStrategy);
+            toast.success('Attendance strategy updated with new event schedule');
+          } else {
+            console.warn('⚠️ Strategy validation returned no strategy, using existing');
+            console.warn('Response data:', strategyResponse.data);
+            toast.warning('Could not regenerate attendance strategy - using existing');
+          }
+        } catch (error) {
+          console.error('❌ Error regenerating attendance strategy:', error);
+          console.error('Error details:', error.response?.data);
+          if (error.response?.data?.detail) {
+            console.error('Validation errors:', JSON.stringify(error.response.data.detail, null, 2));
+          }
+          toast.warning('Could not regenerate attendance strategy - using existing');
+        }
+      }
+
       // Process organizers - extract selected ones
       const processOrganizers = (organizers) => {
         return organizers
@@ -1244,7 +1359,7 @@ function EditEvent() {
         min_participants: formData.min_participants ? parseInt(formData.min_participants) : 1,
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
         attendance_mandatory: formData.attendance_mandatory,
-        attendance_strategy: attendanceStrategy || formData.attendance_strategy,
+        attendance_strategy: finalAttendanceStrategy,
         is_certificate_based: formData.is_certificate_based,
         certificate_templates: finalCertificateTemplates,
         // Only include event_poster_url if we uploaded a new one

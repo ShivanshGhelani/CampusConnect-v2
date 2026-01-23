@@ -290,7 +290,7 @@ const UnifiedAttendancePortal = () => {
       }
       
       // Find the selected session from config
-      const selectedSession = config?.attendance_config?.sessions?.find(
+      const selectedSession = config?.attendance_strategy?.sessions?.find(
         s => s.session_id === selectedSessionId
       );
       
@@ -309,7 +309,7 @@ const UnifiedAttendancePortal = () => {
       let targetSession = null;
       let targetRound = null;
       
-      const strategy = config?.attendance_strategy?.strategy || config?.attendance_config?.strategy;
+      const strategy = config?.attendance_strategy?.strategy || config?.attendance_strategy?.strategy;
       
       if (strategy === 'day_based') {
         // Extract day number from session_id (e.g., "day_1" -> 1)
@@ -381,9 +381,9 @@ const UnifiedAttendancePortal = () => {
         let sessionName = 'Unknown Session';
         let sessionId = null;
         
-        if (statsData.target_day && config?.attendance_config?.sessions) {
+        if (statsData.target_day && config?.attendance_strategy?.sessions) {
           // For day-based, find session by matching day number in session_id
-          const targetSession = config.attendance_config.sessions.find(s => {
+          const targetSession = config.attendance_strategy.sessions.find(s => {
             const dayMatch = s.session_id.match(/day_(\d+)/);
             return dayMatch && parseInt(dayMatch[1]) === statsData.target_day;
           });
@@ -391,16 +391,16 @@ const UnifiedAttendancePortal = () => {
             sessionName = targetSession.session_name;
             sessionId = targetSession.session_id;
           }
-        } else if (statsData.target_session && config?.attendance_config?.sessions) {
+        } else if (statsData.target_session && config?.attendance_strategy?.sessions) {
           // For session-based, find by session_id
-          const targetSession = config.attendance_config.sessions.find(s => s.session_id === statsData.target_session);
+          const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_session);
           if (targetSession) {
             sessionName = targetSession.session_name;
             sessionId = targetSession.session_id;
           }
-        } else if (statsData.target_round && config?.attendance_config?.sessions) {
+        } else if (statsData.target_round && config?.attendance_strategy?.sessions) {
           // For round/milestone-based
-          const targetSession = config.attendance_config.sessions.find(s => s.session_id === statsData.target_round);
+          const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_round);
           if (targetSession) {
             sessionName = targetSession.session_name;
             sessionId = targetSession.session_id;
@@ -527,7 +527,7 @@ const UnifiedAttendancePortal = () => {
       }) : 'N/A';
 
       // Get total sessions count from config
-      const totalSessions = config?.attendance_config?.sessions?.length || config?.sessions?.length || 1;
+      const totalSessions = config?.attendance_strategy?.sessions?.length || config?.sessions?.length || 1;
 
       // Determine if event is for students or faculty based on target audience
       const targetAudience = eventData?.target_audience || config?.target_audience || 'student';
@@ -641,7 +641,7 @@ const UnifiedAttendancePortal = () => {
       const strategyName = eventData?.attendance_strategy?.strategy || 
                           config?.attendance_strategy?.strategy || 
                           config?.attendance_strategy_type ||
-                          config?.attendance_config?.strategy || 
+                          config?.attendance_strategy?.strategy || 
                           'Single Mark';
       
       // Format strategy name nicely
@@ -715,16 +715,17 @@ const UnifiedAttendancePortal = () => {
   const renderStrategyInfo = () => {
     if (!config) return null;
 
-    const strategy = config.attendance_strategy;
-    const attendanceConfig = config.attendance_config || {};
-    const sessions = attendanceConfig.sessions || [];
+    const attendanceStrategy = config.attendance_strategy || {};
+    // Extract strategy type from nested structure
+    const strategy = attendanceStrategy.strategy || attendanceStrategy.type || 'session_based';
+    const sessions = attendanceStrategy.sessions || [];
 
     // Safely format strategy name
     const formatStrategyName = (strategyName) => {
       if (!strategyName || typeof strategyName !== 'string') {
         return 'Unknown Strategy';
       }
-      return strategyName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      return strategyName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     };
 
     return (
@@ -1325,15 +1326,15 @@ const UnifiedAttendancePortal = () => {
                   </div>
                 </div>
 
-                {/* Session Selection - Use event's attendance_config.sessions */}
-                {config?.attendance_config?.sessions && config.attendance_config.sessions.length > 0 && (
+                {/* Session Selection - Use event's attendance_strategy.sessions */}
+                {config?.attendance_strategy?.sessions && config.attendance_strategy.sessions.length > 0 && (
                   <div>
                     <Dropdown
                       label={`Select ${config.attendance_strategy?.strategy === 'day_based' ? 'Day' : config.attendance_strategy?.strategy === 'session_based' ? 'Session' : 'Milestone/Round'} to Mark`}
                       placeholder={`Select which ${config.attendance_strategy?.strategy === 'day_based' ? 'day' : 'session'} this scanner will mark...`}
                       value={selectedSessionId}
                       onChange={(value) => setSelectedSessionId(value)}
-                      options={config.attendance_config.sessions.map(session => ({
+                      options={config.attendance_strategy.sessions.map(session => ({
                         value: session.session_id,
                         label: session.session_name,
                         description: `${new Date(session.start_time).toLocaleString()} - ${new Date(session.end_time).toLocaleString()}${session.is_mandatory ? ' (Mandatory)' : ''}`
@@ -1346,7 +1347,7 @@ const UnifiedAttendancePortal = () => {
                   </div>
                 )}
 
-                {!config?.attendance_config?.sessions?.length && (
+                {!config?.attendance_strategy?.sessions?.length && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
@@ -1371,7 +1372,7 @@ const UnifiedAttendancePortal = () => {
 
                 <button
                   onClick={() => generateScannerToken()}
-                  disabled={tokenLoading || !config?.attendance_config?.sessions?.length}
+                  disabled={tokenLoading || !config?.attendance_strategy?.sessions?.length}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {tokenLoading ? (
@@ -1510,3 +1511,4 @@ const UnifiedAttendancePortal = () => {
 };
 
 export default UnifiedAttendancePortal;
+

@@ -40,14 +40,13 @@ async def get_attendance_config_and_participants(
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        # Extract attendance configuration
-        attendance_config_data = event.get("attendance_config", {})
+        # Extract attendance configuration from attendance_strategy field
+        attendance_strategy_data = event.get("attendance_strategy", {})
         attendance_config = {
             "event_id": event_id,
             "event_name": event.get("event_name"),
             "attendance_mandatory": event.get("attendance_mandatory", True),
-            "attendance_strategy": attendance_config_data.get("strategy", "single_mark"),
-            "attendance_config": attendance_config_data,
+            "attendance_strategy": attendance_strategy_data,  # Full strategy object
             "registration_mode": event.get("registration_mode", "individual"),
             "is_team_based": event.get("is_team_based", False)
         }
@@ -233,8 +232,8 @@ async def mark_attendance(
             if not event:
                 raise HTTPException(status_code=404, detail="Event not found")
             
-            attendance_config = event.get("attendance_config", {})
-            attendance_strategy = attendance_config.get("strategy", "single_mark")
+            attendance_strategy_data = event.get("attendance_strategy", {})
+            attendance_strategy = attendance_strategy_data.get("strategy", "single_mark")
             
             # Get current attendance data for this team member
             current_attendance = team_member_data.get("attendance", {})
@@ -243,7 +242,7 @@ async def mark_attendance(
             updated_attendance = await _mark_attendance_by_strategy(
                 current_attendance, 
                 attendance_strategy, 
-                attendance_config, 
+                attendance_strategy_data, 
                 attendance_type, 
                 session_id, 
                 current_user.username,
@@ -281,8 +280,8 @@ async def mark_attendance(
             if not event:
                 raise HTTPException(status_code=404, detail="Event not found")
 
-            attendance_config = event.get("attendance_config", {})
-            attendance_strategy = attendance_config.get("strategy", "single_mark")
+            attendance_strategy_data = event.get("attendance_strategy", {})
+            attendance_strategy = attendance_strategy_data.get("strategy", "single_mark")
             
             # Get current attendance data
             current_attendance = participant.get("attendance", {})
@@ -291,7 +290,7 @@ async def mark_attendance(
             updated_attendance = await _mark_attendance_by_strategy(
                 current_attendance, 
                 attendance_strategy, 
-                attendance_config, 
+                attendance_strategy_data, 
                 attendance_type, 
                 session_id, 
                 current_user.username,
@@ -774,8 +773,8 @@ async def scan_and_mark_attendance(
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        attendance_config = event.get("attendance_config", {})
-        attendance_strategy = attendance_config.get("strategy", "single_mark")
+        attendance_strategy_data = event.get("attendance_strategy", {})
+        attendance_strategy = attendance_strategy_data.get("strategy", "single_mark")
         is_team_based = event.get("is_team_based", False)
         
         # Check current attendance status
@@ -836,7 +835,7 @@ async def scan_and_mark_attendance(
             updated_attendance = await _mark_attendance_by_strategy(
                 current_attendance,
                 attendance_strategy,
-                attendance_config,
+                attendance_strategy_data,
                 "present",
                 session_id,
                 volunteer_name,

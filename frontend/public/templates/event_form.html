@@ -350,83 +350,59 @@
         </div>
     </div>
 
-    <!-- Two Column Layout -->
-    <div class="two-column">
-        <!-- Left Column -->
-        <div class="column">
-            <!-- Basic Information -->
-            <div class="section">
-                <div class="section-title">1. Basic Information</div>
-                <div class="field">
-                    <span class="field-label">Event Type:</span>
-                    <span class="field-value">{{EVENT_TYPE}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">Target Audience:</span>
-                    <span class="field-value">{{TARGET_AUDIENCE}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">Short Description:</span>
-                    <span class="field-value">{{SHORT_DESCRIPTION}}</span>
-                </div>
-                {{DETAILED_DESCRIPTION}}
-            </div>
-
-            <!-- Schedule -->
-            <div class="section">
-                <div class="section-title">2. Schedule</div>
-                <div class="field">
-                    <span class="field-label">Event Start:</span>
-                    <span class="field-value">{{EVENT_START}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">Event End:</span>
-                    <span class="field-value">{{EVENT_END}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">Registration Opens:</span>
-                    <span class="field-value">{{REGISTRATION_START}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">Registration Closes:</span>
-                    <span class="field-value">{{REGISTRATION_END}}</span>
-                </div>
-            </div>
+    <!-- Event Details - Combined Section -->
+    <div class="section">
+        <div class="section-title">1. Event Details</div>
+        
+        <!-- Basic Information -->
+        <div class="field">
+            <span class="field-label">Event Type:</span>
+            <span class="field-value">{{EVENT_TYPE}}</span>
         </div>
-
-        <!-- Right Column -->
-        <div class="column">
-            <!-- Venue Information -->
-            <div class="section">
-                <div class="section-title">3. Venue & Location</div>
-                <div class="field">
-                    <span class="field-label">Event Mode:</span>
-                    <span class="field-value">{{EVENT_MODE}}</span>
-                </div>
-                <div class="field">
-                    <span class="field-label">{{VENUE_LABEL}}:</span>
-                    <span class="field-value">{{VENUE}}</span>
-                </div>
-            </div>
-
-            <!-- Organizer & Contact Information -->
-            <div class="section">
-                <div class="section-title">4. Organizer & Contact Information</div>
-                <div class="field">
-                    <span class="field-label">Organizing Department:</span>
-                    <span class="field-value">{{ORGANIZING_DEPARTMENT}}</span>
-                </div>
-                
-                {{ORGANIZERS_SECTION}}
-                
-                {{CONTACTS_SECTION}}
-            </div>
+        <div class="field">
+            <span class="field-label">Target Audience:</span>
+            <span class="field-value">{{TARGET_AUDIENCE}}</span>
         </div>
+        <div class="field">
+            <span class="field-label">Short Description:</span>
+            <span class="field-value">{{SHORT_DESCRIPTION}}</span>
+        </div>
+        {{DETAILED_DESCRIPTION}}
+        
+        <!-- Schedule -->
+        <div class="field mt-10">
+            <span class="field-label">Registration Duration:</span>
+            <span class="field-value">{{REGISTRATION_DURATION}}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">Event Duration:</span>
+            <span class="field-value">{{EVENT_DURATION}}</span>
+        </div>
+        
+        <!-- Venue & Location -->
+        <div class="field">
+            <span class="field-label">Event Mode:</span>
+            <span class="field-value">{{EVENT_MODE}}</span>
+        </div>
+        <div class="field">
+            <span class="field-label">{{VENUE_LABEL}}:</span>
+            <span class="field-value">{{VENUE}}</span>
+        </div>
+        
+        <!-- Organizer & Contact Information -->
+        <div class="field">
+            <span class="field-label">Organizing Department:</span>
+            <span class="field-value">{{ORGANIZING_DEPARTMENT}}</span>
+        </div>
+        
+        {{ORGANIZERS_SECTION}}
+        
+        {{CONTACTS_SECTION}}
     </div>
 
     <!-- Registration & Certificate Details -->
     <div class="section">
-        <div class="section-title">5. Registration & Certificate Details</div>
+        <div class="section-title">2. Registration & Certificate Details</div>
         
         <!-- Registration Settings -->
         <div class="field">
@@ -467,13 +443,13 @@
 
     <!-- Attendance Strategy Details -->
     <div class="section">
-        <div class="section-title">6. Attendance Strategy Details</div>
+        <div class="section-title">3. Attendance Strategy Details</div>
         {{ATTENDANCE_STRATEGY_SECTION}}
     </div>
 
     <!-- Budget & Financial Planning -->
     <div class="section">
-        <div class="section-title">7. Budget & Financial Planning</div>
+        <div class="section-title">4. Budget & Financial Planning</div>
         <div class="field">
             <span class="field-label">Estimated Budget:</span>
             <span class="field-value">₹ ____________</span>
@@ -504,7 +480,7 @@
 
     <!-- Resource Requirements -->
     <div class="section">
-        <div class="section-title">8. Resource Requirements</div>
+        <div class="section-title">5. Resource Requirements</div>
         <div class="field">
             <span class="field-label">Technical Requirements:</span>
             <span class="field-value">☐ Projector ☐ Microphone ☐ Laptop ☐ Internet</span>
@@ -529,7 +505,7 @@
 
     <!-- High Authority Approvals -->
     <div class="section">
-        <div class="section-title">9. High Authority Approvals</div>
+        <div class="section-title">6. High Authority Approvals</div>
         <div class="field">
             <span class="field-label">Department Head Approval:</span>
             <span class="field-value">☐ Pending ☐ Approved ☐ Rejected</span>
@@ -554,7 +530,7 @@
 
     <!-- Risk Assessment & Safety -->
     <div class="section">
-        <div class="section-title">10. Risk Assessment & Safety</div>
+        <div class="section-title">7. Risk Assessment & Safety</div>
         <div class="field">
             <span class="field-label">Risk Level:</span>
             <span class="field-value">☐ Low ☐ Medium ☐ High</span>
@@ -579,7 +555,7 @@
 
     <!-- Marketing & Promotion -->
     <div class="section">
-        <div class="section-title">11. Marketing & Promotion</div>
+        <div class="section-title">8. Marketing & Promotion</div>
         <div class="field">
             <span class="field-label">Promotion Channels:</span>
             <span class="field-value">☐ Social Media ☐ Website ☐ Email ☐ Posters ☐ Word of Mouth</span>
@@ -604,7 +580,7 @@
 
     <!-- Post-Event Requirements -->
     <div class="section">
-        <div class="section-title">12. Post-Event Requirements</div>
+        <div class="section-title">9. Post-Event Requirements</div>
         <div class="field">
             <span class="field-label">Event Report Required:</span>
             <span class="field-value">☐ Yes ☐ No</span>

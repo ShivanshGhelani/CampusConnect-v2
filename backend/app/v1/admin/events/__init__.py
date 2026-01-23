@@ -240,11 +240,9 @@ async def create_event(
                 }
                 
                 # Check if user provided custom attendance configuration
-                if hasattr(event_data, 'custom_attendance_config') and event_data.custom_attendance_config:
-                    # Use custom configuration provided by user
+                if hasattr(event_data, 'attendance_strategy') and event_data.attendance_strategy:
+                    # Use custom configuration provided by user - ONLY save attendance_strategy
                     event_doc['attendance_strategy'] = event_data.attendance_strategy
-                    event_doc['attendance_criteria'] = event_data.attendance_criteria
-                    event_doc['attendance_config'] = event_data.custom_attendance_config
                     event_doc['attendance_auto_generated'] = False
                 else:
                     # Generate automatic attendance configuration

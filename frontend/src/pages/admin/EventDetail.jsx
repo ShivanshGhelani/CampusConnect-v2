@@ -7,9 +7,10 @@ import EventReportModal from '../../components/EventReportModal';
 import CustomExportModal from '../../components/admin/CustomExportModal';
 import RichTextDisplay from '../../components/RichTextDisplay';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye, QrCode } from 'lucide-react';
 import { Dropdown, SearchBox } from '../../components/ui';
 import { eventPDFService } from '../../services/EventPDFService';
+import { generateEventQR, generateFeedbackQR } from '../../utils/qrCodeGenerator';
 import {
   fetchAllEventDataWithCache,
   fetchParticipantsWithCache,
@@ -243,6 +244,10 @@ function EventDetail() {
       // Process event details
       if (allData.event?.success) {
         setEvent(allData.event.event);
+        
+        // DEBUG: Log attendance strategy structure
+        console.log('🔍 Event attendance_strategy:', allData.event.event.attendance_strategy);
+        console.log('🔍 Full event object:', allData.event.event);
 
       } else {
         throw new Error(allData.event?.message || 'Failed to fetch event details');
@@ -1352,6 +1357,46 @@ function EventDetail() {
                           {/* Divider */}
                           <div className="border-t border-gray-200 my-1"></div>
 
+                          {/* QR Code Options */}
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            QR Codes
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                await generateEventQR(event._id, event.name);
+                                setExportDropdownOpen(false);
+                                setExportDropdownSticky(false);
+                              } catch (error) {
+                                console.error('Error generating Event QR:', error);
+                                alert('Failed to generate Event QR code. Please try again.');
+                              }
+                            }}
+                          >
+                            <QrCode className="w-4 h-4 mr-3" />
+                            Event QR
+                          </div>
+                          <div
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                await generateFeedbackQR(event._id, event.name);
+                                setExportDropdownOpen(false);
+                                setExportDropdownSticky(false);
+                              } catch (error) {
+                                console.error('Error generating Feedback QR:', error);
+                                alert('Failed to generate Feedback QR code. Please try again.');
+                              }
+                            }}
+                          >
+                            <QrCode className="w-4 h-4 mr-3" />
+                            Feedback QR
+                          </div>
+
+                          {/* Divider */}
+                          <div className="border-t border-gray-200 my-1"></div>
+
                           {/* Additional Report Options */}
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 cursor-not-allowed relative group"
@@ -1632,7 +1677,7 @@ function EventDetail() {
                                 }) : 'N/A';
 
                                 // Get total sessions count
-                                const totalSessions = config?.attendance_config?.sessions?.length || config?.sessions?.length || 1;
+                                const totalSessions = config?.attendance_strategy?.sessions?.length || config?.sessions?.length || 1;
 
                                 // Determine if event is for students or faculty
                                 const targetAudience = event?.target_audience || config?.target_audience || 'student';
@@ -1719,7 +1764,6 @@ function EventDetail() {
                                 const strategyName = event?.attendance_strategy?.strategy || 
                                                     config?.attendance_strategy?.strategy || 
                                                     config?.attendance_strategy_type ||
-                                                    config?.attendance_config?.strategy || 
                                                     'Single Mark';
                                 
                                 const formatStrategyName = (strat) => {
@@ -2818,8 +2862,10 @@ function EventDetail() {
                             <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-full">
                               {event.minimum_attendance_percentage ||
                                 (typeof event.pass_criteria === 'number' ? event.pass_criteria : event.pass_criteria?.minimum_percentage) ||
+                                event.attendance_strategy?.criteria?.minimum_percentage ||
                                 event.attendance_strategy?.minimum_percentage ||
                                 event.attendance_strategy?.pass_criteria?.minimum_percentage ||
+                                event.dynamic_attendance?.criteria?.minimum_percentage ||
                                 event.dynamic_attendance?.minimum_percentage ||
                                 event.dynamic_attendance?.pass_criteria?.minimum_percentage ||
                                 75}% required

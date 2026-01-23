@@ -87,12 +87,12 @@ async def create_invitation_link(
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
-        # Get attendance times from event
-        attendance_config = event.get("attendance_config", {})
-        attendance_start = attendance_config.get("attendance_start_time")
-        attendance_end = attendance_config.get("attendance_end_time")
+        # Get attendance strategy from event
+        attendance_strategy_data = event.get("attendance_strategy", {})
+        attendance_start = attendance_strategy_data.get("attendance_start_time")
+        attendance_end = attendance_strategy_data.get("attendance_end_time")
         
-        # Fallback: use event date range if attendance_config not set
+        # Fallback: use event date range if attendance_strategy not set
         if not attendance_start:
             event_date = event.get("event_date")
             if event_date:
@@ -171,7 +171,7 @@ async def create_invitation_link(
                 "target_day": request.target_day,
                 "target_session": request.target_session,
                 "target_round": request.target_round,
-                "attendance_strategy": attendance_config.get("strategy", "single_mark"),
+                "attendance_strategy": attendance_strategy_data.get("strategy", "single_mark"),
                 "target_audience": event.get("target_audience"),
                 "is_team_based": event.get("is_team_based", False),
                 "total_scans": 0,
@@ -554,8 +554,8 @@ async def get_registration_attendance_status(
             raise HTTPException(status_code=404, detail="Event not found")
         
         # Extract attendance info based on registration type
-        attendance_config = event.get("attendance_config", {})
-        attendance_strategy = attendance_config.get("strategy", "single_mark")  # FIX: Use "strategy" not "attendance_strategy"
+        attendance_strategy_data = event.get("attendance_strategy", {})
+        attendance_strategy = attendance_strategy_data.get("strategy", "single_mark")  # FIX: Use "strategy" not "attendance_strategy"
         
         # Get registration type from nested structure
         registration_info = registration.get("registration", {})
@@ -886,7 +886,7 @@ async def mark_attendance(
         
         # Get current attendance object from registration
         current_attendance = registration.get("attendance", {})
-        attendance_config = event.get("attendance_config", {})
+        attendance_strategy_data = event.get("attendance_strategy", {})
         
         # Get invitation to determine target day/session
         invitation = await DatabaseOperations.find_one(
@@ -898,8 +898,8 @@ async def mark_attendance(
         attendance_strategy = "single_mark"
         if invitation and invitation.get("attendance_strategy"):
             attendance_strategy = invitation.get("attendance_strategy")
-        elif attendance_config.get("strategy"):
-            attendance_strategy = attendance_config.get("strategy")
+        elif attendance_strategy_data.get("strategy"):
+            attendance_strategy = attendance_strategy_data.get("strategy")
         elif current_attendance.get("strategy"):
             attendance_strategy = current_attendance.get("strategy")
         
@@ -924,7 +924,7 @@ async def mark_attendance(
                 raise HTTPException(status_code=400, detail="Day number required for day-based attendance")
             
             # Get ALL configured days/sessions from event config
-            all_sessions = attendance_config.get("sessions", [])
+            all_sessions = attendance_strategy_data.get("sessions", [])
             if not all_sessions:
                 raise HTTPException(status_code=400, detail="No days configured in event")
             
@@ -982,7 +982,7 @@ async def mark_attendance(
             percentage = (attended_weight / total_weight * 100) if total_weight > 0 else 0
             
             # Determine status based on percentage
-            minimum_percentage = attendance_config.get("minimum_percentage", 75)
+            minimum_percentage = attendance_strategy_data.get("criteria", {}).get("minimum_percentage", 75)
             if percentage >= minimum_percentage:
                 status = "present"
             elif percentage > 0:
@@ -1010,7 +1010,7 @@ async def mark_attendance(
                 raise HTTPException(status_code=400, detail="session_id required for session-based attendance")
             
             # Get ALL configured sessions from event config
-            all_sessions = attendance_config.get("sessions", [])
+            all_sessions = attendance_strategy_data.get("sessions", [])
             if not all_sessions:
                 raise HTTPException(status_code=400, detail="No sessions configured in event")
             
@@ -1060,7 +1060,7 @@ async def mark_attendance(
             percentage = (attended_weight / total_weight * 100) if total_weight > 0 else 0
             
             # Determine status based on percentage
-            minimum_percentage = attendance_config.get("minimum_percentage", 75)
+            minimum_percentage = attendance_strategy_data.get("criteria", {}).get("minimum_percentage", 75)
             if percentage >= minimum_percentage:
                 status = "present"
             elif percentage > 0:
@@ -1187,3 +1187,4 @@ async def get_session_status(session_id: str):
     except Exception as e:
         logger.error(f"Error getting session status {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get session status: {str(e)}")
+

@@ -170,11 +170,11 @@ const AttendancePreview = ({
           const strategyData = {
             strategy: data.detected_strategy.type,
             detected_strategy: data.detected_strategy,
-            criteria: data.attendance_config,
+            criteria: data.criteria,
             sessions: data.sessions,
             warnings: data.validation_details?.warnings || [],
             recommendations: data.recommendations || [],
-            minimum_percentage: data.attendance_config?.minimum_percentage
+            minimum_percentage: data.criteria?.minimum_percentage
           };
           
           

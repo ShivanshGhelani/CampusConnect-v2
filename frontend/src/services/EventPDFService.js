@@ -56,15 +56,110 @@ export class EventPDFService {
     }
   }
 
+  // Extract date from datetime string
+  extractDate(datetimeString) {
+    if (!datetimeString) return null;
+    try {
+      const date = new Date(datetimeString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return null;
+    }
+  }
+
+  // Extract time from datetime string
+  extractTime(datetimeString) {
+    if (!datetimeString) return null;
+    try {
+      const date = new Date(datetimeString);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch {
+      return null;
+    }
+  }
+
+  // Format complete datetime
+  formatDateTime(datetimeString) {
+    if (!datetimeString) return 'N/A';
+    try {
+      const date = new Date(datetimeString);
+      const formattedDate = date.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      const formattedTime = `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+      return `${formattedDate} ${formattedTime}`;
+    } catch {
+      return datetimeString;
+    }
+  }
+
   // Format strategy type helper
   formatStrategyType(strategyType) {
+    if (!strategyType) return 'Session Based';
     const strategyTypeMap = {
       'session_based': 'Session Based',
       'user_based': 'User Based',
       'time_based': 'Time Based',
+      'day_based': 'Day Based',
+      'milestone_based': 'Milestone Based',
+      'percentage_based': 'Percentage Based',
+      'custom': 'Custom',
       'hybrid': 'Hybrid'
     };
-    return strategyTypeMap[strategyType] || strategyType;
+    return strategyTypeMap[strategyType.toLowerCase()] || strategyType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+
+  // Convert Markdown to HTML
+  markdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    let html = markdown;
+    
+    // Headers (### H3, ## H2, # H1) - must be done in this order
+    html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 12pt; font-weight: bold; margin: 12px 0 6px 0; color: #1a1a1a;">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 13pt; font-weight: bold; margin: 15px 0 8px 0; color: #1a1a1a;">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 14pt; font-weight: bold; margin: 18px 0 10px 0; color: #000;">$1</h1>');
+    
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    
+    // Italic (*text* or _text_)
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    
+    // Unordered lists (lines starting with - or *)
+    html = html.replace(/^[\-\*] (.+)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    
+    // Wrap consecutive <li> tags in <ul>
+    html = html.replace(/(<li[^>]*>.*?<\/li>\s*)+/gs, match => {
+      return '<ul style="margin: 8px 0; padding-left: 20px; list-style-type: disc;">' + match + '</ul>';
+    });
+    
+    // Code blocks (```code```)
+    html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 9pt; margin: 10px 0;">$1</pre>');
+    
+    // Inline code (`code`)
+    html = html.replace(/`(.+?)`/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 9pt;">$1</code>');
+    
+    // Line breaks (preserve double line breaks as paragraphs, single as <br>)
+    html = html.replace(/\n\n/g, '</p><p style="margin: 8px 0;">');
+    html = html.replace(/\n/g, '<br>');
+    
+    // Wrap in paragraph if not already wrapped in block elements
+    if (!html.startsWith('<h1') && !html.startsWith('<h2') && !html.startsWith('<h3') && !html.startsWith('<ul') && !html.startsWith('<pre')) {
+      html = '<p style="margin: 8px 0;">' + html + '</p>';
+    }
+    
+    return html;
   }
 
   // Generate organizers HTML section
@@ -272,33 +367,41 @@ export class EventPDFService {
     }
 
     const strategy = eventData.attendance_strategy;
-    let strategyHTML = '<div class="section"><div class="section-title">6. Attendance Strategy</div>';
+    let strategyHTML = '';
 
     // Strategy Overview
     strategyHTML += '<div class="strategy-overview">';
     
-    // Strategy Type with multiple fallback options
-    const strategyType = strategy.detected_strategy?.name || 
-                        strategy.strategy_type || 
-                        strategy.strategy || 
+    // Strategy Type with multiple fallback options - PRIORITIZE nested structure
+    const strategyType = strategy.strategy || 
                         strategy.type ||
+                        strategy.detected_strategy?.name || 
+                        strategy.strategy_type || 
                         'Session Based';
-    strategyHTML += `<div class="strategy-item">• Strategy Type: <span class="strategy-value">${this.formatStrategyType(strategyType)}</span></div>`;
+    strategyHTML += `<div class="strategy-item"><span class="strategy-label">Strategy Type:</span> <span class="strategy-value">${this.formatStrategyType(strategyType)}</span></div>`;
     
-    // Pass Criteria with multiple fallback options
-    const passCriteria = strategy.criteria?.minimum_percentage || 
-                        strategy.minimum_percentage || 
-                        strategy.pass_criteria ||
-                        strategy.threshold ||
-                        75;
-    strategyHTML += `<div class="strategy-item">• Pass Criteria: <span class="strategy-value">${passCriteria}%</span></div>`;
+    // Pass Criteria with multiple fallback options - handle object properly
+    let passCriteria = 75; // default
+    if (strategy.criteria && typeof strategy.criteria === 'object') {
+      passCriteria = strategy.criteria.minimum_percentage || 75;
+    } else if (typeof strategy.pass_criteria === 'object' && strategy.pass_criteria !== null) {
+      passCriteria = strategy.pass_criteria.minimum_percentage || 
+                    strategy.pass_criteria.threshold || 
+                    strategy.pass_criteria.value || 75;
+    } else {
+      passCriteria = strategy.minimum_percentage || 
+                    strategy.pass_criteria ||
+                    strategy.threshold ||
+                    75;
+    }
+    strategyHTML += `<div class="strategy-item"><span class="strategy-label">Pass Criteria:</span> <span class="strategy-value">${passCriteria}%</span></div>`;
     
     // Min/Max Participants
-    strategyHTML += `<div class="strategy-item">• Min Participants: <span class="strategy-value">${strategy.min_participants || eventData.min_participants || 1}</span></div>`;
+    strategyHTML += `<div class="strategy-item"><span class="strategy-label">Min Participants:</span> <span class="strategy-value">${strategy.min_participants || eventData.min_participants || 1}</span></div>`;
     if (strategy.max_participants || eventData.max_participants) {
-      strategyHTML += `<div class="strategy-item">• Max Participants: <span class="strategy-value">${strategy.max_participants || eventData.max_participants}</span></div>`;
+      strategyHTML += `<div class="strategy-item"><span class="strategy-label">Max Participants:</span> <span class="strategy-value">${strategy.max_participants || eventData.max_participants}</span></div>`;
     } else {
-      strategyHTML += `<div class="strategy-item">• Max Participants: <span class="strategy-value">No limit</span></div>`;
+      strategyHTML += `<div class="strategy-item"><span class="strategy-label">Max Participants:</span> <span class="strategy-value">No limit</span></div>`;
     }
     strategyHTML += '</div>';
 
@@ -313,13 +416,26 @@ export class EventPDFService {
                            session.title || 
                            `Session ${index + 1}`;
         
-        // Session duration with multiple fallback options
-        const duration = session.duration_minutes || 
-                        session.duration || 
-                        session.length ||
-                        'TBD';
-        
-        const durationText = duration === 'TBD' ? 'TBD' : `${duration} minutes`;
+        // Calculate duration from start_time and end_time or use explicit duration
+        let durationText = 'TBD';
+        if (session.duration_minutes || session.duration) {
+          const duration = session.duration_minutes || session.duration;
+          const hours = Math.floor(duration / 60);
+          const minutes = duration % 60;
+          durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} minutes`;
+        } else if (session.start_time && session.end_time) {
+          try {
+            const start = new Date(session.start_time);
+            const end = new Date(session.end_time);
+            const durationMs = end - start;
+            const durationMinutes = Math.floor(durationMs / (1000 * 60));
+            const hours = Math.floor(durationMinutes / 60);
+            const minutes = durationMinutes % 60;
+            durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} minutes`;
+          } catch (e) {
+            durationText = 'TBD';
+          }
+        }
         
         strategyHTML += `
           <div class="session-item">
@@ -344,7 +460,6 @@ export class EventPDFService {
       strategyHTML += '</div>';
     }
 
-    strategyHTML += '</div>';
     return strategyHTML;
   }
 
@@ -468,14 +583,13 @@ export class EventPDFService {
                         eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',
         SHORT_DESCRIPTION: eventData.short_description || 'N/A',
         DETAILED_DESCRIPTION: eventData.detailed_description ? `
-          <div class="description-box">${eventData.detailed_description.replace(/\n/g, '<br>')}</div>
+          <div class="description-box">${this.markdownToHtml(eventData.detailed_description)}</div>
         ` : '',
 
         // Schedule
-        EVENT_START: `${this.formatDate(eventData.start_date)} at ${this.formatTime(eventData.start_time)}`,
-        EVENT_END: `${this.formatDate(eventData.end_date)} at ${this.formatTime(eventData.end_time)}`,
-        REGISTRATION_START: `${this.formatDate(eventData.registration_start_date)} at ${this.formatTime(eventData.registration_start_time)}`,
-        REGISTRATION_END: `${this.formatDate(eventData.registration_end_date)} at ${this.formatTime(eventData.registration_end_time)}`,
+        EVENT_DURATION: `${this.formatDateTime(eventData.start_datetime)} - ${this.formatDateTime(eventData.end_datetime)}`,
+        REGISTRATION_DURATION: `${this.formatDateTime(eventData.registration_start_date)} - ${this.formatDateTime(eventData.registration_end_date)}`,
+
 
         // Venue
         EVENT_MODE: eventData.mode?.charAt(0).toUpperCase() + eventData.mode?.slice(1) || 'N/A',

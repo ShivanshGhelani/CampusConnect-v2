@@ -335,9 +335,11 @@ class CreateEvent(BaseModel):
     
     # Attendance configuration fields
     attendance_mandatory: bool = Field(default=True, description="Whether attendance tracking is mandatory for this event")
-    attendance_strategy: Optional[str] = Field(default=None, description="Attendance strategy (single_mark, day_based, session_based, etc.)")
-    attendance_criteria: Optional[Dict[str, Any]] = Field(default=None, description="Attendance criteria configuration")
-    custom_attendance_config: Optional[Dict[str, Any]] = Field(default=None, description="Custom attendance configuration if user overrides auto-detection")
+    attendance_strategy: Optional[Dict[str, Any]] = Field(default=None, description="Attendance strategy configuration with sessions, criteria, and type")
+    
+    # DEPRECATED: These fields are no longer used (consolidated into attendance_strategy)
+    attendance_criteria: Optional[Dict[str, Any]] = Field(default=None, description="[DEPRECATED] Use attendance_strategy instead")
+    custom_attendance_config: Optional[Dict[str, Any]] = Field(default=None, description="[DEPRECATED] Use attendance_strategy instead")
     
     # Certificate configuration fields
     is_certificate_based: bool = Field(default=False, description="Whether this event issues certificates")

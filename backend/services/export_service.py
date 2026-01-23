@@ -1411,12 +1411,11 @@ class ExportService:
         html_content = html_content.replace("{{CERTIFICATE_STATUS}}", certificate_status)
         
         # Attendance strategy
-        attendance_strategy = event.get('attendance_strategy')
-        attendance_config = event.get('attendance_config', {})
+        attendance_strategy = event.get('attendance_strategy', {})
         if attendance_strategy:
             # Check if attendance_strategy is a dictionary or string
             if isinstance(attendance_strategy, dict):
-                strategy_type = attendance_strategy.get("type", "N/A")
+                strategy_type = attendance_strategy.get("strategy", attendance_strategy.get("type", "N/A"))
             else:
                 # If it's a string, use it directly as the strategy type
                 strategy_type = str(attendance_strategy)
@@ -1429,10 +1428,10 @@ class ExportService:
                     </div>
             '''
             
-            # Add more details from attendance_config
-            if attendance_config:
-                criteria = attendance_config.get('criteria', {})
-                sessions = attendance_config.get('sessions', [])
+            # Add more details from attendance_strategy
+            if isinstance(attendance_strategy, dict):
+                criteria = attendance_strategy.get('criteria', {})
+                sessions = attendance_strategy.get('sessions', [])
                 
                 if criteria.get('minimum_percentage'):
                     strategy_section += f'''
