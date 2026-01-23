@@ -351,10 +351,10 @@ const FeedbackForm = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="flex items-center space-x-2 text-gray-600">
           <Loader className="w-5 h-5 animate-spin" />
-          <span>Loading feedback form...</span>
+          <span className="text-sm sm:text-base">Loading feedback form...</span>
         </div>
       </div>
     );
@@ -362,16 +362,16 @@ const FeedbackForm = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
           <div className="flex items-center space-x-2 text-red-600 mb-4">
             <AlertCircle className="w-5 h-5" />
             <span className="font-medium">Error</span>
           </div>
-          <p className="text-gray-700 mb-4">{error}</p>
+          <p className="text-gray-700 text-sm sm:text-base mb-4">{error}</p>
           <button
             onClick={() => navigate('/client/dashboard')}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
           >
             Go to Dashboard
           </button>
@@ -398,16 +398,16 @@ const FeedbackForm = () => {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
           <div className={`flex items-center space-x-2 ${getColor()} mb-4`}>
             {getIcon()}
             <span className="font-medium">{getTitle()}</span>
           </div>
-          <p className="text-gray-700 mb-4">{eligibility.message}</p>
+          <p className="text-gray-700 text-sm sm:text-base mb-4">{eligibility.message}</p>
           <button
             onClick={() => navigate('/client/dashboard')}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
           >
             Go to Dashboard
           </button>
@@ -418,10 +418,10 @@ const FeedbackForm = () => {
 
   if (!feedbackForm || !event) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No feedback form available for this event.</p>
+          <p className="text-gray-600 text-sm sm:text-base">No feedback form available for this event.</p>
         </div>
       </div>
     );
@@ -442,8 +442,8 @@ const FeedbackForm = () => {
       };
 
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
             <div className={`flex items-center space-x-2 ${getColor()} mb-4`}>
               {getIcon()}
               <span className="font-medium">{verificationError.title}</span>
@@ -455,13 +455,13 @@ const FeedbackForm = () => {
                   setVerificationError(null);
                   setRegistrationId('');
                 }}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 Try Again
               </button>
               <button
                 onClick={() => navigate(`/client/events/${eventId}`)}
-                className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
               >
                 Back to Event
               </button>
@@ -477,13 +477,13 @@ const FeedbackForm = () => {
     const idPlaceholder = targetAudience === 'faculty' ? 'Enter your employee ID' : 'Enter your enrollment number';
     
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
           <div className="flex items-center space-x-2 text-blue-600 mb-4">
             <CheckSquare className="w-5 h-5" />
             <span className="font-medium">Verify Registration</span>
           </div>
-          <p className="text-gray-700 mb-4">
+          <p className="text-gray-700 text-sm sm:text-base mb-4">
             Please enter your {idLabel} to submit feedback for this event.
           </p>
           <div className="space-y-4">
@@ -496,14 +496,14 @@ const FeedbackForm = () => {
                 value={registrationId}
                 onChange={(e) => setRegistrationId(e.target.value.toUpperCase())}
                 placeholder={idPlaceholder}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 onKeyPress={(e) => e.key === 'Enter' && verifyRegistration()}
               />
             </div>
             <button
               onClick={verifyRegistration}
               disabled={isVerifyingRegistration}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center justify-center text-sm sm:text-base"
             >
               {isVerifyingRegistration ? (
                 <>
@@ -516,7 +516,7 @@ const FeedbackForm = () => {
             </button>
             <button
               onClick={() => navigate(`/client/events/${eventId}`)}
-              className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               Back to Event
             </button>
@@ -533,19 +533,19 @@ const FeedbackForm = () => {
     
     if (now > feedbackEndDate) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
             <div className="flex items-center space-x-2 text-amber-600 mb-4">
               <AlertCircle className="w-5 h-5" />
               <span className="font-medium">Feedback Period Ended</span>
             </div>
-            <p className="text-gray-700 mb-4">
+            <p className="text-gray-700 text-sm sm:text-base mb-4">
               The feedback collection period for this event ended on{' '}
               {feedbackEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
             </p>
             <button
               onClick={() => navigate('/client/dashboard')}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               Go to Dashboard
             </button>
@@ -556,28 +556,29 @@ const FeedbackForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-center space-x-4 mb-4">
             <button
               onClick={() => navigate('/client/dashboard')}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Dashboard</span>
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
             </button>
           </div>
           
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">{feedbackForm.title}</h1>
-            <p className="text-gray-600 mt-2">{feedbackForm.description}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{feedbackForm.title}</h1>
+            <p className="text-gray-600 text-sm sm:text-base mt-2">{feedbackForm.description}</p>
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-4">
-            <h2 className="font-semibold text-blue-900 mb-2">{event.event_name}</h2>
-            <div className="text-sm text-blue-700 space-y-1">
+          <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+            <h2 className="font-semibold text-blue-900 text-sm sm:text-base mb-2">{event.event_name}</h2>
+            <div className="text-xs sm:text-sm text-blue-700 space-y-1">
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4" />
                 <span>Event ID: {event.event_id}</span>
@@ -587,8 +588,8 @@ const FeedbackForm = () => {
         </div>
 
         {/* Feedback Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <div className="space-y-4 sm:space-y-6">
             {feedbackForm.elements.map((element, index) => (
               <div key={element.id} className="space-y-2">
                 <label className="block text-sm font-medium text-gray-900">
@@ -600,18 +601,18 @@ const FeedbackForm = () => {
             ))}
           </div>
 
-          <div className="mt-8 flex justify-end space-x-4">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
             <button
               type="button"
               onClick={() => navigate('/client/dashboard')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full sm:w-auto px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !validateForm()}
-              className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {isSubmitting ? (
                 <Loader className="w-4 h-4 animate-spin" />
