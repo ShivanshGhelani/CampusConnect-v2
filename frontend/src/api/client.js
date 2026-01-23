@@ -310,6 +310,15 @@ export const clientAPI = {
     event_id: eventId,
     feedback_responses: feedbackResponses
   }),
+  submitEventFeedbackAnonymous: (eventId, feedbackResponses, registrationId) => api.post('/api/v1/client/feedback/submit-anonymous', {
+    event_id: eventId,
+    feedback_responses: feedbackResponses,
+    registration_id: registrationId
+  }),
+  verifyRegistrationForFeedback: (eventId, registrationId) => api.post('/api/v1/client/feedback/verify-registration', {
+    event_id: eventId,
+    registration_id: registrationId
+  }),
   checkFeedbackEligibility: (eventId) => api.get(`/api/v1/client/feedback/eligibility/${eventId}`),
   
   // Certificates - Keep existing

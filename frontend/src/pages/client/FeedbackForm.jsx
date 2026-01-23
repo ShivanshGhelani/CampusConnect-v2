@@ -28,11 +28,20 @@ const FeedbackForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [eligibility, setEligibility] = useState(null);
+  const [registrationId, setRegistrationId] = useState('');
+  const [isVerifyingRegistration, setIsVerifyingRegistration] = useState(false);
+  const [registrationVerified, setRegistrationVerified] = useState(false);
 
   useEffect(() => {
     loadFeedbackForm();
-    checkEligibility();
-  }, [eventId]);
+    // Only check eligibility if user is logged in
+    if (user) {
+      checkEligibility();
+    } else {
+      // For non-logged in users, set eligibility to null (will show registration ID input)
+      setEligibility(null);
+    }
+  }, [eventId, user]);
 
   const loadFeedbackForm = async () => {
     try {
@@ -122,6 +131,30 @@ const FeedbackForm = () => {
     return true;
   };
 
+  const verifyRegistration = async () => {
+    if (!registrationId.trim()) {
+      alert('Please enter your Registration ID');
+      return;
+    }
+
+    try {
+      setIsVerifyingRegistration(true);
+      // Call backend to verify registration ID for this event
+      const response = await clientAPI.verifyRegistrationForFeedback(eventId, registrationId);
+      
+      if (response.data.success && response.data.verified) {
+        setRegistrationVerified(true);
+        setEligibility({ eligible: true, message: 'Verified via Registration ID' });
+      } else {
+        alert(response.data.message || 'Registration ID not found for this event');
+      }
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to verify registration ID');
+    } finally {
+      setIsVerifyingRegistration(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -133,7 +166,13 @@ const FeedbackForm = () => {
     try {
       setIsSubmitting(true);
       
-      const response = await clientAPI.submitEventFeedback(eventId, responses);
+      // If not logged in, submit with registration ID
+      let response;
+      if (!user && registrationId) {
+        response = await clientAPI.submitEventFeedbackAnonymous(eventId, responses, registrationId);
+      } else {
+        response = await clientAPI.submitEventFeedback(eventId, responses);
+      }
       
       if (response.data.success) {
         // Navigate to the feedback success page
@@ -364,6 +403,58 @@ const FeedbackForm = () => {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">No feedback form available for this event.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not logged in and registration not verified, show registration ID input
+  if (!user && !registrationVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <div className="flex items-center space-x-2 text-blue-600 mb-4">
+            <CheckSquare className="w-5 h-5" />
+            <span className="font-medium">Verify Registration</span>
+          </div>
+          <p className="text-gray-700 mb-4">
+            Please enter your Registration ID to submit feedback for this event.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Registration ID
+              </label>
+              <input
+                type="text"
+                value={registrationId}
+                onChange={(e) => setRegistrationId(e.target.value.toUpperCase())}
+                placeholder="Enter your registration ID"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyPress={(e) => e.key === 'Enter' && verifyRegistration()}
+              />
+            </div>
+            <button
+              onClick={verifyRegistration}
+              disabled={isVerifyingRegistration}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+            >
+              {isVerifyingRegistration ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin mr-2" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify & Continue'
+              )}
+            </button>
+            <button
+              onClick={() => navigate(`/client/events/${eventId}`)}
+              className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Back to Event
+            </button>
+          </div>
         </div>
       </div>
     );

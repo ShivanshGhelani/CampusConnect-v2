@@ -725,6 +725,127 @@ class EventFeedbackService:
                 "message": f"Error checking eligibility: {str(e)}"
             }
 
+    async def verify_registration_for_feedback(
+        self,
+        event_id: str,
+        registration_id: str
+    ) -> Dict[str, Any]:
+        """Verify if registration ID exists for the event and hasn't submitted feedback yet"""
+        try:
+            # Find registration by registration_id and event_id
+            registration = await DatabaseOperations.find_one(
+                self.registrations_collection,
+                {
+                    "registration.registration_id": registration_id,
+                    "event.event_id": event_id
+                }
+            )
+            
+            if not registration:
+                return {
+                    "success": False,
+                    "verified": False,
+                    "message": "Registration ID not found for this event"
+                }
+            
+            # Check if feedback already submitted with this registration ID
+            existing_feedback = await DatabaseOperations.find_one(
+                self.student_feedbacks_collection,
+                {
+                    "event_id": event_id,
+                    "registration_id": registration_id
+                }
+            )
+            
+            if existing_feedback:
+                return {
+                    "success": False,
+                    "verified": False,
+                    "message": "Feedback already submitted with this Registration ID"
+                }
+            
+            return {
+                "success": True,
+                "verified": True,
+                "message": "Registration verified successfully"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error verifying registration: {str(e)}")
+            return {
+                "success": False,
+                "verified": False,
+                "message": f"Error verifying registration: {str(e)}"
+            }
 
-# Service instance
-event_feedback_service = EventFeedbackService()
+    async def submit_anonymous_feedback(
+        self,
+        event_id: str,
+        registration_id: str,
+        feedback_responses: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Submit feedback anonymously using registration ID"""
+        try:
+            # Verify registration first
+            verification = await self.verify_registration_for_feedback(event_id, registration_id)
+            
+            if not verification.get("verified"):
+                return {
+                    "success": False,
+                    "message": verification.get("message", "Invalid registration")
+                }
+            
+            # Get registration details for student info
+            registration = await DatabaseOperations.find_one(
+                self.registrations_collection,
+                {
+                    "registration.registration_id": registration_id,
+                    "event.event_id": event_id
+                }
+            )
+            
+            if not registration:
+                return {
+                    "success": False,
+                    "message": "Registration not found"
+                }
+            
+            student_info = registration.get("student", {})
+            student_enrollment = student_info.get("enrollment_no")
+            
+            # Create feedback document
+            feedback_doc = {
+                "event_id": event_id,
+                "student_enrollment": student_enrollment,
+                "registration_id": registration_id,
+                "student_info": student_info,
+                "responses": feedback_responses,
+                "submitted_at": datetime.utcnow(),
+                "submission_method": "anonymous_qr"
+            }
+            
+            # Insert feedback
+            result = await DatabaseOperations.insert_one(
+                self.student_feedbacks_collection,
+                feedback_doc
+            )
+            
+            if result:
+                logger.info(f"Anonymous feedback submitted successfully for registration {registration_id}")
+                return {
+                    "success": True,
+                    "message": "Feedback submitted successfully"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Failed to save feedback"
+                }
+            
+        except Exception as e:
+            logger.error(f"Error submitting anonymous feedback: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error submitting feedback: {str(e)}"
+            }
+

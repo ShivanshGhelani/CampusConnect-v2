@@ -114,6 +114,62 @@ async def check_feedback_eligibility(
         raise HTTPException(status_code=500, detail=f"Error checking eligibility: {str(e)}")
 
 
+@router.post("/verify-registration")
+async def verify_registration_for_feedback(request: Request):
+    """Verify registration ID for anonymous feedback submission"""
+    try:
+        body = await request.json()
+        event_id = body.get("event_id")
+        registration_id = body.get("registration_id")
+        
+        if not event_id or not registration_id:
+            raise HTTPException(status_code=400, detail="Event ID and Registration ID are required")
+        
+        result = await event_feedback_service.verify_registration_for_feedback(
+            event_id=event_id,
+            registration_id=registration_id
+        )
+        
+        return JSONResponse(status_code=200, content=result)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying registration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error verifying registration: {str(e)}")
+
+
+@router.post("/submit-anonymous")
+async def submit_anonymous_feedback(request: Request):
+    """Submit feedback anonymously using registration ID"""
+    try:
+        body = await request.json()
+        
+        event_id = body.get("event_id")
+        feedback_responses = body.get("feedback_responses", {})
+        registration_id = body.get("registration_id")
+        
+        if not event_id or not feedback_responses or not registration_id:
+            raise HTTPException(status_code=400, detail="Event ID, Registration ID, and feedback responses are required")
+        
+        result = await event_feedback_service.submit_anonymous_feedback(
+            event_id=event_id,
+            registration_id=registration_id,
+            feedback_responses=feedback_responses
+        )
+        
+        if result["success"]:
+            return JSONResponse(status_code=200, content=result)
+        else:
+            raise HTTPException(status_code=400, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting anonymous feedback: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error submitting feedback: {str(e)}")
+
+
 @router.get("/test-health")
 async def test_health():
     """PHASE 4A: REMOVE IN PRODUCTION - Simple health check for test endpoints"""
