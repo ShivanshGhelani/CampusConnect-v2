@@ -849,3 +849,6 @@ class EventFeedbackService:
                 "message": f"Error submitting feedback: {str(e)}"
             }
 
+
+# Service instance
+event_feedback_service = EventFeedbackService()
