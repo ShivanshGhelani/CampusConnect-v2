@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Users, 
@@ -21,7 +21,8 @@ import {
   Shield,
   ChevronUp,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  Download
 } from 'lucide-react';
 import AdminLayout from '../AdminLayout';
 import LoadingSpinner from '../../LoadingSpinner';
@@ -35,11 +36,16 @@ import { adminAPI } from '../../../api/admin';
 const UnifiedAttendancePortal = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get data passed from EventDetail via navigation state
+  const passedData = location.state;
   
   // State management
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [config, setConfig] = useState(null);
+  const [passedEventData, setPassedEventData] = useState(passedData?.event_data || null);
   const [participants, setParticipants] = useState([]);
   const [filteredParticipants, setFilteredParticipants] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -457,6 +463,236 @@ const UnifiedAttendancePortal = () => {
     }
   };
 
+  const handleExportAttendance = async () => {
+    try {
+      if (!participants || participants.length === 0) {
+        showNotification('No attendance data available to export', 'error');
+        return;
+      }
+
+      // Debug: Log all data sources
+      console.group('🔍 ATTENDANCE EXPORT DEBUG');
+      console.log('📊 Analytics:', analytics);
+      console.log('⚙️ Config:', config);
+      console.log('📦 Passed Event Data:', passedEventData);
+      console.log('👥 First Participant:', participants[0]);
+      console.log('📋 Participant Structure:', {
+        participant_type: participants[0]?.participant_type,
+        student_fields: participants[0]?.student ? Object.keys(participants[0].student) : 'No student object',
+        faculty_fields: participants[0]?.faculty ? Object.keys(participants[0].faculty) : 'No faculty object',
+      });
+      console.groupEnd();
+
+      // Fetch HTML template
+      const templateResponse = await fetch('/templates/attendance_report.html');
+      let htmlTemplate = await templateResponse.text();
+
+      // Populate template with data
+      const genDate = new Date().toLocaleDateString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      // Format organizer details
+      let organizerInfo = 'N/A';
+      const eventData = passedEventData || config;
+      if (eventData?.organizer_details && eventData.organizer_details.length > 0) {
+        organizerInfo = eventData.organizer_details
+          .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+          .join(' | ');
+      } else if (eventData?.contacts && eventData.contacts.length > 0) {
+        organizerInfo = eventData.contacts[0].name;
+      }
+
+      const startDate = (eventData?.start_datetime || config?.start_datetime) ? new Date(eventData?.start_datetime || config?.start_datetime).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'N/A';
+
+      const endDate = (eventData?.end_datetime || config?.end_datetime) ? new Date(eventData?.end_datetime || config?.end_datetime).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'N/A';
+
+      // Get total sessions count from config
+      const totalSessions = config?.attendance_config?.sessions?.length || config?.sessions?.length || 1;
+
+      // Determine if event is for students or faculty based on target audience
+      const targetAudience = eventData?.target_audience || config?.target_audience || 'student';
+      const isStudentEvent = targetAudience === 'student' || targetAudience === 'students' || targetAudience.includes('student');
+      const semDesigColumnHeader = isStudentEvent ? 'Year' : 'Designation';
+
+      // Generate attendance table rows
+      let tableRows = '';
+      participants.forEach((participant, index) => {
+        const isStudent = participant.participant_type === 'student';
+        const profile = isStudent ? participant.student : participant.faculty;
+        const attendance = participant.attendance || {};
+        const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
+        
+        // Debug log to see available fields
+        if (index === 0) {
+          console.log('🔍 First participant data:', {
+            participant_type: participant.participant_type,
+            profile: profile,
+            student: participant.student,
+            faculty: participant.faculty,
+            available_fields: Object.keys(profile || {})
+          });
+        }
+        
+        let statusBadge = '';
+        let statusPercentage = '';
+        
+        switch (attendance.status) {
+          case 'present':
+            statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+            statusPercentage = '100%';
+            break;
+          case 'partial':
+            statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+            statusPercentage = `${attendance.percentage || 0}%`;
+            break;
+          case 'absent':
+            statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+            statusPercentage = '0%';
+            break;
+          default:
+            statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+            statusPercentage = '0%';
+        }
+
+        // Calculate sessions marked vs total
+        let sessionsMarked;
+        if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
+          // Use actual sessions_marked array if available
+          sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
+        } else if (attendance.status === 'present') {
+          // If present (100%), show all sessions marked
+          sessionsMarked = `${totalSessions}/${totalSessions}`;
+        } else if (attendance.status === 'partial') {
+          // If partial, calculate based on percentage
+          const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
+          sessionsMarked = `${markedCount}/${totalSessions}`;
+        } else {
+          // Absent or not marked
+          sessionsMarked = `0/${totalSessions}`;
+        }
+
+        // Get semester for students or designation for faculty
+        // Try multiple possible field names
+        let semesterOrDesignation = 'N/A';
+        if (isStudent) {
+          // Try various semester/year field names (DB has 'year' field, not 'semester')
+          semesterOrDesignation = profile?.year || profile?.semester || profile?.sem || 
+                                 profile?.current_semester || profile?.semester_no || 
+                                 participant.student?.year || participant.student?.semester || 'N/A';
+        } else {
+          // For faculty, try various designation field names
+          semesterOrDesignation = participant.faculty?.designation || profile?.designation || 
+                                 participant.faculty?.position || profile?.position || 'N/A';
+        }
+        
+        // If still N/A, log for debugging
+        if (semesterOrDesignation === 'N/A' && index === 0) {
+          console.log('⚠️ Semester/Designation not found. Available profile fields:', Object.keys(profile || {}));
+        }
+
+        tableRows += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${enrollmentId}</td>
+            <td>${participant.registration_id || 'N/A'}</td>
+            <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
+            <td>${profile?.department || 'N/A'}</td>
+            <td>${semesterOrDesignation}</td>
+            <td>${statusBadge}</td>
+            <td>${statusPercentage}</td>
+            <td>${sessionsMarked}</td>
+          </tr>
+        `;
+      });
+
+      // Calculate attendance percentage
+      // Use analytics percentage if available (matches portal display), otherwise calculate manually
+      const totalRegistrations = analytics?.total_registered || participants.length;
+      const presentCount = analytics?.total_present || 0;
+      const partialCount = analytics?.total_partial || 0;
+      
+      const attendancePercentage = analytics?.attendance_rate 
+        ? analytics.attendance_rate
+        : totalRegistrations > 0 
+          ? ((presentCount + (partialCount * 0.5)) / totalRegistrations * 100).toFixed(1)
+          : '0.0';
+
+      // Get strategy name from passed data or config
+      const strategyName = eventData?.attendance_strategy?.strategy || 
+                          config?.attendance_strategy?.strategy || 
+                          config?.attendance_strategy_type ||
+                          config?.attendance_config?.strategy || 
+                          'Single Mark';
+      
+      // Format strategy name nicely
+      const formatStrategyName = (strat) => {
+        if (!strat) return 'Single Mark';
+        return strat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      };
+
+      // Replace template placeholders
+      htmlTemplate = htmlTemplate
+        .replace(/{{DOCUMENT_TITLE}}/g, `Attendance Report - ${config?.event_name || 'Event'}`)
+        .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+        .replace(/{{EVENT_ID}}/g, eventId)
+        .replace(/{{EVENT_NAME}}/g, config?.event_name || 'N/A')
+        .replace(/{{GENERATION_DATE}}/g, genDate)
+        .replace(/{{START_DATE}}/g, startDate)
+        .replace(/{{END_DATE}}/g, endDate)
+        .replace(/{{VENUE}}/g, eventData?.venue || config?.venue || 'N/A')
+        .replace(/{{SHORT_DESCRIPTION}}/g, eventData?.short_description || config?.short_description || 'N/A')
+        .replace(/{{ORGANIZER}}/g, organizerInfo)
+        .replace(/{{DEPARTMENT_CLUB}}/g, eventData?.organizing_department || config?.organizing_department || 'N/A')
+        .replace(/{{TOTAL_REGISTRATIONS}}/g, totalRegistrations)
+        .replace(/{{PRESENT_COUNT}}/g, presentCount)
+        .replace(/{{PARTIAL_COUNT}}/g, partialCount)
+        .replace(/{{ABSENT_COUNT}}/g, analytics?.total_absent || 0)
+        .replace(/{{ATTENDANCE_PERCENTAGE}}/g, attendancePercentage)
+        .replace(/{{STRATEGY}}/g, formatStrategyName(strategyName))
+        .replace(/{{SEM_DESIG_HEADER}}/g, semDesigColumnHeader)
+        .replace(/{{TABLE_ROWS}}/g, tableRows)
+        .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
+
+      // Open in new window for printing
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlTemplate);
+      printWindow.document.close();
+
+      // Trigger print after load
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+
+      showNotification('Attendance report generated successfully', 'success');
+
+    } catch (error) {
+      console.error('Export error:', error);
+      showNotification('Failed to export attendance data', 'error');
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'present': return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -544,7 +780,7 @@ const UnifiedAttendancePortal = () => {
     }
 
     return (
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredParticipants.map((participant, index) => {
           const isTeamRegistration = participant.registration_type === 'team';
           
@@ -888,6 +1124,13 @@ const UnifiedAttendancePortal = () => {
             </div>
           </div>
           <div className="flex gap-3">
+            <button
+              onClick={handleExportAttendance}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              <Download className="w-4 h-4" />
+              Export Data
+            </button>
             <button
               onClick={handleOpenScannerModal}
               className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"

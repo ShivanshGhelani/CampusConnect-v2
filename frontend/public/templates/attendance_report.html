@@ -146,7 +146,7 @@
     
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 15px;
       margin: 15px 0;
     }
@@ -169,38 +169,6 @@
       font-size: 12px;
       color: #6b7280;
       margin-top: 5px;
-    }
-    
-    .rating-row {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      padding: 12px;
-      background: #fffbeb;
-      margin-bottom: 8px;
-      border-left: 4px solid #fbbf24;
-    }
-    
-    .rating-row:first-child {
-      margin-top: 0;
-    }
-    
-    .rating-label {
-      font-weight: bold;
-      flex: 1;
-      color: #374151;
-    }
-    
-    .rating-stars {
-      color: #fbbf24;
-      font-size: 18px;
-      letter-spacing: 2px;
-    }
-    
-    .rating-value {
-      font-weight: bold;
-      color: #1f4e78;
-      font-size: 14px;
     }
     
     table {
@@ -228,68 +196,6 @@
       background: #f9fafb;
     }
     
-    .response-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      margin: 0;
-      padding: 0;
-    }
-    
-    .response-card {
-      page-break-inside: avoid;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .response-header {
-      background: #1f4e78;
-      color: white;
-      padding: 10px;
-      font-size: 10px;
-      line-height: 1.6;
-    }
-    
-    .response-name {
-      font-weight: bold;
-      font-size: 11px;
-      display: block;
-      margin-bottom: 4px;
-    }
-    
-    .response-meta {
-      font-size: 9px;
-      opacity: 0.9;
-    }
-    
-    .response-table {
-      margin: 0;
-      width: 100%;
-      table-layout: fixed;
-    }
-    
-    .response-table td {
-      border: 1px solid #d1d5db;
-      word-wrap: break-word;
-    }
-    
-    .response-table .question {
-      font-weight: bold;
-      background: #f3f4f6;
-      width: 35%;
-      color: #374151;
-    }
-    
-    .response-table .answer {
-      width: 65%;
-    }
-    
-    .stars {
-      color: #fbbf24;
-      font-size: 14px;
-      letter-spacing: 1px;
-    }
-    
     .footer {
       text-align: center;
       margin-top: 30px;
@@ -302,16 +208,6 @@
     @media print {
       .section {
         break-inside: avoid;
-      }
-      
-      .response-card {
-        break-inside: avoid;
-      }
-      
-      .response-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
       }
     }
   </style>
@@ -328,7 +224,7 @@
       </div>
       <div class="event-id">Event ID: {{EVENT_ID}}</div>
     </div>
-    <h1>Feedback Analysis Report</h1>
+    <h1>Attendance Report</h1>
     <div class="event-title-header">{{EVENT_NAME}}</div>
     <div class="generated-info">Generated on: {{GENERATION_DATE}}</div>
   </div>
@@ -357,70 +253,65 @@
         <span class="info-label">Duration:</span>
         <span class="info-value">{{START_DATE}} - {{END_DATE}}</span>
       </div>
-      <div class="info-item" style="grid-column: span 2;">
+      <div class="info-item">
         <span class="info-label">Venue:</span>
         <span class="info-value">{{VENUE}}</span>
       </div>
-      <div class="info-item" style="grid-column: span 2;">
-        <span class="info-label">Description:</span>
-        <span class="info-value">{{SHORT_DESCRIPTION}}</span>
+      <div class="info-item">
+        <span class="info-label">Strategy:</span>
+        <span class="info-value">{{STRATEGY}}</span>
       </div>
     </div>
   </div>
 
-  <!-- Statistics & Overall Ratings -->
+  <!-- Attendance Statistics -->
   <div class="section">
-    <div class="section-title">Statistics & Overall Ratings</div>
+    <div class="section-title">Attendance Statistics</div>
     <div class="stats-grid">
       <div class="stat-box">
         <span class="stat-number">{{TOTAL_REGISTRATIONS}}</span>
         <span class="stat-label">Total Registrations</span>
       </div>
       <div class="stat-box">
-        <span class="stat-number">{{ATTENDANCE_COUNT}}</span>
-        <span class="stat-label">Attendance Marked</span>
+        <span class="stat-number" style="color: #16a34a;">{{PRESENT_COUNT}}</span>
+        <span class="stat-label">Present</span>
       </div>
       <div class="stat-box">
-        <span class="stat-number">{{TOTAL_RESPONSES}}</span>
-        <span class="stat-label">Feedback Responses</span>
+        <span class="stat-number" style="color: #ca8a04;">{{PARTIAL_COUNT}}</span>
+        <span class="stat-label">Partial</span>
       </div>
       <div class="stat-box">
-        <span class="stat-number">{{RESPONSE_RATE}}%</span>
-        <span class="stat-label">Response Rate</span>
+        <span class="stat-number" style="color: #dc2626;">{{ABSENT_COUNT}}</span>
+        <span class="stat-label">Absent</span>
       </div>
-    </div>
-    <div style="margin-top: 20px;">
-      {{RATINGS_HTML}}
+      <div class="stat-box">
+        <span class="stat-number" style="color: #2563eb;">{{ATTENDANCE_PERCENTAGE}}%</span>
+        <span class="stat-label">Attendance Rate</span>
+      </div>
     </div>
   </div>
 
-  <!-- Feedback Summary Table -->
+  <!-- Attendance Table -->
   <div class="table-section">
-    <div class="table-section-title">Feedback Summary</div>
+    <div class="table-section-title">Detailed Attendance Records</div>
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>ID</th>
-          <th>Reg ID</th>
-          <th>Name</th>
-          <th>Department</th>
-          <th>Submitted</th>
-          <th>Rating</th>
+          <th style="width: 5%;">#</th>
+          <th style="width: 12%;">ID</th>
+          <th style="width: 15%;">Registration ID</th>
+          <th style="width: 20%;">Name</th>
+          <th style="width: 15%;">Department</th>
+          <th style="width: 10%;">{{SEM_DESIG_HEADER}}</th>
+          <th style="width: 10%;">Status</th>
+          <th style="width: 8%;">%</th>
+          <th style="width: 10%;">Sessions</th>
         </tr>
       </thead>
       <tbody>
         {{TABLE_ROWS}}
       </tbody>
     </table>
-  </div>
-
-  <!-- Detailed Responses -->
-  <div class="table-section">
-    <div class="table-section-title">Detailed Responses</div>
-    <div class="response-grid">
-      {{DETAILED_RESPONSES}}
-    </div>
   </div>
 
   <!-- Footer -->

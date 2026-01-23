@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{DOCUMENT_TITLE}}</title>
+  <style>
+    @page {
+      margin: 0.5in;
+      size: A4 {{PAGE_ORIENTATION}};
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Arial', sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
+      color: #000;
+      background: white;
+    }
+    
+    .page-header {
+      text-align: center;
+      border-bottom: 3px solid #1f4e78;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      position: relative;
+    }
+    
+    .header-logos {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo-left {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    
+    .brand-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .brand-name .campus {
+      color: #000;
+    }
+    
+    .brand-name .connect {
+      color: #3b82f6;
+    }
+    
+    .event-id {
+      text-align: right;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #1f4e78;
+    }
+    
+    .event-title-header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 8px;
+    }
+    
+    .generated-info {
+      font-size: 10pt;
+      color: #666;
+      margin-top: 10px;
+    }
+    
+    .section {
+      margin-bottom: 25px;
+      border: 1px solid #d1d5db;
+      padding: 15px;
+      page-break-inside: avoid;
+    }
+    
+    .table-section {
+      margin-bottom: 25px;
+      padding: 0;
+      page-break-inside: avoid;
+      overflow: hidden;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin: -15px -15px 15px -15px;
+    }
+    
+    .table-section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .info-item {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .info-label {
+      font-weight: bold;
+      color: #374151;
+      margin-right: 8px;
+    }
+    
+    .info-value {
+      color: #6b7280;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+    
+    th {
+      background: #1f4e78;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      font-size: 10px;
+    }
+    
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #1f4e78;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    @media print {
+      .section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-logos">
+      <div class="logo-section">
+        <img src="{{LOGO_URL}}" alt="Logo" class="logo-left">
+        <div class="brand-name">
+          <span class="campus">Campus</span><span class="connect">Connect</span>
+        </div>
+      </div>
+      <div class="event-id">Event ID: {{EVENT_ID}}</div>
+    </div>
+    <div class="event-title-header">{{EVENT_NAME}}</div>
+    <div class="generated-info">Generated on: {{GENERATION_DATE}}</div>
+  </div>
+
+  <!-- Event Information (conditional based on selection) -->
+  {{EVENT_INFO_SECTION}}
+
+  <!-- Registration Data Table -->
+  <div class="table-section">
+    <div class="table-section-title">Registration Data</div>
+    <table>
+      <thead>
+        <tr>
+          {{TABLE_HEADERS}}
+        </tr>
+      </thead>
+      <tbody>
+        {{TABLE_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>This report was generated automatically by CampusConnect Event Management System</p>
+    <p>Report Date: {{GENERATION_DATE}}</p>
+    <p>© {{CURRENT_YEAR}} - All Rights Reserved</p>
+  </div>
+</body>
+</html>

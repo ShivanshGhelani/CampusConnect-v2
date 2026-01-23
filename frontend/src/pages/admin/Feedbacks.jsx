@@ -69,10 +69,19 @@ function Feedbacks() {
       let feedbackForm = null;
       let feedbackAnalytics = null;
       let feedbackResponses = null;
+      let eventStats = null;
       
       try {
-        // Try to fetch feedback form
-        const formResponse = await adminAPI.getFeedbackForm(eventId);
+        // Try to fetch feedback form and event stats
+        const [formResponse, statsResponse] = await Promise.all([
+          adminAPI.getFeedbackForm(eventId),
+          adminAPI.getEventStats(eventId)
+        ]);
+        
+        if (statsResponse.data) {
+          eventStats = statsResponse.data;
+        }
+        
         if (formResponse.data.success) {
           feedbackForm = formResponse.data.feedback_form;
           
@@ -99,7 +108,8 @@ function Feedbacks() {
       
       setEvent({
         ...eventData,
-        event_stats: passedData?.event_stats || null,
+        event_stats: eventStats || passedData?.event_stats || {},
+        attendance_stats: passedData?.attendance_stats || null,
         registrations_count: registrationsCountFromProps,
         feedback_form: feedbackForm,
         feedback_analytics: feedbackAnalytics,
@@ -366,7 +376,10 @@ function Feedbacks() {
       .replace(/{{ORGANIZER}}/g, organizerInfo)
       .replace(/{{DEPARTMENT_CLUB}}/g, event.organizing_department || 'N/A')
       .replace(/{{TOTAL_REGISTRATIONS}}/g, event.registrations_count || 0)
-      .replace(/{{ATTENDANCE_COUNT}}/g, event.event_stats?.attendance_marked || 0)
+      .replace(/{{ATTENDANCE_COUNT}}/g, 
+        event.attendance_stats?.present_count + (event.attendance_stats?.partial_count || 0) || 
+        event.event_stats?.stats?.attendance_count || 
+        0)
       .replace(/{{TOTAL_RESPONSES}}/g, allResponses.length)
       .replace(/{{RESPONSE_RATE}}/g, responseRate)
       .replace(/{{RATINGS_HTML}}/g, ratingsHTML)

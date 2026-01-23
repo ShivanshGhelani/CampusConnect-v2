@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{DOCUMENT_TITLE}}</title>
+  <style>
+    @page {
+      margin: 0.5in;
+      size: A4;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      font-size: 10pt;
+      line-height: 1.4;
+      color: #000;
+      background: white;
+      padding: 10px;
+    }
+
+    .page-header {
+      text-align: center;
+      border-bottom: 3px solid #1f4e78;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      position: relative;
+    }
+
+    .header-logos {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-left {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .brand-name .campus {
+      color: #000;
+    }
+
+    .brand-name .connect {
+      color: #3b82f6;
+    }
+
+    .event-id {
+      text-align: right;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #1f4e78;
+    }
+
+    .event-title-header {
+      font-size: 16px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 5px;
+    }
+
+    .generated-info {
+      font-size: 10pt;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .event-info {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .event-info h2 {
+      color: #1f4e78;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2563eb;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #4b5563;
+      font-size: 11px;
+    }
+
+    .info-value {
+      color: #1f2937;
+      font-size: 11px;
+      text-align: right;
+      max-width: 60%;
+    }
+
+    .table-section {
+      margin-top: 20px;
+    }
+
+    .table-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #2563eb;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: white;
+      font-size: 9px;
+    }
+
+    thead {
+      background: #1f4e78;
+      color: white;
+    }
+
+    thead th {
+      padding: 8px 4px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 10px;
+      border: 1px solid #1e40af;
+    }
+
+    tbody td {
+      padding: 8px 4px;
+      border: 1px solid #d1d5db;
+      font-size: 9px;
+      vertical-align: middle;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    tbody tr:hover {
+      background-color: #f3f4f6;
+    }
+
+    .contact-cell {
+      font-size: 8px;
+      line-height: 1.4;
+    }
+
+    .contact-cell div {
+      margin: 2px 0;
+    }
+
+    .sign-box {
+      min-height: 40px;
+      border: 1px dashed #9ca3af;
+      background: #f9fafb;
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 2px solid #1f4e78;
+      text-align: center;
+      font-size: 10px;
+      color: #666;
+    }
+
+    .page-break {
+      page-break-after: always;
+    }
+
+    @media print {
+      body {
+        padding: 5px;
+      }
+
+      .page-header {
+        margin-bottom: 15px;
+      }
+
+      table {
+        page-break-inside: auto;
+      }
+
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tfoot {
+        display: table-footer-group;
+      }
+
+      @page {
+        margin: 0.4in;
+        size: A4;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-logos">
+      <div class="logo-section">
+        <img src="{{LOGO_URL}}" alt="Logo" class="logo-left" onerror="this.style.display='none'">
+        <div class="brand-name">
+          <span class="campus">Campus</span><span class="connect">Connect</span>
+        </div>
+      </div>
+      <div class="event-id">Event ID: {{EVENT_ID}}</div>
+    </div>
+    <h1>Attendance Sign Sheet</h1>
+    <div class="event-title-header">{{EVENT_NAME}}</div>
+    <div class="generated-info">Generated on: {{GENERATION_DATE}}</div>
+  </div>
+
+  <!-- Event Information -->
+  <div class="event-info">
+    <h2>Event Information</h2>
+    <div class="info-grid">
+      <div class="info-item" style="grid-column: span 3;">
+        <span class="info-label">Event Name:</span>
+        <span class="info-value">{{EVENT_NAME}}</span>
+      </div>
+      <div class="info-item" style="grid-column: span 2;">
+        <span class="info-label">Organizer:</span>
+        <span class="info-value">{{ORGANIZER}}</span>
+      </div>
+      <div class="info-item" >
+        <span class="info-label">Department/Club:</span>
+        <span class="info-value">{{DEPARTMENT_CLUB}}</span>
+      </div>
+      <div class="info-item" style="grid-column: span 3;">
+        <span class="info-label">Venue:</span>
+        <span class="info-value">{{VENUE}}</span>
+      </div>
+      <div class="info-item" style="grid-column: span 2;">
+        <span class="info-label">Duration:</span>
+        <span class="info-value">{{START_DATE}} - {{END_DATE}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Total Registered:</span>
+        <span class="info-value">{{TOTAL_REGISTRATIONS}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign Sheet Table -->
+  <div class="table-section">
+    <div class="table-section-title">Attendance Sign Sheet</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 4%;">#</th>
+          <th style="width: 14%;">Registration ID</th>
+          <th style="width: 12%;">{{ID_COLUMN_HEADER}}</th>
+          <th style="width: 18%;">Name</th>
+          <th style="width: 15%;">Department</th>
+          <th style="width: 22%;">Contact</th>
+          <th style="width: 15%;">Sign</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{TABLE_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>This is a computer-generated document. | Generated by CampusConnect Event Management System</p>
+    <p>&copy; {{CURRENT_YEAR}} KSV University. All rights reserved.</p>
+  </div>
+</body>
+</html>

@@ -4,6 +4,7 @@ import { adminAPI } from '../../api/admin';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import EventReportModal from '../../components/EventReportModal';
+import CustomExportModal from '../../components/admin/CustomExportModal';
 import RichTextDisplay from '../../components/RichTextDisplay';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye } from 'lucide-react';
@@ -65,6 +66,7 @@ function EventDetail() {
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
   const [eventReportModalOpen, setEventReportModalOpen] = useState(false);
+  const [customExportModalOpen, setCustomExportModalOpen] = useState(false);
   const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0); // For real-time updates
 
   // Helper function to calculate targeting statistics from registrations
@@ -655,6 +657,320 @@ function EventDetail() {
     }
   };
 
+  // Custom Export Handler
+  const handleCustomExport = async ({ eventFields, studentFields }) => {
+    try {
+      // Show loading toast
+      const loadingToast = document.createElement('div');
+      loadingToast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
+      loadingToast.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Fetching registrations...</span>
+      `;
+      document.body.appendChild(loadingToast);
+
+      // Fetch all registrations
+      let allRegistrations = [];
+      const batchSize = 50;
+      let currentPage = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await adminAPI.getEventRegistrations(eventId, {
+          page: currentPage,
+          limit: batchSize,
+          status: 'all'
+        });
+
+        if (response.data.success && response.data.registrations) {
+          allRegistrations = [...allRegistrations, ...response.data.registrations];
+          
+          loadingToast.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Loading... (${allRegistrations.length} registrations)</span>
+          `;
+
+          hasMore = response.data.has_more || false;
+          currentPage++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allRegistrations.length === 0) {
+        document.body.removeChild(loadingToast);
+        alert('No registrations available to export');
+        setCustomExportModalOpen(false);
+        return;
+      }
+
+      loadingToast.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Generating PDF...</span>
+      `;
+
+      // Fetch HTML template
+      const templateResponse = await fetch('/templates/custom_export.html');
+      let htmlTemplate = await templateResponse.text();
+
+      // Format dates
+      const genDate = new Date().toLocaleDateString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      const startDate = event.start_datetime ? new Date(event.start_datetime).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'N/A';
+
+      const endDate = event.end_datetime ? new Date(event.end_datetime).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }) : 'N/A';
+
+      // Build event information section if any fields selected
+      let eventInfoSection = '';
+      if (eventFields.length > 0) {
+        let eventInfoItems = '';
+        
+        // Format organizer info
+        let organizerInfo = 'N/A';
+        if (event.organizer_details && event.organizer_details.length > 0) {
+          organizerInfo = event.organizer_details
+            .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+            .join(' | ');
+        } else if (event.contacts && event.contacts.length > 0) {
+          organizerInfo = event.contacts[0].name;
+        }
+
+        const eventFieldData = {
+          organizer: organizerInfo,
+          department: event.organizing_department || 'N/A',
+          duration: `${startDate} - ${endDate}`,
+          venue: event.venue || 'N/A',
+          description: event.short_description || event.description || 'N/A',
+          event_type: event.event_type || 'N/A',
+          target_audience: event.target_audience ? event.target_audience.charAt(0).toUpperCase() + event.target_audience.slice(1) : 'N/A'
+        };
+
+        const eventFieldLabels = {
+          organizer: 'Organizer',
+          department: 'Department/Club',
+          duration: 'Duration',
+          venue: 'Venue',
+          description: 'Description',
+          event_type: 'Event Type',
+          target_audience: 'Target Audience'
+        };
+
+        eventFields.forEach(field => {
+          const label = eventFieldLabels[field];
+          const value = eventFieldData[field];
+          const colspan = (field === 'duration' || field === 'description') ? ' style="grid-column: span 2;"' : '';
+          eventInfoItems += `
+            <div class="info-item"${colspan}>
+              <span class="info-label">${label}:</span>
+              <span class="info-value">${value}</span>
+            </div>
+          `;
+        });
+
+        eventInfoSection = `
+          <div class="section">
+            <div class="section-title">Event Information</div>
+            <div class="info-grid">
+              ${eventInfoItems}
+            </div>
+          </div>
+        `;
+      }
+
+      // Build table headers based on selected fields
+      // Determine if event is for students or faculty
+      const isStudentEvent = !event.target_audience || 
+                             event.target_audience === 'student' || 
+                             event.target_audience === 'students' || 
+                             event.target_audience.toLowerCase().includes('student');
+
+      const fieldLabels = {
+        enrollment_no: isStudentEvent ? 'Enrollment No.' : 'Employee ID',
+        full_name: 'Full Name',
+        department: 'Department',
+        semester: isStudentEvent ? 'Year' : 'Designation',
+        email: 'Email',
+        mobile_no: 'Mobile No.',
+        contact: 'Contact',
+        registration_datetime: 'Registration Date',
+        registration_id: 'Registration ID',
+        status: 'Status'
+      };
+
+      // Check if both mobile and email are selected, combine them as contact
+      const hasBothMobileEmail = studentFields.includes('mobile_no') && studentFields.includes('email');
+      let processedFields = [...studentFields];
+      
+      if (hasBothMobileEmail) {
+        // Remove mobile_no and email, add contact
+        processedFields = processedFields.filter(f => f !== 'mobile_no' && f !== 'email');
+        const mobileIndex = studentFields.indexOf('mobile_no');
+        const emailIndex = studentFields.indexOf('email');
+        // Insert contact at the position of whichever came first
+        const insertIndex = Math.min(mobileIndex, emailIndex);
+        processedFields.splice(insertIndex, 0, 'contact');
+      }
+
+      // Determine orientation based on field count (including # column)
+      const totalColumns = processedFields.length + 1; // +1 for # column
+      const isLandscape = totalColumns > 5;
+
+      let tableHeaders = '<th style="width: 5%;">#</th>';
+      processedFields.forEach(field => {
+        tableHeaders += `<th>${fieldLabels[field]}</th>`;
+      });
+
+      // Build table rows
+      let tableRows = '';
+      allRegistrations.forEach((registration, index) => {
+        let rowCells = `<td>${index + 1}</td>`;
+        
+        processedFields.forEach(field => {
+          let value = 'N/A';
+          
+          switch (field) {
+            case 'enrollment_no':
+              value = registration.user_type === 'faculty' 
+                ? (registration.employee_id || 'N/A')
+                : (registration.enrollment_no || 'N/A');
+              break;
+            case 'full_name':
+              value = registration.full_name || registration.name || 'N/A';
+              break;
+            case 'department':
+              value = registration.department || 'N/A';
+              break;
+            case 'semester':
+              value = registration.user_type === 'faculty'
+                ? (registration.designation || 'N/A')
+                : (registration.semester || registration.year || 'N/A');
+              break;
+            case 'contact':
+              // Combine email and mobile
+              const email = registration.email || 'N/A';
+              const mobile = registration.mobile_no || registration.contact_no || registration.phone || 'N/A';
+              value = `<div style="font-size: 9px; line-height: 1.4;"><div>📧 ${email}</div><div>📞 ${mobile}</div></div>`;
+              break;
+            case 'email':
+              value = registration.email || 'N/A';
+              break;
+            case 'mobile_no':
+              value = registration.mobile_no || registration.contact_no || registration.phone || 'N/A';
+              break;
+            case 'registration_datetime':
+              // Try multiple possible date field names
+              const dateValue = registration.registration_datetime || 
+                               registration.registration_date || 
+                               registration.created_at || 
+                               registration.registered_at ||
+                               registration.createdAt;
+              if (dateValue) {
+                try {
+                  value = new Date(dateValue).toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                } catch (error) {
+                  value = 'N/A';
+                }
+              } else {
+                value = 'N/A';
+              }
+              break;
+            case 'registration_id':
+              value = registration.registration_id || 'N/A';
+              break;
+            case 'status':
+              value = registration.status ? registration.status.charAt(0).toUpperCase() + registration.status.slice(1) : 'N/A';
+              break;
+          }
+          
+          rowCells += `<td>${value}</td>`;
+        });
+        
+        tableRows += `<tr>${rowCells}</tr>`;
+      });
+
+      // Replace template placeholders
+      htmlTemplate = htmlTemplate
+        .replace(/{{DOCUMENT_TITLE}}/g, `Registration Report - ${event.event_name}`)
+        .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+        .replace(/{{EVENT_ID}}/g, eventId)
+        .replace(/{{EVENT_NAME}}/g, event.event_name)
+        .replace(/{{GENERATION_DATE}}/g, genDate)
+        .replace(/{{EVENT_INFO_SECTION}}/g, eventInfoSection)
+        .replace(/{{PAGE_ORIENTATION}}/g, isLandscape ? 'landscape' : 'portrait')
+        .replace(/{{TABLE_HEADERS}}/g, tableHeaders)
+        .replace(/{{TABLE_ROWS}}/g, tableRows)
+        .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
+
+      // Remove loading toast
+      document.body.removeChild(loadingToast);
+
+      // Close modal
+      setCustomExportModalOpen(false);
+
+      // Open in new window for printing
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlTemplate);
+      printWindow.document.close();
+
+      // Trigger print after load
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+
+    } catch (error) {
+      console.error('Error generating custom export:', error);
+      
+      // Remove loading toast if exists
+      const loadingToast = document.querySelector('.fixed.top-4.right-4');
+      if (loadingToast) {
+        document.body.removeChild(loadingToast);
+      }
+      
+      alert('Failed to generate export. Please try again.');
+      setCustomExportModalOpen(false);
+    }
+  };
+
   const filteredRegistrations = allRegistrations.filter(reg => {
     const searchMatch = !searchTerm ||
       (reg.full_name && reg.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -925,7 +1241,13 @@ function EventDetail() {
 
 
               <ActionButton
-                onClick={() => navigate(`/admin/events/${eventId}/attendance`)}
+                onClick={() => navigate(`/admin/events/${eventId}/attendance`, {
+                  state: {
+                    event_data: event,
+                    event_stats: eventStats,
+                    attendance_stats: attendanceStats
+                  }
+                })}
                 variant="warning"
                 icon={UserCheck}
                 disabled={!canTakeAttendance}
@@ -942,7 +1264,8 @@ function EventDetail() {
                     state: {
                       registrations_count: eventStats?.registrations_count || allRegistrations?.length || 0,
                       event_data: event,
-                      event_stats: eventStats
+                      event_stats: eventStats,
+                      attendance_stats: attendanceStats
                     }
                   });
                 }}
@@ -1006,7 +1329,7 @@ function EventDetail() {
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={() => {
-                              navigate(`/admin/events/${eventId}/export`);
+                              setCustomExportModalOpen(true);
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
                             }}
@@ -1031,47 +1354,204 @@ function EventDetail() {
 
                           {/* Additional Report Options */}
                           <div
-                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={async () => {
-                              try {
-                                // Generate budget report
-                                const response = await adminAPI.generateBudgetReport(eventId, { format: 'html' });
-
-                                // Open in new window for printing/downloading
-                                const newWindow = window.open('', '_blank');
-                                newWindow.document.write(response.data);
-                                newWindow.document.close();
-
-                              } catch (error) {
-                                console.error('Error generating budget report:', error);
-                                alert('Failed to generate budget report. Please try again.');
-                              }
-                              setExportDropdownOpen(false);
-                              setExportDropdownSticky(false);
-                            }}
+                            className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-400 cursor-not-allowed relative group"
+                            title="Coming Soon"
                           >
-                            <CreditCard className="w-4 h-4 mr-3" />
-                            Budget Report
+                            <CreditCard className="w-4 h-4 mr-3 opacity-50" />
+                            <span className="opacity-50">Budget Report</span>
+                            
+                            {/* Hover Banner */}
+                            <div className="absolute left-0 right-0 top-0 bottom-0 bg-gradient-to-r from-yellow-50 to-yellow-100 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded flex items-center justify-center pointer-events-none">
+                              <span className="text-xs font-semibold text-yellow-800 bg-white px-3 py-1 rounded-full shadow-sm">
+                                🚀 Coming Soon
+                              </span>
+                            </div>
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={async () => {
                               try {
-                                // Generate sign sheet PDF
-                                const response = await adminAPI.generateSignSheet(eventId, { format: 'html' });
+                                // Show loading indicator
+                                const loadingToast = document.createElement('div');
+                                loadingToast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3';
+                                loadingToast.innerHTML = `
+                                  <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  <span>Generating sign sheet... Please wait</span>
+                                `;
+                                document.body.appendChild(loadingToast);
 
-                                // Open in new window for printing/downloading
-                                const newWindow = window.open('', '_blank');
-                                newWindow.document.write(response.data);
-                                newWindow.document.close();
+                                // Fetch all registrations in batches
+                                let allRegistrations = [];
+                                const batchSize = 10;
+                                let currentPage = 1;
+                                let hasMore = true;
 
-                                // Optional: Trigger print dialog
-                                setTimeout(() => {
-                                  newWindow.print();
-                                }, 1000);
+                                while (hasMore) {
+                                  const response = await adminAPI.getEventRegistrations(eventId, {
+                                    page: currentPage,
+                                    limit: batchSize,
+                                    status: 'all'
+                                  });
+
+                                  if (response.data.success && response.data.registrations) {
+                                    allRegistrations = [...allRegistrations, ...response.data.registrations];
+                                    
+                                    // Update loading message
+                                    loadingToast.innerHTML = `
+                                      <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      <span>Loading registrations... (${allRegistrations.length} loaded)</span>
+                                    `;
+
+                                    // Check if there are more pages
+                                    hasMore = response.data.has_more || false;
+                                    currentPage++;
+                                  } else {
+                                    hasMore = false;
+                                  }
+                                }
+
+                                if (allRegistrations.length === 0) {
+                                  document.body.removeChild(loadingToast);
+                                  alert('No registrations available to generate sign sheet');
+                                  setExportDropdownOpen(false);
+                                  setExportDropdownSticky(false);
+                                  return;
+                                }
+
+                                loadingToast.innerHTML = `
+                                  <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  <span>Generating PDF... (${allRegistrations.length} registrations)</span>
+                                `;
+
+                                // Fetch HTML template
+                                const templateResponse = await fetch('/templates/sign_sheet.html');
+                                let htmlTemplate = await templateResponse.text();
+
+                                // Populate template with data
+                                const genDate = new Date().toLocaleDateString('en-IN', { 
+                                  timeZone: 'Asia/Kolkata',
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                });
+
+                                // Format organizer details
+                                let organizerInfo = 'N/A';
+                                if (event.organizer_details && event.organizer_details.length > 0) {
+                                  organizerInfo = event.organizer_details
+                                    .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+                                    .join(' | ');
+                                } else if (event.contacts && event.contacts.length > 0) {
+                                  organizerInfo = event.contacts[0].name;
+                                }
+
+                                const startDate = event.start_datetime ? new Date(event.start_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                const endDate = event.end_datetime ? new Date(event.end_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                // Format target audience
+                                const targetAudience = event.target_audience 
+                                  ? event.target_audience.charAt(0).toUpperCase() + event.target_audience.slice(1)
+                                  : 'Students & Faculty';
+
+                                // Determine column header based on target audience
+                                const firstUserType = allRegistrations[0]?.user_type || 'student';
+                                const idColumnHeader = firstUserType === 'faculty' ? 'Employee ID' : 'Roll No.';
+
+                                // Generate table rows
+                                let tableRows = '';
+                                allRegistrations.forEach((registration, index) => {
+                                  // Registration data is at top level (like in modal)
+                                  const name = registration.full_name || registration.name || 'Unknown';
+                                  const enrollmentId = registration.user_type === 'faculty' 
+                                    ? (registration.employee_id || 'N/A')
+                                    : (registration.enrollment_no || 'N/A');
+                                  const department = registration.department || 'N/A';
+                                  const phone = registration.mobile_no || registration.contact_no || registration.phone || 'N/A';
+                                  const email = registration.email || 'N/A';
+
+                                  tableRows += `
+                                    <tr>
+                                      <td>${index + 1}</td>
+                                      <td>${registration.registration_id || 'N/A'}</td>
+                                      <td>${enrollmentId}</td>
+                                      <td>${name}</td>
+                                      <td>${department}</td>
+                                      <td class="contact-cell">
+                                        <div>📞 ${phone}</div>
+                                        <div>✉️ ${email}</div>
+                                      </td>
+                                      <td class="sign-box"></td>
+                                    </tr>
+                                  `;
+                                });
+
+                                // Replace template placeholders
+                                htmlTemplate = htmlTemplate
+                                  .replace(/{{DOCUMENT_TITLE}}/g, `Sign Sheet - ${event.event_name}`)
+                                  .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+                                  .replace(/{{EVENT_ID}}/g, eventId)
+                                  .replace(/{{EVENT_NAME}}/g, event.event_name)
+                                  .replace(/{{GENERATION_DATE}}/g, genDate)
+                                  .replace(/{{START_DATE}}/g, startDate)
+                                  .replace(/{{END_DATE}}/g, endDate)
+                                  .replace(/{{VENUE}}/g, event.venue || 'N/A')
+                                  .replace(/{{ORGANIZER}}/g, organizerInfo)
+                                  .replace(/{{DEPARTMENT_CLUB}}/g, event.organizing_department || 'N/A')
+                                  .replace(/{{TOTAL_REGISTRATIONS}}/g, allRegistrations.length)
+                                  .replace(/{{ID_COLUMN_HEADER}}/g, idColumnHeader)
+                                  .replace(/{{TABLE_ROWS}}/g, tableRows)
+                                  .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
+
+                                // Remove loading toast
+                                document.body.removeChild(loadingToast);
+
+                                // Open in new window for printing
+                                const printWindow = window.open('', '_blank');
+                                printWindow.document.write(htmlTemplate);
+                                printWindow.document.close();
+
+                                // Trigger print after load
+                                printWindow.onload = () => {
+                                  setTimeout(() => {
+                                    printWindow.print();
+                                  }, 500);
+                                };
 
                               } catch (error) {
                                 console.error('Error generating sign sheet:', error);
+                                
+                                // Remove loading toast if exists
+                                const loadingToast = document.querySelector('.fixed.top-4.right-4');
+                                if (loadingToast) {
+                                  document.body.removeChild(loadingToast);
+                                }
+                                
                                 alert('Failed to generate sign sheet. Please try again.');
                               }
                               setExportDropdownOpen(false);
@@ -1085,13 +1565,202 @@ function EventDetail() {
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={async () => {
                               try {
-                                // Generate attendance report
-                                const response = await adminAPI.generateAttendanceReport(eventId, { format: 'html' });
+                                // Fetch attendance data
+                                const [configResponse, analyticsResponse] = await Promise.all([
+                                  adminAPI.getAttendanceConfigAndParticipants(eventId),
+                                  adminAPI.getAttendanceAnalytics(eventId)
+                                ]);
 
-                                // Open in new window for printing/downloading
-                                const newWindow = window.open('', '_blank');
-                                newWindow.document.write(response.data);
-                                newWindow.document.close();
+                                if (!configResponse.data.success) {
+                                  alert('No attendance data available to export');
+                                  setExportDropdownOpen(false);
+                                  setExportDropdownSticky(false);
+                                  return;
+                                }
+
+                                const config = configResponse.data.data.config;
+                                const participants = configResponse.data.data.participants;
+                                const analytics = analyticsResponse.data.success ? analyticsResponse.data.data : null;
+
+                                if (!participants || participants.length === 0) {
+                                  alert('No participants available to export');
+                                  setExportDropdownOpen(false);
+                                  setExportDropdownSticky(false);
+                                  return;
+                                }
+
+                                // Fetch HTML template
+                                const templateResponse = await fetch('/templates/attendance_report.html');
+                                let htmlTemplate = await templateResponse.text();
+
+                                // Populate template with data
+                                const genDate = new Date().toLocaleDateString('en-IN', { 
+                                  timeZone: 'Asia/Kolkata',
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                });
+
+                                // Format organizer details
+                                let organizerInfo = 'N/A';
+                                if (event.organizer_details && event.organizer_details.length > 0) {
+                                  organizerInfo = event.organizer_details
+                                    .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+                                    .join(' | ');
+                                } else if (event.contacts && event.contacts.length > 0) {
+                                  organizerInfo = event.contacts[0].name;
+                                }
+
+                                const startDate = event.start_datetime ? new Date(event.start_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                const endDate = event.end_datetime ? new Date(event.end_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                // Get total sessions count
+                                const totalSessions = config?.attendance_config?.sessions?.length || config?.sessions?.length || 1;
+
+                                // Determine if event is for students or faculty
+                                const targetAudience = event?.target_audience || config?.target_audience || 'student';
+                                const isStudentEvent = targetAudience === 'student' || targetAudience === 'students' || targetAudience.includes('student');
+                                const semDesigColumnHeader = isStudentEvent ? 'Year' : 'Designation';
+
+                                // Generate attendance table rows
+                                let tableRows = '';
+                                participants.forEach((participant, index) => {
+                                  const isStudent = participant.participant_type === 'student';
+                                  const profile = isStudent ? participant.student : participant.faculty;
+                                  const attendance = participant.attendance || {};
+                                  const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
+                                  
+                                  let statusBadge = '';
+                                  let statusPercentage = '';
+                                  
+                                  switch (attendance.status) {
+                                    case 'present':
+                                      statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                                      statusPercentage = '100%';
+                                      break;
+                                    case 'partial':
+                                      statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                                      statusPercentage = `${attendance.percentage || 0}%`;
+                                      break;
+                                    case 'absent':
+                                      statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                                      statusPercentage = '0%';
+                                      break;
+                                    default:
+                                      statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+                                      statusPercentage = '0%';
+                                  }
+
+                                  // Calculate sessions marked
+                                  let sessionsMarked;
+                                  if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
+                                    sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
+                                  } else if (attendance.status === 'present') {
+                                    sessionsMarked = `${totalSessions}/${totalSessions}`;
+                                  } else if (attendance.status === 'partial') {
+                                    const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
+                                    sessionsMarked = `${markedCount}/${totalSessions}`;
+                                  } else {
+                                    sessionsMarked = `0/${totalSessions}`;
+                                  }
+
+                                  // Get year/designation
+                                  let semesterOrDesignation = 'N/A';
+                                  if (isStudent) {
+                                    semesterOrDesignation = profile?.year || profile?.semester || participant.student?.year || 'N/A';
+                                  } else {
+                                    semesterOrDesignation = participant.faculty?.designation || profile?.designation || 'N/A';
+                                  }
+
+                                  tableRows += `
+                                    <tr>
+                                      <td>${index + 1}</td>
+                                      <td>${enrollmentId}</td>
+                                      <td>${participant.registration_id || 'N/A'}</td>
+                                      <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
+                                      <td>${profile?.department || 'N/A'}</td>
+                                      <td>${semesterOrDesignation}</td>
+                                      <td>${statusBadge}</td>
+                                      <td>${statusPercentage}</td>
+                                      <td>${sessionsMarked}</td>
+                                    </tr>
+                                  `;
+                                });
+
+                                // Calculate attendance percentage
+                                const totalRegistrations = analytics?.total_registered || participants.length;
+                                const presentCount = analytics?.total_present || 0;
+                                const partialCount = analytics?.total_partial || 0;
+                                
+                                const attendancePercentage = analytics?.attendance_rate 
+                                  ? analytics.attendance_rate
+                                  : totalRegistrations > 0 
+                                    ? ((presentCount + (partialCount * 0.5)) / totalRegistrations * 100).toFixed(1)
+                                    : '0.0';
+
+                                // Get strategy name
+                                const strategyName = event?.attendance_strategy?.strategy || 
+                                                    config?.attendance_strategy?.strategy || 
+                                                    config?.attendance_strategy_type ||
+                                                    config?.attendance_config?.strategy || 
+                                                    'Single Mark';
+                                
+                                const formatStrategyName = (strat) => {
+                                  if (!strat) return 'Single Mark';
+                                  return strat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                };
+
+                                // Replace template placeholders
+                                htmlTemplate = htmlTemplate
+                                  .replace(/{{DOCUMENT_TITLE}}/g, `Attendance Report - ${event.event_name}`)
+                                  .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+                                  .replace(/{{EVENT_ID}}/g, eventId)
+                                  .replace(/{{EVENT_NAME}}/g, event.event_name)
+                                  .replace(/{{GENERATION_DATE}}/g, genDate)
+                                  .replace(/{{START_DATE}}/g, startDate)
+                                  .replace(/{{END_DATE}}/g, endDate)
+                                  .replace(/{{VENUE}}/g, event.venue || 'N/A')
+                                  .replace(/{{SHORT_DESCRIPTION}}/g, event.short_description || 'N/A')
+                                  .replace(/{{ORGANIZER}}/g, organizerInfo)
+                                  .replace(/{{DEPARTMENT_CLUB}}/g, event.organizing_department || 'N/A')
+                                  .replace(/{{TOTAL_REGISTRATIONS}}/g, totalRegistrations)
+                                  .replace(/{{PRESENT_COUNT}}/g, presentCount)
+                                  .replace(/{{PARTIAL_COUNT}}/g, partialCount)
+                                  .replace(/{{ABSENT_COUNT}}/g, analytics?.total_absent || 0)
+                                  .replace(/{{ATTENDANCE_PERCENTAGE}}/g, attendancePercentage)
+                                  .replace(/{{STRATEGY}}/g, formatStrategyName(strategyName))
+                                  .replace(/{{SEM_DESIG_HEADER}}/g, semDesigColumnHeader)
+                                  .replace(/{{TABLE_ROWS}}/g, tableRows)
+                                  .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
+
+                                // Open in new window for printing
+                                const printWindow = window.open('', '_blank');
+                                printWindow.document.write(htmlTemplate);
+                                printWindow.document.close();
+
+                                // Trigger print after load
+                                printWindow.onload = () => {
+                                  setTimeout(() => {
+                                    printWindow.print();
+                                  }, 500);
+                                };
 
                               } catch (error) {
                                 console.error('Error generating attendance report:', error);
@@ -1108,13 +1777,215 @@ function EventDetail() {
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={async () => {
                               try {
-                                // Generate feedback report
-                                const response = await adminAPI.generateFeedbackReport(eventId, { format: 'html' });
+                                // Fetch feedback data first
+                                const [formResponse, analyticsResponse, responsesResponse] = await Promise.all([
+                                  adminAPI.getFeedbackForm(eventId),
+                                  adminAPI.getFeedbackAnalytics(eventId),
+                                  adminAPI.getFeedbackResponses(eventId, { page: 1, limit: 1000 })
+                                ]);
 
-                                // Open in new window for printing/downloading
-                                const newWindow = window.open('', '_blank');
-                                newWindow.document.write(response.data);
-                                newWindow.document.close();
+                                if (!formResponse.data.success || !responsesResponse.data.success) {
+                                  alert('No feedback data available to export');
+                                  setExportDropdownOpen(false);
+                                  setExportDropdownSticky(false);
+                                  return;
+                                }
+
+                                const feedbackForm = formResponse.data.feedback_form;
+                                const feedbackAnalytics = analyticsResponse.data;
+                                const allResponses = responsesResponse.data.responses || [];
+
+                                if (allResponses.length === 0) {
+                                  alert('No feedback responses available to export');
+                                  setExportDropdownOpen(false);
+                                  setExportDropdownSticky(false);
+                                  return;
+                                }
+
+                                // Fetch HTML template
+                                const templateResponse = await fetch('/templates/feedback_report.html');
+                                let htmlTemplate = await templateResponse.text();
+
+                                // Populate template with data
+                                const genDate = new Date().toLocaleDateString('en-IN', { 
+                                  timeZone: 'Asia/Kolkata',
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                });
+
+                                const responseRate = feedbackAnalytics?.summary?.response_rate || 
+                                  (eventStats?.registrations_count > 0 ? Math.round((allResponses.length / eventStats.registrations_count) * 100) : 0);
+
+                                const startDate = event.start_datetime ? new Date(event.start_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                const endDate = event.end_datetime ? new Date(event.end_datetime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'N/A';
+
+                                // Format organizer details
+                                let organizerInfo = 'N/A';
+                                if (event.organizer_details && event.organizer_details.length > 0) {
+                                  organizerInfo = event.organizer_details
+                                    .map(org => `${org.full_name || org.name || 'Unknown'}, ${org.department || 'N/A'}`)
+                                    .join(' | ');
+                                } else if (event.contacts && event.contacts.length > 0) {
+                                  organizerInfo = event.contacts[0].name;
+                                }
+
+                                // Generate ratings HTML
+                                let ratingsHTML = '';
+                                if (feedbackAnalytics?.element_analytics) {
+                                  Object.entries(feedbackAnalytics.element_analytics).forEach(([elementId, analytics]) => {
+                                    if (analytics.type === 'rating' && analytics.average && typeof analytics.average === 'number') {
+                                      const rating = Math.round(analytics.average);
+                                      const filledStars = '★'.repeat(rating);
+                                      const emptyStars = '☆'.repeat(5 - rating);
+                                      ratingsHTML += `
+                                        <div class="rating-row">
+                                          <span class="rating-label">${analytics.label || 'Rating'}</span>
+                                          <span class="rating-stars">${filledStars}${emptyStars}</span>
+                                          <span class="rating-value">${analytics.average.toFixed(1)}/5</span>
+                                        </div>
+                                      `;
+                                    }
+                                  });
+                                }
+
+                                if (!ratingsHTML) {
+                                  ratingsHTML = '<p style="padding: 10px; color: #666;">No rating data available</p>';
+                                }
+
+                                // Generate table rows
+                                let tableRows = '';
+                                allResponses.forEach((response, index) => {
+                                  const rating = feedbackForm?.elements?.find(el => el.type === 'rating' || el.type === 'star_rating');
+                                  const ratingValue = rating ? (response.responses?.[rating.id] || 'N/A') : 'N/A';
+                                  const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+                                  const submitTime = new Date(response.submitted_at).toLocaleString('en-IN', {
+                                    timeZone: 'Asia/Kolkata',
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  });
+
+                                  tableRows += `
+                                    <tr>
+                                      <td>${index + 1}</td>
+                                      <td>${enrollmentId}</td>
+                                      <td>${response.registration_id || 'N/A'}</td>
+                                      <td>${response.student_info?.name || response.faculty_info?.name || 'Anonymous'}</td>
+                                      <td>${response.student_info?.department || response.faculty_info?.department || 'N/A'}</td>
+                                      <td>${submitTime}</td>
+                                      <td>${ratingValue !== 'N/A' ? `${ratingValue}/5` : 'N/A'}</td>
+                                    </tr>
+                                  `;
+                                });
+
+                                // Generate detailed responses
+                                let detailedResponses = '';
+                                allResponses.forEach((response, index) => {
+                                  const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+                                  const respondent = response.student_info?.name || response.faculty_info?.name || 'Anonymous';
+                                  const submitTime = new Date(response.submitted_at).toLocaleString('en-IN', {
+                                    timeZone: 'Asia/Kolkata',
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  });
+
+                                  let qaHTML = '';
+                                  if (feedbackForm?.elements && response.responses) {
+                                    feedbackForm.elements.forEach(element => {
+                                      const value = response.responses[element.id];
+                                      if (value !== null && value !== undefined && value !== '') {
+                                        let displayValue = value;
+                                        if (element.type === 'rating' || element.type === 'star_rating') {
+                                          const filledStars = '★'.repeat(parseInt(value));
+                                          const emptyStars = '☆'.repeat(5 - parseInt(value));
+                                          displayValue = `${value}/5 <span class="stars">${filledStars}${emptyStars}</span>`;
+                                        } else if (Array.isArray(value)) {
+                                          displayValue = value.join(', ');
+                                        } else {
+                                          displayValue = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                        }
+                                        qaHTML += `
+                                          <tr>
+                                            <td class="question">${element.label || element.id}</td>
+                                            <td class="answer">${displayValue}</td>
+                                          </tr>
+                                        `;
+                                      }
+                                    });
+                                  }
+
+                                  detailedResponses += `
+                                    <div class="response-card">
+                                      <div class="response-header">
+                                        <span class="response-name">#${index + 1} - ${respondent}</span>
+                                        <div class="response-meta">ID: ${enrollmentId} | Reg: ${response.registration_id || 'N/A'}<br>${submitTime}</div>
+                                      </div>
+                                      <table class="response-table">
+                                        ${qaHTML}
+                                      </table>
+                                    </div>
+                                  `;
+                                });
+
+                                // Replace template placeholders
+                                htmlTemplate = htmlTemplate
+                                  .replace(/{{DOCUMENT_TITLE}}/g, `Feedback Report - ${event.event_name}`)
+                                  .replace(/{{LOGO_URL}}/g, '/logo/ksv.png')
+                                  .replace(/{{EVENT_ID}}/g, eventId)
+                                  .replace(/{{EVENT_NAME}}/g, event.event_name)
+                                  .replace(/{{GENERATION_DATE}}/g, genDate)
+                                  .replace(/{{START_DATE}}/g, startDate)
+                                  .replace(/{{END_DATE}}/g, endDate)
+                                  .replace(/{{VENUE}}/g, event.venue || 'N/A')
+                                  .replace(/{{SHORT_DESCRIPTION}}/g, event.short_description || 'N/A')
+                                  .replace(/{{ORGANIZER}}/g, organizerInfo)
+                                  .replace(/{{DEPARTMENT_CLUB}}/g, event.organizing_department || 'N/A')
+                                  .replace(/{{TOTAL_REGISTRATIONS}}/g, eventStats?.registrations_count || 0)
+                                  .replace(/{{ATTENDANCE_COUNT}}/g, 
+                                    attendanceStats?.present_count + (attendanceStats?.partial_count || 0) || 
+                                    eventStats?.attendance_count || 
+                                    0)
+                                  .replace(/{{TOTAL_RESPONSES}}/g, allResponses.length)
+                                  .replace(/{{RESPONSE_RATE}}/g, responseRate)
+                                  .replace(/{{RATINGS_HTML}}/g, ratingsHTML)
+                                  .replace(/{{TABLE_ROWS}}/g, tableRows)
+                                  .replace(/{{DETAILED_RESPONSES}}/g, detailedResponses)
+                                  .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
+
+                                // Open in new window for printing
+                                const printWindow = window.open('', '_blank');
+                                printWindow.document.write(htmlTemplate);
+                                printWindow.document.close();
+
+                                // Trigger print after load
+                                printWindow.onload = () => {
+                                  setTimeout(() => {
+                                    printWindow.print();
+                                  }, 500);
+                                };
 
                               } catch (error) {
                                 console.error('Error generating feedback report:', error);
@@ -2572,6 +3443,15 @@ function EventDetail() {
             eventId={eventId}
             eventName={event?.event_name || 'Event'}
             onGenerate={handleEventReportGeneration}
+          />
+
+          {/* Custom Export Modal */}
+          <CustomExportModal
+            isOpen={customExportModalOpen}
+            onClose={() => setCustomExportModalOpen(false)}
+            eventData={event}
+            eventStats={eventStats}
+            onExport={handleCustomExport}
           />
         </div>
       </div>

@@ -46,7 +46,6 @@ import CreateEvent from '../pages/admin/CreateEvent';
 import EventCreatedSuccess from '../pages/admin/EventCreatedSuccess';
 import EditEvent from '../pages/admin/EditEvent';
 import EventDetail from '../pages/admin/EventDetail';
-import ExportData from '../pages/admin/ExportData';
 import ManageAdmin from '../pages/admin/ManageAdmin';
 import SettingsProfile from '../pages/admin/SettingsProfile';
 import Feedbacks from '../pages/admin/Feedbacks';
@@ -454,14 +453,6 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <EditEvent />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/events/:eventId/export"
-          element={
-            <ProtectedRoute userType="admin">
-              <ExportData />
             </ProtectedRoute>
           }
         />
