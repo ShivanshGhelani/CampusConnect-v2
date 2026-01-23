@@ -31,6 +31,7 @@ const FeedbackForm = () => {
   const [registrationId, setRegistrationId] = useState('');
   const [isVerifyingRegistration, setIsVerifyingRegistration] = useState(false);
   const [registrationVerified, setRegistrationVerified] = useState(false);
+  const [verificationError, setVerificationError] = useState(null);
 
   useEffect(() => {
     loadFeedbackForm();
@@ -133,12 +134,17 @@ const FeedbackForm = () => {
 
   const verifyRegistration = async () => {
     if (!registrationId.trim()) {
-      alert('Please enter your Registration ID');
+      setVerificationError({
+        type: 'input_error',
+        title: 'Input Required',
+        message: 'Please enter your Enrollment No. or Employee ID'
+      });
       return;
     }
 
     try {
       setIsVerifyingRegistration(true);
+      setVerificationError(null);
       // Call backend to verify registration ID for this event
       const response = await clientAPI.verifyRegistrationForFeedback(eventId, registrationId);
       
@@ -146,10 +152,23 @@ const FeedbackForm = () => {
         setRegistrationVerified(true);
         setEligibility({ eligible: true, message: 'Verified via Registration ID' });
       } else {
-        alert(response.data.message || 'Registration ID not found for this event');
+        // Determine error type based on message
+        const message = response.data.message || 'Registration ID not found for this event';
+        const isAlreadySubmitted = message.toLowerCase().includes('already submitted');
+        const isNotRegistered = message.toLowerCase().includes('not found');
+        
+        setVerificationError({
+          type: isAlreadySubmitted ? 'already_submitted' : (isNotRegistered ? 'not_registered' : 'error'),
+          title: isAlreadySubmitted ? 'Already Submitted' : (isNotRegistered ? 'Not Registered' : 'Verification Failed'),
+          message: message
+        });
       }
     } catch (error) {
-      alert(error.response?.data?.detail || 'Failed to verify registration ID');
+      setVerificationError({
+        type: 'error',
+        title: 'Verification Failed',
+        message: error.response?.data?.detail || 'Failed to verify registration ID'
+      });
     } finally {
       setIsVerifyingRegistration(false);
     }
@@ -408,8 +427,55 @@ const FeedbackForm = () => {
     );
   }
 
-  // If not logged in and registration not verified, show registration ID input
+  // If not logged in and registration not verified, show enrollment/employee ID input
   if (!user && !registrationVerified) {
+    // If there's a verification error, show error modal instead
+    if (verificationError) {
+      const getIcon = () => {
+        if (verificationError.type === 'already_submitted') return <CheckCircle className="w-5 h-5" />;
+        return <AlertCircle className="w-5 h-5" />;
+      };
+
+      const getColor = () => {
+        if (verificationError.type === 'already_submitted') return 'text-green-600';
+        return 'text-amber-600';
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+            <div className={`flex items-center space-x-2 ${getColor()} mb-4`}>
+              {getIcon()}
+              <span className="font-medium">{verificationError.title}</span>
+            </div>
+            <p className="text-gray-700 mb-4">{verificationError.message}</p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setVerificationError(null);
+                  setRegistrationId('');
+                }}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => navigate(`/client/events/${eventId}`)}
+                className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Back to Event
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Determine label based on target audience
+    const targetAudience = event?.target_audience || 'students';
+    const idLabel = targetAudience === 'faculty' ? 'Employee ID' : 'Enrollment No.';
+    const idPlaceholder = targetAudience === 'faculty' ? 'Enter your employee ID' : 'Enter your enrollment number';
+    
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
@@ -418,18 +484,18 @@ const FeedbackForm = () => {
             <span className="font-medium">Verify Registration</span>
           </div>
           <p className="text-gray-700 mb-4">
-            Please enter your Registration ID to submit feedback for this event.
+            Please enter your {idLabel} to submit feedback for this event.
           </p>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Registration ID
+                {idLabel}
               </label>
               <input
                 type="text"
                 value={registrationId}
                 onChange={(e) => setRegistrationId(e.target.value.toUpperCase())}
-                placeholder="Enter your registration ID"
+                placeholder={idPlaceholder}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 onKeyPress={(e) => e.key === 'Enter' && verifyRegistration()}
               />

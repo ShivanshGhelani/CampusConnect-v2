@@ -9,10 +9,10 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, Request, HTTPException, Depends, Form
 from fastapi.responses import JSONResponse
-from dependencies.auth import require_student_login
+from dependencies.auth import require_student_login, optional_student_login
 from models.student import Student
 from services.event_feedback_service import event_feedback_service
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -20,9 +20,9 @@ router = APIRouter()
 @router.get("/form/{event_id}")
 async def get_feedback_form(
     event_id: str,
-    student: Student = Depends(require_student_login)
+    student: Optional[Student] = Depends(optional_student_login)
 ):
-    """Get feedback form for an event"""
+    """Get feedback form for an event (authentication optional for QR code access)"""
     try:
         result = await event_feedback_service.get_feedback_form(event_id)
         

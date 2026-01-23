@@ -305,6 +305,11 @@ async def get_optional_student(request: Request) -> Optional[Student]:
     """Get currently logged in student from session, return None if not logged in"""
     return await get_current_student_optional(request)
 
+# Alias for consistency with other auth dependencies
+async def optional_student_login(request: Request) -> Optional[Student]:
+    """Optional student authentication - returns student if logged in, None otherwise"""
+    return await get_optional_student(request)
+
 async def get_optional_faculty(request: Request) -> Optional[Faculty]:
     """Get currently logged in faculty from session, return None if not logged in"""
     return await get_current_faculty_optional(request)

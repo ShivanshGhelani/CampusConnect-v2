@@ -730,30 +730,60 @@ class EventFeedbackService:
         event_id: str,
         registration_id: str
     ) -> Dict[str, Any]:
-        """Verify if registration ID exists for the event and hasn't submitted feedback yet"""
+        """Verify if enrollment/employee ID exists for the event and hasn't submitted feedback yet"""
         try:
-            # Find registration by registration_id and event_id
-            registration = await DatabaseOperations.find_one(
-                self.registrations_collection,
-                {
-                    "registration.registration_id": registration_id,
-                    "event.event_id": event_id
-                }
+            # First get the event to determine target audience
+            event = await DatabaseOperations.find_one(
+                self.events_collection,
+                {"event_id": event_id},
+                {"target_audience": 1}
             )
+            
+            if not event:
+                return {
+                    "success": False,
+                    "verified": False,
+                    "message": "Event not found"
+                }
+            
+            target_audience = event.get("target_audience", "students")
+            
+            # Search based on target audience
+            if target_audience == "faculty":
+                # Search for faculty registration
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "faculty.employee_id": registration_id,
+                        "event.event_id": event_id
+                    }
+                )
+                not_found_message = "Employee ID not found for this event"
+            else:
+                # Search for student registration (default)
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "student.enrollment_no": registration_id,
+                        "event.event_id": event_id
+                    }
+                )
+                not_found_message = "Enrollment No. not found for this event"
             
             if not registration:
                 return {
                     "success": False,
                     "verified": False,
-                    "message": "Registration ID not found for this event"
+                    "message": not_found_message
                 }
             
-            # Check if feedback already submitted with this registration ID
+            # Check if feedback already submitted with this enrollment/employee ID
+            student_enrollment = registration.get("student", {}).get("enrollment_no") or registration.get("faculty", {}).get("employee_id")
             existing_feedback = await DatabaseOperations.find_one(
                 self.student_feedbacks_collection,
                 {
                     "event_id": event_id,
-                    "registration_id": registration_id
+                    "student_enrollment": student_enrollment
                 }
             )
             
@@ -761,7 +791,7 @@ class EventFeedbackService:
                 return {
                     "success": False,
                     "verified": False,
-                    "message": "Feedback already submitted with this Registration ID"
+                    "message": "Feedback already submitted"
                 }
             
             return {
@@ -795,14 +825,32 @@ class EventFeedbackService:
                     "message": verification.get("message", "Invalid registration")
                 }
             
-            # Get registration details for student info
-            registration = await DatabaseOperations.find_one(
-                self.registrations_collection,
-                {
-                    "registration.registration_id": registration_id,
-                    "event.event_id": event_id
-                }
+            # Get event to determine target audience
+            event = await DatabaseOperations.find_one(
+                self.events_collection,
+                {"event_id": event_id},
+                {"target_audience": 1}
             )
+            
+            target_audience = event.get("target_audience", "students") if event else "students"
+            
+            # Get registration details based on target audience
+            if target_audience == "faculty":
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "faculty.employee_id": registration_id,
+                        "event.event_id": event_id
+                    }
+                )
+            else:
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "student.enrollment_no": registration_id,
+                        "event.event_id": event_id
+                    }
+                )
             
             if not registration:
                 return {
@@ -810,8 +858,9 @@ class EventFeedbackService:
                     "message": "Registration not found"
                 }
             
-            student_info = registration.get("student", {})
-            student_enrollment = student_info.get("enrollment_no")
+            # Get student or faculty info
+            student_info = registration.get("student", {}) or registration.get("faculty", {})
+            student_enrollment = student_info.get("enrollment_no") or student_info.get("employee_id")
             
             # Create feedback document
             feedback_doc = {
