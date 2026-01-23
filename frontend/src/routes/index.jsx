@@ -58,6 +58,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProtectedRoute from '../components/ProtectedRoute';
 import SuperAdminRoute from '../components/SuperAdminRoute';
 import ScrollToTop from '../components/common/ScrollToTop';
+import ErrorPage from '../pages/ErrorPage';
 
 // Admin redirect component to handle role-based redirects
 function AdminRedirect() {
@@ -505,24 +506,8 @@ function AppRoutes() {
           }
         />
 
-        {/* 404 Route */}
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                <p className="text-gray-600 mb-4">Page not found</p>
-                <a
-                  href="/"
-                  className="btn-primary"
-                >
-                  Go Home
-                </a>
-              </div>
-            </div>
-          }
-        />
+        {/* 404 Route - University Themed Error Page */}
+        <Route path="*" element={<ErrorPage />} />
       </Routes>
     </Router>
   );
