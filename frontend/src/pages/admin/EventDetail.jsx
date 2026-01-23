@@ -1365,7 +1365,7 @@ function EventDetail() {
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={async () => {
                               try {
-                                await generateEventQR(event._id, event.name);
+                                await generateEventQR(event.event_id, event.name);
                                 setExportDropdownOpen(false);
                                 setExportDropdownSticky(false);
                               } catch (error) {
@@ -1381,7 +1381,7 @@ function EventDetail() {
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
                             onClick={async () => {
                               try {
-                                await generateFeedbackQR(event._id, event.name);
+                                await generateFeedbackQR(event.event_id, event.name);
                                 setExportDropdownOpen(false);
                                 setExportDropdownSticky(false);
                               } catch (error) {

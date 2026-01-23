@@ -323,12 +323,28 @@ const FeedbackForm = () => {
   }
 
   if (eligibility && !eligibility.eligible) {
+    const getTitle = () => {
+      if (eligibility.reason === 'already_submitted') return 'Already Submitted';
+      if (eligibility.reason === 'not_registered') return 'Not Registered';
+      return 'Not Eligible';
+    };
+
+    const getIcon = () => {
+      if (eligibility.reason === 'already_submitted') return <CheckCircle className="w-5 h-5" />;
+      return <AlertCircle className="w-5 h-5" />;
+    };
+
+    const getColor = () => {
+      if (eligibility.reason === 'already_submitted') return 'text-green-600';
+      return 'text-amber-600';
+    };
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-          <div className="flex items-center space-x-2 text-amber-600 mb-4">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-medium">Not Eligible</span>
+          <div className={`flex items-center space-x-2 ${getColor()} mb-4`}>
+            {getIcon()}
+            <span className="font-medium">{getTitle()}</span>
           </div>
           <p className="text-gray-700 mb-4">{eligibility.message}</p>
           <button

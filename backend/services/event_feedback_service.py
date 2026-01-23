@@ -683,11 +683,12 @@ class EventFeedbackService:
             )
             
             if existing_feedback:
+                submitted_at = existing_feedback.get("submitted_at")
                 return {
                     "eligible": False,
                     "reason": "already_submitted",
                     "message": "You have already submitted feedback for this event",
-                    "submitted_at": existing_feedback.get("submitted_at")
+                    "submitted_at": submitted_at.isoformat() if submitted_at else None
                 }
             
             # Check if feedback form exists and is active
