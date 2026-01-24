@@ -751,9 +751,9 @@ class EventFeedbackService:
             
             # Search based on target audience
             if target_audience == "faculty":
-                # Search for faculty registration
+                # Search for faculty registration in faculty registrations collection
                 registration = await DatabaseOperations.find_one(
-                    self.registrations_collection,
+                    self.faculty_registrations_collection,
                     {
                         "faculty.employee_id": registration_id,
                         "event.event_id": event_id
@@ -838,7 +838,7 @@ class EventFeedbackService:
             # Get registration details based on target audience
             if target_audience == "faculty":
                 registration = await DatabaseOperations.find_one(
-                    self.registrations_collection,
+                    self.faculty_registrations_collection,
                     {
                         "faculty.employee_id": registration_id,
                         "event.event_id": event_id
