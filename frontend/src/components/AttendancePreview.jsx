@@ -141,6 +141,21 @@ const AttendancePreview = ({
       const startDateTime = new Date(`${eventData.start_date}T${eventData.start_time}`);
       const endDateTime = new Date(`${eventData.end_date}T${eventData.end_time}`);
 
+      // Validate datetime objects
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        console.error('Invalid datetime values:', {
+          start_date: eventData.start_date,
+          start_time: eventData.start_time,
+          end_date: eventData.end_date,
+          end_time: eventData.end_time,
+          startDateTime: startDateTime.toString(),
+          endDateTime: endDateTime.toString()
+        });
+        setError('Invalid date or time values. Please check your event schedule.');
+        setLoading(false);
+        return;
+      }
+
       const requestData = {
         event_name: eventData.event_name,
         event_type: eventData.event_type,
@@ -806,6 +821,42 @@ const AttendancePreview = ({
   // Use the most relevant data source
   const data = previewData || validationData || {};
   
+  // Calculate duration from event data or sessions
+  const calculateEventDuration = () => {
+    // Try to get from event_details first
+    if (data.event_details?.duration_hours && data.event_details.duration_hours > 0) {
+      return data.event_details.duration_hours;
+    }
+    
+    // Try to calculate from eventData props
+    if (eventData?.start_date && eventData?.start_time && eventData?.end_date && eventData?.end_time) {
+      const startDateTime = new Date(`${eventData.start_date}T${eventData.start_time}`);
+      const endDateTime = new Date(`${eventData.end_date}T${eventData.end_time}`);
+      
+      if (!isNaN(startDateTime.getTime()) && !isNaN(endDateTime.getTime())) {
+        return (endDateTime - startDateTime) / (1000 * 60 * 60); // hours
+      }
+    }
+    
+    // Try to sum up sessions duration
+    const sessions = customSessions.length > 0 ? customSessions : (currentData?.sessions || data?.sessions || []);
+    if (sessions.length > 0) {
+      const totalMinutes = sessions.reduce((sum, session) => {
+        if (session.duration_minutes) {
+          return sum + session.duration_minutes;
+        }
+        if (session.start_time && session.end_time) {
+          const duration = (new Date(session.end_time) - new Date(session.start_time)) / (1000 * 60);
+          return sum + (isNaN(duration) ? 0 : duration);
+        }
+        return sum;
+      }, 0);
+      return totalMinutes / 60; // convert to hours
+    }
+    
+    return 0;
+  };
+  
   // Determine current data to display based on state
   const currentData = (() => {
     // If we have validation data and it's successful, use it (this is for custom strategies)
@@ -872,7 +923,10 @@ const AttendancePreview = ({
               )}
             </h3>
             <p className="text-sm text-gray-600">
-              {data.event_details?.duration_hours}h event • {(currentData.sessions || []).length} session(s)
+              {(() => {
+                const duration = calculateEventDuration();
+                return duration > 0 ? `${Math.round(duration)}h event` : 'Event duration';
+              })()} • {(currentData.sessions || []).length} session(s)
               {hasUnsavedChanges && (
                 <span className="ml-2 text-amber-600 font-medium">• Unsaved changes</span>
               )}
@@ -1450,7 +1504,12 @@ const AttendancePreview = ({
           <p className="text-xs text-gray-600">Pass Criteria</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
-          <p className="text-lg font-semibold text-gray-900">{data.event_details?.duration_hours || 0}h</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {(() => {
+              const duration = calculateEventDuration();
+              return duration > 0 ? `${Math.round(duration)}h` : '-';
+            })()}
+          </p>
           <p className="text-xs text-gray-600">Duration</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">

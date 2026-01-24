@@ -37,8 +37,8 @@ const ScanHistoryModal = ({ isOpen, onClose, eventId, invitationCode }) => {
       setLoading(true);
       setError('');
 
-      // Fetch scan history and volunteer sessions
-      const response = await adminAPI.getScannerHistory(eventId, invitationCode);
+      // Fetch scan history and volunteer sessions for the entire event
+      const response = await adminAPI.getScannerHistory(eventId);
       
       if (response.data.success) {
         setScanHistory(response.data.data.scans || []);
@@ -60,8 +60,9 @@ const ScanHistoryModal = ({ isOpen, onClose, eventId, invitationCode }) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Invalid Date';
     
-    // Convert UTC to IST (UTC+5:30)
-    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+    // Backend stores naive IST, but MongoDB adds +00:00 (UTC marker)
+    // Subtract 5.5 hours to get back the actual IST time that was stored
+    const istDate = new Date(date.getTime() - (5.5 * 60 * 60 * 1000));
     
     return istDate.toLocaleString('en-IN', {
       month: 'short',
@@ -69,8 +70,7 @@ const ScanHistoryModal = ({ isOpen, onClose, eventId, invitationCode }) => {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Kolkata'
+      hour12: true
     });
   };
 
@@ -331,7 +331,19 @@ const ScanHistoryModal = ({ isOpen, onClose, eventId, invitationCode }) => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-sm text-gray-900 truncate">{session.volunteer_name}</h4>
-                              <p className="text-xs text-gray-500 truncate">{session.volunteer_contact}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-500 truncate">{session.volunteer_contact}</p>
+                                {session.target_session_name && (
+                                  <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                    {session.target_session_name}
+                                  </span>
+                                )}
+                                {session.target_day && (
+                                  <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded">
+                                    Day {session.target_day}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 

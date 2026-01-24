@@ -474,6 +474,20 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
         # Count active sessions
         active_sessions = sum(1 for s in volunteer_sessions if s.get("expires_at") and safe_datetime_compare(s["expires_at"], get_current_ist(), 'gt'))
         
+        # Get event config for session name lookup
+        event = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        event_config = event.get("config", {}) if event else {}
+        sessions_config = event_config.get("sessions", [])
+        
+        # Helper function to get session name from session id
+        def get_session_name(session_id):
+            if not session_id or not sessions_config:
+                return None
+            for session in sessions_config:
+                if session.get("id") == session_id:
+                    return session.get("name")
+            return session_id  # Fallback to ID if name not found
+        
         # Build response - use total_scans from database (which is incremented on each scan)
         return {
             "success": True,
@@ -487,7 +501,11 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
                         "created_at": serialize_datetime(s.get("created_at")),
                         "expires_at": serialize_datetime(s.get("expires_at")),
                         "last_activity": serialize_datetime(s.get("last_activity")),
-                        "total_scans": s.get("total_scans", 0)  # Use database value directly
+                        "total_scans": s.get("total_scans", 0),  # Use database value directly
+                        "target_day": s.get("target_day"),
+                        "target_session": s.get("target_session"),
+                        "target_session_name": get_session_name(s.get("target_session")),
+                        "target_round": s.get("target_round")
                     }
                     for s in volunteer_sessions
                 ],
@@ -959,7 +977,10 @@ async def create_volunteer_session(
             "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             "expires_at": session_expires,
             "total_scans": 0,
-            "last_activity": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+            "last_activity": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+            "target_day": invitation.get("target_day"),
+            "target_session": invitation.get("target_session"),
+            "target_round": invitation.get("target_round")
         }
         
         await DatabaseOperations.insert_one("volunteer_sessions", session_doc)
