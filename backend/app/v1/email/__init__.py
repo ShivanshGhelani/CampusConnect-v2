@@ -1,5 +1,4 @@
 """
-"""
 Email Service API Routes
 Handles email service health check and monitoring endpoints
 """
