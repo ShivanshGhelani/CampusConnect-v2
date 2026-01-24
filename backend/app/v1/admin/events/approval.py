@@ -84,7 +84,7 @@ async def approve_event(
                     "event_approval_status": "approved",
                     "published": True,
                     "approved_by": admin.username,
-                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "approval_required": False
                 }
             }
@@ -115,7 +115,7 @@ async def approve_event(
                 approved_by_username=admin.username,
                 approved_by_role=admin.role.value,
                 event_data=event,
-                approval_timestamp=datetime.now(pytz.timezone('Asia/Kolkata')),
+                approval_timestamp=datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 request_metadata={
                     "approver_employee_id": admin.employee_id,
                     "approval_method": "admin_portal",
@@ -173,7 +173,7 @@ async def approve_event(
                     "event_time": event_time,
                     "venue": venue,
                     "approved_by": admin.username,
-                    "approved_date": datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%B %d, %Y at %I:%M %p UTC'),
+                    "approved_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime('%B %d, %Y at %I:%M %p UTC'),
                     "event_url": f"https://campusconnect.edu/events/{event_id}",  # Update with actual domain
                     "dashboard_url": "https://campusconnect.edu/admin/events",  # Update with actual domain
                     "help_url": "https://campusconnect.edu/help",
@@ -232,7 +232,7 @@ async def approve_event(
             "message": f"Event '{event.get('event_name')}' has been approved successfully",
             "event_id": event_id,
             "approved_by": admin.username,
-            "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+            "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
             "event": serialized_event  # Include serialized event data for frontend logging
         }
         
@@ -298,7 +298,7 @@ async def decline_event(
                     "event_approval_status": "declined",
                     "published": False,
                     "declined_by": admin.username,
-                    "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "decline_reason": decline_reason
                 }
             }
@@ -335,7 +335,7 @@ async def decline_event(
                 declined_by_role=admin.role.value,
                 event_data=event,
                 decline_reason=decline_reason,
-                decline_timestamp=datetime.now(pytz.timezone('Asia/Kolkata')),
+                decline_timestamp=datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 request_metadata={
                     "decliner_employee_id": admin.employee_id,
                     "decline_method": "admin_portal",
@@ -361,7 +361,7 @@ async def decline_event(
                 creator_name = event.get("event_created_by", "Event Creator")
                 venue = event.get("venue", "TBD")
                 event_type = event.get("event_type", "General")
-                created_date = event.get("created_at", datetime.now(pytz.timezone('Asia/Kolkata'))).strftime('%B %d, %Y') if isinstance(event.get("created_at"), datetime) else "Recently"
+                created_date = event.get("created_at", datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)).strftime('%B %d, %Y') if isinstance(event.get("created_at"), datetime) else "Recently"
                 
                 # Extract date and time from start_datetime
                 start_datetime = event.get("start_datetime")
@@ -396,7 +396,7 @@ async def decline_event(
                     "venue": venue,
                     "created_date": created_date,
                     "declined_by": admin.username,
-                    "declined_date": datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%B %d, %Y at %I:%M %p UTC'),
+                    "declined_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime('%B %d, %Y at %I:%M %p UTC'),
                     "decline_reason": decline_reason if decline_reason != "No reason provided" else None,
                     "dashboard_url": "https://campusconnect.edu/admin/events",  # Update with actual domain
                     "help_url": "https://campusconnect.edu/help",
@@ -437,7 +437,7 @@ async def decline_event(
             "message": f"Event '{event.get('event_name')}' has been declined and removed from the system",
             "event_id": event_id,
             "declined_by": admin.username,
-            "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+            "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
             "reason": decline_reason,
             "deleted": True
         }

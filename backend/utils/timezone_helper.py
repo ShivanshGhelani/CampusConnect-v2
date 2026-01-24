@@ -77,7 +77,7 @@ def get_current_ist() -> datetime:
 
 def get_current_utc() -> datetime:
     """Get current time in UTC"""
-    return datetime.now(pytz.timezone('Asia/Kolkata'))
+    return datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
 
 # Example usage and testing
 if __name__ == "__main__":

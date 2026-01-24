@@ -53,7 +53,7 @@ class ExportService:
                     "event_id": event_id,
                     "event_name": event.get("event_name"),
                     "total_registrations": len(registrations_data),
-                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "report_type": "sign_sheet"
                 }
             }
@@ -83,7 +83,7 @@ class ExportService:
                     "event_id": event_id,
                     "event_name": event.get("event_name"),
                     "total_participants": len(attendance_data),
-                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "report_type": "attendance_report"
                 }
             }
@@ -113,7 +113,7 @@ class ExportService:
                     "event_id": event_id,
                     "event_name": event.get("event_name"),
                     "total_responses": len(feedback_data),
-                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "report_type": "feedback_report"
                 }
             }
@@ -142,7 +142,7 @@ class ExportService:
                 "metadata": {
                     "event_id": event_id,
                     "event_name": event.get("event_name"),
-                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "report_type": "budget_report"
                 }
             }
@@ -210,7 +210,7 @@ class ExportService:
                 "metadata": {
                     "event_id": event_id,
                     "event_name": event.get("event_name"),
-                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "report_type": "event_report",
                     "includes_images": bool(options and options.get("event_images")),
                     "includes_outcomes": bool(options and options.get("event_outcomes"))
@@ -687,8 +687,8 @@ class ExportService:
                 
                 <div>
                     <strong>Report Details:</strong><br>
-                    Generated on {datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%B %d, %Y at %I:%M %p UTC")} | CampusConnect Event Management System<br>
-                    Document ID: SIGN-{event.get('event_id', 'UNKNOWN')}-{datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y%m%d")}
+                    Generated on {datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime("%B %d, %Y at %I:%M %p UTC")} | CampusConnect Event Management System<br>
+                    Document ID: SIGN-{event.get('event_id', 'UNKNOWN')}-{datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime("%Y%m%d")}
                 </div>
                 
                 <div class="signature-line">
@@ -1223,8 +1223,8 @@ class ExportService:
             html_content = html_content.replace("{{KSV_LOGO_URL}}", "/logo/ksv.png")
             html_content = html_content.replace("{{INSTITUTION_NAME}}", "LDRP Institute of Technology & Research")
             html_content = html_content.replace("{{EVENT_NAME}}", event.get('event_name', 'Event Name'))
-            html_content = html_content.replace("{{GENERATION_DATE}}", datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%B %d, %Y"))
-            html_content = html_content.replace("{{REPORT_ID}}", f"EVT-RPT-{event.get('event_id', 'UNKNOWN')}-{datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y%m%d')}")
+            html_content = html_content.replace("{{GENERATION_DATE}}", datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime("%B %d, %Y"))
+            html_content = html_content.replace("{{REPORT_ID}}", f"EVT-RPT-{event.get('event_id', 'UNKNOWN')}-{datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime('%Y%m%d')}")
             print("DEBUG: Basic template replacements completed")
         except Exception as e:
             self.logger.error(f"Error in basic template replacements: {e}")
@@ -1699,7 +1699,7 @@ class ExportService:
         
         # Footer details
         html_content = html_content.replace("{{GENERATED_BY}}", options.get('generated_by', 'System') if options else 'System')
-        html_content = html_content.replace("{{CURRENT_YEAR}}", str(datetime.now(pytz.timezone('Asia/Kolkata')).year))
+        html_content = html_content.replace("{{CURRENT_YEAR}}", str(datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).year))
         
         return html_content
     

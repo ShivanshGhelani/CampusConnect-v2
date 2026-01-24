@@ -238,7 +238,7 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
             "password_hash": Student.get_password_hash(password),
             "department": department,
             "semester": semester,
-            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             "is_active": True
         }
         
@@ -428,8 +428,8 @@ async def faculty_register_api(request: Request, register_data: FacultyRegisterR
             "seating": seating,
             "employment_type": employment_type,
             "event_participation": [],
-            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-            "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+            "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             "last_login": None,
             "is_active": True,
             # Auto-grant organizer permissions for new faculty

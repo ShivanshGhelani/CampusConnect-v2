@@ -433,7 +433,7 @@ async def update_profile(request: Request, student: Student = Depends(require_st
             return {"success": False, "message": "No valid fields provided for update"}
         
         # Add timestamp
-        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata'))
+        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
           # Update database
         result = await DatabaseOperations.update_one(
             "students",
@@ -504,7 +504,7 @@ async def update_faculty_profile(request: Request, faculty: Faculty = Depends(ge
             return {"success": False, "message": "No valid fields provided for update"}
         
         # Add timestamp
-        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata'))
+        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         
         # Update database
         result = await DatabaseOperations.update_one(
@@ -566,7 +566,7 @@ async def change_password(request: Request, student: Student = Depends(require_s
             {"enrollment_no": student.enrollment_no},
             {"$set": {
                 "password_hash": hashed_new_password,
-                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             }}
         )
         

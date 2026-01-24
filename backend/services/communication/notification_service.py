@@ -63,7 +63,7 @@ class NotificationService:
             # Calculate expiry if specified
             expires_at = None
             if expires_in_hours:
-                expires_at = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(hours=expires_in_hours)
+                expires_at = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) + timedelta(hours=expires_in_hours)
             
             # Create notification
             notification = Notification(
@@ -127,7 +127,7 @@ class NotificationService:
                 filter_query["status"] = {"$in": [s.value for s in status_filter]}
             
             # Add expiry filter (exclude expired notifications)
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             filter_query["$or"] = [
                 {"expires_at": None},
                 {"expires_at": {"$gt": current_time}}
@@ -186,7 +186,7 @@ class NotificationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             # Update notifications
             result = await db[self.collection_name].update_many(
@@ -226,7 +226,7 @@ class NotificationService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             result = await db[self.collection_name].update_one(
                 {
@@ -330,7 +330,7 @@ class NotificationService:
             
             # For event approval/rejection notifications, DELETE the original notification instead of archiving
             # This prevents the accumulation of old approval notifications
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             if notification.action_type in ["approve_event"]:
                 # DELETE the notification completely for event approval/rejection actions
@@ -496,7 +496,7 @@ class NotificationService:
                 # Approve the event - update status to approved
                 result = await db["events"].update_one(
                     {"event_id": event_id},
-                    {"$set": {"status": "approved", "approved_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                    {"$set": {"status": "approved", "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
                 )
                 
                 if result.modified_count > 0:
@@ -526,7 +526,7 @@ class NotificationService:
                 # Reject the event - update status to rejected
                 result = await db["events"].update_one(
                     {"event_id": event_id},
-                    {"$set": {"status": "rejected", "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')), "decline_reason": reason}}
+                    {"$set": {"status": "rejected", "declined_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None), "decline_reason": reason}}
                 )
                 
                 if result.modified_count > 0:

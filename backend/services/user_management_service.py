@@ -84,8 +84,8 @@ class UserManagementService:
                 # Soft delete - mark as inactive
                 update_data = {
                     "is_active": False,
-                    "deleted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
+                    "deleted_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
                 }
                 
                 result = await self.db.update_one(
@@ -150,8 +150,8 @@ class UserManagementService:
             # Restore the user
             update_data = {
                 "is_active": True,
-                "restored_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
+                "restored_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             }
             
             # Remove deletion timestamp

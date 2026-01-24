@@ -42,7 +42,7 @@ class SecureURLService:
         """
         try:
             # Create expiry timestamp
-            expiry = int((datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(hours=expires_in_hours)).timestamp())
+            expiry = int((datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) + timedelta(hours=expires_in_hours)).timestamp())
             
             # Create a short, secure token instead of long base64
             # Use only asset_id + short hash for the token

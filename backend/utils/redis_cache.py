@@ -116,7 +116,7 @@ class EventCache:
             # Store events with metadata
             cache_data = {
                 'events': events,
-                'cached_at': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                'cached_at': datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                 'count': len(events)
             }
             

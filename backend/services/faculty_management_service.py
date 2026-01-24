@@ -101,7 +101,7 @@ class FacultyManagementService:
                         {"employee_id": employee_id, "is_active": True},
                         {
                             "$addToSet": {"event_participation": event_id},
-                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                         }
                     )
                     
@@ -168,7 +168,7 @@ class FacultyManagementService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"event_participation": event_id},
-                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                         }
                     )
                     

@@ -142,7 +142,7 @@ class CertificateGenerationService:
                 'registration_id': ObjectId(registration_id),
                 'template_name': template_name,
                 'template_url': template_url,
-                'generated_at': datetime.now(pytz.timezone('Asia/Kolkata')),
+                'generated_at': datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 'certificate_data': certificate_data,
                 'filled_html': filled_html,
                 'pdf_base64': pdf_base64,  # Store PDF as base64
@@ -210,7 +210,7 @@ class CertificateGenerationService:
             event_end_date = event_start_date
         
         # Certificate issue date (today)
-        issue_date = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%B %d, %Y')
+        issue_date = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime('%B %d, %Y')
         
         # Participant name formatting
         participant_name = student.get('student_name', 'N/A')
@@ -334,7 +334,7 @@ class CertificateGenerationService:
         """
         event_code = event.get('event_code', 'EVENT')
         student_id_short = str(student.get('_id', ''))[-6:].upper()
-        timestamp = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y%m%d')
+        timestamp = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).strftime('%Y%m%d')
         
         return f"{event_code}-{student_id_short}-{timestamp}"
     

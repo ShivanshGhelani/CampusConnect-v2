@@ -67,7 +67,7 @@ async def create_venue(
             facilities=venue_data.facilities or [],
             venue_type=venue_data.venue_type,
             is_active=True,
-            created_at=datetime.now(pytz.timezone('Asia/Kolkata')),
+            created_at=datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             created_by=current_admin.username
         )
         
@@ -106,7 +106,7 @@ async def update_venue(
         
         # Prepare update data
         update_data = {k: v for k, v in venue_data.model_dump().items() if v is not None}
-        update_data["updated_at"] = datetime.now(pytz.timezone('Asia/Kolkata'))
+        update_data["updated_at"] = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         update_data["updated_by"] = current_admin.username
         
         # Update venue
@@ -167,7 +167,7 @@ async def manage_venue_status(
                 {"venue_id": venue_id},
                 {"$set": {
                     "is_active": False,
-                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "updated_by": current_admin.username
                 }}
             )
@@ -187,7 +187,7 @@ async def manage_venue_status(
                 {"venue_id": venue_id},
                 {"$set": {
                     "is_active": True,
-                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "updated_by": current_admin.username
                 }}
             )

@@ -35,8 +35,8 @@ class VenueService:
                 "facilities": venue_data.facilities,
                 "venue_type": venue_data.venue_type,
                 "is_active": True,
-                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "created_by": created_by
             }
 
@@ -124,7 +124,7 @@ class VenueService:
         """Update venue information"""
         try:
             # Build update document
-            update_doc = {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+            update_doc = {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
             
             if venue_data.name is not None:
                 update_doc["name"] = venue_data.name
@@ -179,7 +179,7 @@ class VenueService:
             result = await DatabaseOperations.update_one(
                 "venues",
                 {"venue_id": venue_id},
-                {"$set": {"is_active": False, "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                {"$set": {"is_active": False, "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
             )
 
             if result.modified_count > 0:

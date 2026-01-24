@@ -210,13 +210,13 @@ async def create_event(
                 "attendance_marked": 0,
                 "feedback_submitted": 0,
                 "certificates_issued": 0,
-                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
+                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             },
             "custom_fields": [],
             
             # Metadata
             "created_by": admin.username,
-            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             "form_status": "draft",
             "require_verification": False,
             "allow_edit_after_submit": False
@@ -336,7 +336,7 @@ async def create_event(
                     "sub_status": "registration_not_started",
                     "approval_required": False,
                     "approved_by": admin.username,
-                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "published": True
                 }}
             )
@@ -361,7 +361,7 @@ async def create_event(
                     "sub_status": "registration_not_started", 
                     "approval_required": False,
                     "approved_by": admin.username,
-                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "approved_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "published": True
                 }}
             )
@@ -554,19 +554,19 @@ async def create_event(
         # If venue booking is needed, create venue booking
         if event_data.venue_id:
             venue_booking = {
-                "booking_id": f"booking_{event_data.event_id}_{datetime.now(pytz.timezone('Asia/Kolkata')).timestamp()}",
+                "booking_id": f"booking_{event_data.event_id}_{datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).timestamp()}",
                 "venue_id": event_data.venue_id,
                 "event_id": event_data.event_id,
                 "event_name": event_data.event_name,
                 "booked_by": admin.username,
                 "booked_by_name": admin.username,
-                "booking_date": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "booking_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "start_datetime": start_datetime.isoformat(),
                 "end_datetime": end_datetime.isoformat(),
                 "status": "confirmed",
                 "notes": f"Automatic booking for event {event_data.event_name}",
                 "confirmed_by": admin.username,
-                "confirmed_at": datetime.now(pytz.timezone('Asia/Kolkata'))
+                "confirmed_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             }
             
             # Add booking to venue_bookings collection
@@ -809,7 +809,7 @@ async def update_event(
             logger.info(f"🔄 Registration/event dates were modified for event {event_id}, recalculating status...")
             
             # Get the current time
-            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             # Create a temporary event object with updated dates for status calculation
             temp_event = existing_event.copy()
@@ -828,7 +828,7 @@ async def update_event(
         
         # Update metadata
         update_doc["updated_by"] = admin.username
-        update_doc["updated_at"] = datetime.now(pytz.timezone('Asia/Kolkata'))
+        update_doc["updated_at"] = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         
         logger.info(f"📦 Update Event {event_id}: Final update document keys: {list(update_doc.keys())}")
         logger.info(f"🖼️ Final poster URL being saved: {update_doc.get('event_poster_url', 'NOT_IN_UPDATE')}")
@@ -1582,7 +1582,7 @@ async def bulk_update_event_status(request: Request, admin: AdminUser = Depends(
         update_data = {
             "status": new_status,
             "updated_by": admin.username,
-            "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
+            "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         }
         
         if new_sub_status:

@@ -168,11 +168,11 @@ class Event(BaseModel):
                 "attendance_marked": 0,
                 "feedback_submitted": 0,
                 "certificates_issued": 0,
-                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
+                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             }
         
         self.registration_stats.update(stats_update)
-        self.registration_stats["last_updated"] = datetime.now(pytz.timezone('Asia/Kolkata'))
+        self.registration_stats["last_updated"] = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
     
     def get_participant_count(self) -> int:
         """Get total participant count"""

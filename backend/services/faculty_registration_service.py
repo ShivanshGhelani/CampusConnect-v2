@@ -129,7 +129,7 @@ class FacultyRegistrationService:
                             "registration_stats.total_participants": 1,
                         },
                         "$addToSet": {"participated_faculties": employee_id},
-                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
+                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)},
                     },
                 )
                 logger.info(f"Event document update result: {event_update_result}")
@@ -265,7 +265,7 @@ class FacultyRegistrationService:
                                 "registration_id": f"TEAM_FAC_{team_name}_{event_id}",
                                 "registration_type": "team",
                                 "team_name": team_name,
-                                "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')),
+                                "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                                 "status": "registered",
                             }
                         }
@@ -282,7 +282,7 @@ class FacultyRegistrationService:
                         "registration_stats.total_participants": len(team_members),
                     },
                     "$addToSet": {"participated_faculties": {"$each": team_members}},
-                    "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
+                    "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)},
                 },
             )
 
@@ -382,7 +382,7 @@ class FacultyRegistrationService:
                     {
                         "$inc": decrement_update,
                         "$pull": {"participated_faculties": employee_id},
-                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
+                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)},
                     },
                 )
                 logger.info(
@@ -548,7 +548,7 @@ class FacultyRegistrationService:
             "registration": {
                 "type": registration_type,
                 "status": "confirmed",
-                "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "additional_data": additional_data or {},
             },
             "team": team_info,

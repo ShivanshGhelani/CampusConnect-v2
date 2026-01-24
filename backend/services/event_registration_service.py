@@ -127,7 +127,7 @@ class EventRegistrationService:
                         },
                         "$set": {
                             f"registered_students.{registration_id}": enrollment_no,
-                            "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
+                            "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
                         }
                     }
                 )
@@ -312,7 +312,7 @@ class EventRegistrationService:
                     "team_name": team_name,
                     "team_leader": team_leader_enrollment,
                     "team_size": len(actual_team_members),  # FIXED: Use actual team size
-                    "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     "status": "confirmed"
                 },
                 "team_members": team_registration_details,
@@ -341,7 +341,7 @@ class EventRegistrationService:
                                 "registration_type": "team",
                                 "team_name": team_name,
                                 "is_team_leader": member_detail["is_team_leader"],
-                                "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')),
+                                "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                                 "status": "registered"
                             }
                         }
@@ -360,7 +360,7 @@ class EventRegistrationService:
                     "registration_stats.total_participants": len(new_members)  # Only count new members
                 },
                 "$set": {
-                    "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                     **{f"registered_students.{reg_id}": enrollment for reg_id, enrollment in new_registrations.items()}
                 }
             }
@@ -559,7 +559,7 @@ class EventRegistrationService:
                 {
                     "$push": {"team_members": new_member},
                     "$inc": {"team.team_size": 1},
-                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                 }
             )
             
@@ -577,7 +577,7 @@ class EventRegistrationService:
                             "registration_type": "team",
                             "team_name": team_reg["team"]["team_name"],
                             "is_team_leader": False,
-                            "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')),
+                            "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                             "status": "registered"
                         }
                     }
@@ -701,7 +701,7 @@ class EventRegistrationService:
                 {
                     "$push": {"team_members": new_member},
                     "$inc": {"team.team_size": 1},
-                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                 }
             )
             
@@ -719,7 +719,7 @@ class EventRegistrationService:
                             "registration_type": "team",
                             "team_name": team_reg["team"]["team_name"],
                             "is_team_leader": False,
-                            "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')),
+                            "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                             "status": "registered"
                         }
                     }
@@ -811,7 +811,7 @@ class EventRegistrationService:
                         }
                     },
                     "$inc": {"team.team_size": -1},
-                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                 }
             )
             
@@ -927,7 +927,7 @@ class EventRegistrationService:
                     break
             
             # Create invitation document
-            invitation_id = f"INV_{event_id}_{team_registration_id}_{invitee_enrollment}_{int(datetime.now(pytz.timezone('Asia/Kolkata')).timestamp())}"
+            invitation_id = f"INV_{event_id}_{team_registration_id}_{invitee_enrollment}_{int(datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).timestamp())}"
             
             invitation_doc = {
                 "invitation_id": invitation_id,
@@ -938,8 +938,8 @@ class EventRegistrationService:
                 "inviter_name": team_leader_name,  # FIXED: Use extracted name
                 "invitee_enrollment": invitee_enrollment,
                 "status": "pending",  # pending, accepted, declined
-                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-                "expires_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(hour=23, minute=59, second=59) + timedelta(days=7),  # 7 days to respond
+                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+                "expires_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).replace(hour=23, minute=59, second=59) + timedelta(days=7),  # 7 days to respond
                 "event_name": team_reg["event"]["event_name"]
             }
             
@@ -985,11 +985,11 @@ class EventRegistrationService:
                 return {"success": False, "message": f"Invitation already {invitation['status']}"}
             
             # Check if invitation has expired
-            if datetime.now(pytz.timezone('Asia/Kolkata')) > invitation["expires_at"]:
+            if datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) > invitation["expires_at"]:
                 await DatabaseOperations.update_one(
                     self.invitations_collection,
                     {"invitation_id": invitation_id},
-                    {"$set": {"status": "expired", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                    {"$set": {"status": "expired", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
                 )
                 return {"success": False, "message": "Invitation has expired"}
             
@@ -1027,7 +1027,7 @@ class EventRegistrationService:
                     await DatabaseOperations.update_one(
                         self.invitations_collection,
                         {"invitation_id": invitation_id},
-                        {"$set": {"status": "expired", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata')), "reason": "team_full"}}
+                        {"$set": {"status": "expired", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None), "reason": "team_full"}}
                     )
                     return {
                         "success": False, 
@@ -1047,7 +1047,7 @@ class EventRegistrationService:
                     await DatabaseOperations.update_one(
                         self.invitations_collection,
                         {"invitation_id": invitation_id},
-                        {"$set": {"status": "accepted", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                        {"$set": {"status": "accepted", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
                     )
                     return {"success": True, "message": "Invitation accepted and joined team successfully"}
                 else:
@@ -1058,7 +1058,7 @@ class EventRegistrationService:
                 await DatabaseOperations.update_one(
                     self.invitations_collection,
                     {"invitation_id": invitation_id},
-                    {"$set": {"status": "declined", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                    {"$set": {"status": "declined", "responded_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
                 )
                 return {"success": True, "message": "Invitation declined"}
             
@@ -1243,7 +1243,7 @@ class EventRegistrationService:
                         f"registered_students.{registration_id}": ""
                     },
                     "$set": {
-                        "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
+                        "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
                     }
                 }
             )
@@ -1332,7 +1332,7 @@ class EventRegistrationService:
                     },
                     "$unset": unset_operations,
                     "$set": {
-                        "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
+                        "registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
                     }
                 }
             )
@@ -1659,7 +1659,7 @@ class EventRegistrationService:
             "registration": {
                 "type": registration_type,
                 "status": "confirmed",
-                "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "additional_data": additional_data or {}
             },
             "team": team_info,

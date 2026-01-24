@@ -13,6 +13,7 @@ import string
 
 from database.operations import DatabaseOperations
 from models.admin_user import AdminUser
+from utils.datetime_helper import safe_datetime_compare, get_current_ist, make_naive
 from dependencies.auth import require_admin
 import logging
 import os
@@ -121,9 +122,9 @@ async def create_invitation_link(
                     else:
                         expires_at = attendance_end
                 except:
-                    expires_at = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(hours=24)
+                    expires_at = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) + timedelta(hours=24)
             else:
-                expires_at = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(hours=24)
+                expires_at = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) + timedelta(hours=24)
         
         # Check if active invitation already exists with same target
         existing_invitation = await DatabaseOperations.find_one(
@@ -131,7 +132,7 @@ async def create_invitation_link(
             {
                 "event_id": request.event_id,
                 "is_active": True,
-                "expires_at": {"$gt": datetime.now(pytz.timezone('Asia/Kolkata'))},
+                "expires_at": {"$gt": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)},
                 "target_day": request.target_day,
                 "target_session": request.target_session,
                 "target_round": request.target_round
@@ -148,7 +149,7 @@ async def create_invitation_link(
             await DatabaseOperations.update_many(
                 "volunteer_invitations",
                 {"event_id": request.event_id, "is_active": True},
-                {"$set": {"is_active": False, "deactivated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
+                {"$set": {"is_active": False, "deactivated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}}
             )
             logger.info(f"Deactivated previous invitations for event {request.event_id}")
             
@@ -165,7 +166,7 @@ async def create_invitation_link(
                 "event_id": request.event_id,
                 "event_name": event.get("event_name"),
                 "created_by": current_user.email,
-                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "expires_at": expires_at,
                 "is_active": True,
                 "attendance_start_time": attendance_start,
@@ -240,7 +241,7 @@ async def deactivate_invitation(
         result = await DatabaseOperations.update_one(
             "volunteer_invitations",
             {"invitation_code": invitation_code},
-            {"$set": {"is_active": False, "deactivated_at": datetime.now(pytz.timezone('Asia/Kolkata')), "deactivated_by": current_user.email}}
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None), "deactivated_by": current_user.email}}
         )
         
         # DatabaseOperations.update_one returns bool, not pymongo result
@@ -293,7 +294,7 @@ async def get_invitation_stats(
             "volunteer_sessions",
             {
                 "invitation_code": invitation["invitation_code"],
-                "expires_at": {"$gt": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                "expires_at": {"$gt": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
             }
         )
         
@@ -471,7 +472,7 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
         scans.sort(key=lambda x: x["marked_at"] if x["marked_at"] else "", reverse=True)
         
         # Count active sessions
-        active_sessions = sum(1 for s in volunteer_sessions if s.get("expires_at") and s["expires_at"] > datetime.now(pytz.timezone('Asia/Kolkata')))
+        active_sessions = sum(1 for s in volunteer_sessions if s.get("expires_at") and safe_datetime_compare(s["expires_at"], get_current_ist(), 'gt'))
         
         # Build response - use total_scans from database (which is incremented on each scan)
         return {
@@ -691,7 +692,7 @@ async def get_team_registration_data(
             raise HTTPException(status_code=404, detail="Invalid session")
         
         # Check if session expired
-        if datetime.now(pytz.timezone('Asia/Kolkata')) > session.get("expires_at"):
+        if safe_datetime_compare(get_current_ist(), session.get("expires_at"), 'gt'):
             raise HTTPException(status_code=403, detail="Session has expired")
         
         # Get session event ID
@@ -862,13 +863,13 @@ async def validate_invitation(invitation_code: str):
         
         # Check if expired
         expires_at = invitation.get("expires_at")
-        if expires_at and datetime.now(pytz.timezone('Asia/Kolkata')) > expires_at:
+        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
             raise HTTPException(status_code=403, detail="This invitation has expired")
         
         # Check if within attendance window
         attendance_start = invitation.get("attendance_start_time")
         attendance_end = invitation.get("attendance_end_time")
-        now = datetime.now(pytz.timezone('Asia/Kolkata'))
+        now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         
         is_active = True
         if attendance_start and attendance_end and not TESTING_MODE:
@@ -939,14 +940,14 @@ async def create_volunteer_session(
         
         # Check expiry
         expires_at = invitation.get("expires_at")
-        if expires_at and datetime.now(pytz.timezone('Asia/Kolkata')) > expires_at:
+        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
             raise HTTPException(status_code=403, detail="Invitation has expired")
         
         # Generate unique session ID
         session_id = generate_session_id()
         
         # Session expires with invitation
-        session_expires = expires_at if expires_at else datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(hours=24)
+        session_expires = expires_at if expires_at else get_current_ist() + timedelta(hours=24)
         
         # Create session document
         session_doc = {
@@ -955,10 +956,10 @@ async def create_volunteer_session(
             "event_id": invitation.get("event_id"),
             "volunteer_name": request.volunteer_name,
             "volunteer_contact": request.volunteer_contact,
-            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+            "created_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
             "expires_at": session_expires,
             "total_scans": 0,
-            "last_activity": datetime.now(pytz.timezone('Asia/Kolkata'))
+            "last_activity": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         }
         
         await DatabaseOperations.insert_one("volunteer_sessions", session_doc)
@@ -1008,7 +1009,7 @@ async def mark_attendance(
             raise HTTPException(status_code=404, detail="Invalid session")
         
         # Check if session expired
-        if datetime.now(pytz.timezone('Asia/Kolkata')) > session.get("expires_at"):
+        if safe_datetime_compare(get_current_ist(), session.get("expires_at"), 'gt'):
             raise HTTPException(status_code=403, detail="Session has expired")
         
         # Extract registration ID from QR data
@@ -1419,7 +1420,7 @@ async def mark_attendance(
             "volunteer_sessions",
             {"session_id": session_id},
             {
-                "$set": {"last_activity": datetime.now(pytz.timezone('Asia/Kolkata'))},
+                "$set": {"last_activity": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)},
                 "$inc": {"total_scans": 1}
             }
         )
@@ -1489,7 +1490,7 @@ async def get_session_status(session_id: str):
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        is_valid = datetime.now(pytz.timezone('Asia/Kolkata')) <= session.get("expires_at")
+        is_valid = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None) <= session.get("expires_at")
         
         return {
             "success": True,

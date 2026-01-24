@@ -142,7 +142,7 @@ class CertificateTemplateService:
                 uploaded_by=uploaded_by,
                 tags=tags or [],
                 description=description,
-                created_at=datetime.now(pytz.timezone('Asia/Kolkata')),
+                created_at=datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 is_active=True
             )
             
@@ -232,7 +232,7 @@ class CertificateTemplateService:
             recent_uploads = 0
             
             # Calculate statistics
-            recent_date = datetime.now(pytz.timezone('Asia/Kolkata')).replace(day=datetime.now(pytz.timezone('Asia/Kolkata')).day - 30)  # Last 30 days
+            recent_date = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).replace(day=datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).day - 30)  # Last 30 days
             
             for template in templates:
                 # Category count

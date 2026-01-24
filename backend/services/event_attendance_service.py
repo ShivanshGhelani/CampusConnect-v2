@@ -57,10 +57,10 @@ class EventAttendanceService:
             # Update attendance
             attendance_update = {
                 "attendance.marked": True,
-                "attendance.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "attendance.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "attendance.status": "present",
                 "attendance.percentage": 100.0,
-                "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "attendance.marked_by": marked_by,
                 "attendance.marking_method": marking_method
             }
@@ -76,7 +76,7 @@ class EventAttendanceService:
                     "strategy": "single_mark",
                     "status": "present",
                     "percentage": 100.0,
-                    "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
+                    "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat()
                 }
             }
             
@@ -130,8 +130,8 @@ class EventAttendanceService:
                 {
                     "$set": {
                         "attendance.days.$.marked": True,
-                        "attendance.days.$.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
-                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
+                        "attendance.days.$.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }
@@ -190,7 +190,7 @@ class EventAttendanceService:
                 "session_id": session_id,
                 "session_name": session_name,
                 "marked": True,
-                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "marked_by": marked_by,
                 "marking_method": marking_method
             }
@@ -204,7 +204,7 @@ class EventAttendanceService:
                 {
                     "$push": {"attendance.sessions": session_data},
                     "$set": {
-                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }
@@ -263,7 +263,7 @@ class EventAttendanceService:
                 "milestone_id": milestone_id,
                 "milestone_name": milestone_name,
                 "completed": True,
-                "completed_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "completed_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "marked_by": marked_by,
                 "marking_method": marking_method
             }
@@ -277,7 +277,7 @@ class EventAttendanceService:
                 {
                     "$push": {"attendance.milestones": milestone_data},
                     "$set": {
-                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }

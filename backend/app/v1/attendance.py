@@ -600,7 +600,7 @@ async def get_qr_data_for_event(
                         "venue": event.get("venue")
                     },
                     "attendance": registration.get("attendance", {}),
-                    "generated": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                    "generated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                     "version": "3.0"
                 }
             else:
@@ -633,7 +633,7 @@ async def get_qr_data_for_event(
                     "venue": event.get("venue")
                 },
                 "attendance": registration.get("attendance", {}),
-                "generated": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                "generated": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat(),
                 "version": "3.0"
             }
         
@@ -846,7 +846,7 @@ async def scan_and_mark_attendance(
             "session_info": {
                 "session_id": session_id,
                 "marked_by": volunteer_name,
-                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
+                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None).isoformat()
             },
             # For backward compatibility
             "student_name": participant_info.get("name") if participant_info.get("type") == "student" else None,

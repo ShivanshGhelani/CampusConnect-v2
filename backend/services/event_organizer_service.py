@@ -56,7 +56,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$addToSet": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                         }
                     )
                     
@@ -126,7 +126,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                         }
                     )
                     
@@ -188,7 +188,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)}
                         }
                     )
                     

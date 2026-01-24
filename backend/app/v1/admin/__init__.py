@@ -107,7 +107,7 @@ async def get_complete_dashboard(
         
         # 3. GET ANALYTICS OVERVIEW DATA
         # Calculate date range based on period
-        end_date = datetime.now(pytz.timezone('Asia/Kolkata'))
+        end_date = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         if period == "week":
             start_date = end_date - timedelta(days=7)
         elif period == "month":
