@@ -160,7 +160,9 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
         
         if (data.attendance_strategy === 'single_mark' && data.attendance?.marked) {
           formattedData.isFullyMarked = true;
-          formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${data.attendance.marked_by || 'Unknown'}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
+          // Check if marked by organizer (via unified portal)
+          const markedBy = data.attendance.notes?.includes('unified portal') ? 'Organizer' : (data.attendance.marked_by || 'Unknown');
+          formattedData.alreadyMarkedMessage = `✓ Already Marked\n\nMarked by: ${markedBy}\nMarked at: ${new Date(data.attendance.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.status}`;
           console.log('✅ Single mark detected as already marked');
         } else if (data.attendance_strategy === 'day_based' && data.attendance?.sessions) {
           // ALWAYS check the TARGET day from scanner session
@@ -178,7 +180,9 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
             if (targetSession) {
               // This specific day is already marked
               formattedData.isFullyMarked = true;
-              formattedData.alreadyMarkedMessage = `✓ Day ${targetDayNum} Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+              // Check if marked by organizer (via unified portal)
+              const markedBy = targetSession.notes?.includes('unified portal') ? 'Organizer' : (targetSession.marked_by || 'Unknown');
+              formattedData.alreadyMarkedMessage = `✓ Day ${targetDayNum} Already Marked\n\nMarked by: ${markedBy}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
               console.log('✅ Target day already marked');
             } else {
               // This day is NOT marked yet - allow marking
@@ -202,7 +206,9 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
             if (targetSession) {
               // This specific session is already marked
               formattedData.isFullyMarked = true;
-              formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${targetSession.marked_by || 'Unknown'}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
+              // Check if marked by organizer (via unified portal)
+              const markedBy = targetSession.notes?.includes('unified portal') ? 'Organizer' : (targetSession.marked_by || 'Unknown');
+              formattedData.alreadyMarkedMessage = `✓ Session Already Marked\n\nMarked by: ${markedBy}\nMarked at: ${new Date(targetSession.marked_at).toLocaleString()}\n\nAttendance: ${data.attendance.percentage}% (${data.attendance.status})`;
               console.log('✅ Target session already marked');
             } else {
               // This session is NOT marked yet - allow marking
