@@ -92,12 +92,12 @@ async def send_test_email(to_email: str):
     try:
         logger.info(f"Test email requested for {to_email}")
         
-        # Test email content
-        subject = "🧪 CampusConnect Email Service Test"
+        # Test email content (using HTML entities for compatibility with Python 3.13)
+        subject = "CampusConnect Email Service Test"
         content = f"""
         <html>
         <body style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #4F46E5;">✅ Email Service Working!</h2>
+            <h2 style="color: #4F46E5;">&#x2705; Email Service Working!</h2>
             <p>This is a test email from CampusConnect to verify the email service is functioning correctly.</p>
             <p><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
             <hr style="margin: 20px 0;">
@@ -115,14 +115,14 @@ async def send_test_email(to_email: str):
         )
         
         if success:
-            logger.info(f"✅ Test email sent successfully to {to_email}")
+            logger.info(f"Test email sent successfully to {to_email}")
             return {
                 "status": "success",
                 "message": f"Test email sent successfully to {to_email}",
                 "timestamp": datetime.now().isoformat()
             }
         else:
-            logger.error(f"❌ Test email failed to send to {to_email}")
+            logger.error(f"Test email failed to send to {to_email}")
             return JSONResponse(
                 content={
                     "status": "error",
