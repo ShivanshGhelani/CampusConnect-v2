@@ -60,27 +60,27 @@ curl -X POST https://your-render-app.onrender.com/api/v1/email/circuit-breaker/r
 
 ### ✅ Successful Connection (Port 587)
 ```
-🔄 Attempting SMTP connection to smtp.gmail.com:587 (STARTTLS)
-✅ Created SMTP connection (STARTTLS) to smtp.gmail.com:587
+[TRYING] Attempting SMTP connection to smtp.gmail.com:587 (STARTTLS)
+[SUCCESS] Created SMTP connection (STARTTLS) to smtp.gmail.com:587
 ```
 
 ### ✅ Successful Fallback (Port 465)
 ```
-🔄 Attempting SMTP connection to smtp.gmail.com:587 (STARTTLS)
-❌ Port 587 failed (OSError: [Errno 111] Connection refused), falling back to SSL port 465
-🔄 Attempting SMTP_SSL connection to smtp.gmail.com:465 (fallback)
-✅ Created SMTP_SSL connection (fallback) to smtp.gmail.com:465
+[TRYING] Attempting SMTP connection to smtp.gmail.com:587 (STARTTLS)
+[FAILED] Port 587 failed (OSError: [Errno 111] Connection refused), falling back to SSL port 465
+[FALLBACK] Attempting SMTP_SSL connection to smtp.gmail.com:465 (fallback)
+[SUCCESS] Created SMTP_SSL connection (fallback) to smtp.gmail.com:465
 ```
 
 ### ❌ Connection Failure
 ```
-❌ SMTP Connection failed - Server unreachable: [Errno 111] Connection refused
+[CONN ERROR] SMTP Connection failed - Server unreachable: [Errno 111] Connection refused
    SMTP Server: smtp.gmail.com:587
 ```
 
 ### ❌ Authentication Failure
 ```
-❌ SMTP Authentication failed - Check EMAIL_USER and EMAIL_PASSWORD
+[AUTH ERROR] SMTP Authentication failed - Check EMAIL_USER and EMAIL_PASSWORD
    SMTP Server: smtp.gmail.com:587
    Email User: campus...@gmail.com
 ```
@@ -137,8 +137,8 @@ Before deploying to Render:
 
 Look for:
 - Startup logs showing email service initialization
-- Connection success/fallback messages
-- Any authentication or connection errors
+- Connection success/fallback messages with [SUCCESS], [FAILED], [TRYING] indicators
+- Any authentication or connection errors with [AUTH ERROR], [CONN ERROR] tags
 
 ### Email Service Endpoints
 - **Health Check**: `GET /api/v1/email/health`
@@ -167,7 +167,7 @@ Look for:
    ```
 
 3. **Monitor Logs**:
-   - Watch for emoji indicators (✅ = success, ❌ = error, 🔄 = trying)
+   - Watch for text indicators ([SUCCESS] = success, [FAILED] = error, [TRYING] = attempting, [FALLBACK] = using backup)
    - Check circuit breaker state
    - Verify connection method (STARTTLS vs SSL)
 
@@ -199,7 +199,8 @@ If emails completely stop working:
 2. **App Passwords expire** - regenerate if emails suddenly stop
 3. **Circuit breaker opens after 5 failures** - monitor and reset if needed
 4. **Test endpoint is your friend** - use it liberally in production
-5. **Watch the emoji logs** - they tell you exactly what's happening!
+5. **Watch the log tags** - [SUCCESS], [FAILED], [TRYING], [FALLBACK] tell you exactly what's happening!
+6. **Python 3.13 compatibility** - All emojis removed from code to prevent syntax errors
 
 ## 📞 Support
 
