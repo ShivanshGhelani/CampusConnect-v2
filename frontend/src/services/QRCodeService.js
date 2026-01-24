@@ -78,10 +78,27 @@ class QRCodeService {
         throw new Error('Invalid response structure from backend');
       }
       
-      console.log('Final Backend QR Data:', qrData);
+      console.log('Raw Backend QR Data:', qrData);
+      
+      // Transform to minimal v5.0 format (only essential identification fields)
+      const minimalQRData = {
+        registration_id: qrData.registration_id || qrData.reg_id,
+        event_id: qrData.event_id,
+        enrollment_no: qrData.enrollment_no || qrData.user?.enrollment_no || qrData.leader?.enrollment_no || qrData.employee_id,
+        mobile: qrData.mobile || qrData.user?.mobile || qrData.leader?.mobile,
+        email: qrData.email || qrData.user?.email || qrData.leader?.email,
+        name: qrData.name || qrData.user?.name || qrData.leader?.name,
+        type: qrData.type,
+        user_type: qrData.user_type || (qrData.employee_id ? 'faculty' : 'student'),
+        version: '5.0',
+        generated: new Date().toISOString()
+      };
+      
+      console.log('Transformed to v5.0 minimal format:', minimalQRData);
+      console.log('Size reduction:', JSON.stringify(qrData).length, '→', JSON.stringify(minimalQRData).length, 'bytes');
       console.log('=====================================');
       
-      return qrData;
+      return minimalQRData;
       
     } catch (error) {
       console.error('Failed to fetch QR data from backend:', error);
@@ -114,66 +131,34 @@ class QRCodeService {
    * @returns {Object} QR data object
    */
   generateQRDataFallback(registrationData, eventData, options = {}) {
-    
-    
-    
-    
-    
-    
-    
     const isTeamRegistration = registrationData.registration_type === 'team' || registrationData.registration_type === 'team_leader';
     const isFacultyRegistration = registrationData.employee_id !== undefined;
     
+    // MINIMAL QR CODE FORMAT v5.0
+    // Only essential identification data - full details fetched via API
     const qrData = {
-      // Core identification
-      reg_id: registrationData.registration_id || registrationData.registrar_id,
+      // Core identification (minimal data for API lookup)
+      registration_id: registrationData.registration_id || registrationData.registrar_id,
       event_id: eventData.event_id || eventData.id,
-      event_name: eventData.event_name || eventData.title || eventData.name,
+      enrollment_no: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no,
       
-      // Registration type
+      // Contact verification
+      mobile: registrationData.phone || registrationData.mobile || registrationData.student_data?.phone || 'N/A',
+      email: registrationData.email || registrationData.student_data?.email || 'N/A',
+      
+      // Basic info for display
+      name: registrationData.full_name || registrationData.student_data?.full_name || 'User',
+      
+      // Type indicators
       type: isTeamRegistration ? 'team' : 'individual',
       user_type: isFacultyRegistration ? 'faculty' : 'student',
       
-      // User info (works for both student and faculty)
-      user: {
-        name: registrationData.full_name || registrationData.student_data?.full_name || 'User',
-        id: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || 'Unknown',
-        department: this.getDepartment(registrationData),
-        email: registrationData.email || registrationData.student_data?.email || 'N/A',
-        type: isFacultyRegistration ? 'faculty' : 'student'
-      },
-      
-      // Legacy field for backward compatibility (map to user)
-      leader: {
-        name: registrationData.full_name || registrationData.student_data?.full_name || 'Team Leader',
-        enrollment: registrationData.enrollment_no || registrationData.employee_id || registrationData.student_data?.enrollment_no || 'Unknown',
-        department: this.getDepartment(registrationData),
-        email: registrationData.email || registrationData.student_data?.email || 'N/A'
-      },
-      
-      // Team information (if applicable) - Single QR with full team data
-      team: isTeamRegistration ? {
-        team_id: this.generateTeamId(registrationData, eventData),
-        name: registrationData.team_name || registrationData.student_data?.team_name,
-        size: this.calculateTeamSize(registrationData),
-        members: this.getTeamMembersForQR(registrationData) // Full team member list for scanner
-      } : null,
-      
-      // Event details
-      event: {
-        date: eventData.event_date,
-        time: eventData.event_time,
-        venue: eventData.venue
-      },
-      
-      // Metadata
-      generated: new Date().toISOString(),
-      version: '2.1' // Updated version for faculty support
+      // Version and timestamp
+      version: '5.0', // Minimal QR format - full data via API
+      generated: new Date().toISOString()
     };
 
-    
-    
-    
+    console.log('📦 Generated minimal QR code v5.0:', qrData);
     return qrData;
   }
 
@@ -371,12 +356,24 @@ class QRCodeService {
       console.log('📋 Parsed JSON:', qrData);
       
       // Validate QR data structure - accept multiple formats
-      const hasRegistrationId = qrData.reg_id || qrData.registration_id;
+      const hasRegistrationId = qrData.registration_id || qrData.reg_id;
       const hasEventId = qrData.event_id;
-      const hasUserData = qrData.student || qrData.user || qrData.leader;
+      const hasEnrollmentNo = qrData.enrollment_no;
+      const isMinimalV5 = qrData.version === '5.0';
       const isMinimalTeamQR = qrData.version === '4.0' && qrData.type === 'team';
+      const hasUserData = qrData.student || qrData.user || qrData.leader;
       
-      console.log('Validation:', { hasRegistrationId, hasEventId, hasUserData, isMinimalTeamQR });
+      console.log('Validation:', { hasRegistrationId, hasEventId, hasEnrollmentNo, isMinimalV5, isMinimalTeamQR, hasUserData });
+      
+      // Version 5.0 minimal QR codes - only need registration_id, event_id, enrollment_no
+      if (isMinimalV5) {
+        if (!hasRegistrationId || !hasEventId || !hasEnrollmentNo) {
+          console.warn('❌ Minimal v5.0 QR validation failed - missing required fields');
+          return null;
+        }
+        console.log('✅ QR data is valid (v5.0 minimal format)');
+        return qrData;
+      }
       
       // Version 4.0 team QR codes only need registration_id and event_id (data fetched via API)
       if (isMinimalTeamQR) {
@@ -384,15 +381,17 @@ class QRCodeService {
           console.warn('❌ Minimal team QR validation failed - missing registration_id or event_id');
           return null;
         }
-      } else {
-        // Legacy QR codes need user data
-        if (!hasRegistrationId || !hasEventId || !hasUserData) {
-          console.warn('❌ QR validation failed - missing required fields');
-          return null;
-        }
+        console.log('✅ QR data is valid (v4.0 team format)');
+        return qrData;
       }
       
-      console.log('✅ QR data is valid');
+      // Legacy QR codes need user data
+      if (!hasRegistrationId || !hasEventId || !hasUserData) {
+        console.warn('❌ QR validation failed - missing required fields');
+        return null;
+      }
+      
+      console.log('✅ QR data is valid (legacy format)');
       return qrData;
     } catch (error) {
       console.error('❌ Failed to parse QR data:', error.message);

@@ -54,6 +54,7 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
       }
 
       console.log('✅ Valid QR data:', qrData);
+      console.log('📌 QR Version:', qrData.version);
       setScanResult(qrData);
       setIsScanning(false);
       
@@ -65,9 +66,18 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
         return;
       }
       
+      // For version 5.0 minimal QR codes, fetch full data via API first
+      let fullQRData = qrData;
+      if (qrData.version === '5.0') {
+        console.log('🔄 Version 5.0 minimal QR - fetching full data via API');
+        fullQRData = await fetchFullQRDataForMinimalV5(qrData);
+        console.log('✅ Got full QR data for v5.0:', fullQRData);
+        setScanResult(fullQRData);
+      }
+      
       // Fetch real attendance data for individual/legacy QR codes
       console.log('📡 Fetching attendance data...');
-      const realAttendanceData = await fetchRealAttendanceData(qrData);
+      const realAttendanceData = await fetchRealAttendanceData(fullQRData);
       setAttendanceData(realAttendanceData);
       console.log('✅ Got attendance data:', realAttendanceData);
       
@@ -100,6 +110,68 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
       setError('Camera access denied. Please allow camera permission.');
     } else if (err?.name === 'NotFoundError') {
       setError('No camera found on this device.');
+    }
+  };
+
+  // Fetch full QR data for v5.0 minimal QR codes
+  const fetchFullQRDataForMinimalV5 = async (minimalQRData) => {
+    console.log('🔍 Fetching full data for v5.0 minimal QR:', minimalQRData);
+    
+    try {
+      const params = {
+        target_audience: minimalQRData.user_type || 'student',
+        registration_type: minimalQRData.type || 'individual',
+        registration_id: minimalQRData.registration_id
+      };
+      
+      // For individual registrations with enrollment_no, add it as parameter
+      if (minimalQRData.enrollment_no && minimalQRData.type === 'individual') {
+        params.enrollment_no = minimalQRData.enrollment_no;
+      }
+      
+      console.log('📡 Calling /api/v1/attendance/qr-data/ with params:', params);
+      
+      const response = await api.get(`/api/v1/attendance/qr-data/${minimalQRData.event_id}`, {
+        params
+      });
+      
+      console.log('✅ Full QR data response:', response.data);
+      
+      if (response.data.success) {
+        const fullData = response.data.data;
+        
+        // Verify mobile and email match (security check)
+        if (minimalQRData.mobile || minimalQRData.email) {
+          const fetchedMobile = fullData.user?.mobile || fullData.mobile;
+          const fetchedEmail = fullData.user?.email || fullData.email;
+          
+          if (minimalQRData.mobile && fetchedMobile && minimalQRData.mobile !== fetchedMobile) {
+            console.error('⚠️ Mobile number mismatch!');
+            console.error('QR:', minimalQRData.mobile, 'API:', fetchedMobile);
+            throw new Error('Data verification failed: Mobile number mismatch');
+          }
+          
+          if (minimalQRData.email && fetchedEmail && minimalQRData.email.toLowerCase() !== fetchedEmail.toLowerCase()) {
+            console.error('⚠️ Email mismatch!');
+            console.error('QR:', minimalQRData.email, 'API:', fetchedEmail);
+            throw new Error('Data verification failed: Email mismatch');
+          }
+          
+          console.log('✅ Data verification passed');
+        }
+        
+        // Merge minimal QR data with full data from API
+        return {
+          ...fullData,
+          version: '5.0', // Keep version marker
+          generated: minimalQRData.generated // Keep original generation timestamp
+        };
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch full QR data');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching full QR data for v5.0:', error);
+      throw new Error(`Failed to fetch registration data: ${error.message}`);
     }
   };
 
