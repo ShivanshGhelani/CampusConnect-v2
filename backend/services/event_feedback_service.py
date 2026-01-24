@@ -124,7 +124,7 @@ class EventFeedbackService:
             event = await DatabaseOperations.find_one(
                 self.events_collection,
                 {"event_id": event_id},
-                {"feedback_form": 1, "event_name": 1, "event_id": 1}
+                {"feedback_form": 1, "event_name": 1, "event_id": 1, "target_audience": 1}
             )
             
             if not event:
@@ -159,7 +159,8 @@ class EventFeedbackService:
                 "feedback_form": serialized_feedback_form,
                 "event": {
                     "event_id": event["event_id"],
-                    "event_name": event["event_name"]
+                    "event_name": event["event_name"],
+                    "target_audience": event.get("target_audience", "students")
                 }
             }
             
