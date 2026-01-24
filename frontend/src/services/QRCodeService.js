@@ -84,7 +84,8 @@ class QRCodeService {
       const minimalQRData = {
         registration_id: qrData.registration_id || qrData.reg_id,
         event_id: qrData.event_id,
-        enrollment_no: qrData.enrollment_no || qrData.user?.enrollment_no || qrData.leader?.enrollment_no || qrData.employee_id,
+        // Backend returns enrollment_no in different locations: user.id, user.enrollment_no, or employee_id
+        enrollment_no: qrData.enrollment_no || qrData.user?.id || qrData.user?.enrollment_no || qrData.leader?.enrollment_no || qrData.employee_id,
         mobile: qrData.mobile || qrData.user?.mobile || qrData.leader?.mobile,
         email: qrData.email || qrData.user?.email || qrData.leader?.email,
         name: qrData.name || qrData.user?.name || qrData.leader?.name,
@@ -365,9 +366,9 @@ class QRCodeService {
       
       console.log('Validation:', { hasRegistrationId, hasEventId, hasEnrollmentNo, isMinimalV5, isMinimalTeamQR, hasUserData });
       
-      // Version 5.0 minimal QR codes - only need registration_id, event_id, enrollment_no
+      // Version 5.0 minimal QR codes - only need registration_id and event_id (enrollment_no is optional)
       if (isMinimalV5) {
-        if (!hasRegistrationId || !hasEventId || !hasEnrollmentNo) {
+        if (!hasRegistrationId || !hasEventId) {
           console.warn('❌ Minimal v5.0 QR validation failed - missing required fields');
           return null;
         }

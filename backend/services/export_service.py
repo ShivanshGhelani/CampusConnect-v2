@@ -255,6 +255,8 @@ class ExportService:
                             # Handle team registration
                             team_info = reg.get("team", {})
                             team_members = reg.get("team_members", [])
+                            # Get the team registration_id from the parent document
+                            team_registration_id = reg.get("registration_id", "N/A")
                             
                             for member in team_members:
                                 student_info = member.get("student", {})
@@ -264,10 +266,13 @@ class ExportService:
                                     "enrollment_no": student_info.get("enrollment_no", ""),
                                     "department": student_info.get("department", "Unknown"),
                                     "email": student_info.get("email", ""),
+                                    "mobile": student_info.get("mobile_no", student_info.get("phone", "")),
+                                    "phone": student_info.get("mobile_no", student_info.get("phone", "")),
                                     "semester": student_info.get("semester", ""),
                                     "type": "student",
                                     "registration_type": "team",
                                     "team_name": team_info.get("name", ""),
+                                    "registration_id": team_registration_id,  # Add team registration ID to each member
                                     "is_team_leader": member.get("is_team_leader", False),
                                     "registration_timestamp": reg.get("registration", {}).get("timestamp"),
                                     "team_status": team_info.get("status", "pending"),  # Extract team status
@@ -369,9 +374,26 @@ class ExportService:
         # Get number of empty rows from options
         empty_rows = options.get("include_empty_rows", 10) if options else 10
         
-        # Generate registration rows
+        # Separate individual and team registrations
+        individual_registrations = [r for r in registrations if r.get('registration_type') != 'team']
+        team_registrations = [r for r in registrations if r.get('registration_type') == 'team']
+        
+        # Group team members by team
+        teams = {}
+        for reg in team_registrations:
+            team_name = reg.get('team_name', 'Unknown Team')
+            if team_name not in teams:
+                teams[team_name] = {
+                    'members': [],
+                    'registration_id': reg.get('registration_id', 'N/A')
+                }
+            teams[team_name]['members'].append(reg)
+        
+        # Generate registration rows for individuals
         registration_rows = ""
-        for i, reg in enumerate(registrations, 1):
+        row_counter = 1
+        
+        for reg in individual_registrations:
             # First column: Name and ID info (combined)
             name_cell = f"""
                 <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">{reg.get('name', 'Unknown')}</div>
@@ -394,35 +416,88 @@ class ExportService:
             if reg.get('type') == 'faculty' and reg.get('designation'):
                 dept_cell += f'<div style="font-size: 9px; color: #0066cc; margin-top: 2px;">{reg.get("designation")}</div>'
             
-            # Add team info if applicable
-            if reg.get('registration_type') == 'team' and reg.get('team_name'):
-                team_badge = "👑 Leader" if reg.get('is_team_leader') else "👥 Member"
-                dept_cell += f'<div style="font-size: 9px; color: #0066cc; margin-top: 2px; font-weight: bold;">Team: {reg.get("team_name")} ({team_badge})</div>'
-            
             # Add semester info for students
             if reg.get('type') == 'student' and reg.get('semester'):
                 dept_cell += f'<div style="font-size: 9px; color: #888; margin-top: 1px;">Semester: {reg.get("semester")}</div>'
             
             registration_rows += f"""
                 <tr style="border-bottom: 1px solid #ddd; page-break-inside: avoid;">
-                    <td style="padding: 15px 8px; text-align: center; width: 50px; font-weight: bold; border-right: 1px solid #ddd; vertical-align: top;">{i}</td>
+                    <td style="padding: 15px 8px; text-align: center; width: 50px; font-weight: bold; border-right: 1px solid #ddd; vertical-align: top;">{row_counter}</td>
                     <td style="padding: 15px 8px; width: 280px; border-right: 1px solid #ddd; vertical-align: top;">{name_cell}</td>
                     <td style="padding: 15px 8px; width: 220px; border-right: 1px solid #ddd; vertical-align: top;">{dept_cell}</td>
                     <td style="padding: 15px 8px; width: 120px; border-right: 1px solid #ddd; background-color: #f8f9fa; vertical-align: top; min-height: 60px;"></td>
                 </tr>
             """
+            row_counter += 1
+        
+        # Generate team rows
+        team_rows = ""
+        for team_name, team_data in sorted(teams.items()):
+            members = team_data['members']
+            registration_id = team_data['registration_id']
+            
+            # Sort members to put leader first
+            members.sort(key=lambda m: (not m.get('is_team_leader', False), m.get('name', '')))
+            
+            # Team header row
+            team_rows += f"""
+                <tr style="background-color: #e3f2fd; border: 2px solid #2196f3;">
+                    <td colspan="4" style="padding: 12px 8px; font-weight: bold; font-size: 14px; color: #1565c0;">
+                        <span style="margin-right: 10px;">👥 TEAM:</span>
+                        <span style="font-size: 16px;">{team_name}</span>
+                        <span style="margin-left: 15px; font-size: 11px; color: #666; font-weight: normal;">Registration ID: {registration_id}</span>
+                        <span style="float: right; font-size: 12px; color: #666; font-weight: normal;">{len(members)} member(s)</span>
+                    </td>
+                </tr>
+            """
+            
+            # Team member rows
+            for member in members:
+                leader_badge = '<span style="background: #ffd700; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px;">👑 LEADER</span>' if member.get('is_team_leader') else ''
+                
+                name_cell = f"""
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
+                        {member.get('name', 'Unknown')}{leader_badge}
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-bottom: 2px;">
+                        Enrollment: {member.get('enrollment_no', 'N/A')}
+                    </div>
+                """
+                
+                dept_cell = f"""
+                    <div style="font-size: 12px; margin-bottom: 3px; font-weight: 500;">{member.get('department', 'Unknown')}</div>
+                    <div style="font-size: 10px; color: #666; word-break: break-all;">{member.get('email', 'N/A')}</div>
+                """
+                
+                if member.get('mobile') or member.get('phone'):
+                    contact = member.get('mobile') or member.get('phone')
+                    dept_cell += f'<div style="font-size: 10px; color: #666; margin-top: 2px;">📞 {contact}</div>'
+                
+                if member.get('semester'):
+                    dept_cell += f'<div style="font-size: 9px; color: #888; margin-top: 1px;">Semester: {member.get("semester")}</div>'
+                
+                team_rows += f"""
+                    <tr style="border-bottom: 1px solid #ddd; background-color: #f5f5f5; page-break-inside: avoid;">
+                        <td style="padding: 15px 8px; text-align: center; width: 50px; font-weight: bold; border-right: 1px solid #ddd; vertical-align: top;">{row_counter}</td>
+                        <td style="padding: 15px 8px; width: 280px; border-right: 1px solid #ddd; vertical-align: top;">{name_cell}</td>
+                        <td style="padding: 15px 8px; width: 220px; border-right: 1px solid #ddd; vertical-align: top;">{dept_cell}</td>
+                        <td style="padding: 15px 8px; width: 120px; border-right: 1px solid #ddd; background-color: #fff; vertical-align: top; min-height: 60px;"></td>
+                    </tr>
+                """
+                row_counter += 1
         
         # Generate empty rows for additional attendees
         empty_rows_html = ""
         for i in range(1, empty_rows + 1):
             empty_rows_html += f"""
                 <tr style="border-bottom: 1px solid #ddd; page-break-inside: avoid;">
-                    <td style="padding: 15px 8px; text-align: center; border-right: 1px solid #ddd; color: #ccc; vertical-align: top;">{len(registrations) + i}</td>
+                    <td style="padding: 15px 8px; text-align: center; border-right: 1px solid #ddd; color: #ccc; vertical-align: top;">{row_counter}</td>
                     <td style="padding: 15px 8px; border-right: 1px solid #ddd; vertical-align: top; min-height: 60px;"></td>
                     <td style="padding: 15px 8px; border-right: 1px solid #ddd; vertical-align: top;"></td>
                     <td style="padding: 15px 8px; background-color: #f8f9fa; vertical-align: top;"></td>
                 </tr>
             """
+            row_counter += 1
         
         # Count different participant types
         student_count = len([r for r in registrations if r.get('type') == 'student'])
@@ -670,6 +745,7 @@ class ExportService:
                 </thead>
                 <tbody>
                     {registration_rows}
+                    {team_rows}
                     {empty_rows_html}
                 </tbody>
             </table>
@@ -874,8 +950,231 @@ class ExportService:
     
     async def _generate_attendance_report_html(self, event: Dict[str, Any], attendance_data: List[Dict[str, Any]], options: Dict[str, Any] = None) -> str:
         """Generate HTML for attendance report"""
-        # Placeholder implementation
-        return "<html><body><h1>Attendance Report</h1><p>Coming soon...</p></body></html>"
+        
+        # Get full registrations data with attendance status
+        registrations = await self._get_event_registrations(event['event_id'])
+        
+        # Add attendance status to registrations
+        for reg in registrations:
+            # Find matching attendance record by ID
+            att_record = next((a for a in attendance_data if a.get('id') == reg.get('enrollment_no', reg.get('id'))), None)
+            if att_record:
+                reg['attendance_status'] = att_record.get('status', 'absent')
+                reg['attendance_percentage'] = att_record.get('percentage', 0)
+                reg['sessions_attended'] = att_record.get('sessions_attended', 0)
+            else:
+                reg['attendance_status'] = 'absent'
+                reg['attendance_percentage'] = 0
+                reg['sessions_attended'] = 0
+        
+        # Format event date and time
+        def format_date(date_str):
+            if not date_str:
+                return "N/A"
+            try:
+                return datetime.fromisoformat(date_str.replace('Z', '+00:00')).strftime("%B %d, %Y")
+            except:
+                return date_str
+        
+        event_date = format_date(event.get("start_date"))
+        venue = event.get("venue", "N/A")
+        if event.get("mode") == "online":
+            venue = "Online Event"
+        elif event.get("mode") == "hybrid":
+            venue = f"{venue} (Hybrid)"
+        
+        # Separate individual and team registrations
+        individual_registrations = [r for r in registrations if r.get('registration_type') != 'team']
+        team_registrations = [r for r in registrations if r.get('registration_type') == 'team']
+        
+        # Group team members by team
+        teams = {}
+        for reg in team_registrations:
+            team_name = reg.get('team_name', 'Unknown Team')
+            if team_name not in teams:
+                teams[team_name] = {
+                    'members': [],
+                    'registration_id': reg.get('registration_id', 'N/A')
+                }
+            teams[team_name]['members'].append(reg)
+        
+        # Generate rows for individuals
+        table_rows = ""
+        row_counter = 1
+        
+        for reg in individual_registrations:
+            status = reg.get('attendance_status', 'absent')
+            percentage = reg.get('attendance_percentage', 0)
+            sessions = reg.get('sessions_attended', 0)
+            
+            status_badge = {
+                'present': '<span style="background: #16a34a; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Present</span>',
+                'partial': '<span style="background: #ca8a04; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Partial</span>',
+                'absent': '<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Absent</span>'
+            }.get(status, status)
+            
+            table_rows += f"""
+                <tr>
+                    <td style="text-align: center;">{row_counter}</td>
+                    <td>{reg.get('enrollment_no', reg.get('id', 'N/A'))}</td>
+                    <td>{reg.get('registration_id', 'N/A')}</td>
+                    <td>{reg.get('name', 'Unknown')}</td>
+                    <td>{reg.get('department', 'Unknown')}</td>
+                    <td>{reg.get('semester', reg.get('designation', 'N/A'))}</td>
+                    <td>{status_badge}</td>
+                    <td style="text-align: center;">{percentage}%</td>
+                    <td style="text-align: center;">{sessions if sessions else '-'}</td>
+                </tr>
+            """
+            row_counter += 1
+        
+        # Generate team rows
+        team_rows = ""
+        for team_name, team_data in sorted(teams.items()):
+            members = team_data['members']
+            registration_id = team_data['registration_id']
+            
+            # Calculate team statistics
+            total_members = len(members)
+            present_members = len([m for m in members if m.get('attendance_status') == 'present'])
+            avg_percentage = sum([m.get('attendance_percentage', 0) for m in members]) / total_members if total_members > 0 else 0
+            
+            # Sort members to put leader first
+            members.sort(key=lambda m: (not m.get('is_team_leader', False), m.get('name', '')))
+            
+            # Team header row
+            team_rows += f"""
+                <tr style="background-color: #e3f2fd; border: 2px solid #2196f3;">
+                    <td colspan="9" style="padding: 12px 8px; font-weight: bold; font-size: 14px; color: #1565c0;">
+                        <span style="margin-right: 10px;">👥 TEAM:</span>
+                        <span style="font-size: 16px;">{team_name}</span>
+                        <span style="margin-left: 15px; font-size: 11px; color: #666; font-weight: normal;">Registration ID: {registration_id}</span>
+                        <span style="float: right; font-size: 12px; color: #666; font-weight: normal;">{present_members}/{total_members} Present • Avg: {avg_percentage:.1f}%</span>
+                    </td>
+                </tr>
+            """
+            
+            # Team member rows
+            for member in members:
+                status = member.get('attendance_status', 'absent')
+                percentage = member.get('attendance_percentage', 0)
+                sessions = member.get('sessions_attended', 0)
+                leader_badge = '<span style="background: #ffd700; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px;">👑 LEADER</span>' if member.get('is_team_leader') else ''
+                
+                status_badge = {
+                    'present': '<span style="background: #16a34a; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Present</span>',
+                    'partial': '<span style="background: #ca8a04; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Partial</span>',
+                    'absent': '<span style="background: #dc2626; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">Absent</span>'
+                }.get(status, status)
+                
+                team_rows += f"""
+                    <tr style="background-color: #f5f5f5;">
+                        <td style="text-align: center;">{row_counter}</td>
+                        <td>{member.get('enrollment_no', 'N/A')}</td>
+                        <td style="font-size: 10px; color: #666;">{registration_id}</td>
+                        <td>{member.get('name', 'Unknown')}{leader_badge}</td>
+                        <td>{member.get('department', 'Unknown')}</td>
+                        <td>{member.get('semester', 'N/A')}</td>
+                        <td>{status_badge}</td>
+                        <td style="text-align: center;">{percentage}%</td>
+                        <td style="text-align: center;">{sessions if sessions else '-'}</td>
+                    </tr>
+                """
+                row_counter += 1
+        
+        # Calculate statistics
+        total_registrations = len(registrations)
+        present_count = len([r for r in registrations if r.get('attendance_status') == 'present'])
+        partial_count = len([r for r in registrations if r.get('attendance_status') == 'partial'])
+        absent_count = len([r for r in registrations if r.get('attendance_status') == 'absent'])
+        attendance_percentage = round((present_count / total_registrations * 100) if total_registrations > 0 else 0, 1)
+        
+        # Generate simple HTML (templates are in frontend, backend generates basic structure)
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Attendance Report - {event.get('event_name', 'Event')}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #1f4e78; text-align: center; }}
+                h2 {{ color: #3b82f6; text-align: center; }}
+                .stats {{ display: flex; justify-content: space-around; margin: 20px 0; }}
+                .stat-box {{ text-align: center; padding: 15px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; }}
+                .stat-number {{ font-size: 28px; font-weight: bold; color: #1f4e78; }}
+                .stat-label {{ font-size: 12px; color: #6b7280; margin-top: 5px; }}
+                table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                th {{ background: #1f4e78; color: white; padding: 10px; text-align: left; font-size: 11px; }}
+                td {{ border: 1px solid #d1d5db; padding: 8px; font-size: 10px; }}
+                tr:nth-child(even) {{ background: #f9fafb; }}
+            </style>
+        </head>
+        <body>
+            <h1>Attendance Report</h1>
+            <h2>{event.get('event_name', 'Event Name')}</h2>
+            <p style="text-align: center; color: #666;">Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
+            
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                <strong>Event Details:</strong><br>
+                <strong>Event ID:</strong> {event.get('event_id', 'N/A')}<br>
+                <strong>Date:</strong> {event_date}<br>
+                <strong>Venue:</strong> {venue}<br>
+                <strong>Strategy:</strong> {event.get('attendance_strategy', {}).get('strategy_type', 'N/A').replace('_', ' ').title()}
+            </div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-number">{total_registrations}</div>
+                    <div class="stat-label">Total Registrations</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" style="color: #16a34a;">{present_count}</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" style="color: #ca8a04;">{partial_count}</div>
+                    <div class="stat-label">Partial</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" style="color: #dc2626;">{absent_count}</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" style="color: #2563eb;">{attendance_percentage}%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 12%;">ID</th>
+                        <th style="width: 15%;">Registration ID</th>
+                        <th style="width: 20%;">Name</th>
+                        <th style="width: 15%;">Department</th>
+                        <th style="width: 10%;">Sem/Desig</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 8%;">%</th>
+                        <th style="width: 10%;">Sessions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows}
+                    {team_rows}
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #1f4e78; text-align: center; font-size: 11px; color: #666;">
+                <p>This report was generated automatically by CampusConnect Event Management System</p>
+                <p>© {datetime.now().year} - All Rights Reserved</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return html
     
     async def _generate_feedback_report_html(self, event: Dict[str, Any], feedback_data: List[Dict[str, Any]], options: Dict[str, Any] = None) -> str:
         """Generate HTML for feedback report"""

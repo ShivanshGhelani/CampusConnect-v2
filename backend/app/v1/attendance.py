@@ -144,6 +144,48 @@ async def get_attendance_config_and_participants(
         logger.error(f"Error getting attendance config: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+def _calculate_team_status(team_members: List[Dict[str, Any]], attendance_strategy: str, session_id: Optional[str] = None) -> str:
+    """
+    Calculate team's overall status based on member attendance
+    Returns: 'present', 'partial', 'absent', or 'confirmed' (unchanged)
+    """
+    if not team_members:
+        return "confirmed"
+    
+    total_members = len(team_members)
+    present_count = 0
+    
+    for member in team_members:
+        attendance = member.get("attendance", {})
+        
+        # Check attendance based on strategy
+        if attendance_strategy == "single_mark":
+            # For single mark, check if marked as present
+            if attendance.get("marked") and attendance.get("status") == "present":
+                present_count += 1
+        elif attendance_strategy in ["session_based", "day_based", "milestone_based"]:
+            # For session-based strategies, check if present in ANY session (or the specific session)
+            sessions = attendance.get("sessions", [])
+            
+            if session_id:
+                # Check specific session
+                for session in sessions:
+                    if session.get("session_id") == session_id and session.get("status") == "present":
+                        present_count += 1
+                        break
+            else:
+                # Check if present in ANY session
+                if any(s.get("status") == "present" for s in sessions):
+                    present_count += 1
+    
+    # Determine team status
+    if present_count == 0:
+        return "absent"
+    elif present_count == total_members:
+        return "present"
+    else:
+        return "partial"
+
 @router.post("/mark")
 async def mark_attendance(
     request_data: Dict[str, Any],
@@ -257,11 +299,20 @@ async def mark_attendance(
                     team_members[i]["attendance"] = updated_attendance
                     break
             
-            # Update the database with the modified team registration
+            # Calculate team's overall status based on member attendance
+            team_status = _calculate_team_status(team_members, attendance_strategy, session_id)
+            
+            # Update the database with the modified team registration and team status
             await DatabaseOperations.update_one(
                 collection_name,
                 {"registration_id": team_registration["registration_id"]},
-                {"$set": {"team_members": team_members}}
+                {
+                    "$set": {
+                        "team_members": team_members,
+                        "registration.status": team_status,  # Update team status
+                        "team.status": team_status  # Also update team.status for compatibility
+                    }
+                }
             )
             
             return {
