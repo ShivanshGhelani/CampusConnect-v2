@@ -6,6 +6,7 @@ Handles certificate template management with database storage and Supabase integ
 import logging
 import uuid
 from datetime import datetime
+import pytz
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
@@ -141,7 +142,7 @@ class CertificateTemplateService:
                 uploaded_by=uploaded_by,
                 tags=tags or [],
                 description=description,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(pytz.timezone('Asia/Kolkata')),
                 is_active=True
             )
             
@@ -231,7 +232,7 @@ class CertificateTemplateService:
             recent_uploads = 0
             
             # Calculate statistics
-            recent_date = datetime.utcnow().replace(day=datetime.utcnow().day - 30)  # Last 30 days
+            recent_date = datetime.now(pytz.timezone('Asia/Kolkata')).replace(day=datetime.now(pytz.timezone('Asia/Kolkata')).day - 30)  # Last 30 days
             
             for template in templates:
                 # Category count

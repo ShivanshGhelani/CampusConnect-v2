@@ -7,6 +7,7 @@ import json
 import logging
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+import pytz
 import secrets
 import hashlib
 import os
@@ -118,7 +119,7 @@ class TokenManager:
         
         try:
             access_token = self._generate_token()
-            current_time = datetime.utcnow()
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
             
             # Prepare token data
             token_data = {
@@ -212,7 +213,7 @@ class TokenManager:
                     if token_data.get('access_token') == access_token:
                         # Check if token is expired
                         expires_at = datetime.fromisoformat(token_data['expires_at'])
-                        if datetime.utcnow() > expires_at:
+                        if datetime.now(pytz.timezone('Asia/Kolkata')) > expires_at:
                             # Token expired, clean up
                             self.redis_client.delete(key)
                             return None
@@ -268,7 +269,7 @@ class TokenManager:
             
             # Check if refresh token is expired
             refresh_expires_at = datetime.fromisoformat(refresh_data['expires_at'])
-            if datetime.utcnow() > refresh_expires_at:
+            if datetime.now(pytz.timezone('Asia/Kolkata')) > refresh_expires_at:
                 # Clean up expired tokens
                 self.redis_client.delete(refresh_key)
                 self.redis_client.delete(user_key)
@@ -277,7 +278,7 @@ class TokenManager:
             
             # Generate new access token
             new_access_token = self._generate_token()
-            current_time = datetime.utcnow()
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
             
             # Update token data
             token_data['access_token'] = new_access_token
@@ -360,7 +361,7 @@ class TokenManager:
         
         try:
             cleaned_count = 0
-            current_time = datetime.utcnow()
+            current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
             
             # Clean up user tokens
             pattern = "tokens:*"

@@ -3,6 +3,7 @@ import secrets
 import json
 import os
 from datetime import datetime, timedelta
+import pytz
 from typing import Optional, Dict, Any
 
 # Load environment variables
@@ -69,7 +70,7 @@ class PasswordResetService:
         """Generate a secure password reset token"""
         try:
             # Create a random token
-            token_data = f"{user_id}:{user_type}:{email}:{datetime.utcnow().isoformat()}:{secrets.token_urlsafe(32)}"
+            token_data = f"{user_id}:{user_type}:{email}:{datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()}:{secrets.token_urlsafe(32)}"
             token = secrets.token_urlsafe(64)
             
             # Store token data in Redis with expiration
@@ -77,8 +78,8 @@ class PasswordResetService:
                 'user_id': user_id,
                 'user_type': user_type,
                 'email': email,
-                'created_at': datetime.utcnow().isoformat(),
-                'expires_at': (datetime.utcnow() + timedelta(minutes=self.token_expiry_minutes)).isoformat()
+                'created_at': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
+                'expires_at': (datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(minutes=self.token_expiry_minutes)).isoformat()
             }
             
             redis_conn = self.get_redis_connection()
@@ -115,7 +116,7 @@ class PasswordResetService:
             
             # Check if token has expired
             expires_at = datetime.fromisoformat(token_info['expires_at'])
-            if datetime.utcnow() > expires_at:
+            if datetime.now(pytz.timezone('Asia/Kolkata')) > expires_at:
                 # Clean up expired token
                 redis_conn.delete(f"password_reset_token:{token}")
                 return {'is_valid': False, 'message': 'Reset token has expired'}
@@ -200,7 +201,7 @@ class PasswordResetService:
                 user_email=email.lower(),
                 user_name=student['full_name'],
                 reset_url=reset_link,
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                timestamp=datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 ip_address=client_ip
             )
             
@@ -275,7 +276,7 @@ class PasswordResetService:
                 user_email=email.lower(),
                 user_name=faculty['full_name'],
                 reset_url=reset_link,
-                timestamp=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                timestamp=datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 ip_address=client_ip
             )
             
@@ -336,7 +337,7 @@ class PasswordResetService:
                     {
                         '$set': {
                             'password_hash': password_hash,
-                            'last_password_reset': datetime.utcnow().isoformat()
+                            'last_password_reset': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
                         }
                     }
                 )
@@ -346,7 +347,7 @@ class PasswordResetService:
                     {
                         '$set': {
                             'password': password_hash,  # Fixed: use 'password' instead of 'password_hash'
-                            'last_password_reset': datetime.utcnow().isoformat()
+                            'last_password_reset': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
                         }
                     }
                 )

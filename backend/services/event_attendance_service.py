@@ -11,6 +11,7 @@ REQUIREMENT: Student must be registered first (registration document must exist)
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
+import pytz
 from database.operations import DatabaseOperations
 from core.logger import get_logger
 
@@ -56,10 +57,10 @@ class EventAttendanceService:
             # Update attendance
             attendance_update = {
                 "attendance.marked": True,
-                "attendance.marked_at": datetime.utcnow(),
+                "attendance.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "attendance.status": "present",
                 "attendance.percentage": 100.0,
-                "attendance.last_updated": datetime.utcnow(),
+                "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "attendance.marked_by": marked_by,
                 "attendance.marking_method": marking_method
             }
@@ -75,7 +76,7 @@ class EventAttendanceService:
                     "strategy": "single_mark",
                     "status": "present",
                     "percentage": 100.0,
-                    "marked_at": datetime.utcnow().isoformat()
+                    "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
                 }
             }
             
@@ -129,8 +130,8 @@ class EventAttendanceService:
                 {
                     "$set": {
                         "attendance.days.$.marked": True,
-                        "attendance.days.$.marked_at": datetime.utcnow(),
-                        "attendance.last_updated": datetime.utcnow(),
+                        "attendance.days.$.marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }
@@ -189,7 +190,7 @@ class EventAttendanceService:
                 "session_id": session_id,
                 "session_name": session_name,
                 "marked": True,
-                "marked_at": datetime.utcnow(),
+                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "marked_by": marked_by,
                 "marking_method": marking_method
             }
@@ -203,7 +204,7 @@ class EventAttendanceService:
                 {
                     "$push": {"attendance.sessions": session_data},
                     "$set": {
-                        "attendance.last_updated": datetime.utcnow(),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }
@@ -262,7 +263,7 @@ class EventAttendanceService:
                 "milestone_id": milestone_id,
                 "milestone_name": milestone_name,
                 "completed": True,
-                "completed_at": datetime.utcnow(),
+                "completed_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "marked_by": marked_by,
                 "marking_method": marking_method
             }
@@ -276,7 +277,7 @@ class EventAttendanceService:
                 {
                     "$push": {"attendance.milestones": milestone_data},
                     "$set": {
-                        "attendance.last_updated": datetime.utcnow(),
+                        "attendance.last_updated": datetime.now(pytz.timezone('Asia/Kolkata')),
                         "attendance.marked_by": marked_by,
                         "attendance.marking_method": marking_method
                     }

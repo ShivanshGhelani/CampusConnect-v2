@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
+import pytz
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 from core.logger import get_logger
@@ -167,11 +168,11 @@ class Event(BaseModel):
                 "attendance_marked": 0,
                 "feedback_submitted": 0,
                 "certificates_issued": 0,
-                "last_updated": datetime.utcnow()
+                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
         
         self.registration_stats.update(stats_update)
-        self.registration_stats["last_updated"] = datetime.utcnow()
+        self.registration_stats["last_updated"] = datetime.now(pytz.timezone('Asia/Kolkata'))
     
     def get_participant_count(self) -> int:
         """Get total participant count"""

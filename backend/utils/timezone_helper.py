@@ -3,6 +3,7 @@ Timezone Utility for CampusConnect
 Handles timezone conversion between UTC and IST (Indian Standard Time)
 """
 from datetime import datetime, timedelta, timezone
+import pytz
 from typing import Union, Optional
 
 # Indian Standard Time is UTC+5:30
@@ -76,7 +77,7 @@ def get_current_ist() -> datetime:
 
 def get_current_utc() -> datetime:
     """Get current time in UTC"""
-    return datetime.utcnow()
+    return datetime.now(pytz.timezone('Asia/Kolkata'))
 
 # Example usage and testing
 if __name__ == "__main__":

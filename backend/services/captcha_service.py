@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from fastapi import HTTPException, Request
 import asyncio
 from datetime import datetime, timedelta
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class SimpleCaptchaService:
         # Store challenge
         self.active_challenges[session_id] = {
             'answer': answer,
-            'expires': datetime.utcnow() + timedelta(seconds=self.challenge_timeout)
+            'expires': datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(seconds=self.challenge_timeout)
         }
         
         return {
@@ -167,7 +168,7 @@ class SimpleCaptchaService:
             return False
         
         # Check if expired
-        if datetime.utcnow() > challenge['expires']:
+        if datetime.now(pytz.timezone('Asia/Kolkata')) > challenge['expires']:
             del self.active_challenges[session_id]
             return False
         
@@ -187,7 +188,7 @@ class SimpleCaptchaService:
         """
         Clean up expired challenges
         """
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         expired_sessions = [
             session_id for session_id, challenge in self.active_challenges.items()
             if current_time > challenge['expires']
@@ -256,7 +257,7 @@ class BotDetection:
         """
         Analyze request timing patterns for bot behavior
         """
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         if ip not in self.request_patterns:
             self.request_patterns[ip] = []

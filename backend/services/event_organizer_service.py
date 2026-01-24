@@ -8,6 +8,7 @@ Renamed from faculty_organizer_service.py for clarity.
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
+import pytz
 
 from config.database import Database
 from core.logger import get_logger
@@ -55,7 +56,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$addToSet": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.utcnow()}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                         }
                     )
                     
@@ -125,7 +126,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.utcnow()}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                         }
                     )
                     
@@ -187,7 +188,7 @@ class EventOrganizerService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"assigned_events": event_id},
-                            "$set": {"updated_at": datetime.utcnow()}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                         }
                     )
                     

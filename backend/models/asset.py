@@ -3,6 +3,7 @@ Asset Model - Simplified
 Handles asset storage with secure URLs that never expire
 """
 from datetime import datetime
+import pytz
 from typing import Optional, Dict, Any
 from bson import ObjectId
 
@@ -39,8 +40,8 @@ class Asset:
         self.description = description or ""
         self.tags = tags or []
         self.download_count = 0
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
+        self.created_at = created_at or datetime.now(pytz.timezone('Asia/Kolkata'))
+        self.updated_at = updated_at or datetime.now(pytz.timezone('Asia/Kolkata'))
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert Asset object to dictionary"""
@@ -142,4 +143,4 @@ class Asset:
     def increment_download(self):
         """Increment download counter"""
         self.download_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(pytz.timezone('Asia/Kolkata'))

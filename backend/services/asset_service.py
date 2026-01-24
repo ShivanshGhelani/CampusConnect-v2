@@ -310,7 +310,8 @@ class AssetService:
             
             # Recent uploads (last 7 days)
             from datetime import datetime, timedelta
-            week_ago = datetime.utcnow() - timedelta(days=7)
+            import pytz
+            week_ago = datetime.now(pytz.timezone('Asia/Kolkata')) - timedelta(days=7)
             recent_uploads = await DatabaseOperations.count_documents(
                 "assets", 
                 {"created_at": {"$gte": week_ago}}

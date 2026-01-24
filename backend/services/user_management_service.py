@@ -6,6 +6,7 @@ Handles user management operations including deletion for students, faculty, and
 
 from typing import Dict, Any, Optional
 from datetime import datetime
+import pytz
 from database.operations import DatabaseOperations
 import logging
 
@@ -83,8 +84,8 @@ class UserManagementService:
                 # Soft delete - mark as inactive
                 update_data = {
                     "is_active": False,
-                    "deleted_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "deleted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
                 }
                 
                 result = await self.db.update_one(
@@ -149,8 +150,8 @@ class UserManagementService:
             # Restore the user
             update_data = {
                 "is_active": True,
-                "restored_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "restored_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             
             # Remove deletion timestamp

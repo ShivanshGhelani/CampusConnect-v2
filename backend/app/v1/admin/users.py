@@ -4,6 +4,7 @@ Single endpoint handles all user operations via HTTP methods + action parameters
 """
 import logging
 from datetime import datetime
+import pytz
 from fastapi import APIRouter, HTTPException, Depends, Query, Body, Request
 from typing import Optional, List, Dict, Any, Union
 from dependencies.auth import require_admin, require_super_admin_access
@@ -39,7 +40,7 @@ async def _bulk_create_users(user_data_list: List[dict], admin: AdminUser):
                 continue
                 
             # Add creation metadata
-            user_data["created_at"] = datetime.utcnow()
+            user_data["created_at"] = datetime.now(pytz.timezone('Asia/Kolkata'))
             user_data["created_by"] = admin.username
             user_data["is_active"] = user_data.get("is_active", True)
             
@@ -312,7 +313,7 @@ async def create_user(
             user_data["password"] = pwd_context.hash(user_data["password"])
         
         # Add metadata - STANDARDIZED to use username
-        user_data["created_at"] = datetime.utcnow()
+        user_data["created_at"] = datetime.now(pytz.timezone('Asia/Kolkata'))
         user_data["created_by"] = admin.username
         user_data["is_active"] = True
         
@@ -401,7 +402,7 @@ async def update_user(
         
         # Remove metadata fields that shouldn't be updated
         update_data = {k: v for k, v in user_data.items() if k not in ["user_id", "user_type", "_id", "created_at", "created_by"]}
-        update_data["updated_at"] = datetime.utcnow()
+        update_data["updated_at"] = datetime.now(pytz.timezone('Asia/Kolkata'))
         update_data["updated_by"] = admin.username
         
         # Update user
@@ -499,7 +500,7 @@ async def manage_user_status(
                 collection, query,
                 {"$set": {
                     "is_active": False,
-                    "deleted_at": datetime.utcnow(),
+                    "deleted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                     "deleted_by": admin.username
                 }}
             )
@@ -512,7 +513,7 @@ async def manage_user_status(
                 collection, query,
                 {"$set": {
                     "is_active": True,
-                    "restored_at": datetime.utcnow(),
+                    "restored_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                     "restored_by": admin.username
                 }, "$unset": {
                     "deleted_at": "",

@@ -5,6 +5,7 @@ Handles student and faculty profile-related API endpoints
 import logging
 import traceback
 from datetime import datetime, timezone
+import pytz
 from fastapi import APIRouter, Request, HTTPException, Depends
 from dependencies.auth import require_student_login, get_current_student, get_current_faculty_optional, get_current_user, require_faculty_login, require_student_login_hybrid, get_current_student_hybrid, require_faculty_login_hybrid
 from models.student import Student, StudentUpdate
@@ -432,7 +433,7 @@ async def update_profile(request: Request, student: Student = Depends(require_st
             return {"success": False, "message": "No valid fields provided for update"}
         
         # Add timestamp
-        update_data['updated_at'] = datetime.utcnow()
+        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata'))
           # Update database
         result = await DatabaseOperations.update_one(
             "students",
@@ -503,7 +504,7 @@ async def update_faculty_profile(request: Request, faculty: Faculty = Depends(ge
             return {"success": False, "message": "No valid fields provided for update"}
         
         # Add timestamp
-        update_data['updated_at'] = datetime.utcnow()
+        update_data['updated_at'] = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         # Update database
         result = await DatabaseOperations.update_one(
@@ -565,7 +566,7 @@ async def change_password(request: Request, student: Student = Depends(require_s
             {"enrollment_no": student.enrollment_no},
             {"$set": {
                 "password_hash": hashed_new_password,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }}
         )
         

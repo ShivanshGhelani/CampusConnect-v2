@@ -17,6 +17,7 @@ Key Features:
 
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
+import pytz
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 import re
@@ -1684,7 +1685,7 @@ class DynamicAttendanceService:
         
         # Mark session attendance
         record.sessions_attended[session_id] = {
-            "marked_at": datetime.utcnow(),
+            "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')),
             "attendance_id": attendance_data.get("attendance_id"),
             **attendance_data
         }
@@ -1695,7 +1696,7 @@ class DynamicAttendanceService:
             status_result = self.intelligence_service.calculate_attendance_status(record, config)
             record.overall_percentage = status_result["percentage"]
             record.final_status = status_result["status"]
-            record.calculated_at = datetime.utcnow()
+            record.calculated_at = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         # Update record in database
         await DatabaseOperations.upsert_one(
@@ -1772,7 +1773,7 @@ class DynamicAttendanceService:
         if not attended_sessions:
             attended_sessions = {}
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         for session in config.sessions:
             if (session.session_id not in attended_sessions and 

@@ -9,6 +9,7 @@ in a format suitable for the frontend Recent Activity section.
 
 import logging
 from datetime import datetime, timedelta
+import pytz
 from typing import Dict, List, Any, Optional
 
 from config.database import Database
@@ -27,7 +28,7 @@ class RecentActivityService:
             except:
                 return "Unknown time"
         
-        now = datetime.utcnow()
+        now = datetime.now(pytz.timezone('Asia/Kolkata'))
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=None)
         if now.tzinfo is not None:
@@ -276,7 +277,7 @@ class RecentActivityService:
                 
                 # Create formatted log entry
                 formatted_log = {
-                    "id": str(log.get('_id', f"{event_id}_{int(datetime.utcnow().timestamp())}")),
+                    "id": str(log.get('_id', f"{event_id}_{int(datetime.now(pytz.timezone('Asia/Kolkata')).timestamp())}")),
                     "event_id": event_id,
                     "event_name": event_name,
                     "old_status": formatted_old_status,
@@ -329,7 +330,7 @@ class RecentActivityService:
             total_logs = await db.event_status_logs.count_documents({})
             
             # Get recent activity (last 24 hours)
-            yesterday = datetime.utcnow() - timedelta(days=1)
+            yesterday = datetime.now(pytz.timezone('Asia/Kolkata')) - timedelta(days=1)
             recent_count = await db.event_status_logs.count_documents({
                 "timestamp": {"$gte": yesterday}
             })
@@ -342,7 +343,7 @@ class RecentActivityService:
                 "recent_activity_count": recent_count,
                 "collection_exists": True,
                 "trigger_types": trigger_types,
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
             }
             
             return summary
@@ -375,7 +376,7 @@ async def get_recent_activity_for_dashboard(limit: int = 20) -> Dict[str, Any]:
             "data": {
                 "recent_activity": activity_logs,
                 "count": len(activity_logs),
-                "retrieved_at": datetime.utcnow().isoformat()
+                "retrieved_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
             }
         }
         

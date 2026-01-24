@@ -4,6 +4,7 @@ Audit logging service for tracking administrative actions
 import logging
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
+import pytz
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config.database import Database
@@ -289,7 +290,7 @@ class AuditLogService:
             if db is None:
                 raise Exception("Database connection failed")
             
-            cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
+            cutoff_date = datetime.now(pytz.timezone('Asia/Kolkata')) - timedelta(days=retention_days)
             
             result = await db[self.collection_name].delete_many({
                 "timestamp": {"$lt": cutoff_date}

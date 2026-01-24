@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
 from typing import Optional, List
 from datetime import datetime
+import pytz
 import logging
 import os
 
@@ -45,7 +46,7 @@ class OrganizerAccessManager:
                     "admin.feedback.read",
                     "admin.feedback.create"
                 ],
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             
             result = await DatabaseOperations.update_one(
@@ -67,7 +68,7 @@ class OrganizerAccessManager:
                 "is_organizer": False,
                 "assigned_events": [],
                 "organizer_permissions": [],
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             
             result = await DatabaseOperations.update_one(
@@ -132,7 +133,7 @@ async def access_organizer_portal(request: Request, faculty: Faculty = Depends(r
             )
         
         # Store organizer admin session
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         admin_session_data = organizer_admin.model_dump()
         
         # Serialize datetime objects

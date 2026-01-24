@@ -6,6 +6,7 @@ Handles manual actions (created_by, updated_by, cancelled_by) and automatic sche
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+import pytz
 
 from config.database import Database
 from services.audit_service import AuditLogService
@@ -75,7 +76,7 @@ class EventActionLogger:
                 metadata={
                     "action_source": "manual",
                     "creation_context": creation_context,
-                    "creation_timestamp": datetime.utcnow().isoformat(),
+                    "creation_timestamp": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                     "approval_workflow_triggered": approval_required,
                     **(request_metadata or {})
                 },
@@ -91,7 +92,7 @@ class EventActionLogger:
                 "trigger_type": "manual_creation",
                 "performed_by": created_by_username,
                 "performed_by_role": created_by_role,
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "scheduler_version": "manual_v1",
                 "metadata": {
                     "event_name": event_name,
@@ -165,7 +166,7 @@ class EventActionLogger:
                 metadata={
                     "action_source": "manual",
                     "updated_fields": updated_fields,
-                    "update_timestamp": datetime.utcnow().isoformat(),
+                    "update_timestamp": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                     **(request_metadata or {})
                 },
                 severity=AuditSeverity.INFO
@@ -180,7 +181,7 @@ class EventActionLogger:
                 "trigger_type": "manual_update",
                 "performed_by": updated_by_username,
                 "performed_by_role": updated_by_role,
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "scheduler_version": "manual_v1",
                 "metadata": {
                     "event_name": event_name,
@@ -230,7 +231,7 @@ class EventActionLogger:
                 metadata={
                     "action_source": "manual",
                     "deletion_reason": deletion_reason,
-                    "deletion_timestamp": datetime.utcnow().isoformat(),
+                    "deletion_timestamp": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                     **(request_metadata or {})
                 },
                 severity=AuditSeverity.WARNING
@@ -245,7 +246,7 @@ class EventActionLogger:
                 "trigger_type": "manual_deletion",
                 "performed_by": deleted_by_username,
                 "performed_by_role": deleted_by_role,
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "scheduler_version": "manual_v1",
                 "metadata": {
                     "event_name": event_name,
@@ -294,7 +295,7 @@ class EventActionLogger:
                 metadata={
                     "action_source": "manual",
                     "cancellation_reason": cancellation_reason,
-                    "cancellation_timestamp": datetime.utcnow().isoformat(),
+                    "cancellation_timestamp": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                     **(request_metadata or {})
                 },
                 severity=AuditSeverity.WARNING
@@ -309,7 +310,7 @@ class EventActionLogger:
                 "trigger_type": "manual_cancellation",
                 "performed_by": cancelled_by_username,
                 "performed_by_role": cancelled_by_role,
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "scheduler_version": "manual_v1",
                 "metadata": {
                     "event_name": event_name,
@@ -338,7 +339,7 @@ class EventActionLogger:
     ):
         """Log event approval with both audit and status logging"""
         try:
-            approval_time = approval_timestamp or datetime.utcnow()
+            approval_time = approval_timestamp or datetime.now(pytz.timezone('Asia/Kolkata'))
             
             # 1. Log to audit_logs for administrative tracking
             await self.audit_service.log_action(
@@ -413,7 +414,7 @@ class EventActionLogger:
     ):
         """Log event decline/rejection with both audit and status logging"""
         try:
-            decline_time = decline_timestamp or datetime.utcnow()
+            decline_time = decline_timestamp or datetime.now(pytz.timezone('Asia/Kolkata'))
             
             # 1. Log to audit_logs for administrative tracking
             await self.audit_service.log_action(
@@ -500,7 +501,7 @@ class EventActionLogger:
                 "trigger_type": trigger_type or "automatic_scheduler",
                 "performed_by": performed_by or "system_scheduler",
                 "performed_by_role": performed_by_role or "system",
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "scheduler_version": "dynamic_v1" if trigger_source == "scheduler" else "manual_v1",
                 "metadata": {
                     "event_name": event_name,

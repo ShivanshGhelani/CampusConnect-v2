@@ -10,6 +10,7 @@ COLLECTIONS:
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import pytz
 from database.operations import DatabaseOperations
 from core.logger import get_logger
 from bson import ObjectId
@@ -57,8 +58,8 @@ class EventFeedbackService:
                 "description": feedback_form_data.get("description", "Please share your feedback about this event."),
                 "elements": feedback_form_data.get("elements", []),
                 "is_active": feedback_form_data.get("is_active", True),
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             
             # Add unique IDs to form elements if not present
@@ -69,7 +70,7 @@ class EventFeedbackService:
             # Prepare update data
             update_data = {
                 "feedback_form": feedback_form,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             
             # Add feedback_end_date for non-certificate events
@@ -246,7 +247,7 @@ class EventFeedbackService:
             
             # Create feedback document
             feedback_document = {
-                "feedback_id": f"fb_{event_id}_{student_enrollment}_{int(datetime.utcnow().timestamp())}",
+                "feedback_id": f"fb_{event_id}_{student_enrollment}_{int(datetime.now(pytz.timezone('Asia/Kolkata')).timestamp())}",
                 "event_id": event_id,
                 "event_name": event["event_name"],
                 "student_enrollment": student_enrollment,
@@ -257,7 +258,7 @@ class EventFeedbackService:
                     "department": student_data.get("department", "")
                 },
                 "responses": feedback_responses,
-                "submitted_at": datetime.utcnow(),
+                "submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "ip_address": None,  # Can be added from request context
                 "user_agent": None   # Can be added from request context
             }
@@ -280,7 +281,7 @@ class EventFeedbackService:
                     {
                         "$set": {
                             "feedback.submitted": True,
-                            "feedback.submitted_at": datetime.utcnow()
+                            "feedback.submitted_at": datetime.now(pytz.timezone('Asia/Kolkata'))
                         }
                     }
                 )
@@ -335,22 +336,22 @@ class EventFeedbackService:
             
             # Create test feedback document (allow multiple submissions)
             feedback_document = {
-                "feedback_id": f"test_fb_{event_id}_{student_enrollment}_{int(datetime.utcnow().timestamp())}",
+                "feedback_id": f"test_fb_{event_id}_{student_enrollment}_{int(datetime.now(pytz.timezone('Asia/Kolkata')).timestamp())}",
                 "event_id": event_id,
                 "event_name": event["event_name"],
                 "student_enrollment": student_enrollment,
-                "registration_id": test_registration_id or f"test_reg_{int(datetime.utcnow().timestamp())}",
+                "registration_id": test_registration_id or f"test_reg_{int(datetime.now(pytz.timezone('Asia/Kolkata')).timestamp())}",
                 "student_info": {
                     "name": "Test Student",
                     "email": f"{student_enrollment}@test.edu",
                     "department": "Test Department"
                 },
                 "responses": feedback_responses,
-                "submitted_at": datetime.utcnow(),
+                "submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "is_test_submission": True,
                 "test_metadata": {
                     "submitted_via": "test_environment",
-                    "test_session": f"test_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+                    "test_session": f"test_{datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y%m%d_%H%M%S')}"
                 }
             }
             
@@ -621,7 +622,7 @@ class EventFeedbackService:
                 {"event_id": event_id},
                 {
                     "$unset": {"feedback_form": ""},
-                    "$set": {"updated_at": datetime.utcnow()}
+                    "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                 }
             )
             
@@ -870,7 +871,7 @@ class EventFeedbackService:
                 "registration_id": registration_id,
                 "student_info": student_info,
                 "responses": feedback_responses,
-                "submitted_at": datetime.utcnow(),
+                "submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "submission_method": "anonymous_qr"
             }
             

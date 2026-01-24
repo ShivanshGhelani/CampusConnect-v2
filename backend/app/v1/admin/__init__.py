@@ -15,6 +15,7 @@ from dependencies.auth import require_admin
 from models.admin_user import AdminUser
 from database.operations import DatabaseOperations
 from datetime import datetime, timedelta
+import pytz
 import logging
 
 router = APIRouter()
@@ -106,7 +107,7 @@ async def get_complete_dashboard(
         
         # 3. GET ANALYTICS OVERVIEW DATA
         # Calculate date range based on period
-        end_date = datetime.utcnow()
+        end_date = datetime.now(pytz.timezone('Asia/Kolkata'))
         if period == "week":
             start_date = end_date - timedelta(days=7)
         elif period == "month":

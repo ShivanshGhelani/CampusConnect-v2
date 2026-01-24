@@ -6,6 +6,7 @@ No booking system, just CRUD operations for venue listing
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import pytz
 from database.operations import DatabaseOperations
 from models.venue import Venue, VenueCreate, VenueUpdate, VenueResponse
 
@@ -34,8 +35,8 @@ class VenueService:
                 "facilities": venue_data.facilities,
                 "venue_type": venue_data.venue_type,
                 "is_active": True,
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "created_at": datetime.now(pytz.timezone('Asia/Kolkata')),
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "created_by": created_by
             }
 
@@ -123,7 +124,7 @@ class VenueService:
         """Update venue information"""
         try:
             # Build update document
-            update_doc = {"updated_at": datetime.utcnow()}
+            update_doc = {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
             
             if venue_data.name is not None:
                 update_doc["name"] = venue_data.name
@@ -178,7 +179,7 @@ class VenueService:
             result = await DatabaseOperations.update_one(
                 "venues",
                 {"venue_id": venue_id},
-                {"$set": {"is_active": False, "updated_at": datetime.utcnow()}}
+                {"$set": {"is_active": False, "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
             )
 
             if result.modified_count > 0:

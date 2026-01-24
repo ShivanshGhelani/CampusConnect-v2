@@ -16,6 +16,7 @@ from database.operations import DatabaseOperations
 from utils.token_manager import token_manager
 from middleware.auth_middleware import AuthMiddleware
 from datetime import datetime
+import pytz
 import logging
 from passlib.context import CryptContext
 
@@ -107,8 +108,8 @@ async def authenticate_admin(username: str, password: str) -> Union[AdminUser, N
                 "permissions": permissions,
                 "assigned_events": assigned_events,
                 "is_active": True,
-                "created_at": faculty.get("created_at", datetime.utcnow()),
-                "last_login": datetime.utcnow()
+                "created_at": faculty.get("created_at", datetime.now(pytz.timezone('Asia/Kolkata'))),
+                "last_login": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
             logger.info(f"Faculty organizer authenticated: {username} with {len(assigned_events)} assigned events")
             return AdminUser(**admin_data)
@@ -220,12 +221,12 @@ async def unified_login(request: Request, login_data: UnifiedLoginRequest):
             collection,
             {("username" if user_type == "admin" else 
               "enrollment_no" if user_type == "student" else "employee_id"): user_id},
-            {"$set": {"last_login": datetime.utcnow()}}
+            {"$set": {"last_login": datetime.now(pytz.timezone('Asia/Kolkata'))}}
         )
         
         # Prepare user data for token/session
         user_data = user.model_dump()
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         # Convert ALL datetime objects to ISO strings (including None check)
         # This ensures session data is always JSON-serializable
@@ -257,14 +258,14 @@ async def unified_login(request: Request, login_data: UnifiedLoginRequest):
                 settings = get_settings()
                 
                 expires_in = 30 * 24 * 3600 if remember_me else 3600  # 30 days or 1 hour
-                exp_time = datetime.utcnow() + timedelta(seconds=expires_in)
+                exp_time = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(seconds=expires_in)
                 
                 token_payload = {
                     "user_id": user_id,
                     "user_type": user_type,
                     "user_data": user_data,
                     "exp": exp_time,
-                    "iat": datetime.utcnow()
+                    "iat": datetime.now(pytz.timezone('Asia/Kolkata'))
                 }
                 
                 access_token = jwt.encode(
@@ -518,7 +519,7 @@ async def _update_profile_data(admin: AdminUser, data: dict):
         "fullname": fullname,
         "email": email,
         "mobile_no": mobile_no,
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
     }
     
     # Remove empty fields
@@ -583,7 +584,7 @@ async def _update_username(admin: AdminUser, data: dict):
     success = await DatabaseOperations.update_one(
         "users",
         {"username": admin.username},
-        {"$set": {"username": new_username, "updated_at": datetime.utcnow()}}
+        {"$set": {"username": new_username, "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}}
     )
     
     if success:
@@ -633,7 +634,7 @@ async def _update_password(admin: AdminUser, data: dict):
         {
             "$set": {
                 "password": hashed_password,
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))
             }
         }
     )

@@ -7,6 +7,7 @@ Renamed from faculty_service.py to avoid naming conflicts.
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import pytz
 from database.operations import DatabaseOperations
 from models.faculty import Faculty, FacultyResponse
 import logging
@@ -100,7 +101,7 @@ class FacultyManagementService:
                         {"employee_id": employee_id, "is_active": True},
                         {
                             "$addToSet": {"event_participation": event_id},
-                            "$set": {"updated_at": datetime.utcnow()}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                         }
                     )
                     
@@ -167,7 +168,7 @@ class FacultyManagementService:
                         {"employee_id": employee_id},
                         {
                             "$pull": {"event_participation": event_id},
-                            "$set": {"updated_at": datetime.utcnow()}
+                            "$set": {"updated_at": datetime.now(pytz.timezone('Asia/Kolkata'))}
                         }
                     )
                     

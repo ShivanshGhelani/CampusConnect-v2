@@ -26,6 +26,7 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
+import pytz
 import os
 
 # Load environment variables
@@ -115,7 +116,7 @@ class EventCache:
             # Store events with metadata
             cache_data = {
                 'events': events,
-                'cached_at': datetime.utcnow().isoformat(),
+                'cached_at': datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                 'count': len(events)
             }
             

@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from fastapi import Request, HTTPException
 import redis
 from datetime import datetime, timedelta
+import pytz
 import logging
 import os
 
@@ -62,7 +63,7 @@ class AdvancedRateLimiter:
         Returns True if should be blocked
         """
         key = f"failed_login:{ip}:{user_identifier}"
-        current_time = datetime.utcnow()
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata'))
         
         # Get current attempts
         if redis_client:
@@ -106,7 +107,7 @@ class AdvancedRateLimiter:
             return redis_client.exists(f"blocked_ip:{ip}")
         else:
             blocked_until = self.blocked_ips.get(ip)
-            if blocked_until and datetime.utcnow() < blocked_until:
+            if blocked_until and datetime.now(pytz.timezone('Asia/Kolkata')) < blocked_until:
                 return True
             elif blocked_until:
                 # Remove expired block
@@ -119,7 +120,7 @@ class AdvancedRateLimiter:
         if redis_client:
             redis_client.setex(f"blocked_ip:{ip}", duration_minutes * 60, "blocked")
         else:
-            self.blocked_ips[ip] = datetime.utcnow() + timedelta(minutes=duration_minutes)
+            self.blocked_ips[ip] = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(minutes=duration_minutes)
         
         self.logger.warning(f"IP {ip} temporarily blocked for {duration_minutes} minutes")
 

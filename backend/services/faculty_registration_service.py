@@ -10,6 +10,7 @@ COLLECTION: faculty_registrations (mirrors student_registrations)
 
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+import pytz
 from database.operations import DatabaseOperations
 from models.registration import RegistrationResponse
 from core.logger import get_logger
@@ -128,7 +129,7 @@ class FacultyRegistrationService:
                             "registration_stats.total_participants": 1,
                         },
                         "$addToSet": {"participated_faculties": employee_id},
-                        "$set": {"registration_stats.last_updated": datetime.utcnow()},
+                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
                     },
                 )
                 logger.info(f"Event document update result: {event_update_result}")
@@ -264,7 +265,7 @@ class FacultyRegistrationService:
                                 "registration_id": f"TEAM_FAC_{team_name}_{event_id}",
                                 "registration_type": "team",
                                 "team_name": team_name,
-                                "registration_date": datetime.utcnow(),
+                                "registration_date": datetime.now(pytz.timezone('Asia/Kolkata')),
                                 "status": "registered",
                             }
                         }
@@ -281,7 +282,7 @@ class FacultyRegistrationService:
                         "registration_stats.total_participants": len(team_members),
                     },
                     "$addToSet": {"participated_faculties": {"$each": team_members}},
-                    "$set": {"registration_stats.last_updated": datetime.utcnow()},
+                    "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
                 },
             )
 
@@ -381,7 +382,7 @@ class FacultyRegistrationService:
                     {
                         "$inc": decrement_update,
                         "$pull": {"participated_faculties": employee_id},
-                        "$set": {"registration_stats.last_updated": datetime.utcnow()},
+                        "$set": {"registration_stats.last_updated": datetime.now(pytz.timezone('Asia/Kolkata'))},
                     },
                 )
                 logger.info(
@@ -547,7 +548,7 @@ class FacultyRegistrationService:
             "registration": {
                 "type": registration_type,
                 "status": "confirmed",
-                "registered_at": datetime.utcnow(),
+                "registered_at": datetime.now(pytz.timezone('Asia/Kolkata')),
                 "additional_data": additional_data or {},
             },
             "team": team_info,
