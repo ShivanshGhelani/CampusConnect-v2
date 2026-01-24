@@ -1,4 +1,5 @@
 """
+"""
 Email Service API Routes
 Handles email service health check and monitoring endpoints
 """
@@ -6,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import logging
 from typing import Dict, Any
+from datetime import datetime
 
 from services.communication.email_service import communication_service
 
@@ -79,5 +81,61 @@ async def reset_circuit_breaker():
         raise HTTPException(
             status_code=500,
             detail=f"Failed to reset circuit breaker: {str(e)}"
+        )
+
+@router.post("/test-send")
+async def send_test_email(to_email: str):
+    """
+    Send a test email to verify email service is working
+    Useful for production debugging
+    """
+    try:
+        logger.info(f"Test email requested for {to_email}")
+        
+        # Test email content
+        subject = "🧪 CampusConnect Email Service Test"
+        content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #4F46E5;">✅ Email Service Working!</h2>
+            <p>This is a test email from CampusConnect to verify the email service is functioning correctly.</p>
+            <p><strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <hr style="margin: 20px 0;">
+            <p style="color: #6B7280; font-size: 12px;">This is an automated test email from CampusConnect.</p>
+        </body>
+        </html>
+        """
+        
+        # Send test email
+        success = await communication_service.send_email_async(
+            to_email=to_email,
+            subject=subject,
+            content=content,
+            content_type="html"
+        )
+        
+        if success:
+            logger.info(f"✅ Test email sent successfully to {to_email}")
+            return {
+                "status": "success",
+                "message": f"Test email sent successfully to {to_email}",
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            logger.error(f"❌ Test email failed to send to {to_email}")
+            return JSONResponse(
+                content={
+                    "status": "error",
+                    "message": "Failed to send test email - check logs for details",
+                    "circuit_breaker_state": communication_service.circuit_breaker.get_state()
+                },
+                status_code=500
+            )
+        
+    except Exception as e:
+        logger.error(f"Test email error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Test email failed: {str(e)}"
         )
 
