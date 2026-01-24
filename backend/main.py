@@ -91,11 +91,16 @@ async def add_cors_headers(request: Request, call_next):
     
     return response
 
-# Configure JSON encoder for the entire application
-json._default_encoder = CustomJSONEncoder()
+# Note: FastAPI automatically uses pydantic for JSON serialization
+# CustomJSONEncoder is used in specific endpoints via jsonable_encoder or manually
+# No need to set global json encoder as FastAPI handles this via Response models
 
 # Add session middleware for student authentication
 session_secret = os.getenv("SESSION_SECRET_KEY", "development-secret-key-for-cors-debugging")
+
+# Monkey-patch json.dumps to use CustomJSONEncoder for session serialization
+_original_dumps = json.dumps
+json.dumps = lambda obj, **kwargs: _original_dumps(obj, cls=CustomJSONEncoder, **kwargs) if 'cls' not in kwargs else _original_dumps(obj, **kwargs)
 
 # iOS Safari requires specific cookie settings for cross-origin cookies
 # SameSite=None MUST be paired with Secure=True (HTTPS only)

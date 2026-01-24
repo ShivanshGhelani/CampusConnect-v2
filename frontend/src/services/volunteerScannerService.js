@@ -39,22 +39,64 @@ class VolunteerScannerService {
   }
 
   /**
+   * Fetch full team registration data for minimal QR code
+   * @param {string} sessionId - Active session ID
+   * @param {string} registrationId - Team registration ID from QR code
+   * @returns {Promise<object>} - Full team data with members
+   */
+  async fetchTeamData(sessionId, registrationId) {
+    try {
+      const response = await api.get(`/api/scanner/session/${sessionId}/team/${registrationId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error('Failed to fetch team data:', error);
+      
+      // Check for event mismatch error
+      if (error.response?.status === 403 && error.response?.data?.detail?.error === 'event_mismatch') {
+        throw {
+          type: 'event_mismatch',
+          ...error.response.data.detail
+        };
+      }
+      
+      throw new Error(error.response?.data?.detail || 'Failed to fetch team data');
+    }
+  }
+
+  /**
    * Mark attendance for scanned QR code
    * @param {string} sessionId - Active session ID
    * @param {object} qrData - Decoded QR code data
    * @param {object} attendanceData - Attendance details (who is present)
+   * @param {Array<string>} selectedMembers - For teams: enrollment numbers to mark present
    * @returns {Promise<object>} - Attendance record
    */
-  async markAttendance(sessionId, qrData, attendanceData) {
+  async markAttendance(sessionId, qrData, attendanceData, selectedMembers = null) {
     try {
-      const response = await api.post(`/api/scanner/session/${sessionId}/mark`, {
+      const payload = {
         qr_data: qrData,
         attendance_data: attendanceData,
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      // Add selected members for team registrations
+      if (selectedMembers && selectedMembers.length > 0) {
+        payload.selected_members = selectedMembers;
+      }
+      
+      const response = await api.post(`/api/scanner/session/${sessionId}/mark`, payload);
       return response.data.data || response.data; // Extract nested data if present
     } catch (error) {
       console.error('Failed to mark attendance:', error);
+      
+      // Check for event mismatch error
+      if (error.response?.status === 403 && error.response?.data?.detail?.error === 'event_mismatch') {
+        throw {
+          type: 'event_mismatch',
+          ...error.response.data.detail
+        };
+      }
+      
       throw new Error(error.response?.data?.detail || 'Failed to mark attendance');
     }
   }

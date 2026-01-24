@@ -9,7 +9,8 @@ Simplified attendance system with 3 core endpoints:
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import pytz
 import secrets
 import jwt
 from dependencies.auth import require_admin, get_current_student
@@ -429,7 +430,8 @@ async def _mark_attendance_by_strategy(
     """
     Mark attendance based on the strategy and calculate percentage
     """
-    now = datetime.utcnow()
+    ist = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(ist)
     
     # Initialize attendance if empty
     if not current_attendance:
@@ -498,7 +500,7 @@ async def _mark_attendance_by_strategy(
         # Calculate percentage based on weights
         total_weight = sum(s.get("weight", 1) for s in sessions)
         attended_weight = sum(s.get("weight", 1) for s in attended_sessions)
-        percentage = (attended_weight / total_weight * 100) if total_weight > 0 else 0
+        percentage = min((attended_weight / total_weight * 100) if total_weight > 0 else 0, 100)
         
         # Determine status based on percentage and minimum required
         minimum_percentage = config.get("minimum_percentage", 75)
@@ -558,10 +560,18 @@ async def get_qr_data_for_event(
         collection_name = "student_registrations" if target_audience == "student" else "faculty_registrations"
         
         # Find registration based on type and registration_id
-        query = {
-            "registration_id": registration_id,
-            "event.event_id": event_id
-        }
+        # For team registrations, the registration_id passed is a member's ID (nested in team_members array)
+        # For individual registrations, it's at the root level
+        if registration_type == "team":
+            query = {
+                "team_members.registration_id": registration_id,
+                "event.event_id": event_id
+            }
+        else:
+            query = {
+                "registration_id": registration_id,
+                "event.event_id": event_id
+            }
         
         registration = await DatabaseOperations.find_one(collection_name, query)
         if not registration:
@@ -590,48 +600,17 @@ async def get_qr_data_for_event(
                         "venue": event.get("venue")
                     },
                     "attendance": registration.get("attendance", {}),
-                    "generated": datetime.utcnow().isoformat(),
+                    "generated": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                     "version": "3.0"
                 }
             else:
-                # Team student registration
-                team_members = registration.get("team_members", [])
-                team_leader = next((m for m in team_members if m.get("is_team_leader")), team_members[0] if team_members else None)
-                other_members = [m for m in team_members if not m.get("is_team_leader")]
-                
+                # Team student registration - MINIMAL QR DATA (only IDs, fetch full data via API)
                 qr_data = {
-                    "registration_id": registration["registration_id"],
+                    "registration_id": registration["registration_id"],  # Team registration ID
                     "event_id": event_id,
-                    "event_name": event.get("event_name", ""),
                     "type": "team",
                     "user_type": "student",
-                    "leader": {
-                        "name": team_leader.get("student", {}).get("name", "") if team_leader else "",
-                        "enrollment": team_leader.get("student", {}).get("enrollment_no", "") if team_leader else "",
-                        "department": team_leader.get("student", {}).get("department", "") if team_leader else "",
-                        "email": team_leader.get("student", {}).get("email", "") if team_leader else ""
-                    },
-                    "team": {
-                        "name": registration.get("team", {}).get("team_name", ""),
-                        "size": len(team_members),
-                        "members": [
-                            {
-                                "name": member.get("student", {}).get("name", ""),
-                                "enrollment": member.get("student", {}).get("enrollment_no", ""),
-                                "department": member.get("student", {}).get("department", ""),
-                                "email": member.get("student", {}).get("email", ""),
-                                "attendance": member.get("attendance", {})
-                            }
-                            for member in other_members
-                        ]
-                    },
-                    "event": {
-                        "date": event.get("event_date"),
-                        "time": event.get("event_time"),
-                        "venue": event.get("venue")
-                    },
-                    "generated": datetime.utcnow().isoformat(),
-                    "version": "3.0"
+                    "version": "4.0"  # Version 4.0 = minimal team QR, requires backend fetch
                 }
         else:
             # Faculty registration (always individual)
@@ -654,7 +633,7 @@ async def get_qr_data_for_event(
                     "venue": event.get("venue")
                 },
                 "attendance": registration.get("attendance", {}),
-                "generated": datetime.utcnow().isoformat(),
+                "generated": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat(),
                 "version": "3.0"
             }
         
@@ -867,7 +846,7 @@ async def scan_and_mark_attendance(
             "session_info": {
                 "session_id": session_id,
                 "marked_by": volunteer_name,
-                "marked_at": datetime.utcnow().isoformat()
+                "marked_at": datetime.now(pytz.timezone('Asia/Kolkata')).isoformat()
             },
             # For backward compatibility
             "student_name": participant_info.get("name") if participant_info.get("type") == "student" else None,

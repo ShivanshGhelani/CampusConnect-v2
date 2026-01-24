@@ -237,7 +237,7 @@ class QRCodeService {
     console.log('generateQRCode: Options received:', options);
     
     const defaultOptions = {
-      errorCorrectionLevel: 'M',
+      errorCorrectionLevel: 'H',
       type: 'image/png',
       quality: 0.92,
       margin: 1,
@@ -374,12 +374,22 @@ class QRCodeService {
       const hasRegistrationId = qrData.reg_id || qrData.registration_id;
       const hasEventId = qrData.event_id;
       const hasUserData = qrData.student || qrData.user || qrData.leader;
+      const isMinimalTeamQR = qrData.version === '4.0' && qrData.type === 'team';
       
-      console.log('Validation:', { hasRegistrationId, hasEventId, hasUserData });
+      console.log('Validation:', { hasRegistrationId, hasEventId, hasUserData, isMinimalTeamQR });
       
-      if (!hasRegistrationId || !hasEventId || !hasUserData) {
-        console.warn('❌ QR validation failed - missing required fields');
-        return null;
+      // Version 4.0 team QR codes only need registration_id and event_id (data fetched via API)
+      if (isMinimalTeamQR) {
+        if (!hasRegistrationId || !hasEventId) {
+          console.warn('❌ Minimal team QR validation failed - missing registration_id or event_id');
+          return null;
+        }
+      } else {
+        // Legacy QR codes need user data
+        if (!hasRegistrationId || !hasEventId || !hasUserData) {
+          console.warn('❌ QR validation failed - missing required fields');
+          return null;
+        }
       }
       
       console.log('✅ QR data is valid');

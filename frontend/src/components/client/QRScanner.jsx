@@ -57,7 +57,15 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
       setScanResult(qrData);
       setIsScanning(false);
       
-      // Fetch real attendance data
+      // For version 4.0 team QR codes, skip attendance fetch and pass directly to parent
+      if (qrData.version === '4.0' && qrData.type === 'team') {
+        console.log('🔄 Version 4.0 team QR - passing to parent for team member selection');
+        // Pass QR data with empty attendance data (parent will fetch team data)
+        onScan(qrData, { isMinimalTeamQR: true });
+        return;
+      }
+      
+      // Fetch real attendance data for individual/legacy QR codes
       console.log('📡 Fetching attendance data...');
       const realAttendanceData = await fetchRealAttendanceData(qrData);
       setAttendanceData(realAttendanceData);

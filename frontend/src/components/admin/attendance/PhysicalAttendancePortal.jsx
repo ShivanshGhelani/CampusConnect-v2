@@ -900,7 +900,7 @@ const UnifiedAttendancePortal = () => {
                                       </span>
                                     </div>
                                     <div>
-                                      Percentage: <span className="font-medium">{memberAttendance.percentage || 0}%</span>
+                                      Percentage: <span className="font-medium">{Math.min(memberAttendance.percentage || 0, 100)}%</span>
                                     </div>
                                     {memberAttendance.sessions_attended > 0 && (
                                       <div>
@@ -911,13 +911,21 @@ const UnifiedAttendancePortal = () => {
                                   
                                   {/* Show which specific days/sessions are marked */}
                                   {memberAttendance.sessions && memberAttendance.sessions.length > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                      {memberAttendance.sessions.map((session, idx) => (
-                                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                          <CheckCircle className="w-3 h-3" />
-                                          {session.session_name}
-                                        </span>
-                                      ))}
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {memberAttendance.sessions.map((session, idx) => {
+                                        // Get raw session name
+                                        const rawName = session.session_name || session.name || session.session_id || session.day || `Session ${idx + 1}`;
+                                        // Format session name: morning_session → Morning Session
+                                        const displayName = rawName.split('_').map(word => 
+                                          word.charAt(0).toUpperCase() + word.slice(1)
+                                        ).join(' ');
+                                        return (
+                                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full whitespace-nowrap">
+                                            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                            {displayName}
+                                          </span>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                 </div>
@@ -1012,7 +1020,7 @@ const UnifiedAttendancePortal = () => {
                         </span>
                       </div>
                       <div className="text-sm">
-                        Percentage: <span className="font-medium">{attendance.percentage || 0}%</span>
+                        Percentage: <span className="font-medium">{Math.min(attendance.percentage || 0, 100)}%</span>
                       </div>
                       {attendance.sessions_attended > 0 && (
                         <div className="text-sm">
@@ -1023,13 +1031,21 @@ const UnifiedAttendancePortal = () => {
                     
                     {/* Show which specific days/sessions are marked */}
                     {attendance.sessions && attendance.sessions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {attendance.sessions.map((session, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                            <CheckCircle className="w-3 h-3" />
-                            {session.session_name}
-                          </span>
-                        ))}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {attendance.sessions.map((session, idx) => {
+                          // Get raw session name
+                          const rawName = session.session_name || session.name || session.session_id || session.day || `Session ${idx + 1}`;
+                          // Format session name: morning_session → Morning Session
+                          const displayName = rawName.split('_').map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                          ).join(' ');
+                          return (
+                            <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full whitespace-nowrap">
+                              <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                              {displayName}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

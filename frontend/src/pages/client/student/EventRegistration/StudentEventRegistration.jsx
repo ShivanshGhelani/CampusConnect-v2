@@ -709,7 +709,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                   ...p, 
                   isValidating: false, 
                   isValid: false,
-                  validationError: 'Student not found in database'
+                  validationError: 'Student not found - Please verify the enrollment number'
                 }
               : p
           )
@@ -725,7 +725,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                 ...p, 
                 isValidating: false, 
                 isValid: false,
-                validationError: 'Error validating enrollment number'
+                validationError: 'Unable to verify enrollment - Please try again'
               }
             : p
         )

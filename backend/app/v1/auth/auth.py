@@ -227,10 +227,14 @@ async def unified_login(request: Request, login_data: UnifiedLoginRequest):
         user_data = user.model_dump()
         current_time = datetime.utcnow()
         
-        # Convert datetime objects to ISO strings
-        for key, value in user_data.items():
+        # Convert ALL datetime objects to ISO strings (including None check)
+        # This ensures session data is always JSON-serializable
+        for key, value in list(user_data.items()):
             if isinstance(value, datetime):
                 user_data[key] = value.isoformat()
+            elif value is None and key in ['date_of_birth', 'created_at', 'updated_at', 'last_login']:
+                # Keep None as None, don't convert
+                pass
         
         # Generate tokens - CRITICAL FIX: Always generate for iOS compatibility
         # iOS Safari blocks third-party cookies, so we MUST use Bearer tokens

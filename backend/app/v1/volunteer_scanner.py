@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timedelta
+import pytz
 import secrets
 import string
 
@@ -56,6 +57,7 @@ class MarkAttendanceRequest(BaseModel):
     qr_data: dict = Field(..., description="Decoded QR code data")
     attendance_data: dict = Field(..., description="Attendance details (who is present)")
     timestamp: str = Field(..., description="Timestamp of scan")
+    selected_members: Optional[List[str]] = Field(None, description="For team QR: list of enrollment numbers to mark present")
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -397,17 +399,15 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
             limit=100
         )
         
+        logger.info(f"Found {len(volunteer_sessions)} volunteer sessions for event {event_id}")
+        
         # Get all registrations with scans marked via scanner
-        # We'll look for attendance.sessions where notes contain "QR Scanner"
+        # Look for attendance.sessions where marked_by exists (indicating scanner marking)
         registrations_student = await DatabaseOperations.find_many(
             "student_registrations",
             {
                 "event.event_id": event_id,
-                "attendance.sessions": {
-                    "$elemMatch": {
-                        "notes": {"$regex": "QR Scanner", "$options": "i"}
-                    }
-                }
+                "attendance.sessions.marked_by": {"$exists": True}
             },
             limit=500
         )
@@ -416,14 +416,12 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
             "faculty_registrations",
             {
                 "event.event_id": event_id,
-                "attendance.sessions": {
-                    "$elemMatch": {
-                        "notes": {"$regex": "QR Scanner", "$options": "i"}
-                    }
-                }
+                "attendance.sessions.marked_by": {"$exists": True}
             },
             limit=500
         )
+        
+        logger.info(f"Found {len(registrations_student)} student registrations and {len(registrations_faculty)} faculty registrations with scanner marks")
         
         all_registrations = registrations_student + registrations_faculty
         
@@ -450,9 +448,10 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
                 participant_name = registration["team"].get("team_name", "Unknown Team")
                 participant_type = "team"
             
-            # Extract scanner-marked sessions
+            # Extract scanner-marked sessions (sessions with marked_by field)
             for session in sessions:
-                if "QR Scanner" in session.get("notes", ""):
+                # Only include sessions that were marked by volunteers (have marked_by field)
+                if session.get("marked_by"):
                     unique_attendees.add(registration_id)
                     scans.append({
                         "registration_id": registration_id,
@@ -471,19 +470,10 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
         # Sort scans by time (most recent first)
         scans.sort(key=lambda x: x["marked_at"] if x["marked_at"] else "", reverse=True)
         
-        # Count unique scans per volunteer (not re-scans)
-        volunteer_unique_scans = {}
-        for scan in scans:
-            volunteer_name = scan["marked_by"]
-            if volunteer_name:
-                if volunteer_name not in volunteer_unique_scans:
-                    volunteer_unique_scans[volunteer_name] = set()
-                volunteer_unique_scans[volunteer_name].add(scan["registration_id"])
-        
         # Count active sessions
         active_sessions = sum(1 for s in volunteer_sessions if s.get("expires_at") and s["expires_at"] > datetime.utcnow())
         
-        # Build response with corrected scan counts
+        # Build response - use total_scans from database (which is incremented on each scan)
         return {
             "success": True,
             "data": {
@@ -496,7 +486,7 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
                         "created_at": serialize_datetime(s.get("created_at")),
                         "expires_at": serialize_datetime(s.get("expires_at")),
                         "last_activity": serialize_datetime(s.get("last_activity")),
-                        "total_scans": len(volunteer_unique_scans.get(s.get("volunteer_name"), set()))  # Unique scans only
+                        "total_scans": s.get("total_scans", 0)  # Use database value directly
                     }
                     for s in volunteer_sessions
                 ],
@@ -679,6 +669,176 @@ async def get_registration_attendance_status(
         raise HTTPException(status_code=500, detail=f"Failed to get attendance status: {str(e)}")
 
 # ==================== PUBLIC ENDPOINTS ====================
+
+@router.get("/session/{session_id}/team/{registration_id}")
+async def get_team_registration_data(
+    session_id: str,
+    registration_id: str
+):
+    """
+    Fetch full team registration data for scanner
+    This allows minimal QR codes - scanner fetches full data via API
+    Public endpoint - validates session and event match
+    """
+    try:
+        # Validate session
+        session = await DatabaseOperations.find_one(
+            "volunteer_sessions",
+            {"session_id": session_id}
+        )
+        
+        if not session:
+            raise HTTPException(status_code=404, detail="Invalid session")
+        
+        # Check if session expired
+        if datetime.utcnow() > session.get("expires_at"):
+            raise HTTPException(status_code=403, detail="Session has expired")
+        
+        # Get session event ID
+        session_event_id = session.get("event_id")
+        
+        # Fetch team registration
+        registration = await DatabaseOperations.find_one(
+            "student_registrations",
+            {"registration_id": registration_id, "registration_type": "team"}
+        )
+        
+        if not registration:
+            raise HTTPException(status_code=404, detail="Team registration not found")
+        
+        # Validate event match - CRITICAL SECURITY CHECK
+        registration_event_id = registration.get("event", {}).get("event_id")
+        if registration_event_id != session_event_id:
+            # Different event - return professional error
+            session_event = await DatabaseOperations.find_one("events", {"event_id": session_event_id})
+            registration_event = await DatabaseOperations.find_one("events", {"event_id": registration_event_id})
+            
+            raise HTTPException(
+                status_code=403, 
+                detail={
+                    "error": "event_mismatch",
+                    "message": "This QR code belongs to a different event",
+                    "scanner_event": {
+                        "id": session_event_id,
+                        "name": session_event.get("event_name") if session_event else "Unknown Event"
+                    },
+                    "qr_event": {
+                        "id": registration_event_id,
+                        "name": registration_event.get("event_name") if registration_event else "Unknown Event"
+                    }
+                }
+            )
+        
+        # Get invitation to check target day/session/round
+        invitation = await DatabaseOperations.find_one(
+            "volunteer_invitations",
+            {"invitation_code": session.get("invitation_code")}
+        )
+        
+        target_day = invitation.get("target_day") if invitation else None
+        target_session = invitation.get("target_session") if invitation else None
+        target_round = invitation.get("target_round") if invitation else None
+        attendance_strategy = invitation.get("attendance_strategy") if invitation else "single_mark"
+        
+        # Get event to fetch session names
+        event = await DatabaseOperations.find_one("events", {"event_id": session_event_id})
+        
+        # Get session/day name for display
+        target_session_name = None
+        if event and event.get("attendance_strategy", {}).get("sessions"):
+            sessions = event.get("attendance_strategy", {}).get("sessions", [])
+            if target_session:
+                session_config = next((s for s in sessions if s.get("session_id") == target_session), None)
+                target_session_name = session_config.get("session_name") if session_config else target_session
+            elif target_day:
+                day_session = next((s for s in sessions if s.get("session_id") == f"day_{target_day}"), None)
+                target_session_name = day_session.get("session_name") if day_session else f"Day {target_day}"
+        
+        # Extract team members with their attendance
+        team_members = registration.get("team_members", [])
+        team_info = registration.get("team", {})
+        
+        # Build response with member data filtered by target session
+        members_data = []
+        for member in team_members:
+            student_data = member.get("student", {})
+            attendance = member.get("attendance", {})
+            
+            # Calculate current status for target session
+            member_status = {
+                "enrollment_no": student_data.get("enrollment_no"),
+                "name": student_data.get("name"),
+                "department": student_data.get("department"),
+                "mobile_no": student_data.get("mobile_no"),
+                "registration_id": member.get("registration_id"),  # Individual member registration ID
+                "is_leader": member.get("is_team_leader", False),
+                "overall_status": attendance.get("status", "pending"),
+                "percentage": min(attendance.get("percentage", 0), 100)  # Cap at 100%
+            }
+            
+            # Add session-specific status if applicable
+            if attendance_strategy == "day_based" and target_day:
+                sessions = attendance.get("sessions", [])
+                day_session = next((s for s in sessions if s.get("day") == target_day), None)
+                # Session is marked if it has marked_at or marked_by field
+                is_marked = bool(day_session and (day_session.get("marked_at") or day_session.get("marked_by")))
+                member_status["current_session_status"] = "present" if is_marked else "pending"
+                member_status["current_session_marked_at"] = day_session.get("marked_at") if day_session else None
+                member_status["current_session_marked_by"] = day_session.get("marked_by") if day_session else None
+                member_status["current_session_notes"] = day_session.get("notes") if day_session else None
+            elif attendance_strategy == "session_based" and target_session:
+                sessions = attendance.get("sessions", [])
+                session_data = next((s for s in sessions if s.get("session_id") == target_session), None)
+                # Session is marked if it has marked_at or marked_by field
+                is_marked = bool(session_data and (session_data.get("marked_at") or session_data.get("marked_by")))
+                member_status["current_session_status"] = "present" if is_marked else "pending"
+                member_status["current_session_marked_at"] = session_data.get("marked_at") if session_data else None
+                member_status["current_session_marked_by"] = session_data.get("marked_by") if session_data else None
+                member_status["current_session_notes"] = session_data.get("notes") if session_data else None
+            elif attendance_strategy == "round_based" and target_round:
+                rounds = attendance.get("rounds", [])
+                round_data = next((r for r in rounds if r.get("round_id") == target_round), None)
+                # Round is marked if it has marked_at or marked_by field
+                is_marked = bool(round_data and (round_data.get("marked_at") or round_data.get("marked_by")))
+                member_status["current_session_status"] = "present" if is_marked else "pending"
+                member_status["current_session_marked_at"] = round_data.get("marked_at") if round_data else None
+                member_status["current_session_marked_by"] = round_data.get("marked_by") if round_data else None
+                member_status["current_session_notes"] = round_data.get("notes") if round_data else None
+            else:
+                # Single mark strategy
+                member_status["current_session_status"] = attendance.get("status", "pending")
+                member_status["current_session_marked_at"] = attendance.get("marked_at")
+                member_status["current_session_marked_by"] = attendance.get("marked_by")
+                member_status["current_session_notes"] = attendance.get("notes")
+            
+            members_data.append(member_status)
+        
+        return {
+            "success": True,
+            "data": {
+                "registration_id": registration_id,
+                "event_id": session_event_id,
+                "team": {
+                    "name": team_info.get("team_name"),
+                    "size": team_info.get("team_size"),
+                    "leader_enrollment": team_info.get("team_leader")
+                },
+                "members": members_data,
+                "attendance_strategy": attendance_strategy,
+                "target": {
+                    "day": target_day,
+                    "session": target_session,
+                    "session_name": target_session_name,  # Formatted session name
+                    "round": target_round
+                }
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching team data for {registration_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch team data: {str(e)}")
 
 @router.get("/invitation/{invitation_code}/validate")
 async def validate_invitation(invitation_code: str):
@@ -875,6 +1035,35 @@ async def mark_attendance(
         if not registration:
             raise HTTPException(status_code=404, detail="Registration not found")
         
+        # VALIDATE EVENT MATCH - Critical security check
+        registration_event_id = registration.get("event", {}).get("event_id")
+        session_event_id = session.get("event_id")
+        
+        if registration_event_id != session_event_id:
+            # Different event - return professional error
+            session_event = await DatabaseOperations.find_one("events", {"event_id": session_event_id})
+            registration_event = await DatabaseOperations.find_one("events", {"event_id": registration_event_id})
+            
+            raise HTTPException(
+                status_code=403, 
+                detail={
+                    "error": "event_mismatch",
+                    "message": "This QR code belongs to a different event",
+                    "scanner_event": {
+                        "id": session_event_id,
+                        "name": session_event.get("event_name") if session_event else "Unknown Event"
+                    },
+                    "qr_event": {
+                        "id": registration_event_id,
+                        "name": registration_event.get("event_name") if registration_event else "Unknown Event"
+                    }
+                }
+            )
+        
+        # Check if this is a team registration
+        is_team = registration.get("registration_type") == "team"
+        selected_members = request.selected_members  # List of enrollment numbers to mark
+        
         # Fetch event to get attendance strategy
         event = await DatabaseOperations.find_one(
             "events",
@@ -905,7 +1094,8 @@ async def mark_attendance(
         
         # Get volunteer info for marking
         marked_by = session.get("volunteer_name", "Unknown Volunteer")
-        marked_at_time = datetime.utcnow()
+        ist = pytz.timezone('Asia/Kolkata')
+        marked_at_time = datetime.now(ist)
         
         # Update attendance based on strategy
         # UPDATED to match attendance.py logic exactly - allows re-marking/toggling
@@ -1093,12 +1283,133 @@ async def mark_attendance(
         # Update last_updated timestamp
         current_attendance["last_updated"] = marked_at_time.isoformat()
         
-        # Update the registration document in the correct collection - ONLY UPDATE attendance field
-        update_result = await DatabaseOperations.update_one(
-            collection_name,  # Use the correct collection (student_registrations or faculty_registrations)
-            {"registration_id": registration_id},
-            {"$set": {"attendance": current_attendance}}
-        )
+        # TEAM HANDLING: Update individual team members if this is a team registration
+        update_result = False
+        members_updated = []
+        
+        if is_team and selected_members:
+            # Update specific team members
+            team_members = registration.get("team_members", [])
+            
+            for member in team_members:
+                member_enrollment = member.get("student", {}).get("enrollment_no")
+                
+                # Only update members that were selected
+                if member_enrollment in selected_members:
+                    member_attendance = member.get("attendance", {})
+                    
+                    # Apply same attendance strategy logic to individual member
+                    if attendance_strategy == "day_based" and day_marked:
+                        sessions = member_attendance.get("sessions", [])
+                        session_id_to_mark = f"day_{day_marked}"
+                        
+                        # Find or create session
+                        session_found = False
+                        for s in sessions:
+                            if s.get("session_id") == session_id_to_mark:
+                                s["status"] = "present"
+                                s["marked_at"] = marked_at_time.isoformat()
+                                s["marked_by"] = marked_by
+                                s["notes"] = f"QR Scanner - {marked_by}"
+                                session_found = True
+                                break
+                        
+                        if not session_found:
+                            # Get the session config to extract the proper session_name
+                            target_day_config = None
+                            for day_config in attendance_strategy_data.get("sessions", []):
+                                if day_config.get("session_id") == session_id_to_mark:
+                                    target_day_config = day_config
+                                    break
+                            
+                            sessions.append({
+                                "session_id": session_id_to_mark,
+                                "session_name": target_day_config.get("session_name", f"Day {day_marked}") if target_day_config else f"Day {day_marked}",
+                                "day": day_marked,
+                                "status": "present",
+                                "marked_at": marked_at_time.isoformat(),
+                                "marked_by": marked_by,
+                                "notes": f"QR Scanner - {marked_by}"
+                            })
+                        
+                        member_attendance["sessions"] = sessions
+                        
+                        # Recalculate percentage
+                        total_days = len(attendance_strategy_data.get("sessions", []))
+                        attended_days = len([s for s in sessions if s.get("status") == "present"])
+                        member_attendance["percentage"] = min(round((attended_days / total_days) * 100, 2) if total_days > 0 else 0, 100)
+                        member_attendance["status"] = "present" if member_attendance["percentage"] >= 75 else "partial"
+                        
+                    elif attendance_strategy == "session_based" and session_marked:
+                        sessions = member_attendance.get("sessions", [])
+                        
+                        session_found = False
+                        for s in sessions:
+                            if s.get("session_id") == session_marked:
+                                s["status"] = "present"
+                                s["marked_at"] = marked_at_time.isoformat()
+                                s["marked_by"] = marked_by
+                                s["notes"] = f"QR Scanner - {marked_by}"
+                                session_found = True
+                                break
+                        
+                        if not session_found:
+                            # Get the session config to extract the proper session_name
+                            target_session_config = None
+                            for sess_config in attendance_strategy_data.get("sessions", []):
+                                if sess_config.get("session_id") == session_marked:
+                                    target_session_config = sess_config
+                                    break
+                            
+                            sessions.append({
+                                "session_id": session_marked,
+                                "session_name": target_session_config.get("session_name", session_marked) if target_session_config else session_marked,
+                                "status": "present",
+                                "marked_at": marked_at_time.isoformat(),
+                                "marked_by": marked_by,
+                                "notes": f"QR Scanner - {marked_by}"
+                            })
+                        
+                        member_attendance["sessions"] = sessions
+                        
+                        # Recalculate percentage
+                        total_sessions = len(attendance_strategy_data.get("sessions", []))
+                        attended_sessions = len([s for s in sessions if s.get("status") == "present"])
+                        member_attendance["percentage"] = min(round((attended_sessions / total_sessions) * 100, 2) if total_sessions > 0 else 0, 100)
+                        member_attendance["status"] = "present" if member_attendance["percentage"] >= 75 else "partial"
+                        
+                    else:
+                        # Single mark strategy
+                        member_attendance["marked"] = True
+                        member_attendance["marked_at"] = marked_at_time.isoformat()
+                        member_attendance["marked_by"] = marked_by
+                        member_attendance["percentage"] = 100
+                        member_attendance["status"] = "present"
+                    
+                    member_attendance["last_updated"] = marked_at_time.isoformat()
+                    member["attendance"] = member_attendance
+                    members_updated.append(member_enrollment)
+            
+            # Update the team registration with modified team_members
+            update_result = await DatabaseOperations.update_one(
+                collection_name,
+                {"registration_id": registration_id},
+                {"$set": {"team_members": team_members}}
+            )
+            
+        elif is_team and selected_members is not None and len(selected_members) == 0:
+            # Team QR scanned but no members selected - this is OK, just skip without error
+            # This allows re-scanning to mark members later
+            update_result = True  # No update needed, but mark as successful
+            logger.info(f"Team QR scanned for {registration_id} but no members selected - no changes made")
+            
+        else:
+            # Individual registration - update as before
+            update_result = await DatabaseOperations.update_one(
+                collection_name,
+                {"registration_id": registration_id},
+                {"$set": {"attendance": current_attendance}}
+            )
         
         if not update_result:
             raise HTTPException(status_code=500, detail="Failed to update registration attendance")
@@ -1120,7 +1431,7 @@ async def mark_attendance(
             {"$inc": {"total_scans": 1}}
         )
         
-        logger.info(f"✅ ATTENDANCE UPDATED: Registration {registration_id} marked by {marked_by} via session {session_id} - Strategy: {attendance_strategy}, Day: {day_marked}, Session: {session_marked}")
+        logger.info(f"✅ ATTENDANCE UPDATED: Registration {registration_id} marked by {marked_by} via session {session_id} - Strategy: {attendance_strategy}, Day: {day_marked}, Session: {session_marked}, Team: {is_team}, Members: {len(members_updated) if is_team else 'N/A'}")
         
         # Prepare response with already_marked flag if applicable
         response_data = {
@@ -1130,12 +1441,20 @@ async def mark_attendance(
             "attendance_strategy": attendance_strategy,
             "day_marked": day_marked,
             "session_marked": session_marked,
-            "attendance_percentage": current_attendance.get("percentage", 0),
-            "attendance_status": current_attendance.get("status", "unknown")
+            "is_team": is_team
         }
         
-        # Add already_marked flag and message if this was a re-mark
-        if 'already_marked' in locals() and already_marked:
+        # Add team-specific data
+        if is_team:
+            response_data["members_updated"] = members_updated
+            response_data["members_count"] = len(members_updated)
+            response_data["message"] = f"✓ Marked {len(members_updated)} team member(s) present"
+        else:
+            response_data["attendance_percentage"] = current_attendance.get("percentage", 0)
+            response_data["attendance_status"] = current_attendance.get("status", "unknown")
+        
+        # Add already_marked flag and message if this was a re-mark (individual only)
+        if not is_team and 'already_marked' in locals() and already_marked:
             response_data["already_marked"] = True
             response_data["previous_marked_by"] = previous_marked_by
             response_data["previous_marked_at"] = previous_marked_at

@@ -329,8 +329,8 @@ function EventList() {
     try {
       fetchingRef.current = true;
       
-      // Only set loading if we don't have any events yet
-      if (mountedRef.current && allEvents.length === 0) {
+      // Set loading state when fetching
+      if (mountedRef.current) {
         setIsLoading(true);
         setError('');
       }
@@ -604,10 +604,23 @@ function EventList() {
     return { ongoing, upcoming };
   };  // Refresh function for manual refresh
   const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered - clearing cache and fetching fresh data');
     
+    // Clear localStorage cache
     eventsCache.clear();
-    fetchingRef.current = false; // Reset the flag
-    setError(''); // Clear any existing errors
+    
+    // Reset all states to force fresh fetch
+    setAllEvents([]);
+    setFilteredEvents([]);
+    setPaginatedEvents([]);
+    setIsLoading(true);
+    setError('');
+    setCurrentPage(1);
+    
+    // Reset fetch flag
+    fetchingRef.current = false;
+    
+    // Fetch fresh data
     if (mountedRef.current) {
       fetchEventsOnce();
     }

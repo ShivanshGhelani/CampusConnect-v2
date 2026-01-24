@@ -96,15 +96,17 @@ async def get_current_student(request: Request) -> Student:
             detail="Student not logged in"
         )
     
-    # Convert ISO datetime strings back to datetime objects
-    for key, value in student_data.items():
-        if isinstance(value, str) and ('_at' in key or key == 'last_login'):
+    # Convert ISO datetime strings back to datetime objects for model validation
+    # But keep a copy to ensure session stays JSON-serializable
+    student_data_for_model = student_data.copy()
+    for key, value in student_data_for_model.items():
+        if isinstance(value, str) and (key in ['date_of_birth', 'created_at', 'updated_at', 'last_login']):
             try:
-                student_data[key] = datetime.fromisoformat(value) if value else None
-            except ValueError:
-                student_data[key] = None
+                student_data_for_model[key] = datetime.fromisoformat(value) if value else None
+            except (ValueError, AttributeError):
+                student_data_for_model[key] = None
                 
-    return Student(**student_data)
+    return Student(**student_data_for_model)
 
 async def get_current_student_optional(request: Request) -> Optional[Student]:
     """Get currently logged in student from session, return None if not logged in"""
@@ -132,15 +134,17 @@ async def get_current_faculty(request: Request) -> Faculty:
             detail="Faculty not logged in"
         )
     
-    # Convert ISO datetime strings back to datetime objects
-    for key, value in faculty_data.items():
-        if isinstance(value, str) and ('_at' in key or key == 'last_login'):
+    # Convert ISO datetime strings back to datetime objects for model validation
+    # But keep a copy to ensure session stays JSON-serializable
+    faculty_data_for_model = faculty_data.copy()
+    for key, value in faculty_data_for_model.items():
+        if isinstance(value, str) and (key in ['date_of_birth', 'created_at', 'updated_at', 'last_login']):
             try:
-                faculty_data[key] = datetime.fromisoformat(value) if value else None
-            except ValueError:
-                faculty_data[key] = None
+                faculty_data_for_model[key] = datetime.fromisoformat(value) if value else None
+            except (ValueError, AttributeError):
+                faculty_data_for_model[key] = None
                 
-    return Faculty(**faculty_data)
+    return Faculty(**faculty_data_for_model)
 
 async def get_current_faculty_optional(request: Request) -> Optional[Faculty]:
     """Get currently logged in faculty from session, return None if not logged in"""

@@ -473,7 +473,7 @@ class EventAttendanceService:
         total_days = len(days)
         attended_days = len([d for d in days if d["marked"]])
         
-        percentage = (attended_days / total_days * 100) if total_days > 0 else 0
+        percentage = min((attended_days / total_days * 100) if total_days > 0 else 0, 100)
         status = self._calculate_attendance_status(percentage)
         
         await self._update_registration_attendance(
@@ -499,7 +499,7 @@ class EventAttendanceService:
         total_sessions = registration["attendance"].get("total_sessions", len(sessions))
         attended_sessions = len([s for s in sessions if s.get("marked")])
         
-        percentage = (attended_sessions / total_sessions * 100) if total_sessions > 0 else 0
+        percentage = min((attended_sessions / total_sessions * 100) if total_sessions > 0 else 0, 100)
         status = self._calculate_attendance_status(percentage)
         
         await self._update_registration_attendance(
@@ -525,7 +525,7 @@ class EventAttendanceService:
         total_milestones = registration["attendance"].get("total_milestones", len(milestones))
         completed_milestones = len([m for m in milestones if m.get("completed")])
         
-        percentage = (completed_milestones / total_milestones * 100) if total_milestones > 0 else 0
+        percentage = min((completed_milestones / total_milestones * 100) if total_milestones > 0 else 0, 100)
         status = self._calculate_attendance_status(percentage)
         
         await self._update_registration_attendance(

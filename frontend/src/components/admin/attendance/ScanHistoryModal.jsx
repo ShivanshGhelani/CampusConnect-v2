@@ -344,10 +344,10 @@ const ScanHistoryModal = ({ isOpen, onClose, eventId, invitationCode }) => {
                               <span className="text-gray-500">Last: </span>
                               <span className="font-medium text-gray-900">{formatDateTime(session.last_activity)}</span>
                             </div>
-                            <div className="text-xs flex items-center gap-1">
-                              <QrCode className="w-3 h-3 text-gray-500" />
-                              <span className="font-semibold text-gray-900">{session.total_scans || 0}</span>
-                              <span className="text-gray-500">scans</span>
+                            <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                              <QrCode className="w-3 h-3 text-blue-600" />
+                              <span className="font-bold text-blue-700">{session.total_scans || 0}</span>
+                              <span className="text-xs text-gray-500">scans</span>
                             </div>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               new Date(session.expires_at) > new Date() 
