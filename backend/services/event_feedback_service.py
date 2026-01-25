@@ -851,10 +851,15 @@ class EventFeedbackService:
     ) -> Dict[str, Any]:
         """Submit feedback anonymously using registration ID"""
         try:
+            logger.info(f"Starting anonymous feedback submission for event {event_id}, registration {registration_id}")
+            
             # Verify registration first
             verification = await self.verify_registration_for_feedback(event_id, registration_id)
             
+            logger.info(f"Verification result: {verification}")
+            
             if not verification.get("verified"):
+                logger.warning(f"Verification failed: {verification.get('message')}")
                 return {
                     "success": False,
                     "message": verification.get("message", "Invalid registration")
@@ -879,6 +884,7 @@ class EventFeedbackService:
                     }
                 )
             else:
+                # Try individual registration first
                 registration = await DatabaseOperations.find_one(
                     self.registrations_collection,
                     {
@@ -886,6 +892,17 @@ class EventFeedbackService:
                         "event.event_id": event_id
                     }
                 )
+                
+                # If not found, check in team_members for team-based registrations
+                if not registration:
+                    registration = await DatabaseOperations.find_one(
+                        self.registrations_collection,
+                        {
+                            "registration_type": "team",
+                            "team_members.student.enrollment_no": registration_id,
+                            "event.event_id": event_id
+                        }
+                    )
             
             if not registration:
                 return {
@@ -894,8 +911,31 @@ class EventFeedbackService:
                 }
             
             # Get student or faculty info
-            student_info = registration.get("student", {}) or registration.get("faculty", {})
-            student_enrollment = student_info.get("enrollment_no") or student_info.get("employee_id")
+            # For team-based registrations, find the specific team member
+            student_info = {}
+            student_enrollment = None
+            
+            if registration.get("registration_type") == "team":
+                # Find the team member with this enrollment
+                for member in registration.get("team_members", []):
+                    member_enrollment = member.get("student", {}).get("enrollment_no")
+                    if member_enrollment == registration_id:
+                        student_info = member.get("student", {})
+                        student_enrollment = member_enrollment
+                        break
+            else:
+                # Individual registration
+                student_info = registration.get("student", {}) or registration.get("faculty", {})
+                student_enrollment = student_info.get("enrollment_no") or student_info.get("employee_id")
+            
+            if not student_enrollment:
+                logger.error(f"Could not extract student enrollment for registration {registration_id}")
+                return {
+                    "success": False,
+                    "message": "Unable to retrieve enrollment information"
+                }
+            
+            logger.info(f"Extracted student info - enrollment: {student_enrollment}, name: {student_info.get('name')}")
             
             # Create feedback document
             feedback_doc = {
@@ -907,6 +947,8 @@ class EventFeedbackService:
                 "submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None),
                 "submission_method": "anonymous_qr"
             }
+            
+            logger.info(f"Attempting to insert feedback document: {feedback_doc}")
             
             # Insert feedback
             result = await DatabaseOperations.insert_one(
@@ -921,13 +963,14 @@ class EventFeedbackService:
                     "message": "Feedback submitted successfully"
                 }
             else:
+                logger.error(f"Failed to insert feedback document for registration {registration_id}")
                 return {
                     "success": False,
                     "message": "Failed to save feedback"
                 }
             
         except Exception as e:
-            logger.error(f"Error submitting anonymous feedback: {str(e)}")
+            logger.error(f"Error submitting anonymous feedback: {str(e)}", exc_info=True)
             return {
                 "success": False,
                 "message": f"Error submitting feedback: {str(e)}"
