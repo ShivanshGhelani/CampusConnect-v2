@@ -38,16 +38,34 @@ const DateRangePicker = ({
       const updatePosition = () => {
         const rect = dropdownRef.current.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
-        const dropdownHeight = 500; // Approximate height of dropdown
+        const viewportWidth = window.innerWidth;
+        // Increase height estimate when time picker is included
+        const dropdownHeight = includeTime ? 600 : 480;
+        const dropdownWidth = 360;
         
-        // Check if there's enough space below, otherwise position above
-        const spaceBelow = viewportHeight - rect.bottom - 8;
-        const shouldPositionAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+        // Calculate available space
+        const spaceAbove = rect.top;
+        const spaceBelow = viewportHeight - rect.bottom;
         
-        setDropdownPosition({
-          top: shouldPositionAbove ? rect.top + window.scrollY - dropdownHeight - 8 : rect.bottom + window.scrollY + 8,
-          left: Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - 320 - 8)) // Prevent dropdown from going off-screen
-        });
+        // Position above if there's more space above OR if there's insufficient space below
+        const shouldPositionAbove = spaceAbove > spaceBelow || spaceBelow < dropdownHeight;
+        
+        // Calculate top position
+        let top;
+        if (shouldPositionAbove) {
+          // Position above with some padding
+          top = Math.max(10, rect.top + window.scrollY - dropdownHeight - 10);
+        } else {
+          // Position below
+          top = rect.bottom + window.scrollY + 10;
+        }
+        
+        // Calculate left position - center align with input if possible
+        let left = rect.left + window.scrollX + (rect.width / 2) - (dropdownWidth / 2);
+        // Ensure dropdown doesn't go off screen
+        left = Math.max(10, Math.min(left, viewportWidth - dropdownWidth - 10));
+        
+        setDropdownPosition({ top, left });
       };
 
       updatePosition();
@@ -408,10 +426,10 @@ const DateRangePicker = ({
 
       {isOpen && createPortal(
         <div 
-          className="fixed bg-white border border-gray-200 rounded-xl shadow-2xl z-[10000] p-6 min-w-[320px] max-w-sm"
+          className="fixed bg-white border border-gray-200 rounded-xl shadow-2xl z-[10000] p-6 w-[360px] max-h-[90vh] overflow-y-auto"
           style={{
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
           }}
           onClick={(e) => e.stopPropagation()}
         >

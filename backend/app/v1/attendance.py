@@ -302,6 +302,8 @@ async def mark_attendance(
             # Calculate team's overall status based on member attendance
             team_status = _calculate_team_status(team_members, attendance_strategy, session_id)
             
+            logger.info(f"Calculated team status for {team_registration['registration_id']}: {team_status}")
+            
             # Update the database with the modified team registration and team status
             await DatabaseOperations.update_one(
                 collection_name,
@@ -309,8 +311,8 @@ async def mark_attendance(
                 {
                     "$set": {
                         "team_members": team_members,
-                        "registration.status": team_status,  # Update team status
-                        "team.status": team_status  # Also update team.status for compatibility
+                        "team.status": team_status,  # Update team status
+                        "updated_at": datetime.now(timezone.utc)
                     }
                 }
             )
@@ -415,22 +417,42 @@ async def get_attendance_analytics(
         faculty_present = 0
         
         for participant in all_participants:
-            attendance = participant.get("attendance", {})
-            status = attendance.get("status", "pending")
-            percentage = attendance.get("percentage", 0.0)
-            
-            if status == "present" or percentage == 100.0:
-                present_count += 1
-                if "student" in participant:
-                    student_present += 1
+            # For team registrations, check team.status instead of attendance.status
+            if participant.get("registration_type") == "team":
+                team_status = participant.get("team", {}).get("status", "confirmed")
+                
+                # Count based on team status
+                if team_status == "present":
+                    present_count += 1
+                    if "student" in participant or participant.get("event", {}).get("target_audience") == "student":
+                        student_present += 1
+                    else:
+                        faculty_present += 1
+                elif team_status == "absent":
+                    absent_count += 1
+                elif team_status == "partial":
+                    partial_count += 1
                 else:
-                    faculty_present += 1
-            elif status == "absent" or percentage == 0.0:
-                absent_count += 1
-            elif 0 < percentage < 100:
-                partial_count += 1
+                    # confirmed or other statuses = pending
+                    pending_count += 1
             else:
-                pending_count += 1
+                # Individual registration - check individual attendance
+                attendance = participant.get("attendance", {})
+                status = attendance.get("status", "pending")
+                percentage = attendance.get("percentage", 0.0)
+                
+                if status == "present" or percentage == 100.0:
+                    present_count += 1
+                    if "student" in participant:
+                        student_present += 1
+                    else:
+                        faculty_present += 1
+                elif status == "absent" or percentage == 0.0:
+                    absent_count += 1
+                elif 0 < percentage < 100:
+                    partial_count += 1
+                else:
+                    pending_count += 1
         
         attendance_rate = (present_count / total_registered * 100) if total_registered > 0 else 0
         

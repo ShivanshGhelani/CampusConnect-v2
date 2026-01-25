@@ -1286,15 +1286,34 @@ async def get_event_stats(
         if not event:
             return {"success": False, "message": "Event not found or no statistics available"}
         
+        # Get target audience to determine which registration collection to use
+        target_audience = event.get('target_audience', 'student')
+        
         # Calculate basic statistics from event data
         registrations = event.get('registered_students', {})
         team_registrations = event.get('team_registrations', {})
         attendances = event.get('attendances', {})
         certificates = event.get('certificates', {})
         
-        total_individual_registrations = len(registrations)
-        total_team_registrations = len(team_registrations)
-        total_team_members = sum(len([k for k in team.keys() if k.startswith("22")]) for team in team_registrations.values() if isinstance(team, dict))
+        # Count registrations based on target audience
+        total_individual_registrations = 0
+        total_team_registrations = 0
+        total_team_members = 0
+        
+        # For student or all target audience, count from registered_students
+        if target_audience in ['student', 'all']:
+            total_individual_registrations += len(registrations)
+            total_team_registrations += len(team_registrations)
+            total_team_members += sum(len([k for k in team.keys() if k.startswith("22")]) for team in team_registrations.values() if isinstance(team, dict))
+        
+        # For faculty or all target audience, count from faculty_registrations collection
+        if target_audience in ['faculty', 'all']:
+            faculty_registrations = await DatabaseOperations.count_documents(
+                "faculty_registrations",
+                {"event.event_id": event_id}
+            )
+            total_individual_registrations += faculty_registrations
+        
         total_participants = total_individual_registrations + total_team_members
         total_attendances = len(attendances)
         total_certificates = len(certificates)

@@ -1457,6 +1457,8 @@ async def mark_attendance(
             # Calculate team's overall status based on member attendance
             team_status = _calculate_team_status(team_members, attendance_strategy, session_marked or f"day_{day_marked}" if day_marked else None)
             
+            logger.info(f"Calculated team status for {registration_id}: {team_status}")
+            
             # Update the team registration with modified team_members and team status
             update_result = await DatabaseOperations.update_one(
                 collection_name,
@@ -1464,8 +1466,8 @@ async def mark_attendance(
                 {
                     "$set": {
                         "team_members": team_members,
-                        "registration.status": team_status,  # Update team status
-                        "team.status": team_status  # Also update team.status for compatibility
+                        "team.status": team_status,  # Update team status
+                        "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
                     }
                 }
             )

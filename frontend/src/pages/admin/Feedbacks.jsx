@@ -110,7 +110,7 @@ function Feedbacks() {
         ...eventData,
         event_stats: eventStats || passedData?.event_stats || {},
         attendance_stats: passedData?.attendance_stats || null,
-        registrations_count: registrationsCountFromProps,
+        registrations_count: eventStats?.registrations_count || registrationsCountFromProps || 0,
         feedback_form: feedbackForm,
         feedback_analytics: feedbackAnalytics,
         feedback_responses: feedbackResponses

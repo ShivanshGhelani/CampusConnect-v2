@@ -244,11 +244,6 @@ function EventDetail() {
       // Process event details
       if (allData.event?.success) {
         setEvent(allData.event.event);
-        
-        // DEBUG: Log attendance strategy structure
-        console.log('🔍 Event attendance_strategy:', allData.event.event.attendance_strategy);
-        console.log('🔍 Full event object:', allData.event.event);
-
       } else {
         throw new Error(allData.event?.message || 'Failed to fetch event details');
       }
@@ -656,7 +651,6 @@ function EventDetail() {
       }
 
     } catch (error) {
-      console.error('Error generating event report:', error);
       setError('Failed to generate event report. Please try again.');
       alert('Failed to generate event report. Please try again.');
     }
@@ -962,9 +956,7 @@ function EventDetail() {
         }, 500);
       };
 
-    } catch (error) {
-      console.error('Error generating custom export:', error);
-      
+    } catch (error) {      
       // Remove loading toast if exists
       const loadingToast = document.querySelector('.fixed.top-4.right-4');
       if (loadingToast) {
@@ -1021,7 +1013,6 @@ function EventDetail() {
 
       // Validate the date
       if (isNaN(eventStartDateTime.getTime())) {
-        console.error('Invalid event start date/time:', event.start_date, event.start_time);
         return false;
       }
 
@@ -1036,16 +1027,9 @@ function EventDetail() {
       // Allow attendance if current time is within 3 hours of event start (or after event has started)
       const canTake = timeDifference <= threeHoursInMs;
 
-      console.log('Attendance availability check:', {
-        eventStart: eventStartDateTime.toLocaleString(),
-        currentTime: currentTime.toLocaleString(),
-        timeDifference: Math.round(timeDifference / (1000 * 60)) + ' minutes',
-        canTakeAttendance: canTake
-      });
 
       return canTake;
     } catch (error) {
-      console.error('Error calculating attendance availability:', error);
       return false;
     }
   };
@@ -1095,7 +1079,7 @@ function EventDetail() {
 
       return null;
     } catch (error) {
-      console.error('Error calculating attendance message:', error);
+     
       return "Unable to determine attendance availability";
     }
   };
@@ -1369,7 +1353,7 @@ function EventDetail() {
                                 setExportDropdownOpen(false);
                                 setExportDropdownSticky(false);
                               } catch (error) {
-                                console.error('Error generating Event QR:', error);
+                               
                                 alert('Failed to generate Event QR code. Please try again.');
                               }
                             }}
@@ -1385,7 +1369,7 @@ function EventDetail() {
                                 setExportDropdownOpen(false);
                                 setExportDropdownSticky(false);
                               } catch (error) {
-                                console.error('Error generating Feedback QR:', error);
+                               
                                 alert('Failed to generate Feedback QR code. Please try again.');
                               }
                             }}
@@ -1428,46 +1412,119 @@ function EventDetail() {
                                 `;
                                 document.body.appendChild(loadingToast);
 
-                                // Fetch all registrations in batches
-                                let allRegistrations = [];
-                                const batchSize = 10;
-                                let currentPage = 1;
-                                let hasMore = true;
+                                // Fetch all registrations using the unified participants API
+                                const response = await fetchParticipantsWithCache(eventId, adminAPI, {});
 
-                                while (hasMore) {
-                                  const response = await adminAPI.getEventRegistrations(eventId, {
-                                    page: currentPage,
-                                    limit: batchSize,
-                                    status: 'all'
-                                  });
-
-                                  if (response.data.success && response.data.registrations) {
-                                    allRegistrations = [...allRegistrations, ...response.data.registrations];
-                                    
-                                    // Update loading message
-                                    loadingToast.innerHTML = `
-                                      <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                      <span>Loading registrations... (${allRegistrations.length} loaded)</span>
-                                    `;
-
-                                    // Check if there are more pages
-                                    hasMore = response.data.has_more || false;
-                                    currentPage++;
-                                  } else {
-                                    hasMore = false;
-                                  }
-                                }
-
-                                if (allRegistrations.length === 0) {
+                                if (!response?.success || !response.participants || response.participants.length === 0) {
                                   document.body.removeChild(loadingToast);
                                   alert('No registrations available to generate sign sheet');
                                   setExportDropdownOpen(false);
                                   setExportDropdownSticky(false);
                                   return;
                                 }
+
+                                // Transform participants similar to fetchAllRegistrations
+                                const allRegistrations = [];
+                                const isTeamBasedEvent = event?.is_team_based || false;
+                                
+                                response.participants.forEach(participant => {
+                                  if (participant.registration_type === 'individual') {
+                                    if (participant.participant_type === 'faculty') {
+                                      // Faculty individual registration
+                                      allRegistrations.push({
+                                        full_name: participant.full_name || participant.name,
+                                        name: participant.full_name || participant.name,
+                                        employee_id: participant.employee_id,
+                                        email: participant.email,
+                                        department: participant.department,
+                                        designation: participant.designation,
+                                        registration_date: participant.registration_date,
+                                        mobile_no: participant.phone,
+                                        contact_no: participant.phone,
+                                        phone: participant.phone,
+                                        registration_id: participant.registration_id,
+                                        registration_type: 'individual',
+                                        user_type: 'faculty'
+                                      });
+                                    } else {
+                                      // Student individual registration
+                                      allRegistrations.push({
+                                        full_name: participant.full_name || participant.name,
+                                        name: participant.full_name || participant.name,
+                                        enrollment_no: participant.enrollment_no,
+                                        email: participant.email,
+                                        department: participant.department,
+                                        semester: participant.semester,
+                                        registration_date: participant.registration_date,
+                                        mobile_no: participant.phone,
+                                        phone: participant.phone,
+                                        registration_id: participant.registration_id,
+                                        registration_type: 'individual',
+                                        user_type: 'student'
+                                      });
+                                    }
+                                  } else if (participant.registration_type === 'team') {
+                                    // For team-based events, keep team as a unit
+                                    if (isTeamBasedEvent) {
+                                      const teamMembers = participant.team_members || [];
+                                      
+                                      // Flatten team member structure - extract from nested student object
+                                      const flattenedMembers = teamMembers.map(member => ({
+                                        registration_id: member.registration_id || '',
+                                        name: member.name || '',
+                                        full_name: member.name || member.full_name || '',
+                                        enrollment_no: member.enrollment_no || '',
+                                        phone: member.phone || member.mobile_no || '',
+                                        mobile_no: member.phone || member.mobile_no || '',
+                                        email: member.email || '',
+                                        department: member.department || '',
+                                        semester: member.semester || '',
+                                        is_team_leader: member.is_team_leader || false
+                                      }));
+                                      
+                                      const teamLeader = flattenedMembers.find(m => m.is_team_leader) || flattenedMembers[0] || {};
+                                      
+                                      allRegistrations.push({
+                                        full_name: participant.team_name || participant.name,
+                                        name: participant.team_name || participant.name,
+                                        team_name: participant.team_name || participant.name,
+                                        team_leader_name: teamLeader.name || teamLeader.full_name || 'Unknown',
+                                        team_leader_enrollment: teamLeader.enrollment_no || '',
+                                        team_leader_phone: teamLeader.phone || teamLeader.mobile_no || '',
+                                        team_leader_email: teamLeader.email || '',
+                                        team_size: participant.team_size || participant.member_count || flattenedMembers.length,
+                                        member_count: participant.member_count || participant.team_size || flattenedMembers.length,
+                                        team_members: flattenedMembers,
+                                        department: teamLeader.department || participant.department || 'N/A',
+                                        registration_date: participant.registration_date,
+                                        registration_id: participant.registration_id,
+                                        registration_type: 'team',
+                                        user_type: participant.participant_type || 'student'
+                                      });
+                                    } else {
+                                      // For non-team events, expand team members as individual entries
+                                      const teamMembers = participant.team_members || [];
+                                      teamMembers.forEach(member => {
+                                        allRegistrations.push({
+                                          full_name: member.name || member.full_name || 'Unknown Member',
+                                          name: member.name || member.full_name || 'Unknown Member',
+                                          enrollment_no: member.enrollment_no || '',
+                                          email: member.email || '',
+                                          department: member.department || '',
+                                          semester: member.semester || '',
+                                          phone: member.phone || member.mobile_no || '',
+                                          mobile_no: member.phone || member.mobile_no || '',
+                                          contact_no: member.phone || member.mobile_no || '',
+                                          registration_id: participant.registration_id,
+                                          registration_type: 'team_member',
+                                          user_type: participant.participant_type || 'student',
+                                          team_name: participant.team_name || participant.name,
+                                          is_team_leader: member.is_team_leader || false
+                                        });
+                                      });
+                                    }
+                                  }
+                                });
 
                                 loadingToast.innerHTML = `
                                   <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1524,36 +1581,100 @@ function EventDetail() {
                                   ? event.target_audience.charAt(0).toUpperCase() + event.target_audience.slice(1)
                                   : 'Students & Faculty';
 
-                                // Determine column header based on target audience
-                                const firstUserType = allRegistrations[0]?.user_type || 'student';
-                                const idColumnHeader = firstUserType === 'faculty' ? 'Employee ID' : 'Roll No.';
+                                // Determine column header based on event's target audience
+                                const isFacultyEvent = event.target_audience === 'faculty';
+                                const isTeamBased = event?.is_team_based || false;
+                                const idColumnHeader = isFacultyEvent ? 'Employee ID' : 'Enrollment No.';
 
                                 // Generate table rows
                                 let tableRows = '';
-                                allRegistrations.forEach((registration, index) => {
-                                  // Registration data is at top level (like in modal)
-                                  const name = registration.full_name || registration.name || 'Unknown';
-                                  const enrollmentId = registration.user_type === 'faculty' 
-                                    ? (registration.employee_id || 'N/A')
-                                    : (registration.enrollment_no || 'N/A');
-                                  const department = registration.department || 'N/A';
-                                  const phone = registration.mobile_no || registration.contact_no || registration.phone || 'N/A';
-                                  const email = registration.email || 'N/A';
+                                let rowCounter = 1;
+                                
+                                allRegistrations.forEach((registration) => {
+                                  if (registration.registration_type === 'team') {
+                                    // Team registration - show team header then members
+                                    const teamName = registration.team_name || registration.full_name || registration.name || 'Unknown Team';
+                                    const teamSize = registration.team_size || registration.member_count || 0;
+                                    const teamMembers = registration.team_members || [];
 
-                                  tableRows += `
-                                    <tr>
-                                      <td>${index + 1}</td>
-                                      <td>${registration.registration_id || 'N/A'}</td>
-                                      <td>${enrollmentId}</td>
-                                      <td>${name}</td>
-                                      <td>${department}</td>
-                                      <td class="contact-cell">
-                                        <div>📞 ${phone}</div>
-                                        <div>✉️ ${email}</div>
-                                      </td>
-                                      <td class="sign-box"></td>
-                                    </tr>
-                                  `;
+                                    // Team Header Row (merged cells)
+                                    tableRows += `
+                                      <tr style="background-color: #dbeafe; border-left: 4px solid #3b82f6;">
+                                        <td colspan="7" style="font-weight: bold; padding: 10px 8px; font-size: 10px;">
+                                          🏆 ${teamName} 
+                                          <span style="color: #666; font-weight: normal; margin-left: 10px;">
+                                            (Registration ID: ${registration.registration_id || 'N/A'} | ${teamSize} members)
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    `;
+
+                                    // Sort members to put team leader first
+                                    const sortedMembers = [...teamMembers].sort((a, b) => {
+                                      if (a.is_team_leader) return -1;
+                                      if (b.is_team_leader) return 1;
+                                      return 0;
+                                    });
+
+                                    // Team Member Rows
+                                    sortedMembers.forEach((member, memberIndex) => {
+                                      const memberName = member.student?.name || member.name || member.full_name || 'Unknown Member';
+                                      const enrollmentId = member.student?.enrollment_no || member.enrollment_no || 'N/A';
+                                      // Use individual member registration ID from backend
+                                      const memberRegistrationId = member.registration_id || 'N/A';
+                                      const department = member.student?.department || member.department || 'N/A';
+                                      const phone = member.student?.phone || member.phone || member.mobile_no || member.contact_no || 'N/A';
+                                      const email = member.student?.email || member.email || 'N/A';
+                                      const isLeader = member.is_team_leader || false;
+
+                                      tableRows += `
+                                        <tr style="background-color: #f0f9ff;">
+                                          <td>${rowCounter}</td>
+                                          <td>${memberRegistrationId}</td>
+                                          <td>${enrollmentId}</td>
+                                          <td>
+                                            ${memberName}
+                                            ${isLeader ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 7px; margin-left: 5px;">LEADER</span>' : ''}
+                                          </td>
+                                          <td>${department}</td>
+                                          <td class="contact-cell">
+                                            <div>📞 ${phone}</div>
+                                            <div>✉️ ${email}</div>
+                                          </td>
+                                          <td class="sign-box"></td>
+                                        </tr>
+                                      `;
+                                      rowCounter++;
+                                    });
+                                  } else {
+                                    // Individual registration
+                                    const name = registration.full_name || registration.name || 'Unknown';
+                                    
+                                    // Determine ID field based on the individual registration's user_type
+                                    const enrollmentId = registration.user_type === 'faculty' 
+                                      ? (registration.employee_id || 'N/A')
+                                      : (registration.enrollment_no || 'N/A');
+                                    
+                                    const department = registration.department || 'N/A';
+                                    const phone = registration.mobile_no || registration.contact_no || registration.phone || 'N/A';
+                                    const email = registration.email || 'N/A';
+
+                                    tableRows += `
+                                      <tr>
+                                        <td>${rowCounter}</td>
+                                        <td>${registration.registration_id || 'N/A'}</td>
+                                        <td>${enrollmentId}</td>
+                                        <td>${name}</td>
+                                        <td>${department}</td>
+                                        <td class="contact-cell">
+                                          <div>📞 ${phone}</div>
+                                          <div>✉️ ${email}</div>
+                                        </td>
+                                        <td class="sign-box"></td>
+                                      </tr>
+                                    `;
+                                    rowCounter++;
+                                  }
                                 });
 
                                 // Replace template placeholders
@@ -1571,6 +1692,7 @@ function EventDetail() {
                                   .replace(/{{TOTAL_REGISTRATIONS}}/g, allRegistrations.length)
                                   .replace(/{{ID_COLUMN_HEADER}}/g, idColumnHeader)
                                   .replace(/{{TABLE_ROWS}}/g, tableRows)
+                                  .replace(/{{TEAM_ROWS}}/g, '') // Empty for now, teams handled in TABLE_ROWS
                                   .replace(/{{CURRENT_YEAR}}/g, new Date().getFullYear());
 
                                 // Remove loading toast
@@ -1589,7 +1711,7 @@ function EventDetail() {
                                 };
 
                               } catch (error) {
-                                console.error('Error generating sign sheet:', error);
+                                
                                 
                                 // Remove loading toast if exists
                                 const loadingToast = document.querySelector('.fixed.top-4.right-4');
@@ -1682,71 +1804,200 @@ function EventDetail() {
                                 // Determine if event is for students or faculty
                                 const targetAudience = event?.target_audience || config?.target_audience || 'student';
                                 const isStudentEvent = targetAudience === 'student' || targetAudience === 'students' || targetAudience.includes('student');
+                                const isTeamBasedEvent = event?.is_team_based || false;
                                 const semDesigColumnHeader = isStudentEvent ? 'Year' : 'Designation';
 
                                 // Generate attendance table rows
                                 let tableRows = '';
-                                participants.forEach((participant, index) => {
-                                  const isStudent = participant.participant_type === 'student';
-                                  const profile = isStudent ? participant.student : participant.faculty;
-                                  const attendance = participant.attendance || {};
-                                  const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
-                                  
-                                  let statusBadge = '';
-                                  let statusPercentage = '';
-                                  
-                                  switch (attendance.status) {
-                                    case 'present':
-                                      statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
-                                      statusPercentage = '100%';
-                                      break;
-                                    case 'partial':
-                                      statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
-                                      statusPercentage = `${attendance.percentage || 0}%`;
-                                      break;
-                                    case 'absent':
-                                      statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
-                                      statusPercentage = '0%';
-                                      break;
-                                    default:
-                                      statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
-                                      statusPercentage = '0%';
-                                  }
+                                let rowCounter = 1;
+                                
+                                participants.forEach((participant) => {
+                                  // Check if this is a team registration
+                                  if (isTeamBasedEvent && participant.registration_type === 'team') {
+                                    // Team-based attendance
+                                    const attendance = participant.attendance || {};
+                                    const teamName = participant.team?.team_name || participant.team_name || participant.team?.name || 'Unknown Team';
+                                    const teamSize = participant.team?.team_size || participant.team_size || participant.member_count || participant.team?.members?.length || 0;
+                                    
+                                    // Check both attendance.status and team.status for backward compatibility
+                                    const teamStatus = attendance.status || participant.team?.status || 'confirmed';
+                                    
+                                    let teamStatusBadge = '';
+                                    let teamStatusPercentage = '';
+                                    
+                                    switch (teamStatus) {
+                                      case 'present':
+                                        teamStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                                        teamStatusPercentage = '100%';
+                                        break;
+                                      case 'partial':
+                                        teamStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                                        teamStatusPercentage = `${attendance.percentage || 0}%`;
+                                        break;
+                                      case 'absent':
+                                        teamStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                                        teamStatusPercentage = '0%';
+                                        break;
+                                      default:
+                                        teamStatusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+                                        teamStatusPercentage = '0%';
+                                    }
 
-                                  // Calculate sessions marked
-                                  let sessionsMarked;
-                                  if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
-                                    sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
-                                  } else if (attendance.status === 'present') {
-                                    sessionsMarked = `${totalSessions}/${totalSessions}`;
-                                  } else if (attendance.status === 'partial') {
-                                    const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
-                                    sessionsMarked = `${markedCount}/${totalSessions}`;
+                                    // Calculate sessions marked for team
+                                    let teamSessionsMarked;
+                                    // Use actual attendance.sessions array or sessions_attended count
+                                    const sessionsAttended = attendance.sessions_attended || 
+                                      (attendance.sessions && Array.isArray(attendance.sessions) ? 
+                                        attendance.sessions.filter(s => s.status === 'present').length : 0);
+                                    const totalSessionsForTeam = attendance.total_sessions || totalSessions;
+                                    teamSessionsMarked = `${sessionsAttended}/${totalSessionsForTeam}`;
+
+                                    // Team Header Row (merged cells)
+                                    tableRows += `
+                                      <tr style="background-color: #dbeafe; border-left: 4px solid #3b82f6;">
+                                        <td colspan="9" style="font-weight: bold; padding: 10px 8px;">
+                                          🏆 ${teamName} 
+                                          <span style="color: #666; font-weight: normal; margin-left: 10px;">
+                                            (Registration ID: ${participant.registration_id || 'N/A'} | ${teamSize} members | Team Status: ${teamStatusBadge} - ${teamStatusPercentage})
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    `;
+
+                                    // Get team members with their individual attendance
+                                    const teamMembers = participant.team_members || participant.team?.members || [];
+                                    
+                                    // Sort members to put team leader first
+                                    const sortedMembers = [...teamMembers].sort((a, b) => {
+                                      if (a.is_team_leader) return -1;
+                                      if (b.is_team_leader) return 1;
+                                      return 0;
+                                    });
+
+                                    // Team Member Rows
+                                    sortedMembers.forEach((member, memberIndex) => {
+                                      const memberName = member.student?.name || member.name || member.full_name || 'Unknown Member';
+                                      const enrollmentId = member.student?.enrollment_no || member.enrollment_no || member.employee_id || 'N/A';
+                                      // Use individual member registration ID from backend
+                                      const memberRegistrationId = member.registration_id || 'N/A';
+                                      const department = member.student?.department || member.department || 'N/A';
+                                      const year = member.student?.semester || member.year || member.semester || 'N/A';
+                                      const isLeader = member.is_team_leader || false;
+
+                                      // Get individual member attendance if available
+                                      const memberAttendance = member.attendance || {};
+                                      let memberStatusBadge = '';
+                                      let memberStatusPercentage = '';
+                                      
+                                      switch (memberAttendance.status) {
+                                        case 'present':
+                                          memberStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                                          memberStatusPercentage = '100%';
+                                          break;
+                                        case 'partial':
+                                          memberStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                                          memberStatusPercentage = `${memberAttendance.percentage || 0}%`;
+                                          break;
+                                        case 'absent':
+                                          memberStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                                          memberStatusPercentage = '0%';
+                                          break;
+                                        default:
+                                          // Use team status as default
+                                          memberStatusBadge = teamStatusBadge;
+                                          memberStatusPercentage = teamStatusPercentage;
+                                      }
+
+                                      let memberSessionsMarked;
+                                      // Use actual member attendance sessions or sessions_attended count
+                                      const memberSessionsAttended = memberAttendance.sessions_attended || 
+                                        (memberAttendance.sessions && Array.isArray(memberAttendance.sessions) ? 
+                                          memberAttendance.sessions.filter(s => s.status === 'present').length : 0);
+                                      const memberTotalSessions = memberAttendance.total_sessions || totalSessions;
+                                      memberSessionsMarked = `${memberSessionsAttended}/${memberTotalSessions}`;
+
+                                      tableRows += `
+                                        <tr style="background-color: #f0f9ff;">
+                                          <td>${rowCounter}</td>
+                                          <td>${enrollmentId}</td>
+                                          <td>${memberRegistrationId}</td>
+                                          <td>
+                                            ${memberName}
+                                            ${isLeader ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 7px; margin-left: 5px;">LEADER</span>' : ''}
+                                          </td>
+                                          <td>${department}</td>
+                                          <td>${year}</td>
+                                          <td>${memberStatusBadge}</td>
+                                          <td>${memberStatusPercentage}</td>
+                                          <td>${memberSessionsMarked}</td>
+                                        </tr>
+                                      `;
+                                      rowCounter++;
+                                    });
                                   } else {
-                                    sessionsMarked = `0/${totalSessions}`;
-                                  }
+                                    // Individual attendance
+                                    const isStudent = participant.participant_type === 'student';
+                                    const profile = isStudent ? participant.student : participant.faculty;
+                                    const attendance = participant.attendance || {};
+                                    const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
+                                    
+                                    let statusBadge = '';
+                                    let statusPercentage = '';
+                                    
+                                    switch (attendance.status) {
+                                      case 'present':
+                                        statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                                        statusPercentage = '100%';
+                                        break;
+                                      case 'partial':
+                                        statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                                        statusPercentage = `${attendance.percentage || 0}%`;
+                                        break;
+                                      case 'absent':
+                                        statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                                        statusPercentage = '0%';
+                                        break;
+                                      default:
+                                        statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+                                        statusPercentage = '0%';
+                                    }
 
-                                  // Get year/designation
-                                  let semesterOrDesignation = 'N/A';
-                                  if (isStudent) {
-                                    semesterOrDesignation = profile?.year || profile?.semester || participant.student?.year || 'N/A';
-                                  } else {
-                                    semesterOrDesignation = participant.faculty?.designation || profile?.designation || 'N/A';
-                                  }
+                                    // Calculate sessions marked
+                                    let sessionsMarked;
+                                    if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
+                                      sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
+                                    } else if (attendance.status === 'present') {
+                                      sessionsMarked = `${totalSessions}/${totalSessions}`;
+                                    } else if (attendance.status === 'partial') {
+                                      const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
+                                      sessionsMarked = `${markedCount}/${totalSessions}`;
+                                    } else {
+                                      sessionsMarked = `0/${totalSessions}`;
+                                    }
 
-                                  tableRows += `
-                                    <tr>
-                                      <td>${index + 1}</td>
-                                      <td>${enrollmentId}</td>
-                                      <td>${participant.registration_id || 'N/A'}</td>
-                                      <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
-                                      <td>${profile?.department || 'N/A'}</td>
-                                      <td>${semesterOrDesignation}</td>
-                                      <td>${statusBadge}</td>
-                                      <td>${statusPercentage}</td>
-                                      <td>${sessionsMarked}</td>
-                                    </tr>
-                                  `;
+                                    // Get year/designation
+                                    let semesterOrDesignation = 'N/A';
+                                    if (isStudent) {
+                                      semesterOrDesignation = profile?.year || profile?.semester || participant.student?.year || 'N/A';
+                                    } else {
+                                      semesterOrDesignation = participant.faculty?.designation || profile?.designation || 'N/A';
+                                    }
+
+                                    tableRows += `
+                                      <tr>
+                                        <td>${rowCounter}</td>
+                                        <td>${enrollmentId}</td>
+                                        <td>${participant.registration_id || 'N/A'}</td>
+                                        <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
+                                        <td>${profile?.department || 'N/A'}</td>
+                                        <td>${semesterOrDesignation}</td>
+                                        <td>${statusBadge}</td>
+                                        <td>${statusPercentage}</td>
+                                        <td>${sessionsMarked}</td>
+                                      </tr>
+                                    `;
+                                    rowCounter++;
+                                  }
                                 });
 
                                 // Calculate attendance percentage
@@ -1807,7 +2058,7 @@ function EventDetail() {
                                 };
 
                               } catch (error) {
-                                console.error('Error generating attendance report:', error);
+                                
                                 alert('Failed to generate attendance report. Please try again.');
                               }
                               setExportDropdownOpen(false);
@@ -2032,7 +2283,6 @@ function EventDetail() {
                                 };
 
                               } catch (error) {
-                                console.error('Error generating feedback report:', error);
                                 alert('Failed to generate feedback report. Please try again.');
                               }
                               setExportDropdownOpen(false);
@@ -2117,7 +2367,7 @@ function EventDetail() {
 
           {/* Statistics Cards */}
           {eventStats && recentRegistrations && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 ${event.is_certificate_based ? 'lg:grid-cols-4' : 'lg:grid-cols-3 max-w-4xl mx-auto'}`}>
               <div className="bg-white rounded-lg stats-card border-l-4 border-blue-500 p-4 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -2216,27 +2466,29 @@ function EventDetail() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg stats-card border-l-4 border-green-500 p-4 hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <i className="fas fa-certificate text-green-500 text-lg"></i>
+              {event.is_certificate_based && (
+                <div className="bg-white rounded-lg stats-card border-l-4 border-green-500 p-4 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <i className="fas fa-certificate text-green-500 text-lg"></i>
+                        </div>
                       </div>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-gray-500 text-xs font-medium">Certificates Issued</p>
-                      <p className="text-xl font-bold text-gray-800">{eventStats.certificates_count || 0}</p>
-                      <p className="text-xs text-gray-400">
-                        {eventStats.feedback_count > 0 ?
-                          `${Math.round((eventStats.certificates_count / eventStats.feedback_count) * 100)}% completion rate` :
-                          '0% completion rate'
-                        }
-                      </p>
+                      <div className="ml-3">
+                        <p className="text-gray-500 text-xs font-medium">Certificates Issued</p>
+                        <p className="text-xl font-bold text-gray-800">{eventStats.certificates_count || 0}</p>
+                        <p className="text-xs text-gray-400">
+                          {eventStats.feedback_count > 0 ?
+                            `${Math.round((eventStats.certificates_count / eventStats.feedback_count) * 100)}% completion rate` :
+                            '0% completion rate'
+                          }
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

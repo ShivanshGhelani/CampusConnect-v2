@@ -536,93 +536,206 @@ const UnifiedAttendancePortal = () => {
 
       // Generate attendance table rows
       let tableRows = '';
+      let rowCounter = 1;
+      
       participants.forEach((participant, index) => {
-        const isStudent = participant.participant_type === 'student';
-        const profile = isStudent ? participant.student : participant.faculty;
-        const attendance = participant.attendance || {};
-        const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
-        
-        // Debug log to see available fields
+        // Debug first participant to see data structure
         if (index === 0) {
-          console.log('🔍 First participant data:', {
-            participant_type: participant.participant_type,
-            profile: profile,
-            student: participant.student,
-            faculty: participant.faculty,
-            available_fields: Object.keys(profile || {})
+          console.log('🔍 Export Debug - First participant:', {
+            registration_type: participant.registration_type,
+            attendance_status: participant.attendance?.status,
+            team_status: participant.team?.status,
+            has_team: !!participant.team,
+            full_participant: participant
           });
         }
         
-        let statusBadge = '';
-        let statusPercentage = '';
-        
-        switch (attendance.status) {
-          case 'present':
-            statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
-            statusPercentage = '100%';
-            break;
-          case 'partial':
-            statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
-            statusPercentage = `${attendance.percentage || 0}%`;
-            break;
-          case 'absent':
-            statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
-            statusPercentage = '0%';
-            break;
-          default:
-            statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
-            statusPercentage = '0%';
-        }
+        // Check if this is a team registration
+        if (eventData?.is_team_based && participant.registration_type === 'team') {
+          // Team-based attendance
+          const attendance = participant.attendance || {};
+          const teamName = participant.team?.team_name || participant.team_name || participant.team?.name || 'Unknown Team';
+          const teamSize = participant.team?.team_size || participant.team_size || participant.member_count || participant.team?.members?.length || 0;
+          
+          // Check both attendance.status and team.status for backward compatibility
+          const teamStatus = attendance.status || participant.team?.status || 'confirmed';
+          
+          let teamStatusBadge = '';
+          let teamStatusPercentage = '';
+          
+          switch (teamStatus) {
+            case 'present':
+              teamStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+              teamStatusPercentage = '100%';
+              break;
+            case 'partial':
+              teamStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+              teamStatusPercentage = `${attendance.percentage || 0}%`;
+              break;
+            case 'absent':
+              teamStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+              teamStatusPercentage = '0%';
+              break;
+            default:
+              teamStatusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+              teamStatusPercentage = '0%';
+          }
 
-        // Calculate sessions marked vs total
-        let sessionsMarked;
-        if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
-          // Use actual sessions_marked array if available
-          sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
-        } else if (attendance.status === 'present') {
-          // If present (100%), show all sessions marked
-          sessionsMarked = `${totalSessions}/${totalSessions}`;
-        } else if (attendance.status === 'partial') {
-          // If partial, calculate based on percentage
-          const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
-          sessionsMarked = `${markedCount}/${totalSessions}`;
+          // Calculate sessions marked for team
+          let teamSessionsMarked;
+          // Use actual attendance.sessions array or sessions_attended count
+          const sessionsAttended = attendance.sessions_attended || 
+            (attendance.sessions && Array.isArray(attendance.sessions) ? 
+              attendance.sessions.filter(s => s.status === 'present').length : 0);
+          const totalSessionsForTeam = attendance.total_sessions || totalSessions;
+          teamSessionsMarked = `${sessionsAttended}/${totalSessionsForTeam}`;
+
+          // Team Header Row (merged cells)
+          tableRows += `
+            <tr style="background-color: #dbeafe; border-left: 4px solid #3b82f6;">
+              <td colspan="9" style="font-weight: bold; padding: 10px 8px;">
+                🏆 ${teamName} 
+                <span style="color: #666; font-weight: normal; margin-left: 10px;">
+                  (Registration ID: ${participant.registration_id || 'N/A'} | ${teamSize} members | Team Status: ${teamStatusBadge} - ${teamStatusPercentage})
+                </span>
+              </td>
+            </tr>
+          `;
+
+          // Get team members with their individual attendance
+          const teamMembers = participant.team_members || participant.team?.members || [];
+          
+          // Sort members to put team leader first
+          const sortedMembers = [...teamMembers].sort((a, b) => {
+            if (a.is_team_leader) return -1;
+            if (b.is_team_leader) return 1;
+            return 0;
+          });
+
+          // Team Member Rows
+          sortedMembers.forEach((member, memberIndex) => {
+            const memberName = member.student?.name || member.name || member.full_name || 'Unknown Member';
+            const enrollmentId = member.student?.enrollment_no || member.enrollment_no || member.employee_id || 'N/A';
+            // Use individual member registration ID from backend
+            const memberRegistrationId = member.registration_id || 'N/A';
+            const department = member.student?.department || member.department || 'N/A';
+            const year = member.student?.semester || member.year || member.semester || 'N/A';
+            const isLeader = member.is_team_leader || false;
+
+            // Get individual member attendance if available
+            const memberAttendance = member.attendance || {};
+            let memberStatusBadge = '';
+            let memberStatusPercentage = '';
+            
+            switch (memberAttendance.status) {
+              case 'present':
+                memberStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                memberStatusPercentage = '100%';
+                break;
+              case 'partial':
+                memberStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                memberStatusPercentage = `${memberAttendance.percentage || 0}%`;
+                break;
+              case 'absent':
+                memberStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                memberStatusPercentage = '0%';
+                break;
+              default:
+                // Use team status as default
+                memberStatusBadge = teamStatusBadge;
+                memberStatusPercentage = teamStatusPercentage;
+            }
+
+            let memberSessionsMarked;
+            // Use actual member attendance sessions or sessions_attended count
+            const memberSessionsAttended = memberAttendance.sessions_attended || 
+              (memberAttendance.sessions && Array.isArray(memberAttendance.sessions) ? 
+                memberAttendance.sessions.filter(s => s.status === 'present').length : 0);
+            const memberTotalSessions = memberAttendance.total_sessions || totalSessions;
+            memberSessionsMarked = `${memberSessionsAttended}/${memberTotalSessions}`;
+
+            tableRows += `
+              <tr style="background-color: #f0f9ff;">
+                <td>${rowCounter}</td>
+                <td>${enrollmentId}</td>
+                <td>${memberRegistrationId}</td>
+                <td>
+                  ${memberName}
+                  ${isLeader ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 7px; margin-left: 5px;">LEADER</span>' : ''}
+                </td>
+                <td>${department}</td>
+                <td>${year}</td>
+                <td>${memberStatusBadge}</td>
+                <td>${memberStatusPercentage}</td>
+                <td>${memberSessionsMarked}</td>
+              </tr>
+            `;
+            rowCounter++;
+          });
         } else {
-          // Absent or not marked
-          sessionsMarked = `0/${totalSessions}`;
-        }
+          // Individual attendance
+          const isStudent = participant.participant_type === 'student';
+          const profile = isStudent ? participant.student : participant.faculty;
+          const attendance = participant.attendance || {};
+          const enrollmentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
+          
+          let statusBadge = '';
+          let statusPercentage = '';
+          
+          switch (attendance.status) {
+            case 'present':
+              statusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+              statusPercentage = '100%';
+              break;
+            case 'partial':
+              statusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+              statusPercentage = `${attendance.percentage || 0}%`;
+              break;
+            case 'absent':
+              statusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+              statusPercentage = '0%';
+              break;
+            default:
+              statusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+              statusPercentage = '0%';
+          }
 
-        // Get semester for students or designation for faculty
-        // Try multiple possible field names
-        let semesterOrDesignation = 'N/A';
-        if (isStudent) {
-          // Try various semester/year field names (DB has 'year' field, not 'semester')
-          semesterOrDesignation = profile?.year || profile?.semester || profile?.sem || 
-                                 profile?.current_semester || profile?.semester_no || 
-                                 participant.student?.year || participant.student?.semester || 'N/A';
-        } else {
-          // For faculty, try various designation field names
-          semesterOrDesignation = participant.faculty?.designation || profile?.designation || 
-                                 participant.faculty?.position || profile?.position || 'N/A';
-        }
-        
-        // If still N/A, log for debugging
-        if (semesterOrDesignation === 'N/A' && index === 0) {
-          console.log('⚠️ Semester/Designation not found. Available profile fields:', Object.keys(profile || {}));
-        }
+          // Calculate sessions marked
+          let sessionsMarked;
+          if (attendance.sessions_marked && Array.isArray(attendance.sessions_marked)) {
+            sessionsMarked = `${attendance.sessions_marked.length}/${totalSessions}`;
+          } else if (attendance.status === 'present') {
+            sessionsMarked = `${totalSessions}/${totalSessions}`;
+          } else if (attendance.status === 'partial') {
+            const markedCount = Math.round((attendance.percentage / 100) * totalSessions);
+            sessionsMarked = `${markedCount}/${totalSessions}`;
+          } else {
+            sessionsMarked = `0/${totalSessions}`;
+          }
 
-        tableRows += `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${enrollmentId}</td>
-            <td>${participant.registration_id || 'N/A'}</td>
-            <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
-            <td>${profile?.department || 'N/A'}</td>
-            <td>${semesterOrDesignation}</td>
-            <td>${statusBadge}</td>
-            <td>${statusPercentage}</td>
-            <td>${sessionsMarked}</td>
-          </tr>
-        `;
+          // Get year/designation
+          let semesterOrDesignation = 'N/A';
+          if (isStudent) {
+            semesterOrDesignation = profile?.year || profile?.semester || participant.student?.year || 'N/A';
+          } else {
+            semesterOrDesignation = participant.faculty?.designation || profile?.designation || 'N/A';
+          }
+
+          tableRows += `
+            <tr>
+              <td>${rowCounter}</td>
+              <td>${enrollmentId}</td>
+              <td>${participant.registration_id || 'N/A'}</td>
+              <td>${profile?.name || profile?.full_name || 'Unknown'}</td>
+              <td>${profile?.department || 'N/A'}</td>
+              <td>${semesterOrDesignation}</td>
+              <td>${statusBadge}</td>
+              <td>${statusPercentage}</td>
+              <td>${sessionsMarked}</td>
+            </tr>
+          `;
+          rowCounter++;
+        }
       });
 
       // Calculate attendance percentage
@@ -811,9 +924,7 @@ const UnifiedAttendancePortal = () => {
                       </div>
                       
                       <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span>Team Size: {team.team_size || teamMembers.length}</span>
                         <span>Leader: {teamMembers.find(m => m.is_team_leader)?.student?.full_name || teamMembers.find(m => m.is_team_leader)?.student?.name || 'Unknown'}</span>
-                        <span>Status: {team.status || 'active'}</span>
                       </div>
                       
                       <div className="flex items-center gap-4 mt-2">
@@ -1127,11 +1238,11 @@ const UnifiedAttendancePortal = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/admin/events')}
+              onClick={() => navigate(`/admin/events/${eventId}`)}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Events
+              Back to Event
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">

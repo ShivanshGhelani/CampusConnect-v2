@@ -128,9 +128,11 @@ async def get_participants(
                     
                     # Team members details for expandable view
                     "team_members": [{
+                        "registration_id": tm.get("registration_id", ""),
                         "name": tm.get("student", {}).get("name", "Unknown"),
                         "enrollment_no": tm.get("student", {}).get("enrollment_no", ""),
                         "email": tm.get("student", {}).get("email", ""),
+                        "phone": tm.get("student", {}).get("phone", ""),
                         "department": tm.get("student", {}).get("department", ""),
                         "semester": tm.get("student", {}).get("semester", ""),
                         "is_team_leader": tm.get("is_team_leader", False)

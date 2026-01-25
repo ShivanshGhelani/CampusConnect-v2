@@ -67,9 +67,9 @@ function FeedbackSetup() {
   const [formDescription, setFormDescription] = useState('Please share your feedback about this event.');
   const [formElements, setFormElements] = useState([]);
   const [feedbackEndDate, setFeedbackEndDate] = useState('');
+  const [feedbackEndTime, setFeedbackEndTime] = useState('23:59');
   const [selectedElement, setSelectedElement] = useState(null);
   const [showElementSelector, setShowElementSelector] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Element types configuration
@@ -587,7 +587,9 @@ function FeedbackSetup() {
 
       // Add feedback_end_date for non-certificate events
       if (event && !event.is_certificate_based && feedbackEndDate) {
-        formData.feedback_end_date = feedbackEndDate;
+        // Combine date and time into ISO datetime string
+        const feedbackDateTime = `${feedbackEndDate}T${feedbackEndTime}:00`;
+        formData.feedback_end_date = feedbackDateTime;
       }
 
       
@@ -709,11 +711,10 @@ function FeedbackSetup() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
+      <div className="min-h-screen -my-10 bg-white-50">
+        {/* Main Content */}
+        <div className="max-w-7xl  mx-auto mt-10">
+          <div className="flex items-center justify-between h-16 bg-white border-b max-w-7xl items-center justify-between mx-auto shadow-sm px-4 sm:px-6 lg:px-8 mb-6">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(`/admin/events/${eventId}/feedback`)}
@@ -728,13 +729,6 @@ function FeedbackSetup() {
               </div>
               <div className="flex items-center gap-3">
                 <ActionButton
-                  onClick={() => setShowPreview(!showPreview)}
-                  variant="secondary"
-                  icon={Eye}
-                >
-                  {showPreview ? 'Hide Preview' : 'Show Preview'}
-                </ActionButton>
-                <ActionButton
                   onClick={saveForm}
                   variant="success"
                   icon={Save}
@@ -745,14 +739,9 @@ function FeedbackSetup() {
                 </ActionButton>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className={`grid gap-8 ${showPreview ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
+          <div className="grid gap-3 lg:grid-cols-[2fr_1.5fr]">
             {/* Form Builder */}
-            <div className="space-y-6">
+            <div className="space-y-2">
               {/* Form Settings */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Form Settings</h2>
@@ -786,10 +775,10 @@ function FeedbackSetup() {
                   {!isLoading && event && !event.is_certificate_based && (
                     <DateRangePicker
                       label="Feedback Collection Deadline"
-                      description="Since this event doesn't distribute certificates, set a deadline for feedback collection. Participants can submit feedback until this date. Recommended: 7-14 days after event ends."
+                      description="Since this event doesn't distribute certificates, set a deadline for feedback collection. Participants can submit feedback until this date and time. Recommended: 7-14 days after event ends."
                       startDate={feedbackEndDate ? new Date(feedbackEndDate) : null}
                       endDate={null}
-                      startTime="23:59"
+                      startTime={feedbackEndTime}
                       endTime={null}
                       onDateChange={(date) => {
                         if (date) {
@@ -798,12 +787,16 @@ function FeedbackSetup() {
                           setFeedbackEndDate('');
                         }
                       }}
-                      onTimeChange={null}
+                      onTimeChange={(time) => {
+                        if (time) {
+                          setFeedbackEndTime(time);
+                        }
+                      }}
                       minDate={event.end_datetime ? new Date(event.end_datetime).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                       singleDate={true}
-                      includeTime={false}
+                      includeTime={true}
                       theme="green"
-                      placeholder="Select feedback deadline date"
+                      placeholder="Select feedback deadline date and time"
                       required={true}
                     />
                   )}
@@ -872,8 +865,7 @@ function FeedbackSetup() {
             </div>
 
             {/* Form Preview */}
-            {showPreview && (
-              <div className="lg:sticky lg:top-8">
+            <div className="lg:sticky lg:top-8">
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-gray-900">Form Preview</h2>
@@ -900,12 +892,11 @@ function FeedbackSetup() {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
-    </AdminLayout>
-  );
-}
+      </AdminLayout>
+    );
+  }
 
 export default FeedbackSetup;
