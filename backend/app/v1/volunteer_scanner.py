@@ -446,11 +446,15 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
         
         # Get all registrations with scans marked via scanner
         # Look for attendance.sessions where marked_by exists (indicating scanner marking)
+        # For individual registrations
         registrations_student = await DatabaseOperations.find_many(
             "student_registrations",
             {
                 "event.event_id": event_id,
-                "attendance.sessions.marked_by": {"$exists": True}
+                "$or": [
+                    {"attendance.sessions.marked_by": {"$exists": True}},
+                    {"attendance.marked_by": {"$exists": True}}  # For single-mark strategy
+                ]
             },
             limit=500
         )
@@ -459,14 +463,31 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
             "faculty_registrations",
             {
                 "event.event_id": event_id,
-                "attendance.sessions.marked_by": {"$exists": True}
+                "$or": [
+                    {"attendance.sessions.marked_by": {"$exists": True}},
+                    {"attendance.marked_by": {"$exists": True}}  # For single-mark strategy
+                ]
             },
             limit=500
         )
         
-        logger.info(f"Found {len(registrations_student)} student registrations and {len(registrations_faculty)} faculty registrations with scanner marks")
+        # For team-based registrations, check team_members attendance
+        registrations_student_teams = await DatabaseOperations.find_many(
+            "student_registrations",
+            {
+                "event.event_id": event_id,
+                "registration_type": "team",
+                "$or": [
+                    {"team_members.attendance.sessions.marked_by": {"$exists": True}},
+                    {"team_members.attendance.marked_by": {"$exists": True}}  # For single-mark strategy
+                ]
+            },
+            limit=500
+        )
         
-        all_registrations = registrations_student + registrations_faculty
+        logger.info(f"Found {len(registrations_student)} student registrations, {len(registrations_faculty)} faculty registrations, and {len(registrations_student_teams)} team registrations with scanner marks")
+        
+        all_registrations = registrations_student + registrations_faculty + registrations_student_teams
         
         # Build scan history
         scans = []
@@ -474,6 +495,7 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
         
         for registration in all_registrations:
             registration_id = registration.get("registration_id")
+            registration_type = registration.get("registration_type", "individual")
             attendance = registration.get("attendance", {})
             sessions = attendance.get("sessions", [])
             
@@ -491,23 +513,85 @@ async def get_scanner_history(event_id: str, invitation_code: Optional[str] = No
                 participant_name = registration["team"].get("team_name", "Unknown Team")
                 participant_type = "team"
             
-            # Extract scanner-marked sessions (sessions with marked_by field)
-            for session in sessions:
-                # Only include sessions that were marked by volunteers (have marked_by field)
-                if session.get("marked_by"):
+            # For team-based registrations, extract scans from team_members
+            if registration_type == "team" and registration.get("team_members"):
+                for member in registration.get("team_members", []):
+                    member_attendance = member.get("attendance", {})
+                    member_sessions = member_attendance.get("sessions", [])
+                    member_name = member.get("student", {}).get("name") or member.get("name") or member.get("full_name", "Unknown Member")
+                    member_enrollment = member.get("student", {}).get("enrollment_no") or member.get("enrollment_no", "N/A")
+                    
+                    # Check for session-based marking
+                    for session in member_sessions:
+                        if session.get("marked_by"):
+                            unique_attendees.add(registration_id)
+                            scans.append({
+                                "registration_id": registration_id,
+                                "participant_name": f"{member_name} (Team: {participant_name})",
+                                "participant_type": "team_member",
+                                "member_enrollment": member_enrollment,
+                                "marked_by": session.get("marked_by"),
+                                "marked_at": serialize_datetime(session.get("marked_at")),
+                                "session_id": session.get("session_id"),
+                                "session_name": session.get("session_name"),
+                                "attendance_status": member_attendance.get("status"),
+                                "attendance_percentage": member_attendance.get("percentage"),
+                                "notes": session.get("notes"),
+                                "already_marked": False
+                            })
+                    
+                    # Check for single-mark strategy
+                    if member_attendance.get("marked_by") and not member_sessions:
+                        unique_attendees.add(registration_id)
+                        scans.append({
+                            "registration_id": registration_id,
+                            "participant_name": f"{member_name} (Team: {participant_name})",
+                            "participant_type": "team_member",
+                            "member_enrollment": member_enrollment,
+                            "marked_by": member_attendance.get("marked_by"),
+                            "marked_at": serialize_datetime(member_attendance.get("marked_at")),
+                            "session_id": None,
+                            "session_name": "Single Mark",
+                            "attendance_status": member_attendance.get("status"),
+                            "attendance_percentage": member_attendance.get("percentage"),
+                            "notes": member_attendance.get("notes"),
+                            "already_marked": False
+                        })
+            else:
+                # Extract scanner-marked sessions for individual registrations
+                for session in sessions:
+                    # Only include sessions that were marked by volunteers (have marked_by field)
+                    if session.get("marked_by"):
+                        unique_attendees.add(registration_id)
+                        scans.append({
+                            "registration_id": registration_id,
+                            "participant_name": participant_name,
+                            "participant_type": participant_type,
+                            "marked_by": session.get("marked_by"),
+                            "marked_at": serialize_datetime(session.get("marked_at")),
+                            "session_id": session.get("session_id"),
+                            "session_name": session.get("session_name"),
+                            "attendance_status": attendance.get("status"),
+                            "attendance_percentage": attendance.get("percentage"),
+                            "notes": session.get("notes"),
+                            "already_marked": False
+                        })
+                
+                # Also check for single-mark strategy (no sessions, just marked_by at attendance level)
+                if attendance.get("marked_by") and not sessions:
                     unique_attendees.add(registration_id)
                     scans.append({
                         "registration_id": registration_id,
                         "participant_name": participant_name,
                         "participant_type": participant_type,
-                        "marked_by": session.get("marked_by"),
-                        "marked_at": serialize_datetime(session.get("marked_at")),
-                        "session_id": session.get("session_id"),
-                        "session_name": session.get("session_name"),
+                        "marked_by": attendance.get("marked_by"),
+                        "marked_at": serialize_datetime(attendance.get("marked_at")),
+                        "session_id": None,
+                        "session_name": "Single Mark",
                         "attendance_status": attendance.get("status"),
                         "attendance_percentage": attendance.get("percentage"),
-                        "notes": session.get("notes"),
-                        "already_marked": False  # Can enhance this by checking previous scans
+                        "notes": attendance.get("notes"),
+                        "already_marked": False
                     })
         
         # Sort scans by time (most recent first)

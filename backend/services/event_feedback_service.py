@@ -763,6 +763,7 @@ class EventFeedbackService:
                 not_found_message = "Employee ID not found for this event"
             else:
                 # Search for student registration (default)
+                # First try individual registration
                 registration = await DatabaseOperations.find_one(
                     self.registrations_collection,
                     {
@@ -770,6 +771,18 @@ class EventFeedbackService:
                         "event.event_id": event_id
                     }
                 )
+                
+                # If not found, check in team_members for team-based registrations
+                if not registration:
+                    registration = await DatabaseOperations.find_one(
+                        self.registrations_collection,
+                        {
+                            "registration_type": "team",
+                            "team_members.student.enrollment_no": registration_id,
+                            "event.event_id": event_id
+                        }
+                    )
+                
                 not_found_message = "Enrollment No. not found for this event"
             
             if not registration:
@@ -780,7 +793,27 @@ class EventFeedbackService:
                 }
             
             # Check if feedback already submitted with this enrollment/employee ID
-            student_enrollment = registration.get("student", {}).get("enrollment_no") or registration.get("faculty", {}).get("employee_id")
+            # For team-based registrations, extract the student enrollment from team_members
+            student_enrollment = None
+            
+            if registration.get("registration_type") == "team":
+                # Find the team member with this enrollment
+                for member in registration.get("team_members", []):
+                    member_enrollment = member.get("student", {}).get("enrollment_no")
+                    if member_enrollment == registration_id:
+                        student_enrollment = member_enrollment
+                        break
+            else:
+                # Individual registration
+                student_enrollment = registration.get("student", {}).get("enrollment_no") or registration.get("faculty", {}).get("employee_id")
+            
+            if not student_enrollment:
+                return {
+                    "success": False,
+                    "verified": False,
+                    "message": "Unable to verify enrollment information"
+                }
+            
             existing_feedback = await DatabaseOperations.find_one(
                 self.student_feedbacks_collection,
                 {
