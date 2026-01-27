@@ -52,7 +52,7 @@ class StudentUpdate(BaseModel):
 
 class Student(BaseModel):
     """Student model for authentication and registration tracking"""
-    enrollment_no: str = Field(..., min_length=3, max_length=20, description="Student enrollment number")
+    enrollment_no: str = Field(..., min_length=3, max_length=30, description="Student enrollment number (flexible format)")
     email: EmailStr = Field(..., description="Valid institute email address")
     mobile_no: str = Field(..., pattern="^[0-9]{10}$", description="10-digit mobile number")
     password_hash: str = Field(..., description="Hashed password for authentication")

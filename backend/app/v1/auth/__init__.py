@@ -148,8 +148,15 @@ async def student_register_api(request: Request, register_data: StudentRegisterR
         # Validation
         errors = []
         
-        if not enrollment_no or not re.match(r'^\d{2}[A-Z]{2,4}\d{5}$', enrollment_no):
-            errors.append("Invalid enrollment number format (e.g., 21BECE40015)")
+        # Flexible enrollment number validation - allow various college formats
+        if not enrollment_no:
+            errors.append("Enrollment number is required")
+        elif len(enrollment_no) < 3:
+            errors.append("Enrollment number must be at least 3 characters")
+        elif len(enrollment_no) > 30:
+            errors.append("Enrollment number must not exceed 30 characters")
+        elif not re.match(r'^[A-Z0-9\-\/\_\.]+$', enrollment_no):
+            errors.append("Enrollment number can only contain letters, numbers, and separators (- / _ .)")
             
         if not full_name or len(full_name) < 2:
             errors.append("Valid full name is required")
