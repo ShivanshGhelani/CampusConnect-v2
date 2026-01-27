@@ -202,6 +202,7 @@ class EventFeedbackService:
             
             # Check if student is registered for the event (any status accepted)
             # Registration model uses: student.enrollment_no and event.event_id
+            # First try individual registration
             registration = await DatabaseOperations.find_one(
                 self.registrations_collection,
                 {
@@ -209,6 +210,17 @@ class EventFeedbackService:
                     "student.enrollment_no": student_enrollment
                 }
             )
+            
+            # If not found, check in team_members for team-based registrations
+            if not registration:
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "registration_type": "team",
+                        "team_members.student.enrollment_no": student_enrollment,
+                        "event.event_id": event_id
+                    }
+                )
             
             if not registration:
                 return {
@@ -232,7 +244,16 @@ class EventFeedbackService:
                 }
             
             # Get student info from registration document (more reliable than separate query)
-            student_data = registration.get("student", {})
+            # For team-based registrations, find the specific team member
+            if registration.get("registration_type") == "team":
+                student_data = {}
+                for member in registration.get("team_members", []):
+                    member_enrollment = member.get("student", {}).get("enrollment_no")
+                    if member_enrollment == student_enrollment:
+                        student_data = member.get("student", {})
+                        break
+            else:
+                student_data = registration.get("student", {})
             
             # Get registration_id from multiple possible locations in registration document
             reg_id = (
@@ -271,20 +292,37 @@ class EventFeedbackService:
             
             if feedback_id:
                 # Update registration to mark feedback as submitted
-                # Registration model uses: student.enrollment_no and event.event_id
-                await DatabaseOperations.update_one(
-                    self.registrations_collection,
-                    {
-                        "event.event_id": event_id,
-                        "student.enrollment_no": student_enrollment
-                    },
-                    {
-                        "$set": {
-                            "feedback.submitted": True,
-                            "feedback.submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                # For team-based registrations, update the specific team member's feedback status
+                if registration.get("registration_type") == "team":
+                    await DatabaseOperations.update_one(
+                        self.registrations_collection,
+                        {
+                            "event.event_id": event_id,
+                            "registration_type": "team",
+                            "team_members.student.enrollment_no": student_enrollment
+                        },
+                        {
+                            "$set": {
+                                "team_members.$.feedback.submitted": True,
+                                "team_members.$.feedback.submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                            }
                         }
-                    }
-                )
+                    )
+                else:
+                    # Individual registration
+                    await DatabaseOperations.update_one(
+                        self.registrations_collection,
+                        {
+                            "event.event_id": event_id,
+                            "student.enrollment_no": student_enrollment
+                        },
+                        {
+                            "$set": {
+                                "feedback.submitted": True,
+                                "feedback.submitted_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                            }
+                        }
+                    )
                 
                 logger.info(f"Feedback submitted by {student_enrollment} for event {event_id}")
                 return {
@@ -655,7 +693,7 @@ class EventFeedbackService:
             logger.info(f"Checking eligibility for student {student_enrollment} in event {event_id}")
             
             # Check if student is registered for the event (any status accepted for feedback)
-            # Registration model uses: student.enrollment_no and event.event_id
+            # First try individual registration
             registration = await DatabaseOperations.find_one(
                 self.registrations_collection,
                 {
@@ -664,9 +702,20 @@ class EventFeedbackService:
                 }
             )
             
+            # If not found, check in team_members for team-based registrations
+            if not registration:
+                registration = await DatabaseOperations.find_one(
+                    self.registrations_collection,
+                    {
+                        "registration_type": "team",
+                        "team_members.student.enrollment_no": student_enrollment,
+                        "event.event_id": event_id
+                    }
+                )
+            
             logger.info(f"Registration found: {registration is not None}")
             if registration:
-                logger.info(f"Registration data: {registration.get('registration', {}).get('registration_id')} - Status: {registration.get('registration', {}).get('status')}")
+                logger.info(f"Registration type: {registration.get('registration_type')}, Status: {registration.get('registration', {}).get('status')}")
             
             if not registration:
                 return {

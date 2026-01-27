@@ -22,10 +22,11 @@ const FeedbackSuccess = () => {
   const [certificateMessage, setCertificateMessage] = useState('');
 
   useEffect(() => {
-    // Check if this is test mode from search params
+    // Check if this is test mode or anonymous submission from search params
     const isTestMode = searchParams.get('test_mode') === 'true';
+    const isAnonymous = searchParams.get('anonymous') === 'true';
     
-    if (!isAuthenticated && !isTestMode) {
+    if (!isAuthenticated && !isTestMode && !isAnonymous) {
       navigate('/auth/login', { state: { from: `/client/events/${eventId}/feedback/success` } });
       return;
     }
@@ -38,8 +39,9 @@ const FeedbackSuccess = () => {
       setIsLoading(true);
       setError('');
 
-      // Check if this is test mode
+      // Check if this is test mode or anonymous
       const isTestMode = searchParams.get('test_mode') === 'true';
+      const isAnonymous = searchParams.get('anonymous') === 'true';
       
       if (isTestMode) {
         // For test mode, set mock data - URLs will fail and use fallback templates
@@ -78,7 +80,14 @@ const FeedbackSuccess = () => {
         throw new Error('Failed to fetch event details');
       }
 
-      // Fetch registration status to get registration details
+      // Skip registration and attendance checks for anonymous users
+      if (isAnonymous) {
+        console.log('📝 Anonymous feedback submission - skipping registration/attendance checks');
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch registration status to get registration details (only for logged-in users)
       const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
       console.log('🎟️ Full Registration Response:', registrationResponse.data);
       if (registrationResponse.data.success) {
@@ -268,8 +277,8 @@ const FeedbackSuccess = () => {
           <p className="text-gray-600">Your feedback will help us improve future events.</p>
         </div>
 
-        {/* Certificate Collection Section - Only show if certificates are available */}
-        {event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
+        {/* Certificate Collection Section - Only show if certificates are available AND user is authenticated */}
+        {isAuthenticated && event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6 space-y-4">
             <h2 className="text-lg md:text-xl font-semibold text-gray-800 flex items-center gap-2">
               <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
@@ -320,6 +329,27 @@ const FeedbackSuccess = () => {
               </div>
             </div>
           
+        )}
+        
+        {/* Info message for anonymous users about certificates */}
+        {!isAuthenticated && event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-2">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+              </svg>
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-1">Certificate Available</h3>
+                <p className="text-sm text-blue-700">
+                  To download your certificate, please{' '}
+                  <Link to="/auth/login" className="underline font-medium hover:text-blue-900">
+                    log in to your account
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Navigation Links */}

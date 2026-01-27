@@ -300,8 +300,12 @@ function RegisterPage() {
     let processedValue = value;
 
     // Auto-format specific fields
-    if (name === 'enrollment_no') {
-      processedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (name === 'full_name') {
+      // Allow only letters, spaces, hyphens, apostrophes, and dots (for names like O'Brien, Mary-Jane, Dr. Smith)
+      processedValue = value.replace(/[^a-zA-Z\s'-\.]/g, '');
+    } else if (name === 'enrollment_no') {
+      // Allow alphanumeric, hyphens, slashes, underscores, and dots (flexible enrollment formats)
+      processedValue = value.toUpperCase().replace(/[^A-Z0-9\-\/\_\.]/g, '');
     } else if (name === 'mobile_no' || name === 'contact_no') {
       processedValue = value.replace(/[^0-9]/g, '').slice(0, 10);
     } else if (name === 'email') {
@@ -376,9 +380,25 @@ function RegisterPage() {
     }
 
     switch (name) {
+      case 'full_name': {
+        // Check if name contains only letters, spaces, hyphens, apostrophes, and dots
+        if (!/^[a-zA-Z\s'-\.]+$/.test(value)) {
+          error = 'Name should contain only letters and common name characters';
+        } else if (value.trim().length < 2) {
+          error = 'Name must be at least 2 characters long';
+        } else if (value.trim().length > 100) {
+          error = 'Name must not exceed 100 characters';
+        }
+        break;
+      }
       case 'enrollment_no': {
-        if (!validators.enrollmentNumber(value)) {
-          error = 'Invalid enrollment number format (e.g., 21BECE40015)';
+        // Flexible validation - just check basic requirements
+        if (value.length < 3) {
+          error = 'Enrollment number must be at least 3 characters';
+        } else if (value.length > 30) {
+          error = 'Enrollment number must not exceed 30 characters';
+        } else if (!/^[A-Z0-9\-\/\_\.]+$/.test(value)) {
+          error = 'Enrollment number can only contain letters, numbers, and separators (- / _ .)';
         }
         break;
       }

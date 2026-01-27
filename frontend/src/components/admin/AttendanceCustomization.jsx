@@ -9,6 +9,45 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
+// IST Timezone utilities
+const toISTDatetimeLocal = (isoString) => {
+  // Convert ISO string (UTC) to IST datetime-local format (YYYY-MM-DDTHH:mm)
+  if (!isoString) return '';
+  const date = new Date(isoString); // Parse UTC timestamp
+  
+  // Add IST offset (+5:30) to get IST time
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffset);
+  
+  // Extract components using UTC methods (since we've already shifted to IST)
+  const year = istDate.getUTCFullYear();
+  const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(istDate.getUTCDate()).padStart(2, '0');
+  const hours = String(istDate.getUTCHours()).padStart(2, '0');
+  const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const fromISTDatetimeLocal = (datetimeLocal) => {
+  // Convert datetime-local format (IST) to ISO string (UTC)
+  if (!datetimeLocal) return null;
+  
+  // Parse the datetime-local string components (treating as IST)
+  const [datePart, timePart] = datetimeLocal.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  
+  // Create a date with these components as UTC (temporarily)
+  const istDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  
+  // Subtract IST offset to get actual UTC
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const utcDate = new Date(istDate.getTime() - istOffset);
+  
+  return utcDate.toISOString();
+};
+
 const AttendanceCustomization = () => {
   const { eventId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -323,21 +362,21 @@ const AttendanceCustomization = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time (IST)</label>
                   <input
                     type="datetime-local"
-                    value={new Date(session.start_time).toISOString().slice(0, 16)}
-                    onChange={(e) => updateSession(session.session_id, 'start_time', new Date(e.target.value).toISOString())}
+                    value={toISTDatetimeLocal(session.start_time)}
+                    onChange={(e) => updateSession(session.session_id, 'start_time', fromISTDatetimeLocal(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time (IST)</label>
                   <input
                     type="datetime-local"
-                    value={new Date(session.end_time).toISOString().slice(0, 16)}
-                    onChange={(e) => updateSession(session.session_id, 'end_time', new Date(e.target.value).toISOString())}
+                    value={toISTDatetimeLocal(session.end_time)}
+                    onChange={(e) => updateSession(session.session_id, 'end_time', fromISTDatetimeLocal(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

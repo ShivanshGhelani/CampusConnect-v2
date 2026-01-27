@@ -3,6 +3,45 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, Users, Target, AlertTriangle, CheckCircle, Settings, Edit3, Plus, Trash2, Save, RotateCcw, Copy, Move, ChevronDown, ChevronRight, Zap, Award, Eye, Lightbulb } from 'lucide-react';
 import { adminAPI } from '../api/admin';
 
+// IST Timezone utilities
+const toISTDatetimeLocal = (isoString) => {
+  // Convert ISO string (UTC) to IST datetime-local format (YYYY-MM-DDTHH:mm)
+  if (!isoString) return '';
+  const date = new Date(isoString); // Parse UTC timestamp
+  
+  // Add IST offset (+5:30) to get IST time
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffset);
+  
+  // Extract components using UTC methods (since we've already shifted to IST)
+  const year = istDate.getUTCFullYear();
+  const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(istDate.getUTCDate()).padStart(2, '0');
+  const hours = String(istDate.getUTCHours()).padStart(2, '0');
+  const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const fromISTDatetimeLocal = (datetimeLocal) => {
+  // Convert datetime-local format (IST) to ISO string (UTC)
+  if (!datetimeLocal) return null;
+  
+  // Parse the datetime-local string components (treating as IST)
+  const [datePart, timePart] = datetimeLocal.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  
+  // Create a date with these components as UTC (temporarily)
+  const istDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  
+  // Subtract IST offset to get actual UTC
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const utcDate = new Date(istDate.getTime() - istOffset);
+  
+  return utcDate.toISOString();
+};
+
 const AttendancePreview = ({ 
   eventData, 
   onStrategyChange, 
@@ -79,6 +118,56 @@ const AttendancePreview = ({
     // Set initialization complete after a brief delay to allow all state to settle
     setTimeout(() => setIsInitializing(false), 100);
   }, [initialCustomData]);
+
+  // Detect date changes and adjust session times proportionally
+  useEffect(() => {
+    // Only adjust times if we have custom sessions and event dates changed
+    if (customSessions.length > 0 && eventData.start_date && eventData.start_time && eventData.end_date && eventData.end_time) {
+      // Calculate new event start and end times
+      const newEventStart = new Date(`${eventData.start_date}T${eventData.start_time}`);
+      const newEventEnd = new Date(`${eventData.end_date}T${eventData.end_time}`);
+      
+      // Get the first session's current start time to determine the old event start
+      const firstSession = customSessions[0];
+      if (firstSession && firstSession.start_time) {
+        const oldSessionStart = new Date(firstSession.start_time);
+        
+        // Check if the dates actually changed (compare ISO date strings)
+        const newStartISO = newEventStart.toISOString();
+        const oldStartISO = oldSessionStart.toISOString();
+        
+        // Calculate time difference in milliseconds
+        const timeDiff = newEventStart.getTime() - oldSessionStart.getTime();
+        
+        // Only adjust if there's a significant time difference (more than 1 minute)
+        if (Math.abs(timeDiff) > 60000) {
+          console.log('📅 Event dates changed, adjusting session times...');
+          console.log('Old start:', oldSessionStart.toISOString());
+          console.log('New start:', newStartISO);
+          console.log('Time diff (hours):', timeDiff / 1000 / 60 / 60);
+          
+          // Adjust all session times by the same offset
+          const adjustedSessions = customSessions.map(session => {
+            const oldStart = new Date(session.start_time);
+            const oldEnd = new Date(session.end_time);
+            
+            const newStart = new Date(oldStart.getTime() + timeDiff);
+            const newEnd = new Date(oldEnd.getTime() + timeDiff);
+            
+            return {
+              ...session,
+              start_time: newStart.toISOString(),
+              end_time: newEnd.toISOString()
+            };
+          });
+          
+          console.log('✅ Sessions adjusted to new dates');
+          setCustomSessions(adjustedSessions);
+          setHasUnsavedChanges(true);
+        }
+      }
+    }
+  }, [eventData.start_date, eventData.start_time, eventData.end_date, eventData.end_time]);
 
   // Generate preview when event data changes
   useEffect(() => {
@@ -1303,16 +1392,17 @@ const AttendancePreview = ({
                         >
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
                             <div>
-                              <label className="block text-gray-600 mb-1">Start Time</label>
+                              <label className="block text-gray-600 mb-1">Start Time (IST)</label>
                               <input
                                 type="datetime-local"
-                                value={new Date(session.start_time).toISOString().slice(0, 16)}
+                                value={toISTDatetimeLocal(session.start_time)}
                                 onChange={(e) => {
-                                  const newStartTime = new Date(e.target.value).toISOString();
+                                  const newStartTime = fromISTDatetimeLocal(e.target.value);
                                   updateSession(session.session_id, 'start_time', newStartTime);
                                   // Auto-adjust end time to maintain duration
                                   const duration = session.duration_minutes || 120;
-                                  const newEndTime = new Date(new Date(e.target.value).getTime() + duration * 60 * 1000).toISOString();
+                                  const startDate = new Date(newStartTime);
+                                  const newEndTime = new Date(startDate.getTime() + duration * 60 * 1000).toISOString();
                                   updateSession(session.session_id, 'end_time', newEndTime);
                                 }}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
@@ -1320,11 +1410,11 @@ const AttendancePreview = ({
                             </div>
                             
                             <div>
-                              <label className="block text-gray-600 mb-1">End Time</label>
+                              <label className="block text-gray-600 mb-1">End Time (IST)</label>
                               <input
                                 type="datetime-local"
-                                value={new Date(session.end_time).toISOString().slice(0, 16)}
-                                onChange={(e) => updateSession(session.session_id, 'end_time', new Date(e.target.value).toISOString())}
+                                value={toISTDatetimeLocal(session.end_time)}
+                                onChange={(e) => updateSession(session.session_id, 'end_time', fromISTDatetimeLocal(e.target.value))}
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500"
                               />
                             </div>

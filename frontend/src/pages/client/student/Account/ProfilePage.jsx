@@ -55,6 +55,7 @@ function ProfilePage() {
     certificates_earned: 0
   });
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Used to force data refresh
 
   // Make sure modal state doesn't affect the user object
   // These should be separate from user-related state
@@ -80,6 +81,7 @@ function ProfilePage() {
   }, [updateAvatar]);
 
   // Listen for user data updates and refresh profile data
+  // Listen for user data updates
   useEffect(() => {
     const handleUserDataUpdate = (event) => {
       const updatedUserData = event.detail;
@@ -103,6 +105,26 @@ function ProfilePage() {
       window.removeEventListener('userDataUpdated', handleUserDataUpdate);
     };
   }, [profileData]);
+
+  // Refetch data when user navigates back to the page (e.g., after feedback submission)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only refetch if page becomes visible and cache is empty
+      if (!document.hidden && user?.enrollment_no) {
+        const cachedData = getAnyCache('student');
+        if (!cachedData) {
+          console.log('🔄 Page visible and cache empty - triggering data refresh');
+          setRefreshTrigger(prev => prev + 1); // Increment to trigger refetch
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.enrollment_no]);
 
   // Also listen for changes to the user from AuthContext (minimal updates only)
   useEffect(() => {
@@ -164,10 +186,11 @@ function ProfilePage() {
     // Fetch data if user exists and either:
     // 1. No profile data loaded yet, OR
     // 2. Coming back from another page (refetch to get latest events)
+    // 3. refreshTrigger changed (manual refresh requested)
     if (user?.enrollment_no) {
       // Check if cache is empty (cleared after registration)
       const cachedData = getAnyCache('student');
-      if (!cachedData || !profileData?.enrollment_no) {
+      if (!cachedData || !profileData?.enrollment_no || refreshTrigger > 0) {
         
         fetchData();
       } else if (profileData?.enrollment_no) {
@@ -175,7 +198,7 @@ function ProfilePage() {
         setLoading(false); // Ensure loading is false if data is already available
       }
     }
-  }, [user?.enrollment_no, user?.name]); // Wait for user to be fully loaded before fetching
+  }, [user?.enrollment_no, user?.name, refreshTrigger]); // Wait for user to be fully loaded before fetching
 
   // Convert event history to match the existing format for compatibility
   const registrations = eventHistory.map(item => {
@@ -217,6 +240,52 @@ function ProfilePage() {
 
     return timeB.getTime() - timeA.getTime(); // Latest first
   });
+
+  // Filter function to check if event should be shown based on certificate and feedback deadlines
+  const shouldShowEvent = (registration) => {
+    const eventStatus = registration.event?.status;
+    
+    // Always show upcoming and ongoing events regardless of deadlines
+    if (eventStatus === 'upcoming' || eventStatus === 'ongoing') {
+      return true;
+    }
+    
+    // For completed events, check certificate and feedback deadlines
+    if (eventStatus === 'completed' || eventStatus === 'finished') {
+      const certificateEndDate = registration.certificate?.certificate_end_date || registration.event?.certificate_end_date;
+      const feedbackEndDate = registration.feedback?.feedback_end_date || registration.event?.feedback_end_date;
+      
+      const now = new Date();
+      
+      // If both dates are not available, remove from list
+      if (!certificateEndDate && !feedbackEndDate) {
+        return false;
+      }
+      
+      // If only certificate date is available
+      if (certificateEndDate && !feedbackEndDate) {
+        const certDeadline = new Date(certificateEndDate);
+        return now <= certDeadline; // Show if deadline hasn't passed
+      }
+      
+      // If only feedback date is available
+      if (!certificateEndDate && feedbackEndDate) {
+        const feedbackDeadline = new Date(feedbackEndDate);
+        return now <= feedbackDeadline; // Show if deadline hasn't passed
+      }
+      
+      // If both dates are available, show if at least one hasn't passed
+      const certDeadline = new Date(certificateEndDate);
+      const feedbackDeadline = new Date(feedbackEndDate);
+      return now <= certDeadline || now <= feedbackDeadline;
+    }
+    
+    // Default: show the event
+    return true;
+  };
+
+  // Apply the filter to sorted registrations
+  const visibleRegistrations = sortedRegistrations.filter(shouldShowEvent);
 
   // Function to get user initials
   const getInitials = (userData) => {

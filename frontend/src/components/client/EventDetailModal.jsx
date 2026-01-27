@@ -425,86 +425,88 @@ const EventDetailModal = ({ isOpen, onClose, selectedEventDetail }) => {
                   )}
                 </div>
 
-                {/* Certificate Status */}
-                <div className="bg-white rounded-lg lg:rounded-xl p-3 lg:p-4 border border-slate-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-3 h-3 lg:w-4 lg:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                      </svg>
-                      <span className="text-xs lg:text-sm font-semibold text-slate-900">Certificate</span>
+                {/* Certificate Status - Only show if event is certificate based */}
+                {selectedEventDetail.event.is_certificate_based && (
+                  <div className="bg-white rounded-lg lg:rounded-xl p-3 lg:p-4 border border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-3 h-3 lg:w-4 lg:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        <span className="text-xs lg:text-sm font-semibold text-slate-900">Certificate</span>
+                      </div>
+                      {selectedEventDetail.certificate?.issued ? (
+                        <Link
+                          to="/client/certificates"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
+                          onClick={onClose}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download
+                        </Link>
+                      ) : selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Processing
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Not Available
+                        </span>
+                      )}
                     </div>
-                    {selectedEventDetail.certificate?.issued ? (
-                      <Link
-                        to="/client/certificates"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
-                        onClick={onClose}
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Download
-                      </Link>
-                    ) : selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-lg text-xs font-medium">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Processing
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Not Available
-                      </span>
+                    {selectedEventDetail.certificate?.issued && (
+                      <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg className="w-3 h-3 lg:w-4 lg:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-xs lg:text-sm font-semibold text-orange-800">Certificate Ready</span>
+                        </div>
+                        <div className="text-xs text-orange-700 space-y-1">
+                          <p><strong>Certificate ID:</strong> <span className="font-mono bg-white px-2 py-0.5 rounded border">{selectedEventDetail.certificate.certificate_id}</span></p>
+                          {selectedEventDetail.certificate.issued_at && (
+                            <p><strong>Issued:</strong> {new Date(selectedEventDetail.certificate.issued_at).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued && (
+                      <div className="bg-orange-50 rounded-lg p-3 border border-orange-200 mt-2">
+                        <p className="text-xs text-orange-700">
+                          ✅ You are eligible for a certificate! It's being processed and will be available soon in your certificates section.
+                        </p>
+                      </div>
+                    )}
+                    {!selectedEventDetail.certificate?.eligible && selectedEventDetail.event.status === 'completed' && (
+                      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 mt-2">
+                        <p className="text-xs text-slate-600">
+                          {selectedEventDetail.attendance?.percentage < 100 
+                            ? `⚠️ Certificate requires 100% attendance. You have ${selectedEventDetail.attendance?.percentage || 0}% attendance.`
+                            : '❌ Certificate not available for this event or eligibility criteria not met.'}
+                        </p>
+                      </div>
+                    )}
+                    {selectedEventDetail.event.status === 'upcoming' && (
+                      <p className="text-xs text-slate-600 mt-2">
+                        Certificate eligibility will be determined after event completion based on attendance and other criteria.
+                      </p>
                     )}
                   </div>
-                  {selectedEventDetail.certificate?.issued && (
-                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className="w-3 h-3 lg:w-4 lg:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-xs lg:text-sm font-semibold text-orange-800">Certificate Ready</span>
-                      </div>
-                      <div className="text-xs text-orange-700 space-y-1">
-                        <p><strong>Certificate ID:</strong> <span className="font-mono bg-white px-2 py-0.5 rounded border">{selectedEventDetail.certificate.certificate_id}</span></p>
-                        {selectedEventDetail.certificate.issued_at && (
-                          <p><strong>Issued:</strong> {new Date(selectedEventDetail.certificate.issued_at).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedEventDetail.certificate?.eligible && !selectedEventDetail.certificate?.issued && (
-                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200 mt-2">
-                      <p className="text-xs text-orange-700">
-                        ✅ You are eligible for a certificate! It's being processed and will be available soon in your certificates section.
-                      </p>
-                    </div>
-                  )}
-                  {!selectedEventDetail.certificate?.eligible && selectedEventDetail.event.status === 'completed' && (
-                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 mt-2">
-                      <p className="text-xs text-slate-600">
-                        {selectedEventDetail.attendance?.percentage < 100 
-                          ? `⚠️ Certificate requires 100% attendance. You have ${selectedEventDetail.attendance?.percentage || 0}% attendance.`
-                          : '❌ Certificate not available for this event or eligibility criteria not met.'}
-                      </p>
-                    </div>
-                  )}
-                  {selectedEventDetail.event.status === 'upcoming' && (
-                    <p className="text-xs text-slate-600 mt-2">
-                      Certificate eligibility will be determined after event completion based on attendance and other criteria.
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>

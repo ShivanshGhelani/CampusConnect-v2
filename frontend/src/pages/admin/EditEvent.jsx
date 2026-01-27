@@ -2287,8 +2287,8 @@ You can use formatting like:
                     <div className="space-y-4">
                       {/* Dynamic Attendance Strategy Generation */}
                       <AttendancePreview
-                        key={`${formData.start_date}-${formData.start_time}-${formData.end_date}-${formData.end_time}-${formData.event_type}-${formData.registration_mode}`}
                         eventData={formData}
+                        initialCustomData={attendanceStrategy || formData.attendance_strategy}
                         onStrategyChange={(strategy) => {
                           setAttendanceStrategy(strategy);
                           // Also update formData for immediate display
@@ -2296,6 +2296,10 @@ You can use formatting like:
                             ...prev,
                             attendance_strategy: strategy
                           }));
+                        }}
+                        onCustomDataChange={(customData) => {
+                          // Update attendance strategy when custom data changes
+                          setAttendanceStrategy(customData);
                         }}
                       />
                     </div>

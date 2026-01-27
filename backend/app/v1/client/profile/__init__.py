@@ -169,7 +169,51 @@ async def get_complete_profile(student: Student = Depends(require_student_login_
                         "feedback": registration_doc.get('feedback') if registration_doc else None,
                         "certificate": registration_doc.get('certificate') if registration_doc else None
                     }
-                    event_history.append(history_item)
+                    
+                    # Filter out completed events where both certificate and feedback deadlines have passed
+                    should_include = True
+                    if event.get('status') == 'completed':
+                        certificate_end_date = event.get('certificate_end_date') or (registration_doc.get('certificate', {}).get('certificate_end_date') if registration_doc else None)
+                        feedback_end_date = event.get('feedback_end_date') or event.get('feedback_form', {}).get('end_date')
+                        
+                        # If both dates are missing, exclude the event
+                        if not certificate_end_date and not feedback_end_date:
+                            should_include = False
+                        else:
+                            now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                            
+                            # Check if both deadlines have passed
+                            cert_passed = False
+                            feedback_passed = False
+                            
+                            if certificate_end_date:
+                                try:
+                                    cert_deadline = datetime.fromisoformat(str(certificate_end_date).replace('Z', '+00:00'))
+                                    if cert_deadline.tzinfo:
+                                        cert_deadline = cert_deadline.replace(tzinfo=None)
+                                    cert_passed = now > cert_deadline
+                                except:
+                                    cert_passed = False
+                            else:
+                                cert_passed = True  # Consider as passed if not available
+                            
+                            if feedback_end_date:
+                                try:
+                                    feedback_deadline = datetime.fromisoformat(str(feedback_end_date).replace('Z', '+00:00'))
+                                    if feedback_deadline.tzinfo:
+                                        feedback_deadline = feedback_deadline.replace(tzinfo=None)
+                                    feedback_passed = now > feedback_deadline
+                                except:
+                                    feedback_passed = False
+                            else:
+                                feedback_passed = True  # Consider as passed if not available
+                            
+                            # Exclude only if both have passed
+                            if cert_passed and feedback_passed:
+                                should_include = False
+                    
+                    if should_include:
+                        event_history.append(history_item)
         
         # Sort activities and history by timestamp
         def get_activity_sort_key(x):
@@ -368,7 +412,50 @@ async def get_faculty_complete_profile(faculty: Faculty = Depends(require_facult
                     "certificate": registration_doc.get('certificate') if registration_doc else None
                 }
                 
-                event_history.append(history_item)
+                # Filter out completed events where both certificate and feedback deadlines have passed
+                should_include = True
+                if event.get('status') == 'completed':
+                    certificate_end_date = event.get('certificate_end_date') or (registration_doc.get('certificate', {}).get('certificate_end_date') if registration_doc else None)
+                    feedback_end_date = event.get('feedback_end_date') or event.get('feedback_form', {}).get('end_date')
+                    
+                    # If both dates are missing, exclude the event
+                    if not certificate_end_date and not feedback_end_date:
+                        should_include = False
+                    else:
+                        now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                        
+                        # Check if both deadlines have passed
+                        cert_passed = False
+                        feedback_passed = False
+                        
+                        if certificate_end_date:
+                            try:
+                                cert_deadline = datetime.fromisoformat(str(certificate_end_date).replace('Z', '+00:00'))
+                                if cert_deadline.tzinfo:
+                                    cert_deadline = cert_deadline.replace(tzinfo=None)
+                                cert_passed = now > cert_deadline
+                            except:
+                                cert_passed = False
+                        else:
+                            cert_passed = True  # Consider as passed if not available
+                        
+                        if feedback_end_date:
+                            try:
+                                feedback_deadline = datetime.fromisoformat(str(feedback_end_date).replace('Z', '+00:00'))
+                                if feedback_deadline.tzinfo:
+                                    feedback_deadline = feedback_deadline.replace(tzinfo=None)
+                                feedback_passed = now > feedback_deadline
+                            except:
+                                feedback_passed = False
+                        else:
+                            feedback_passed = True  # Consider as passed if not available
+                        
+                        # Exclude only if both have passed
+                        if cert_passed and feedback_passed:
+                            should_include = False
+                
+                if should_include:
+                    event_history.append(history_item)
                 
                 # Add to recent activities
                 stats["recent_activities"].append({

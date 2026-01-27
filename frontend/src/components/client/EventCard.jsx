@@ -42,6 +42,30 @@ const EventCard = ({ event }) => {
         textClass: 'text-blue-700',
         label: 'UPCOMING'
       };
+    } else if (event.status === 'completed') {
+      // Check if feedback is active
+      const isCertificateBased = event.certificate_based === true || event.is_certificate_based === true;
+      const feedbackEndDate = event.feedback_end_date || event.feedback_form?.end_date;
+      
+      if (!isCertificateBased && feedbackEndDate) {
+        const feedbackDeadline = new Date(feedbackEndDate);
+        const now = new Date();
+        if (now <= feedbackDeadline) {
+          return {
+            bgClass: 'bg-green-50',
+            iconClass: 'bg-green-500',
+            textClass: 'text-green-700',
+            label: 'FEEDBACK OPEN'
+          };
+        }
+      }
+      
+      return {
+        bgClass: 'bg-gray-50',
+        iconClass: 'bg-gray-400',
+        textClass: 'text-gray-600',
+        label: 'COMPLETED'
+      };
     } else {
       return {
         bgClass: 'bg-gray-50',
@@ -71,6 +95,23 @@ const EventCard = ({ event }) => {
         return { text: 'Registration Closed', class: 'text-red-600' };
       }
     } else if (event.status === 'completed') {
+      // Check if feedback is active
+      const isCertificateBased = event.certificate_based === true || event.is_certificate_based === true;
+      const feedbackEndDate = event.feedback_end_date || event.feedback_form?.end_date;
+      
+      if (!isCertificateBased && feedbackEndDate) {
+        const feedbackDeadline = new Date(feedbackEndDate);
+        const now = new Date();
+        if (now <= feedbackDeadline) {
+          // Calculate days remaining
+          const daysRemaining = Math.ceil((feedbackDeadline - now) / (1000 * 60 * 60 * 24));
+          return { 
+            text: `Feedback closes in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`, 
+            class: 'text-green-600' 
+          };
+        }
+      }
+      
       return { text: 'Completed', class: 'text-gray-600' };
     }
     return { text: '', class: '' };
@@ -118,6 +159,30 @@ const EventCard = ({ event }) => {
           text: 'Registration Closed'
         };
       }
+    } else if (event.status === 'completed') {
+      // Check if feedback is available
+      const isCertificateBased = event.certificate_based === true || event.is_certificate_based === true;
+      const feedbackEndDate = event.feedback_end_date || event.feedback_form?.end_date;
+      
+      if (!isCertificateBased && feedbackEndDate) {
+        const feedbackDeadline = new Date(feedbackEndDate);
+        const now = new Date();
+        if (now <= feedbackDeadline) {
+          // Show feedback button
+          return {
+            bgClass: 'bg-green-600 hover:bg-green-700',
+            icon: 'fas fa-comment-dots',
+            text: 'Submit Feedback'
+          };
+        }
+      }
+      
+      // Default for completed events
+      return {
+        bgClass: 'bg-gray-600 hover:bg-gray-700',
+        icon: 'fas fa-eye',
+        text: 'View Details'
+      };
     } else {
       return {
         bgClass: 'bg-gray-600 hover:bg-gray-700',

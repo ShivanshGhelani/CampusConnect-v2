@@ -232,16 +232,43 @@ function EventList() {
     }
   }, [currentPage, totalPages]);
 
+  // Helper function to check if completed event should be shown
+  const shouldShowCompletedEvent = (event) => {
+    if (event.status !== 'completed' && event.status !== 'finished') {
+      return true; // Not completed, show it
+    }
+
+    // Event is completed - check if it should still be visible
+    const isCertificateBased = event.certificate_based === true || event.is_certificate_based === true;
+    const feedbackEndDate = event.feedback_end_date || event.feedback_form?.end_date;
+
+    // If certificate based, show it
+    if (isCertificateBased) {
+      return true;
+    }
+
+    // If not certificate based, check feedback end date
+    if (feedbackEndDate) {
+      const feedbackDeadline = new Date(feedbackEndDate);
+      const now = new Date();
+      // Show if feedback deadline hasn't passed
+      if (now <= feedbackDeadline) {
+        return true;
+      }
+    }
+
+    // No certificate and no active feedback - delist
+    return false;
+  };
+
   // Helper function to filter events based on user role and profile
   const getUserFilteredEvents = (events) => {
-    // First, filter out completed events for all users
-    const nonCompletedEvents = events.filter(event => 
-      event.status !== 'completed' && event.status !== 'finished'
-    );
+    // First, filter based on completed status and feedback availability
+    const visibleEvents = events.filter(event => shouldShowCompletedEvent(event));
 
     if (!isAuthenticated) {
-      // Show all student events for non-authenticated users (except completed)
-      return nonCompletedEvents.filter(event =>
+      // Show all student events for non-authenticated users
+      return visibleEvents.filter(event =>
         event.target_audience === 'student' || event.target_audience === 'students'
       );
     } else if (userType === 'student') {
@@ -254,7 +281,7 @@ function EventList() {
 
       
       // Show only events that match student's department AND semester
-      return nonCompletedEvents.filter(event => {
+      return visibleEvents.filter(event => {
         if (event.target_audience !== 'student' && event.target_audience !== 'students') {
           return false;
         }
@@ -292,12 +319,12 @@ function EventList() {
       });
     } else if (userType === 'faculty') {
       // Show only faculty events for faculty users
-      return nonCompletedEvents.filter(event =>
+      return visibleEvents.filter(event =>
         event.target_audience === 'faculty'
       );
     } else {
-      // Fallback for admin or other user types - show all events (excluding completed)
-      return nonCompletedEvents;
+      // Fallback for admin or other user types - show all visible events
+      return visibleEvents;
     }
   };
 

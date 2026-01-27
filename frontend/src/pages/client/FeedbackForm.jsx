@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { clientAPI } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { clearProfileCache } from '../../utils/profileCache';
 
 const FeedbackForm = () => {
   const { eventId } = useParams();
@@ -32,15 +33,26 @@ const FeedbackForm = () => {
   const [isVerifyingRegistration, setIsVerifyingRegistration] = useState(false);
   const [registrationVerified, setRegistrationVerified] = useState(false);
   const [verificationError, setVerificationError] = useState(null);
+  
+  // Refs to prevent duplicate API calls
+  const formLoadedRef = useRef(false);
+  const eligibilityCheckedRef = useRef(false);
 
   useEffect(() => {
-    loadFeedbackForm();
-    // Only check eligibility if user is logged in
-    if (user) {
+    // Only load form once
+    if (!formLoadedRef.current) {
+      formLoadedRef.current = true;
+      loadFeedbackForm();
+    }
+    
+    // Only check eligibility if user is logged in and not already checked
+    if (user && !eligibilityCheckedRef.current) {
+      eligibilityCheckedRef.current = true;
       checkEligibility();
-    } else {
+    } else if (!user) {
       // For non-logged in users, set eligibility to null (will show registration ID input)
       setEligibility(null);
+      eligibilityCheckedRef.current = false;
     }
   }, [eventId, user]);
 
@@ -194,8 +206,19 @@ const FeedbackForm = () => {
       }
       
       if (response.data.success) {
+        // Clear profile cache to force refresh on return to profile page
+        // This ensures the feedback status is updated immediately
+        if (user) {
+          clearProfileCache('student'); // Clear student cache
+          clearProfileCache('faculty'); // Also clear faculty cache in case user is faculty
+        }
+        
         // Navigate to the feedback success page
-        navigate(`/client/events/${eventId}/feedback/success`);
+        // Add anonymous parameter if not logged in
+        const successUrl = !user && registrationId 
+          ? `/client/events/${eventId}/feedback/success?anonymous=true`
+          : `/client/events/${eventId}/feedback/success`;
+        navigate(successUrl);
       } else {
         throw new Error(response.data.message || 'Failed to submit feedback');
       }
