@@ -165,7 +165,7 @@ const DropdownManagement = () => {
 
   return (
     <AdminLayout pageTitle="Dropdown Management">
-      <div className="space-y-8">
+      <div className="flex flex-col max-w-6xl bg-white-500/80 p-3 mx-auto space-y-8">
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>

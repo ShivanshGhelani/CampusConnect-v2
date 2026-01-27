@@ -625,34 +625,452 @@ function EventDetail() {
     }
   };
 
-  // Event Report Generation Function
+  // Event Report Generation Function - FRONTEND ONLY
   const handleEventReportGeneration = async (reportData) => {
     try {
       setError(''); // Clear any previous errors
+      console.log('Generating Event Report with data:', reportData);
+      
+      // Build HTML report similar to attendance_report.html and feedback_report.html
+      let htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Report - ${event.event_name}</title>
+  <style>
+    @page { margin: 0.5in; size: A4; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Arial', sans-serif; font-size: 11pt; line-height: 1.4; color: #000; background: white; }
+    
+    .page-header {
+      text-align: center;
+      border-bottom: 3px solid #1f4e78;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+    }
+    
+    .header-logos {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo-section img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    
+    .logo-section img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    
+    .brand-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    
+    .brand-name .campus { color: #000; }
+    .brand-name .connect { color: #3b82f6; }
+    
+    .event-id {
+      text-align: right;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #1f4e78;
+    }
+    
+    .event-title-header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #3b82f6;
+      margin-bottom: 8px;
+    }
+    
+    .section {
+      margin-bottom: 25px;
+      border: 1px solid #d1d5db;
+      padding: 15px;
+      page-break-inside: avoid;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin: -15px -15px 15px -15px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .stat-box {
+      text-align: center;
+      padding: 15px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+    }
+    
+    .stat-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1f4e78;
+      display: block;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 5px;
+    }
+    
+    .info-item {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 10px;
+    }
+    
+    .info-label {
+      font-weight: bold;
+      color: #374151;
+      margin-right: 8px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    
+    th {
+      background: #1f4e78;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    td {
+      border: 1px solid #d1d5db;
+      padding: 8px;
+      font-size: 10px;
+    }
+    
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    
+    .image-gallery {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .image-item img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border: 1px solid #d1d5db;
+    }
+    
+    .image-caption {
+      text-align: center;
+      font-size: 10px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #1f4e78;
+      font-size: 11px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="header-logos">
+      <div class="logo-section">
+        <img src="${window.location.origin}/logo/ksv.png" alt="KSV Logo" />
+        <div class="brand-name">
+          <span class="campus">Campus</span><span class="connect">Connect</span>
+        </div>
+      </div>
+      <div class="event-id">Event ID: ${event.event_id}</div>
+    </div>
+    <h1>Event Report</h1>
+    <div class="event-title-header">${event.event_name}</div>
+    <div style="font-size: 10pt; color: #666; margin-top: 10px;">
+      Generated on: ${new Date().toLocaleString('en-IN', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}
+    </div>
+  </div>
 
-      // Generate event report with uploaded data
-      const response = await adminAPI.generateEventReport(eventId, {
-        ...reportData,
-        format: 'html'
-      });
+  <!-- Statistics -->
+  <div class="section">
+    <div class="section-title">Event Statistics</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <span class="stat-number">${reportData.statistics.totalRegistrations}</span>
+        <span class="stat-label">Total Registrations</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" style="color: #16a34a;">${reportData.statistics.totalAttendance}</span>
+        <span class="stat-label">Total Attendance</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" style="color: #2563eb;">${reportData.statistics.attendancePercentage}%</span>
+        <span class="stat-label">Attendance Rate</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" style="color: #f59e0b;">${reportData.statistics.feedbacksReceived}</span>
+        <span class="stat-label">Feedbacks Received</span>
+      </div>
+    </div>
+    ${reportData.statistics.totalAttendance > 0 ? `
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+      <div class="stat-box">
+        <span class="stat-number" style="color: #16a34a; font-size: 20px;">${reportData.statistics.presentCount}</span>
+        <span class="stat-label">Present</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" style="color: #ca8a04; font-size: 20px;">${reportData.statistics.partialCount}</span>
+        <span class="stat-label">Partial</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" style="color: #dc2626; font-size: 20px;">${reportData.statistics.absentCount}</span>
+        <span class="stat-label">Absent</span>
+      </div>
+    </div>` : ''}
+  </div>
+`;
 
-      if (response.data) {
-        // Open the generated report in a new window
-        const newWindow = window.open('', '_blank');
-        newWindow.document.write(response.data);
-        newWindow.document.close();
-
-        // Optional: Trigger print dialog after a short delay
-        setTimeout(() => {
-          newWindow.print();
-        }, 1000);
-      } else {
-        throw new Error('No report data received');
+      // Add Outcomes
+      if (reportData.outcomes && reportData.outcomes.length > 0) {
+        htmlContent += `
+  <div class="section">
+    <div class="section-title">Event Outcomes</div>
+    ${reportData.outcomes.map((outcome, idx) => `
+    <div class="info-item">
+      <div class="info-label">Outcome ${idx + 1}: ${outcome.title}</div>
+      <div style="color: #6b7280; margin-top: 5px;">${outcome.description}</div>
+    </div>
+    `).join('')}
+  </div>`;
       }
+
+      // Add Budget & Additional Details
+      if (reportData.resultsComparison || reportData.actualDuration || reportData.budgetUtilization || 
+          reportData.resourcesUsed || reportData.postEventSummary) {
+        htmlContent += `
+  <div class="section">
+    <div class="section-title">Budget & Additional Details</div>
+    ${reportData.resultsComparison ? `<div class="info-item"><div class="info-label">Expected vs Actual Results:</div><div style="color: #6b7280;">${reportData.resultsComparison}</div></div>` : ''}
+    ${reportData.actualDuration ? `<div class="info-item"><div class="info-label">Actual Duration:</div><div style="color: #6b7280;">${reportData.actualDuration}</div></div>` : ''}
+    ${reportData.budgetUtilization ? `<div class="info-item"><div class="info-label">Budget Utilization:</div><div style="color: #6b7280;">${reportData.budgetUtilization}</div></div>` : ''}
+    ${reportData.resourcesUsed ? `<div class="info-item"><div class="info-label">Resources Used:</div><div style="color: #6b7280;">${reportData.resourcesUsed}</div></div>` : ''}
+    ${reportData.postEventSummary ? `<div class="info-item"><div class="info-label">Post-Event Summary:</div><div style="color: #6b7280;">${reportData.postEventSummary}</div></div>` : ''}
+  </div>`;
+      }
+
+      // Add Images (base64 from memory)
+      if (reportData.images && reportData.images.length > 0) {
+        htmlContent += `
+  <div class="section">
+    <div class="section-title">Event Images</div>
+    <div class="image-gallery">
+      ${reportData.images.map((img, idx) => `
+      <div class="image-item">
+        <img src="${img}" alt="Event Image ${idx + 1}">
+        <div class="image-caption">${reportData.imageCaptions[idx] || `Image ${idx + 1}`}</div>
+      </div>
+      `).join('')}
+    </div>
+  </div>`;
+      }
+
+      // Add Winners
+      if (reportData.winners && reportData.winners.length > 0) {
+        htmlContent += `
+  <div class="section">
+    <div class="section-title">Winners & Recognition</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Position</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${reportData.winners.map(winner => `
+        <tr>
+          <td>${winner.position}</td>
+          <td>${winner.name}</td>
+          <td>${winner.department}</td>
+          <td>${winner.id}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>`;
+      }
+
+      // Add Attendance Report Table (if selected)
+      if (reportData.includeSignSheet && reportData.registrations && reportData.registrations.length > 0) {
+        // Separate by registration type
+        const facultyRegs = reportData.registrations.filter(r => r.registration_type === 'faculty');
+        const individualRegs = reportData.registrations.filter(r => r.registration_type === 'individual');
+        const teamRegs = reportData.registrations.filter(r => r.registration_type === 'team');
+
+        // Helper to generate attendance table
+        const generateAttendanceTable = (regs, title) => {
+          if (regs.length === 0) return '';
+          
+          return `
+  <div class="section">
+    <div class="section-title">${title}</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 12%;">ID</th>
+          <th style="width: 15%;">Registration ID</th>
+          <th style="width: 25%;">Name</th>
+          <th style="width: 18%;">Department</th>
+          <th style="width: 10%;">${title.includes('Faculty') ? 'Designation' : 'Semester'}</th>
+          <th style="width: 10%;">Status</th>
+          <th style="width: 5%;">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${regs.map((reg, idx) => {
+          const percentage = reg.attendance_percentage || 0;
+          const status = percentage >= 75 ? 'Present' : percentage > 0 ? 'Partial' : 'Absent';
+          const statusColor = percentage >= 75 ? '#16a34a' : percentage > 0 ? '#ca8a04' : '#dc2626';
+          
+          return `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${reg.student_id || reg.faculty_id || 'N/A'}</td>
+          <td style="font-family: monospace; font-size: 9px;">${reg.registration_id}</td>
+          <td>${reg.student_name || reg.faculty_name || 'N/A'}</td>
+          <td>${reg.department || 'N/A'}</td>
+          <td>${reg.semester || reg.designation || 'N/A'}</td>
+          <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
+          <td>${percentage}%</td>
+        </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+        };
+
+        htmlContent += generateAttendanceTable(facultyRegs, 'Attendance Report - Faculty');
+        htmlContent += generateAttendanceTable(individualRegs, 'Attendance Report - Individual Students');
+        htmlContent += generateAttendanceTable(teamRegs, 'Attendance Report - Team Registrations');
+      }
+
+      // Add Feedback Report Table (if selected and available)
+      if (reportData.includeFeedbackReport && reportData.statistics.feedbacksReceived > 0) {
+        const feedbackRegs = reportData.registrations.filter(r => 
+          r.feedback_status === 'submitted' || r.feedback_submitted
+        );
+
+        if (feedbackRegs.length > 0) {
+          htmlContent += `
+  <div class="section">
+    <div class="section-title">Feedback Summary</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ID</th>
+          <th>Registration ID</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Rating</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${feedbackRegs.map((reg, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${reg.student_id || reg.faculty_id || 'N/A'}</td>
+          <td style="font-family: monospace; font-size: 9px;">${reg.registration_id}</td>
+          <td>${reg.student_name || reg.faculty_name || 'N/A'}</td>
+          <td>${reg.department || 'N/A'}</td>
+          <td>${reg.overall_rating ? '⭐'.repeat(reg.overall_rating) : 'N/A'}</td>
+          <td style="font-size: 9px;">${reg.feedback_submitted_at ? new Date(reg.feedback_submitted_at).toLocaleDateString('en-IN') : 'N/A'}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>`;
+        }
+      }
+
+      htmlContent += `
+  <div class="footer">
+    <p>This report was generated automatically by CampusConnect Event Management System</p>
+    <p>© ${new Date().getFullYear()} - All Rights Reserved</p>
+  </div>
+</body>
+</html>`;
+
+      // Create a new window and print
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+
+      alert('Event report opened in new window. Use browser print to save as PDF.');
+      setEventReportModalOpen(false);
 
     } catch (error) {
       setError('Failed to generate event report. Please try again.');
       alert('Failed to generate event report. Please try again.');
+      console.error('Error generating event report:', error);
     }
   };
 
@@ -2294,7 +2712,11 @@ function EventDetail() {
                           </div>
                           <div
                             className="w-full flex items-center px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            onClick={async () => {
+                              // Fetch all registrations before opening modal
+                              if (allRegistrations.length === 0) {
+                                await fetchAllRegistrations();
+                              }
                               setEventReportModalOpen(true);
                               setExportDropdownOpen(false);
                               setExportDropdownSticky(false);
@@ -3740,6 +4162,10 @@ function EventDetail() {
             onClose={() => setEventReportModalOpen(false)}
             eventId={eventId}
             eventName={event?.event_name || 'Event'}
+            eventData={event}
+            eventStats={eventStats}
+            attendanceStats={attendanceStats}
+            registrations={allRegistrations}
             onGenerate={handleEventReportGeneration}
           />
 

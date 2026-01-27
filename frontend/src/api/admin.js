@@ -382,35 +382,5 @@ export const adminAPI = {
     });
     return api.get(`/api/v1/admin/export/report?${params}`);
   },
-  
-  generateEventReport: async (eventId, reportData = {}) => {
-    const formData = new FormData();
-    
-    // Add event images if provided
-    if (reportData.images && reportData.images.length > 0) {
-      reportData.images.forEach((image, index) => {
-        formData.append('event_images', image);
-      });
-    }
-    
-    // Add other report data as form fields
-    formData.append('event_outcomes', JSON.stringify(reportData.outcomes || []));
-    formData.append('winners', JSON.stringify(reportData.winners || []));
-    formData.append('results_comparison', reportData.resultsComparison || '');
-    formData.append('actual_duration', reportData.actualDuration || '');
-    formData.append('budget_utilization', reportData.budgetUtilization || '');
-    formData.append('resources_used', reportData.resourcesUsed || '');
-    formData.append('post_event_summary', reportData.postEventSummary || '');
-    
-    const params = new URLSearchParams({
-      format: reportData.format || 'html'
-    });
-    
-    return api.post(`/api/v1/admin/export/event-report/${eventId}?${params}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
 
 };

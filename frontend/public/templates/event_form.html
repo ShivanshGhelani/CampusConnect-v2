@@ -38,6 +38,13 @@
             margin-bottom: 8px;
         }
         
+        .header-flex img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            margin-right: 10px;
+        }
+        
         .page-header h1 {
             font-size: 18pt;
             font-weight: bold;
@@ -334,7 +341,10 @@
     <!-- Page Header -->
     <div class="page-header">
         <div class="header-flex">
-            <h1>CampusConnect </h1>
+            <div style="display: flex; align-items: center;">
+                <img src="/logo/ksv.png" alt="KSV Logo" />
+                <h1>CampusConnect </h1>
+            </div>
             <div class="event-id-header">Event ID: {{EVENT_ID}}</div>
         </div>
         {{HEADER_CONTENT}}

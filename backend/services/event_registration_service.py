@@ -39,7 +39,7 @@ class EventRegistrationService:
         self, 
         enrollment_no: str, 
         event_id: str, 
-        additional_data: Dict[str, Any] = None
+        additional_data: Optional[Dict[str, Any]] = None
     ) -> RegistrationResponse:
         """
         Register individual student for event.
@@ -518,6 +518,9 @@ class EventRegistrationService:
             
             # Get event data for attendance strategy
             event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            if not event_data:
+                return {"success": False, "message": "Event not found"}
+            
             attendance_strategy = await self._get_event_attendance_strategy(event_data)
             
             # Generate registration ID for new member
@@ -660,6 +663,9 @@ class EventRegistrationService:
             
             # Get event data for attendance strategy
             event_data = await DatabaseOperations.find_one(self.events_collection, {"event_id": event_id})
+            if not event_data:
+                return {"success": False, "message": "Event not found"}
+            
             attendance_strategy = await self._get_event_attendance_strategy(event_data)
             
             # Generate registration ID for new member
@@ -1087,6 +1093,11 @@ class EventRegistrationService:
             # FIXED: Serialize invitations to handle ObjectId and datetime fields
             serialized_invitations = []
             for invitation in invitations:
+                # Safely extract and convert datetime fields
+                created_at_val = invitation.get("created_at")
+                expires_at_val = invitation.get("expires_at")
+                responded_at_val = invitation.get("responded_at")
+                
                 serialized_invitation = {
                     "invitation_id": invitation.get("invitation_id"),
                     "event_id": invitation.get("event_id"),
@@ -1097,9 +1108,9 @@ class EventRegistrationService:
                     "inviter_name": invitation.get("inviter_name"),
                     "invitee_enrollment": invitation.get("invitee_enrollment"),
                     "status": invitation.get("status"),
-                    "created_at": invitation.get("created_at").isoformat() if invitation.get("created_at") else None,
-                    "expires_at": invitation.get("expires_at").isoformat() if invitation.get("expires_at") else None,
-                    "responded_at": invitation.get("responded_at").isoformat() if invitation.get("responded_at") else None
+                    "created_at": created_at_val.isoformat() if created_at_val and hasattr(created_at_val, "isoformat") else None,
+                    "expires_at": expires_at_val.isoformat() if expires_at_val and hasattr(expires_at_val, "isoformat") else None,
+                    "responded_at": responded_at_val.isoformat() if responded_at_val and hasattr(responded_at_val, "isoformat") else None
                 }
                 serialized_invitations.append(serialized_invitation)
             
@@ -1628,7 +1639,7 @@ class EventRegistrationService:
         event_data: Dict[str, Any],
         registration_type: str,
         team_info: Optional[Dict[str, Any]] = None,
-        additional_data: Dict[str, Any] = None
+        additional_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Create registration document with pre-structured attendance fields.
@@ -1647,7 +1658,7 @@ class EventRegistrationService:
                 "email": student_data.get("email", ""),
                 "phone": student_data.get("mobile_no"),
                 "department": student_data.get("department"),
-                "year": additional_data.get("year")
+                "year": additional_data.get("year") if additional_data else None
             },
             "event": {
                 "event_id": event_data["event_id"],
