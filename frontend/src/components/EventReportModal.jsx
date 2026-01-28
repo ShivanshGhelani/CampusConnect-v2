@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Plus, Minus, Trophy, FileText, Image as ImageIcon, Users, Calendar, Clock, DollarSign, CheckCircle } from 'lucide-react';
+import { X, Upload, Plus, Minus, Trophy, FileText, Image as ImageIcon, Users, Calendar, Clock, IndianRupee, CheckCircle } from 'lucide-react';
 
 const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, eventStats, attendanceStats, registrations = [], onGenerate }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -200,7 +200,7 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-99999 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -285,18 +285,18 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
                     <div className="text-base font-mono text-gray-900">{eventId || 'N/A'}</div>
                   </div>
 
-                  {eventData?.category && (
+                  {eventData?.event_type && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <div className="text-sm font-medium text-gray-500 mb-1">Category</div>
-                      <div className="text-base text-gray-900">{eventData.category}</div>
+                      <div className="text-base text-gray-900 capitalize">{eventData.event_type}</div>
                     </div>
                   )}
 
-                  {eventData?.date && (
+                  {eventData?.start_datetime && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <div className="text-sm font-medium text-gray-500 mb-1">Date</div>
                       <div className="text-base text-gray-900">
-                        {new Date(eventData.date).toLocaleDateString('en-IN', {
+                        {new Date(eventData.start_datetime).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric'
@@ -305,10 +305,19 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
                     </div>
                   )}
 
-                  {eventData?.time && (
+                  {eventData?.start_datetime && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                       <div className="text-sm font-medium text-gray-500 mb-1">Time</div>
-                      <div className="text-base text-gray-900">{eventData.time}</div>
+                      <div className="text-base text-gray-900">
+                        {new Date(eventData.start_datetime).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                        {eventData.end_datetime && ` - ${new Date(eventData.end_datetime).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}`}
+                      </div>
                     </div>
                   )}
 
@@ -320,12 +329,49 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
                   )}
                 </div>
 
-                {eventData?.description && (
+                {eventData?.short_description && (
                   <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div className="text-sm font-medium text-gray-500 mb-2">Description</div>
-                    <div className="text-sm text-gray-700 leading-relaxed">{eventData.description}</div>
+                    <div className="text-sm text-gray-700 leading-relaxed">{eventData.short_description}</div>
                   </div>
                 )}
+
+                {/* Check if organizers exist */}
+                {(() => {
+                  const hasOrganizers = (eventData?.organizer_details && eventData.organizer_details.length > 0) || 
+                                       (eventData?.contacts && eventData.contacts.length > 0);
+                  
+                  if (!hasOrganizers) return null;
+                  
+                  return (
+                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="text-sm font-medium text-blue-700 mb-2">Organizers</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {eventData.organizer_details && eventData.organizer_details.length > 0 ? (
+                          eventData.organizer_details.map((org, idx) => {
+                            const name = org.full_name || org.name || org.faculty_name || 'N/A';
+                            const phone = org.contact_no || org.phone || org.contact || '';
+                            return (
+                              <div key={idx} className="mb-1">
+                                • {name} {phone && `(${phone})`}
+                              </div>
+                            );
+                          })
+                        ) : eventData.contacts && eventData.contacts.length > 0 ? (
+                          eventData.contacts.map((contact, idx) => {
+                            const name = contact.name || contact.faculty_name || 'N/A';
+                            const phone = contact.contact || contact.phone || '';
+                            return (
+                              <div key={idx} className="mb-1">
+                                • {name} {phone && `(${phone})`}
+                              </div>
+                            );
+                          })
+                        ) : 'N/A'}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -385,7 +431,7 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
               {/* Budget & Additional Details */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                  <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
+                  <IndianRupee className="w-5 h-5 mr-2 text-blue-600" />
                   Budget & Additional Details
                 </h3>
 
@@ -418,7 +464,7 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
+                      <IndianRupee className="w-4 h-4 inline mr-1" />
                       Budget Utilization
                     </label>
                     <input
@@ -708,24 +754,6 @@ const EventReportModal = ({ isOpen, onClose, eventId, eventName, eventData, even
                     </label>
                   </div>
                 </div>
-
-                {/* Registration Summary */}
-                {registrations.length > 0 && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-sm font-medium text-gray-700 mb-2">Registration Breakdown:</div>
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                      <div>
-                        Faculty: {registrations.filter(r => r.registration_type === 'faculty').length}
-                      </div>
-                      <div>
-                        Individual: {registrations.filter(r => r.registration_type === 'individual').length}
-                      </div>
-                      <div>
-                        Team: {registrations.filter(r => r.registration_type === 'team').length}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Summary Box */}

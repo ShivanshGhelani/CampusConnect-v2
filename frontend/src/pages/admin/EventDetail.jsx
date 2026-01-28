@@ -717,7 +717,23 @@ function EventDetail() {
       background: #3b82f6;
       color: white;
       padding: 10px;
-      margin: -15px -15px 15px -15px;
+      margin: -15px -15px 10px -15px;
+    }
+    
+    .table-section {
+      margin-bottom: 25px;
+      padding: 0;
+      page-break-inside: avoid;
+      overflow: hidden;
+    }
+    
+    .table-section-title {
+      font-size: 16px;
+      font-weight: bold;
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      margin-bottom: 10px;
     }
     
     .stats-grid {
@@ -762,7 +778,7 @@ function EventDetail() {
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 15px 0;
+      margin: 0;
     }
     
     th {
@@ -772,6 +788,7 @@ function EventDetail() {
       text-align: left;
       font-size: 11px;
       font-weight: bold;
+      border: 1px solid #1f4e78;
     }
     
     td {
@@ -793,9 +810,10 @@ function EventDetail() {
     
     .image-item img {
       width: 100%;
-      height: 200px;
-      object-fit: cover;
+      max-height: 300px;
+      object-fit: contain;
       border: 1px solid #d1d5db;
+      background-color: #f9fafb;
     }
     
     .image-caption {
@@ -803,6 +821,72 @@ function EventDetail() {
       font-size: 10px;
       color: #666;
       margin-top: 5px;
+    }
+    
+    .response-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .response-card {
+      page-break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #d1d5db;
+    }
+    
+    .response-header {
+      background: #1f4e78;
+      color: white;
+      padding: 10px;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+    
+    .response-name {
+      font-weight: bold;
+      font-size: 11px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .response-meta {
+      font-size: 9px;
+      opacity: 0.9;
+    }
+    
+    .response-table {
+      margin: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+    
+    .response-table td {
+      border: 1px solid #d1d5db;
+      word-wrap: break-word;
+    }
+    
+    .response-table .question {
+      font-weight: bold;
+      background: #f3f4f6;
+      width: 35%;
+      color: #374151;
+      padding: 8px;
+      font-size: 9px;
+    }
+    
+    .response-table .answer {
+      width: 65%;
+      padding: 8px;
+      font-size: 9px;
+    }
+    
+    .stars {
+      color: #fbbf24;
+      font-size: 14px;
+      letter-spacing: 1px;
     }
     
     .footer {
@@ -839,6 +923,61 @@ function EventDetail() {
     </div>
   </div>
 
+  <!-- Event Details -->
+  <div class="section">
+    <div class="section-title">Event Information</div>
+    <div class="info-item">
+      <div class="info-label">Event Name:</div>
+      <div style="color: #6b7280;">${event.event_name || 'N/A'}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Event ID:</div>
+      <div style="color: #6b7280;">${event.event_id || eventId}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Category:</div>
+      <div style="color: #6b7280; text-transform: capitalize;">${event.event_type || 'N/A'}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Event Date:</div>
+      <div style="color: #6b7280;">${event.start_datetime ? new Date(event.start_datetime).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Venue:</div>
+      <div style="color: #6b7280;">${event.venue || event.location || 'N/A'}</div>
+    </div>
+    ${event.short_description ? `
+    <div class="info-item">
+      <div class="info-label">Description:</div>
+      <div style="color: #6b7280; margin-top: 5px;">${event.short_description}</div>
+    </div>` : ''}
+    <div class="info-item">
+      <div class="info-label">Organizing Department:</div>
+      <div style="color: #6b7280;">${event.organizing_department || event.organizing_club || event.department || 'N/A'}</div>
+    </div>
+    ${event.organizer_details && event.organizer_details.length > 0 ? `
+    <div class="info-item">
+      <div class="info-label">Organizers:</div>
+      <div style="color: #6b7280;">
+        ${event.organizer_details.map(org => {
+          const name = org.full_name || org.name || org.faculty_name || 'N/A';
+          const phone = org.contact_no || org.phone || org.contact || '';
+          return `• ${name}${phone ? ' (' + phone + ')' : ''}`;
+        }).join('<br>')}
+      </div>
+    </div>` : event.contacts && event.contacts.length > 0 ? `
+    <div class="info-item">
+      <div class="info-label">Organizers:</div>
+      <div style="color: #6b7280;">
+        ${event.contacts.map(contact => {
+          const name = contact.name || contact.faculty_name || 'N/A';
+          const phone = contact.contact || contact.phone || '';
+          return `• ${name}${phone ? ' (' + phone + ')' : ''}`;
+        }).join('<br>')}
+      </div>
+    </div>` : ''}
+  </div>
+
   <!-- Statistics -->
   <div class="section">
     <div class="section-title">Event Statistics</div>
@@ -860,21 +999,6 @@ function EventDetail() {
         <span class="stat-label">Feedbacks Received</span>
       </div>
     </div>
-    ${reportData.statistics.totalAttendance > 0 ? `
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-      <div class="stat-box">
-        <span class="stat-number" style="color: #16a34a; font-size: 20px;">${reportData.statistics.presentCount}</span>
-        <span class="stat-label">Present</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-number" style="color: #ca8a04; font-size: 20px;">${reportData.statistics.partialCount}</span>
-        <span class="stat-label">Partial</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-number" style="color: #dc2626; font-size: 20px;">${reportData.statistics.absentCount}</span>
-        <span class="stat-label">Absent</span>
-      </div>
-    </div>` : ''}
   </div>
 `;
 
@@ -925,8 +1049,8 @@ function EventDetail() {
       // Add Winners
       if (reportData.winners && reportData.winners.length > 0) {
         htmlContent += `
-  <div class="section">
-    <div class="section-title">Winners & Recognition</div>
+  <div class="table-section">
+    <div class="table-section-title">Winners & Recognition</div>
     <table>
       <thead>
         <tr>
@@ -951,19 +1075,202 @@ function EventDetail() {
       }
 
       // Add Attendance Report Table (if selected)
+      console.log('Attendance report check:', {
+        includeSignSheet: reportData.includeSignSheet,
+        hasRegistrations: reportData.registrations && reportData.registrations.length > 0,
+        registrationsCount: reportData.registrations?.length
+      });
+      
       if (reportData.includeSignSheet && reportData.registrations && reportData.registrations.length > 0) {
-        // Separate by registration type
-        const facultyRegs = reportData.registrations.filter(r => r.registration_type === 'faculty');
-        const individualRegs = reportData.registrations.filter(r => r.registration_type === 'individual');
-        const teamRegs = reportData.registrations.filter(r => r.registration_type === 'team');
-
-        // Helper to generate attendance table
-        const generateAttendanceTable = (regs, title) => {
-          if (regs.length === 0) return '';
+        console.log('Fetching attendance data for report...');
+        
+        try {
+          // Fetch attendance data with actual attendance status
+          const attendanceResponse = await adminAPI.getAttendanceConfigAndParticipants(eventId);
+          console.log('Attendance API response:', attendanceResponse.data);
           
-          return `
-  <div class="section">
-    <div class="section-title">${title}</div>
+          if (attendanceResponse.data.success && attendanceResponse.data.data.participants) {
+            const attendanceParticipants = attendanceResponse.data.data.participants;
+            console.log('Fetched attendance participants:', attendanceParticipants.length);
+            
+            // Separate by registration type
+            const facultyRegs = attendanceParticipants.filter(r => r.registration_type === 'faculty');
+            const individualRegs = attendanceParticipants.filter(r => r.registration_type === 'individual');
+            const teamRegs = attendanceParticipants.filter(r => r.registration_type === 'team');
+
+            // Helper to generate attendance table
+            const generateAttendanceTable = (regs, title) => {
+              if (regs.length === 0) return '';
+              
+              const isTeamTable = title.includes('Team');
+              
+              let tableRows = '';
+              let rowCounter = 1;
+              
+              regs.forEach((reg, idx) => {
+                // Debug: Log first registration to see available fields
+                if (idx === 0) {
+                  console.log('Sample attendance participant FULL OBJECT:', JSON.stringify(reg, null, 2));
+                  console.log('Available keys:', Object.keys(reg));
+                  console.log('participant_type:', reg.participant_type);
+                  console.log('student:', reg.student);
+                  console.log('faculty:', reg.faculty);
+                  console.log('registration_type:', reg.registration_type);
+                }
+                
+                // Handle TEAM registrations differently
+                if (isTeamTable && reg.registration_type === 'team') {
+                  const attendance = reg.attendance || {};
+                  const teamName = reg.team?.team_name || reg.team_name || reg.team?.name || 'Unknown Team';
+                  const teamSize = reg.team?.team_size || reg.team_size || reg.member_count || reg.team?.members?.length || 0;
+                  
+                  const teamStatus = attendance.status || reg.team?.status || 'confirmed';
+                  
+                  let teamStatusBadge = '';
+                  let teamStatusPercentage = '';
+                  
+                  switch (teamStatus) {
+                    case 'present':
+                      teamStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                      teamStatusPercentage = '100%';
+                      break;
+                    case 'partial':
+                      teamStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                      teamStatusPercentage = `${attendance.percentage || 0}%`;
+                      break;
+                    case 'absent':
+                      teamStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                      teamStatusPercentage = '0%';
+                      break;
+                    default:
+                      teamStatusBadge = '<span style="color: #6b7280;">Not Marked</span>';
+                      teamStatusPercentage = '0%';
+                  }
+
+                  // Team Header Row (merged cells)
+                  tableRows += `
+        <tr style="background-color: #dbeafe; border-left: 4px solid #3b82f6;">
+          <td colspan="8" style="font-weight: bold; padding: 10px 8px;">
+            🏆 ${teamName} 
+            <span style="color: #666; font-weight: normal; margin-left: 10px;">
+              (Registration ID: ${reg.registration_id || 'N/A'} | ${teamSize} members | Team Status: ${teamStatusBadge} - ${teamStatusPercentage})
+            </span>
+          </td>
+        </tr>
+                  `;
+
+                  // Get team members
+                  const teamMembers = reg.team_members || reg.team?.members || [];
+                  
+                  // Sort members to put team leader first
+                  const sortedMembers = [...teamMembers].sort((a, b) => {
+                    if (a.is_team_leader) return -1;
+                    if (b.is_team_leader) return 1;
+                    return 0;
+                  });
+
+                  // Team Member Rows
+                  sortedMembers.forEach((member) => {
+                    const memberName = member.student?.name || member.name || member.full_name || 'Unknown Member';
+                    const enrollmentId = member.student?.enrollment_no || member.enrollment_no || member.employee_id || 'N/A';
+                    const memberRegistrationId = member.registration_id || 'N/A';
+                    const department = member.student?.department || member.department || 'N/A';
+                    const year = member.student?.semester || member.year || member.semester || 'N/A';
+                    const isLeader = member.is_team_leader || false;
+
+                    // Get individual member attendance if available
+                    const memberAttendance = member.attendance || {};
+                    let memberStatusBadge = '';
+                    let memberStatusPercentage = '';
+                    
+                    switch (memberAttendance.status) {
+                      case 'present':
+                        memberStatusBadge = '<span style="color: #16a34a; font-weight: 600;">Present</span>';
+                        memberStatusPercentage = '100%';
+                        break;
+                      case 'partial':
+                        memberStatusBadge = '<span style="color: #ca8a04; font-weight: 600;">Partial</span>';
+                        memberStatusPercentage = `${memberAttendance.percentage || 0}%`;
+                        break;
+                      case 'absent':
+                        memberStatusBadge = '<span style="color: #dc2626; font-weight: 600;">Absent</span>';
+                        memberStatusPercentage = '0%';
+                        break;
+                      default:
+                        // Use team status as default
+                        memberStatusBadge = teamStatusBadge;
+                        memberStatusPercentage = teamStatusPercentage;
+                    }
+
+                    tableRows += `
+        <tr style="background-color: #f0f9ff;">
+          <td>${rowCounter}</td>
+          <td>${enrollmentId}</td>
+          <td style="font-family: monospace; font-size: 9px;">${memberRegistrationId}</td>
+          <td>
+            ${memberName}
+            ${isLeader ? '<span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 3px; font-size: 7px; margin-left: 5px;">LEADER</span>' : ''}
+          </td>
+          <td>${department}</td>
+          <td>${year}</td>
+          <td>${memberStatusBadge}</td>
+          <td>${memberStatusPercentage}</td>
+        </tr>
+                    `;
+                    rowCounter++;
+                  });
+                } else {
+                  // Individual/Faculty attendance
+                  const attendance = reg.attendance || {};
+                  
+                  let status = 'Absent';
+                  let statusColor = '#dc2626';
+                  let percentage = 0;
+                  
+                  if (attendance.status === 'present') {
+                    status = 'Present';
+                    statusColor = '#16a34a';
+                    percentage = 100;
+                  } else if (attendance.status === 'partial') {
+                    status = 'Partial';
+                    statusColor = '#ca8a04';
+                    percentage = attendance.percentage || 0;
+                  } else {
+                    status = 'Absent';
+                    statusColor = '#dc2626';
+                    percentage = 0;
+                  }
+                  
+                  // Get profile data
+                  const isStudent = reg.participant_type === 'student';
+                  const profile = isStudent ? reg.student : reg.faculty;
+                  
+                  const studentId = profile?.enrollment_no || profile?.employee_id || 'N/A';
+                  const studentName = profile?.name || profile?.full_name || 'N/A';
+                  const department = profile?.department || 'N/A';
+                  const semesterOrDesignation = isStudent 
+                    ? (profile?.year || profile?.semester || 'N/A')
+                    : (profile?.designation || 'N/A');
+                  
+                  tableRows += `
+        <tr>
+          <td>${rowCounter}</td>
+          <td>${studentId}</td>
+          <td style="font-family: monospace; font-size: 9px;">${reg.registration_id}</td>
+          <td>${studentName}</td>
+          <td>${department}</td>
+          <td>${semesterOrDesignation}</td>
+          <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
+          <td>${percentage}%</td>
+        </tr>
+                  `;
+                  rowCounter++;
+                }
+              });
+              
+              return `
+  <div class="table-section">
+    <div class="table-section-title">${title}</div>
     <table>
       <thead>
         <tr>
@@ -978,44 +1285,22 @@ function EventDetail() {
         </tr>
       </thead>
       <tbody>
-        ${regs.map((reg, idx) => {
-          const percentage = reg.attendance_percentage || 0;
-          const status = percentage >= 75 ? 'Present' : percentage > 0 ? 'Partial' : 'Absent';
-          const statusColor = percentage >= 75 ? '#16a34a' : percentage > 0 ? '#ca8a04' : '#dc2626';
-          
-          return `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${reg.student_id || reg.faculty_id || 'N/A'}</td>
-          <td style="font-family: monospace; font-size: 9px;">${reg.registration_id}</td>
-          <td>${reg.student_name || reg.faculty_name || 'N/A'}</td>
-          <td>${reg.department || 'N/A'}</td>
-          <td>${reg.semester || reg.designation || 'N/A'}</td>
-          <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
-          <td>${percentage}%</td>
-        </tr>
-          `;
-        }).join('')}
+        ${tableRows}
       </tbody>
     </table>
   </div>`;
-        };
+            };
 
-        htmlContent += generateAttendanceTable(facultyRegs, 'Attendance Report - Faculty');
-        htmlContent += generateAttendanceTable(individualRegs, 'Attendance Report - Individual Students');
-        htmlContent += generateAttendanceTable(teamRegs, 'Attendance Report - Team Registrations');
-      }
-
-      // Add Feedback Report Table (if selected and available)
-      if (reportData.includeFeedbackReport && reportData.statistics.feedbacksReceived > 0) {
-        const feedbackRegs = reportData.registrations.filter(r => 
-          r.feedback_status === 'submitted' || r.feedback_submitted
-        );
-
-        if (feedbackRegs.length > 0) {
-          htmlContent += `
+            htmlContent += generateAttendanceTable(facultyRegs, 'Attendance Report - Faculty');
+            htmlContent += generateAttendanceTable(individualRegs, 'Attendance Report - Individual Students');
+            htmlContent += generateAttendanceTable(teamRegs, 'Attendance Report - Team Registrations');
+          } else {
+            // Fallback to basic registration list if attendance data not available
+            console.log('No attendance data available, showing basic registration list');
+            htmlContent += `
   <div class="section">
-    <div class="section-title">Feedback Summary</div>
+    <div class="section-title">Registration List (Attendance data not available)</div>
+    <p style="color: #6b7280; margin-bottom: 15px;">Attendance has not been marked for this event yet.</p>
     <table>
       <thead>
         <tr>
@@ -1024,24 +1309,184 @@ function EventDetail() {
           <th>Registration ID</th>
           <th>Name</th>
           <th>Department</th>
-          <th>Rating</th>
-          <th>Submitted</th>
+          <th>Type</th>
         </tr>
       </thead>
       <tbody>
-        ${feedbackRegs.map((reg, idx) => `
+        ${reportData.registrations.map((reg, idx) => {
+          const studentId = reg.enrollment_no || reg.employee_id || reg.student_id || reg.faculty_id || 'N/A';
+          const studentName = reg.full_name || reg.name || reg.student_name || reg.faculty_name || 'N/A';
+          return `
         <tr>
           <td>${idx + 1}</td>
-          <td>${reg.student_id || reg.faculty_id || 'N/A'}</td>
+          <td>${studentId}</td>
           <td style="font-family: monospace; font-size: 9px;">${reg.registration_id}</td>
-          <td>${reg.student_name || reg.faculty_name || 'N/A'}</td>
+          <td>${studentName}</td>
           <td>${reg.department || 'N/A'}</td>
-          <td>${reg.overall_rating ? '⭐'.repeat(reg.overall_rating) : 'N/A'}</td>
-          <td style="font-size: 9px;">${reg.feedback_submitted_at ? new Date(reg.feedback_submitted_at).toLocaleDateString('en-IN') : 'N/A'}</td>
+          <td>${reg.registration_type || reg.user_type || 'N/A'}</td>
         </tr>
-        `).join('')}
+          `;
+        }).join('')}
       </tbody>
     </table>
+  </div>`;
+          }
+        } catch (error) {
+          console.error('Error fetching attendance data:', error);
+          htmlContent += `
+  <div class="section">
+    <div class="section-title">Attendance Report</div>
+    <p style="color: #dc2626;">Error loading attendance data. Please try again.</p>
+  </div>`;
+        }
+      }
+
+      // Add Feedback Report Table (if selected and available)
+      if (reportData.includeFeedbackReport && reportData.statistics.feedbacksReceived > 0) {
+        console.log('Feedback Report - Including feedback table');
+        console.log('Feedbacks received:', reportData.statistics.feedbacksReceived);
+        
+        try {
+          // Fetch feedback data
+          const [formResponse, responsesResponse] = await Promise.all([
+            adminAPI.getFeedbackForm(eventId),
+            adminAPI.getFeedbackResponses(eventId, { page: 1, limit: 1000 })
+          ]);
+
+          if (responsesResponse.data.success && responsesResponse.data.responses?.length > 0) {
+            const feedbackForm = formResponse.data.feedback_form;
+            const allResponses = responsesResponse.data.responses;
+
+            console.log('Fetched feedback responses:', allResponses.length);
+
+            // Add Feedback Summary Table
+            let feedbackTableRows = '';
+            allResponses.forEach((response, idx) => {
+              const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+              const respondent = response.student_info?.name || response.faculty_info?.name || 'Anonymous';
+              const department = response.student_info?.department || response.faculty_info?.department || 'N/A';
+              const submitDate = new Date(response.submitted_at).toLocaleDateString('en-IN');
+              const rating = response.overall_rating || response.responses?.overall_rating || 'N/A';
+              const ratingStars = rating !== 'N/A' ? '⭐'.repeat(parseInt(rating)) : 'N/A';
+
+              feedbackTableRows += `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${enrollmentId}</td>
+          <td style="font-family: monospace; font-size: 9px;">${response.registration_id || 'N/A'}</td>
+          <td>${respondent}</td>
+          <td>${department}</td>
+          <td style="font-size: 9px;">${submitDate}</td>
+          <td>${ratingStars}</td>
+        </tr>`;
+            });
+
+            htmlContent += `
+  <div class="table-section">
+    <div class="table-section-title">Feedback Summary</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ID</th>
+          <th>Registration ID</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Submitted</th>
+          <th>Rating</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${feedbackTableRows}
+      </tbody>
+    </table>
+  </div>`;
+
+            // Add Detailed Responses Cards
+            let detailedResponses = '';
+            allResponses.forEach((response, index) => {
+              const enrollmentId = response.student_enrollment || response.employee_id || 'N/A';
+              const respondent = response.student_info?.name || response.faculty_info?.name || 'Anonymous';
+              const submitTime = new Date(response.submitted_at).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+
+              let qaHTML = '';
+              if (feedbackForm?.elements && response.responses) {
+                feedbackForm.elements.forEach(element => {
+                  const value = response.responses[element.id];
+                  if (value !== null && value !== undefined && value !== '') {
+                    let displayValue = value;
+                    if (element.type === 'rating' || element.type === 'star_rating') {
+                      const filledStars = '★'.repeat(parseInt(value));
+                      const emptyStars = '☆'.repeat(5 - parseInt(value));
+                      displayValue = `${value}/5 <span class="stars">${filledStars}${emptyStars}</span>`;
+                    } else if (Array.isArray(value)) {
+                      displayValue = value.join(', ');
+                    } else {
+                      displayValue = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+                    qaHTML += `
+                      <tr>
+                        <td class="question">${element.label || element.id}</td>
+                        <td class="answer">${displayValue}</td>
+                      </tr>
+                    `;
+                  }
+                });
+              }
+
+              detailedResponses += `
+    <div class="response-card">
+      <div class="response-header">
+        <span class="response-name">#${index + 1} - ${respondent}</span>
+        <div class="response-meta">ID: ${enrollmentId} | Reg: ${response.registration_id || 'N/A'}<br>${submitTime}</div>
+      </div>
+      <table class="response-table">
+        ${qaHTML}
+      </table>
+    </div>
+              `;
+            });
+
+            htmlContent += `
+  <div class="table-section">
+    <div class="table-section-title">Detailed Feedback Responses</div>
+    <div class="response-grid">
+      ${detailedResponses}
+    </div>
+  </div>`;
+          } else {
+            // Fallback if API returns no responses
+            console.log('No feedback responses from API');
+            htmlContent += `
+  <div class="section">
+    <div class="section-title">Feedback Summary</div>
+    <div class="info-item">
+      <div class="info-label">Total Feedbacks Received:</div>
+      <div style="color: #6b7280; font-size: 18px; font-weight: bold; margin-top: 10px;">${reportData.statistics.feedbacksReceived} feedbacks</div>
+    </div>
+    <div style="margin-top: 15px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+      <p style="color: #6b7280; font-size: 10pt;">
+        📊 <strong>${reportData.statistics.feedbacksReceived}</strong> participants have submitted feedback for this event.
+        Detailed feedback responses can be viewed in the Feedback Management section.
+      </p>
+    </div>
+  </div>`;
+          }
+        } catch (error) {
+          console.error('Error fetching feedback data:', error);
+          htmlContent += `
+  <div class="section">
+    <div class="section-title">Feedback Summary</div>
+    <div class="info-item">
+      <div class="info-label">Total Feedbacks Received:</div>
+      <div style="color: #6b7280; font-size: 18px; font-weight: bold; margin-top: 10px;">${reportData.statistics.feedbacksReceived} feedbacks</div>
+    </div>
   </div>`;
         }
       }
