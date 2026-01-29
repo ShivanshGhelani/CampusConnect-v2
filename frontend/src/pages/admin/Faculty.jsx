@@ -180,7 +180,7 @@ function Faculty() {
 
   return (
     <AdminLayout pageTitle="Faculty Management">
-      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
             <i className="fas fa-exclamation-circle mr-2"></i>
