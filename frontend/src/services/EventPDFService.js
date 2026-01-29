@@ -587,8 +587,8 @@ export class EventPDFService {
         ` : '',
 
         // Schedule
-        EVENT_DURATION: `${this.formatDateTime(eventData.start_datetime)} - ${this.formatDateTime(eventData.end_datetime)}`,
-        REGISTRATION_DURATION: `${this.formatDateTime(eventData.registration_start_date)} - ${this.formatDateTime(eventData.registration_end_date)}`,
+        EVENT_DURATION: `${this.formatDate(eventData.start_date)} ${this.formatTime(eventData.start_time)} - ${this.formatDate(eventData.end_date)} ${this.formatTime(eventData.end_time)}`,
+        REGISTRATION_DURATION: `${this.formatDate(eventData.registration_start_date)} ${this.formatTime(eventData.registration_start_time)} - ${this.formatDate(eventData.registration_end_date)} ${this.formatTime(eventData.registration_end_time)}`,
 
 
         // Venue
