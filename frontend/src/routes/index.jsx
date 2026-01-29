@@ -60,6 +60,9 @@ import SuperAdminRoute from '../components/SuperAdminRoute';
 import ScrollToTop from '../components/common/ScrollToTop';
 import ErrorPage from '../pages/ErrorPage';
 
+// Test pages
+import CertificateTest from '../pages/test/CertificateTest';
+
 // Admin redirect component to handle role-based redirects
 function AdminRedirect() {
   const { user } = useAuth();
@@ -86,6 +89,9 @@ function AppRoutes() {
     <Router basename="/">
       <ScrollToTop />
       <Routes>
+      
+        {/* Test Routes */}
+        <Route path="/test/certificate" element={<CertificateTest />} />
       
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />

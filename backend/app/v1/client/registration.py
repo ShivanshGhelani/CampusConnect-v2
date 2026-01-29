@@ -208,6 +208,53 @@ async def get_registration_status_alt(
     logger.info(f"PHASE 4A: Redirecting /event/{event_id}/status to /status/{event_id}")
     return await get_registration_status(event_id, current_user)
 
+@router.get("/event/{event_id}/my-registration")
+async def get_my_registration(
+    event_id: str,
+    current_user=Depends(get_current_user)
+):
+    """Get complete registration details for authenticated user for certificate generation"""
+    try:
+        logger.info(f"🎫 Fetching registration details for {getattr(current_user, 'enrollment_no', getattr(current_user, 'employee_id', 'unknown'))} -> {event_id}")
+        
+        # Determine user type
+        if hasattr(current_user, 'enrollment_no'):
+            user_id = current_user.enrollment_no
+            user_field = "student.enrollment_no"
+        elif hasattr(current_user, 'employee_id'):
+            user_id = current_user.employee_id
+            user_field = "faculty.employee_id"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid user type")
+        
+        # Query registration from database
+        from database.operations import registrations_collection
+        
+        registration = await registrations_collection.find_one({
+            "event.event_id": event_id,
+            user_field: user_id
+        })
+        
+        if not registration:
+            raise HTTPException(status_code=404, detail="Registration not found for this event")
+        
+        # Convert ObjectId to string for JSON serialization
+        if '_id' in registration:
+            registration['_id'] = str(registration['_id'])
+        
+        logger.info(f"✅ Registration found: {registration.get('registration_id')}")
+        
+        return {
+            "success": True,
+            "registration": registration
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching registration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch registration: {str(e)}")
+
 @router.delete("/cancel/{event_id}")
 async def cancel_registration(
     event_id: str,

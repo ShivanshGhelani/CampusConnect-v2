@@ -16,6 +16,8 @@ export const clientAPI = {
   
   getMyRegistrations: (filters) => api.get('/api/v1/client/registration/my-registrations', { params: filters }),
   
+  getMyRegistration: (eventId) => api.get(`/api/v1/client/registration/event/${eventId}/my-registration`),
+  
   getRegistrationStatus: (eventId) => api.get(`/api/v1/client/registration/event/${eventId}/status`),
   
   unregisterFromEvent: (eventId) => api.delete(`/api/v1/client/registration/unregister/${eventId}`),
