@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { clientAPI } from '../../api/client';
-import certificateGenerateService from '../../services/certificateGenerateService.jsx';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { getCachedProfile, fetchProfileWithCache } from '../../utils/profileCache';
 
 const FeedbackSuccess = () => {
   const { eventId } = useParams();
@@ -14,19 +12,14 @@ const FeedbackSuccess = () => {
 
   // State management
   const [event, setEvent] = useState(null);
-  const [registration, setRegistration] = useState(null);
-  const [attendance, setAttendance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
-  const [certificateMessage, setCertificateMessage] = useState('');
 
   useEffect(() => {
-    // Check if this is test mode or anonymous submission from search params
-    const isTestMode = searchParams.get('test_mode') === 'true';
+    // Check if this is anonymous submission from search params
     const isAnonymous = searchParams.get('anonymous') === 'true';
     
-    if (!isAuthenticated && !isTestMode && !isAnonymous) {
+    if (!isAuthenticated && !isAnonymous) {
       navigate('/auth/login', { state: { from: `/client/events/${eventId}/feedback/success` } });
       return;
     }
@@ -39,194 +32,22 @@ const FeedbackSuccess = () => {
       setIsLoading(true);
       setError('');
 
-      // Check if this is test mode or anonymous
-      const isTestMode = searchParams.get('test_mode') === 'true';
+      // Check if this is anonymous submission from search params
       const isAnonymous = searchParams.get('anonymous') === 'true';
       
-      if (isTestMode) {
-        // For test mode, set mock data - URLs will fail and use fallback templates
-        setEvent({
-          event_id: eventId,
-          event_name: "AI & Deep Learning Hackathon",
-          description: "Test event for feedback system",
-          certificate_templates: {
-            "Certificate of Participation": "https://gygschntnaivagnbwmgw.supabase.co/storage/v1/object/public/campusconnect/certificate-templates/participation-template.html",
-            "Certificate of Innovation": "https://gygschntnaivagnbwmgw.supabase.co/storage/v1/object/public/campusconnect/certificate-templates/innovation-template.html"
-          }
-        });
-        setRegistration({
-          registrar_id: "22beit3004111",
-          registration_id: "test_reg_" + Date.now(),
-          full_name: "Test Student",
-          email: "22beit3004111@test.edu",
-          department: "Computer Engineering",
-          course: "B.E. Information Technology"
-        });
-        setAttendance({
-          attendance_id: "test_attendance_" + Date.now(),
-          marked_at: new Date().toISOString()
-        });
-        return;
-      }
-
       // Fetch event details
       const eventResponse = await clientAPI.getEventDetails(eventId);
       if (eventResponse.data.success) {
         setEvent(eventResponse.data.event);
-        console.log('📅 Event Data:', eventResponse.data.event);
-        console.log('📜 Certificate Templates:', eventResponse.data.event.certificate_templates);
-        console.log('🎓 Is Certificate Based:', eventResponse.data.event.certificate_based);
       } else {
         throw new Error('Failed to fetch event details');
       }
 
-      // Skip registration and attendance checks for anonymous users
-      if (isAnonymous) {
-        console.log('📝 Anonymous feedback submission - skipping registration/attendance checks');
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch registration status to get registration details (only for logged-in users)
-      const registrationResponse = await clientAPI.getRegistrationStatus(eventId);
-      console.log('🎟️ Full Registration Response:', registrationResponse.data);
-      if (registrationResponse.data.success) {
-        const regData = registrationResponse.data.registration;
-        console.log('📋 Registration Data:', regData);
-        console.log('🔑 Registration ID:', regData?.registration_id);
-        console.log('👤 Registrar ID:', regData?.registrar_id);
-        setRegistration(regData);
-      } else {
-        console.error('❌ Failed to fetch registration');
-      }
-
-      // Fetch user profile - OPTIMIZED: Use cached profile data
-      try {
-        // First check cache for fast loading
-        const cachedProfile = getCachedProfile();
-        if (cachedProfile?.profile) {
-          setUser(cachedProfile.profile);
-          
-        } else {
-          // Fallback to API with cache
-          const profileData = await fetchProfileWithCache();
-          if (profileData?.profile) {
-            setUser(profileData.profile);
-            
-          }
-        }
-      } catch (userError) {
-        
-      }
-
-      // Fetch attendance status
-      try {
-        const attendanceResponse = await clientAPI.getAttendanceStatus(eventId);
-        if (attendanceResponse.data.success && attendanceResponse.data.attended) {
-          setAttendance({
-            attendance_id: attendanceResponse.data.attendance_data?.attendance_id
-          });
-          
-        }
-      } catch (attendanceError) {
-        // Attendance might not be marked yet, which is okay
-        
-      }
-
     } catch (error) {
-      
+      console.error('Error fetching event details:', error);
       setError('Failed to load event details. Please try again later.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const formatDateTime = (dateTimeString, format = 'full') => {
-    if (!dateTimeString) return 'N/A';
-    
-    const date = new Date(dateTimeString);
-    
-    if (format === 'full') {
-      return date.toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-    }
-    
-    return date.toLocaleDateString();
-  };
-
-  const handleCertificateDownload = async (certificateType = 'Certificate of Participation') => {
-    try {
-      setIsGeneratingCertificate(true);
-      setCertificateMessage('');
-
-      // Check if certificate templates are available
-      if (!event?.certificate_templates || Object.keys(event.certificate_templates).length === 0) {
-        throw new Error('No certificate templates available for this event');
-      }
-
-      // Test direct URL access first
-      const templateUrl = event.certificate_templates[certificateType];
-      if (templateUrl) {
-        
-        try {
-          const testResponse = await fetch(templateUrl);
-          
-          if (testResponse.ok) {
-            const content = await testResponse.text();
-            
-          }
-        } catch (testError) {
-          
-        }
-      }
-
-      // Get user data (for test mode, use registration data)
-      const isTestMode = searchParams.get('test_mode') === 'true';
-      const studentData = isTestMode ? {
-        full_name: registration?.full_name || 'Test Student',
-        enrollment: registration?.registrar_id || '22beit3004111',
-        email: `${registration?.registrar_id || '22beit3004111'}@test.edu`,
-        department: 'Computer Engineering',
-        course: 'B.E. Information Technology'
-      } : user;
-
-      // Debug the certificate generation process
-      
-      await certificateGenerateService.debugCertificateGeneration(
-        event,
-        studentData,
-        registration,
-        attendance,
-        certificateType
-      );
-
-      // Generate certificate
-      const result = await certificateGenerateService.generateCertificate(
-        event,
-        studentData,
-        registration,
-        attendance,
-        certificateType
-      );
-
-      if (result.success) {
-        setCertificateMessage('✅ Certificate downloaded successfully!');
-      } else {
-        throw new Error(result.message);
-      }
-
-    } catch (error) {
-      
-      setCertificateMessage(`❌ ${error.message}`);
-    } finally {
-      setIsGeneratingCertificate(false);
     }
   };
 
@@ -276,81 +97,6 @@ const FeedbackSuccess = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Thank You for Your Feedback!</h1>
           <p className="text-gray-600">Your feedback will help us improve future events.</p>
         </div>
-
-        {/* Certificate Collection Section - Only show if certificates are available AND user is authenticated */}
-        {isAuthenticated && event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6 space-y-4">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-800 flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-              </svg>
-              Collect Your Certificate
-            </h2>
-            
-            <p className="text-sm text-gray-600">Your certificate is ready for download!</p>
-            
-            {certificateMessage && (
-              <div className={`p-3 rounded-lg text-sm ${
-                certificateMessage.includes('✅') 
-                  ? 'bg-green-50 text-green-700 border border-green-200' 
-                  : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
-                {certificateMessage}
-              </div>
-              )}
-              
-              <div className="flex flex-wrap gap-3 justify-center">
-                {Object.keys(event.certificate_templates).map((templateName) => (
-                  <button
-                    key={templateName}
-                    onClick={() => handleCertificateDownload(templateName)}
-                    disabled={isGeneratingCertificate}
-                    className="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-2.5 px-5 rounded-lg inline-flex items-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
-                  >
-                    {isGeneratingCertificate ? (
-                      <>
-                        <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                        </svg>
-                        Download {templateName}
-                      </>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          
-        )}
-        
-        {/* Info message for anonymous users about certificates */}
-        {!isAuthenticated && event?.certificate_based !== false && event?.certificate_templates && Object.keys(event.certificate_templates).length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-2">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-              </svg>
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-1">Certificate Available</h3>
-                <p className="text-sm text-blue-700">
-                  To download your certificate, please{' '}
-                  <Link to="/auth/login" className="underline font-medium hover:text-blue-900">
-                    log in to your account
-                  </Link>
-                  .
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Navigation Links */}
         <div className="text-center">
