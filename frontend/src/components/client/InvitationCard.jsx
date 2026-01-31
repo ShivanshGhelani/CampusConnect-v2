@@ -290,12 +290,12 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                         </div>
                     ) : (
                         <>
-                            {/* Primary Actions Row */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 mx-auto justify-between items-center-safe gap-2">
+                            {/* Primary Actions - 2x2 Grid */}
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => handleResponse('accept')}
                                     disabled={isResponding}
-                                    className={`col-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${isResponding && responseType === 'accept'
+                                    className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 ${isResponding && responseType === 'accept'
                                         ? 'bg-green-400 text-white cursor-not-allowed'
                                         : 'bg-green-600 hover:bg-green-700 text-white'
                                         }`}
@@ -306,14 +306,16 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Accepting...
+                                            <span className="hidden sm:inline">Accepting...</span>
+                                            <span className="sm:hidden">Accept...</span>
                                         </>
                                     ) : (
                                         <>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
-                                            Accept Invitation
+                                            <span className="hidden sm:inline">Accept</span>
+                                            <span className="sm:hidden">Accept</span>
                                         </>
                                     )}
                                 </button>
@@ -321,7 +323,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                                 <button
                                     onClick={() => handleResponse('decline')}
                                     disabled={isResponding}
-                                    className={`col-2 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${isResponding && responseType === 'decline'
+                                    className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-200 ${isResponding && responseType === 'decline'
                                         ? 'bg-red-400 text-white cursor-not-allowed'
                                         : 'bg-red-600 hover:bg-red-700 text-white'
                                         }`}
@@ -332,42 +334,40 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Declining...
+                                            <span className="hidden sm:inline">Declining...</span>
+                                            <span className="sm:hidden">Decline...</span>
                                         </>
                                     ) : (
                                         <>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
-                                            Decline
+                                            <span>Decline</span>
                                         </>
                                     )}
                                 </button>
 
-
-
                                 <button
                                     onClick={handleViewTeam}
-                                    className="col-3 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-all duration-200"
+                                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg font-medium text-xs sm:text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-all duration-200"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                     </svg>
-
-                                    View Team
+                                    <span>View Team</span>
                                 </button>
 
                                 <button
                                     onClick={() => onViewDetails?.(invitation)}
-                                    className="col-4 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all duration-200"
+                                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg font-medium text-xs sm:text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all duration-200"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                     </svg>
-
-                                    Event Details
+                                    <span className="hidden sm:inline">Event Details</span>
+                                    <span className="sm:hidden">Details</span>
                                 </button>
                             </div>
                         </>
