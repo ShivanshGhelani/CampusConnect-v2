@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import UploadForm from '../../components/admin/certificates/UploadForm';
 import TemplateTable from '../../components/admin/certificates/TemplateTable';
@@ -9,6 +10,7 @@ import { adminAPI } from '../../api/admin';
 import { Dropdown, SearchBox } from '../../components/ui';
 
 function ManageCertificates() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -353,7 +355,7 @@ function ManageCertificates() {
                   Upload Template
                 </button>
                 <button
-                  onClick={() => window.open('https://campusconnectldrpcerti.vercel.app/', '_blank')}
+                  onClick={() => navigate('/admin/certificate-canvas')}
                   className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

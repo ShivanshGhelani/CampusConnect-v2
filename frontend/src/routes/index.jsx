@@ -52,6 +52,7 @@ import Feedbacks from '../pages/admin/Feedbacks';
 import FeedbackSetup from '../pages/admin/FeedbackSetup';
 import PhysicalAttendancePortal from '../components/admin/attendance/PhysicalAttendancePortal';
 import CertificateEditor from '../pages/admin/CertificateEditor';
+import CertificateCanvas from '../pages/admin/CertificateCanvas';
 import DropdownManagement from '../components/admin/SuperAdmin/DropdownManagement';
 
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -396,6 +397,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute userType="admin">
               <CertificateEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/certificate-canvas"
+          element={
+            <ProtectedRoute userType="admin">
+              <CertificateCanvas />
             </ProtectedRoute>
           }
         />
