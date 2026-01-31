@@ -11,7 +11,6 @@
     "preview": "vite preview --host localhost"
   },
   "dependencies": {
-    "@formio/js": "^5.2.1",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.1",
     "@monaco-editor/react": "^4.7.0",

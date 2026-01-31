@@ -1,4 +1,6 @@
 // PDF generation service for event forms
+import DOMPurify from 'dompurify';
+
 export class EventPDFService {
   constructor() {
     this.templateCache = new Map();
@@ -159,7 +161,28 @@ export class EventPDFService {
       html = '<p style="margin: 8px 0;">' + html + '</p>';
     }
     
-    return html;
+    // Sanitize HTML to prevent XSS attacks
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'br', 'strong', 'em', 'u', 's',
+        'ul', 'ol', 'li',
+        'pre', 'code',
+        'a', 'img',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'div', 'span'
+      ],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'class'],
+      ALLOW_DATA_ATTR: false
+    });
+  }
+
+  // HTML escape helper to prevent XSS
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   // Generate organizers HTML section
@@ -170,14 +193,14 @@ export class EventPDFService {
 
     const organizersHTML = organizers.map((organizer, index) => {
       const details = [];
-      if (organizer.email) details.push(`📧 ${organizer.email}`);
-      if (organizer.employee_id) details.push(`🆔 ${organizer.employee_id}`);
-      if (organizer.id) details.push(`Faculty ID: ${organizer.id}`);
+      if (organizer.email) details.push(`📧 ${this.escapeHtml(organizer.email)}`);
+      if (organizer.employee_id) details.push(`🆔 ${this.escapeHtml(organizer.employee_id)}`);
+      if (organizer.id) details.push(`Faculty ID: ${this.escapeHtml(organizer.id)}`);
       if (organizer.isNew) details.push('⚠️ New Organizer');
 
       return `
         <div class="organizer-item">
-          <div class="organizer-name">${index + 1}. ${organizer.name || 'Unnamed'}</div>
+          <div class="organizer-name">${index + 1}. ${this.escapeHtml(organizer.name || 'Unnamed')}</div>
           ${details.length > 0 ? `<div class="organizer-details">${details.join(' • ')}</div>` : ''}
         </div>
       `;
@@ -198,7 +221,7 @@ export class EventPDFService {
     }
 
     const contactsHTML = contacts.map(contact => `
-      <div class="contact-item">📞 ${contact.name}: ${contact.contact}</div>
+      <div class="contact-item">📞 ${this.escapeHtml(contact.name)}: ${this.escapeHtml(contact.contact)}</div>
     `).join('');
 
     return `
@@ -522,14 +545,14 @@ export class EventPDFService {
 
       // Prepare all replacement values
       const replacements = {
-        DOCUMENT_TITLE: `${user?.role === 'executive_admin' ? 'Event Request Form' : 'Event Details'} - ${eventData.event_name}`,
-        EVENT_ID: eventData.event_id || 'N/A',
-        EVENT_NAME: eventData.event_name || 'Untitled Event',
+        DOCUMENT_TITLE: `${user?.role === 'executive_admin' ? 'Event Request Form' : 'Event Details'} - ${this.escapeHtml(eventData.event_name)}`,
+        EVENT_ID: this.escapeHtml(eventData.event_id) || 'N/A',
+        EVENT_NAME: this.escapeHtml(eventData.event_name) || 'Untitled Event',
         
         // Header content based on user role
         HEADER_CONTENT: user?.role === 'executive_admin' ? `
           <h2>EVENT CREATION REQUEST FORM</h2>
-          <p>Submitted by: ${eventData.event_created_by || user.fullname || user.username || 'Executive Admin'}</p>
+          <p>Submitted by: ${this.escapeHtml(eventData.event_created_by || user.fullname || user.username || 'Executive Admin')}</p>
           <p>Request Date: ${currentDate}</p>
           <p style="margin-top: 8px;">Status: <span class="status-pending">PENDING APPROVAL</span></p>
         ` : `
@@ -547,7 +570,7 @@ export class EventPDFService {
             </div>
             <div class="field">
               <span class="field-label">Requested by:</span>
-              <span class="field-value">${eventData.event_created_by || user.fullname || user.username || 'Executive Admin'}</span>
+              <span class="field-value">${this.escapeHtml(eventData.event_created_by || user.fullname || user.username || 'Executive Admin')}</span>
             </div>
             <div class="field">
               <span class="field-label">Department/Role:</span>
@@ -581,7 +604,7 @@ export class EventPDFService {
                         eventData.target_audience === 'faculty' ? 'Faculty Only' : 
                         eventData.target_audience === 'all' ? 'All Audiences' :
                         eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',
-        SHORT_DESCRIPTION: eventData.short_description || 'N/A',
+        SHORT_DESCRIPTION: this.escapeHtml(eventData.short_description) || 'N/A',
         DETAILED_DESCRIPTION: eventData.detailed_description ? `
           <div class="description-box">${this.markdownToHtml(eventData.detailed_description)}</div>
         ` : '',
@@ -594,10 +617,10 @@ export class EventPDFService {
         // Venue
         EVENT_MODE: eventData.mode?.charAt(0).toUpperCase() + eventData.mode?.slice(1) || 'N/A',
         VENUE_LABEL: eventData.mode === 'online' ? 'Platform/Link' : 'Venue/Location',
-        VENUE: eventData.venue || 'N/A',
+        VENUE: this.escapeHtml(eventData.venue) || 'N/A',
 
         // Organizers and contacts
-        ORGANIZING_DEPARTMENT: eventData.organizing_department || 'N/A',
+        ORGANIZING_DEPARTMENT: this.escapeHtml(eventData.organizing_department) || 'N/A',
         ORGANIZERS_SECTION: this.generateOrganizersSection(eventData.organizers),
         CONTACTS_SECTION: this.generateContactsSection(eventData.contacts),
 
@@ -613,7 +636,7 @@ export class EventPDFService {
         FEE_DESCRIPTION: eventData.fee_description ? `
           <div class="field">
             <span class="field-label">Fee Description:</span>
-            <span class="field-value">${eventData.fee_description}</span>
+            <span class="field-value">${this.escapeHtml(eventData.fee_description)}</span>
           </div>
         ` : '',
         MIN_PARTICIPANTS: eventData.min_participants || '1',
