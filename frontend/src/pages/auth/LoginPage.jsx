@@ -22,7 +22,7 @@ function LoginPage() {
   const detectUserType = (identifier) => {
     if (!identifier) return null;
     
-    // Student enrollment pattern (e.g., 21BECE40015, 22BTECH12345)
+    // Student enrollment pattern (e.g., 22BEIT30043, 22BTECH12345)
     const enrollmentPattern = /^\d{2}[A-Z]{3,6}\d{4,6}$/;
     
     // Faculty employee ID pattern (e.g., EMP001, FAC123, PROF456)

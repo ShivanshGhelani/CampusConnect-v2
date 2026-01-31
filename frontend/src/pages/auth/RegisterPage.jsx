@@ -1008,7 +1008,7 @@ function RegisterPage() {
                         name={userRole === 'student' ? 'enrollment_no' : 'employee_id'}
                         type="text"
                         required
-                        placeholder={userRole === 'student' ? 'e.g., 21BECE40015' : 'e.g., EMP001'}
+                        placeholder={userRole === 'student' ? 'e.g., 22BEIT30043' : 'e.g., EMP001'}
                         label={userRole === 'student' ? 'Enrollment Number' : 'Employee ID'}
                         value={userRole === 'student' ? formData.enrollment_no : formData.employee_id}
                         onChange={handleChange}

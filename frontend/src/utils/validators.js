@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 // Core validation patterns (migrated from backend)
 const VALIDATION_PATTERNS = {
   // Student enrollment: Flexible format to support multiple patterns
-  // Supports: 2 digits + 2-4 letters + 4-5 digits (e.g., 21BECE40015, 23CSAI4041)
+  // Supports: 2 digits + 2-4 letters + 4-5 digits (e.g., 22BEIT30043, 23CSAI4041)
   // Also supports: 2-4 letters + 2 digits + 2-4 letters + 4 digits (e.g., CS21CS1001)
   ENROLLMENT_NUMBER: /^(\d{2}[A-Z]{2,4}\d{4,5}|[A-Z]{2,4}\d{2}[A-Z]{2,4}\d{4})$/,
   
@@ -43,7 +43,7 @@ const VALIDATION_PATTERNS = {
 
 // Error messages for validation failures
 const ERROR_MESSAGES = {
-  ENROLLMENT_NUMBER: 'Invalid enrollment number format (e.g., 21BECE40015)',
+  ENROLLMENT_NUMBER: 'Invalid enrollment number format (e.g., 22BEIT30043)',
   FACULTY_ID: 'Faculty ID must be 3-8 characters (letters, numbers, or both)',
   EMAIL: 'Please enter a valid email address',
   MOBILE_NUMBER: 'Mobile number must be exactly 10 digits',

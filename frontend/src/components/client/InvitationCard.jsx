@@ -291,7 +291,7 @@ const InvitationCard = ({ invitation, onAccept, onDecline, onViewDetails, onView
                     ) : (
                         <>
                             {/* Primary Actions Row */}
-                            <div className="grid grid-cols-4 mx-auto justify-between items-center-safe gap-2">
+                            <div className="grid grid-cols-2 md:grid-cols-4 mx-auto justify-between items-center-safe gap-2">
                                 <button
                                     onClick={() => handleResponse('accept')}
                                     disabled={isResponding}

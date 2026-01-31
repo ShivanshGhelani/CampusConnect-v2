@@ -276,7 +276,7 @@ const TeamManagement = () => {
 
     const enrollmentPattern = /^\d{2}[A-Z]{2,4}\d{5}$/;
     if (!enrollmentPattern.test(enrollment)) {
-      setEnrollmentError('Invalid enrollment number format (e.g., 21BECE40015)');
+      setEnrollmentError('Invalid enrollment number format (e.g., 22BEIT30043)');
       return;
     }
 
@@ -2179,7 +2179,7 @@ const TeamManagement = () => {
                     type="text"
                     value={participantEnrollment}
                     onChange={handleEnrollmentChange}
-                    placeholder="e.g., 21BECE40015"
+                    placeholder="e.g., 22BEIT30043"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     required
                   />

@@ -5,11 +5,11 @@ import { clientAPI } from '../../../../api/client';
 import Layout from '../../../../components/client/Layout';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { validators, useValidation, validateForm } from '../../../../utils/validators';
-import { 
+import {
   generateRegistrationId,
   generateTeamRegistrationId,
   generateSessionId,
-  idValidators 
+  idValidators
 } from '../../../../utils/idGenerator';
 // Import cache utilities for optimized data loading
 import { fetchProfileWithCache, getAnyCache, refreshExpiredCache, clearProfileCache } from '../../../../utils/profileCache';
@@ -35,7 +35,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
   // Debug loading state changes
   useEffect(() => {
-    
+
   }, [loading]);
 
   // Form data state - Initialize with user data if available
@@ -44,7 +44,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       if (!gender) return '';
       return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
     };
-    
+
     const formatDate = (dateString) => {
       if (!dateString) return '';
       try {
@@ -87,7 +87,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     const initializeSession = () => {
       const newSessionId = generateSessionId();
       setSessionId(newSessionId);
-      
+
       if (user?.enrollment_no && eventId) {
         const registrationId = generateRegistrationId(
           user.enrollment_no,
@@ -95,7 +95,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           user.full_name || 'Student'
         );
         setTempRegistrationId(registrationId);
-        
+
         const sessionData = {
           sessionId: newSessionId,
           tempRegistrationId: registrationId,
@@ -107,7 +107,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         setFormSession(sessionData);
       }
     };
-    
+
     if (user && eventId) {
       initializeSession();
     }
@@ -132,7 +132,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         if (!gender) return '';
         return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
       };
-      
+
       const formatDate = (dateString) => {
         if (!dateString) return '';
         try {
@@ -195,7 +195,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       isValidating: false,
       validationError: ''
     }));
-    
+
     setFormData(prev => ({ ...prev, participants }));
     setParticipantCount(count);
   }, []);
@@ -210,21 +210,21 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         dataLoadingRefCurrent: dataLoadingRef.current,
         pathname: location.pathname
       });
-      
+
       if (!user || !user.enrollment_no || !eventId || dataLoadingRef.current) {
-        
+
         return;
       }
-      
+
       dataLoadingRef.current = true;
-      
-      
+
+
       try {
         // Step 1: Get cached profile data (should already be loaded from login)
         console.log('📊 Checking for cached profile data...');
         const cachedProfile = getAnyCache('student');
         let profileData = user; // fallback to AuthContext user
-        
+
         if (cachedProfile?.profile) {
           console.log('✅ Using cached profile data');
           profileData = cachedProfile.profile;
@@ -269,53 +269,53 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }
 
         // Step 2: Get cached event data (should already be loaded from EventDetail)
-        
+
         let eventData = getAnyEventCache(eventId);
-        
+
         if (!eventData) {
-          
+
           // Fallback to API if not cached (should rarely happen)
           const cachedEventData = await fetchEventWithCache(eventId, clientAPI);
           eventData = cachedEventData?.event || cachedEventData;
         } else {
-          
+
           eventData = eventData.event || eventData;
         }
-        
+
         if (!eventData) {
           throw new Error('Event data not found');
         }
-        
+
         setEvent(eventData);
 
         // Step 3: Check registration constraints
         const now = new Date();
         const registrationStart = eventData.registration_start_date ? new Date(eventData.registration_start_date) : null;
         const registrationEnd = eventData.registration_end_date ? new Date(eventData.registration_end_date) : null;
-        
+
         let shouldBlockRegistration = false;
-        
+
         if (registrationStart && now < registrationStart) {
           shouldBlockRegistration = true;
           setError(`Registration opens on ${registrationStart.toLocaleDateString()} at ${registrationStart.toLocaleTimeString()}`);
         }
-        
+
         if (registrationEnd && now > registrationEnd) {
           shouldBlockRegistration = true;
           setError(`Registration closed on ${registrationEnd.toLocaleDateString()} at ${registrationEnd.toLocaleTimeString()}`);
         }
-        
+
         if (eventData.status !== 'upcoming' || eventData.sub_status !== 'registration_open') {
           shouldBlockRegistration = true;
           setError('Registration is currently not available for this event');
         }
-        
+
         setRegistrationBlocked(shouldBlockRegistration);
 
         // Step 4: Determine team registration mode
         const isTeamRoute = location.pathname.includes('/register-team');
         const shouldUseTeamMode = forceTeamMode || isTeamRoute || eventData.registration_mode === 'team';
-        
+
         setIsTeamRegistration(shouldUseTeamMode);
         setTeamSizeMin(eventData.team_size_min || 2);
         setTeamSizeMax(eventData.team_size_max || 5);
@@ -327,8 +327,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         }
 
         // Step 5: Initialize form with cached profile data (NO API CALL)
-        
-        
+
+
         const transformGender = (gender) => {
           if (!gender) return '';
           return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
@@ -348,14 +348,14 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         };
 
         // Only update if component is still mounted
-        
+
         if (mountedRef.current) {
-          
+
           setFormData(formInitData);
           // CRITICAL: Set loading to false after successful data load
           setLoading(false);
-          
-          
+
+
           // Update year display after setting form data
           setTimeout(() => {
             const yearElement = document.getElementById('year');
@@ -371,13 +371,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
             initializeParticipants(minParticipants);
           }
 
-          
+
         } else {
-          
+
         }
 
       } catch (error) {
-        
+
         if (mountedRef.current) {
           setError('Failed to load registration data. Please refresh the page.');
           setLoading(false);
@@ -393,7 +393,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   // Enhanced form field changes with validation
   const handleFieldChange = (field, value) => {
     clearValidationError(field);
-    
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -402,8 +402,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     // Real-time validation
     if (value && value.trim()) {
       let validationResult = null;
-      
-      switch(field) {
+
+      switch (field) {
         case 'enrollment_no': {
           // Use same flexible validation as RegisterPage
           const val_upper = value.trim().toUpperCase();
@@ -435,7 +435,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         default:
           break;
       }
-      
+
       if (validationResult && !validationResult.isValid) {
         setTimeout(() => {
           const fieldErrors = {};
@@ -457,7 +457,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         yearElement.textContent = year || '-';
       }
     }
-    
+
     // Update session data for persistence
     if (formSession) {
       const updatedSession = {
@@ -474,45 +474,45 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     // Real-time duplicate check for enrollment numbers
     if (field === 'enrollment_no' && value && value.trim()) {
       const enrollmentNo = value.trim().toUpperCase();
-      
+
       // Check against team leader
       const leaderEnrollment = formData.enrollment_no?.trim()?.toUpperCase() || '';
-      
+
       // Check against other participants
       const otherParticipants = formData.participants
         ?.filter(p => p.id !== participantId && p.enrollment_no?.trim())
         ?.map(p => p.enrollment_no.trim().toUpperCase()) || [];
-      
+
       let duplicateError = '';
       if (enrollmentNo === leaderEnrollment) {
         duplicateError = 'Team leader cannot be added as participant';
       } else if (otherParticipants.includes(enrollmentNo)) {
         duplicateError = 'Duplicate enrollment number in team';
       }
-      
+
       setFormData(prev => ({
         ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
-            ? { 
-                ...p, 
-                [field]: value, 
-                validationError: duplicateError,
-                isValid: !duplicateError && p.isValid,
-                // Clear auto-filled data if it's a duplicate
-                ...(duplicateError ? {
-                  full_name: '',
-                  email: '',
-                  mobile_no: '',
-                  department: '',
-                  semester: '',
-                  year: ''
-                } : {})
-              }
+        participants: prev.participants.map(p =>
+          p.id === participantId
+            ? {
+              ...p,
+              [field]: value,
+              validationError: duplicateError,
+              isValid: !duplicateError && p.isValid,
+              // Clear auto-filled data if it's a duplicate
+              ...(duplicateError ? {
+                full_name: '',
+                email: '',
+                mobile_no: '',
+                department: '',
+                semester: '',
+                year: ''
+              } : {})
+            }
             : p
         )
       }));
-      
+
       // Only proceed with API validation if no duplicate
       if (!duplicateError) {
         debouncedValidateParticipantEnrollment(participantId, value.trim());
@@ -521,21 +521,21 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       // For non-enrollment fields, just update normally
       setFormData(prev => ({
         ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
+        participants: prev.participants.map(p =>
+          p.id === participantId
             ? { ...p, [field]: value, validationError: '' }
             : p
         )
       }));
-      
+
       // Real-time validation for other fields
       if (field === 'email' && value && value.trim()) {
         const emailValidation = validators.validationResult.email(value);
         if (!emailValidation.isValid) {
           setFormData(prev => ({
             ...prev,
-            participants: prev.participants.map(p => 
-              p.id === participantId 
+            participants: prev.participants.map(p =>
+              p.id === participantId
                 ? { ...p, validationError: emailValidation.message }
                 : p
             )
@@ -546,8 +546,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         if (!phoneValidation.isValid) {
           setFormData(prev => ({
             ...prev,
-            participants: prev.participants.map(p => 
-              p.id === participantId 
+            participants: prev.participants.map(p =>
+              p.id === participantId
                 ? { ...p, validationError: phoneValidation.message }
                 : p
             )
@@ -564,48 +564,19 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     }
 
     if (!formData || !formData.participants) {
-      
+
       return;
     }
 
     // Update validation state
     setFormData(prev => ({
       ...prev,
-      participants: prev.participants.map(p => 
-        p.id === participantId 
+      participants: prev.participants.map(p =>
+        p.id === participantId
           ? { ...p, isValidating: true, validationError: '' }
           : p
       )
     }));
-
-    // Use flexible frontend validation for format check (same as RegisterPage)
-    const enrollmentNo_upper = enrollmentNo.trim().toUpperCase();
-    let enrollmentValidation = { isValid: true, message: '' };
-    
-    if (enrollmentNo_upper.length < 3) {
-      enrollmentValidation = { isValid: false, message: 'Enrollment number must be at least 3 characters' };
-    } else if (enrollmentNo_upper.length > 30) {
-      enrollmentValidation = { isValid: false, message: 'Enrollment number must not exceed 30 characters' };
-    } else if (!/^[A-Z0-9\-\/\_\.]+$/.test(enrollmentNo_upper)) {
-      enrollmentValidation = { isValid: false, message: 'Enrollment number can only contain letters, numbers, and separators (- / _ .)' };
-    }
-    
-    if (!enrollmentValidation.isValid) {
-      setFormData(prev => ({
-        ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
-            ? { 
-                ...p, 
-                isValidating: false, 
-                isValid: false,
-                validationError: enrollmentValidation.message
-              }
-            : p
-        )
-      }));
-      return;
-    }
 
     // Check for duplicates FIRST
     const currentFormData = formData;
@@ -618,14 +589,14 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     if (enrollmentNo.toUpperCase() === leaderEnrollment) {
       setFormData(prev => ({
         ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
-            ? { 
-                ...p, 
-                isValidating: false, 
-                isValid: false,
-                validationError: 'Team leader cannot be added as participant' 
-              }
+        participants: prev.participants.map(p =>
+          p.id === participantId
+            ? {
+              ...p,
+              isValidating: false,
+              isValid: false,
+              validationError: 'Team leader cannot be added as participant'
+            }
             : p
         )
       }));
@@ -636,14 +607,14 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     if (otherParticipants.includes(enrollmentNo.toUpperCase())) {
       setFormData(prev => ({
         ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
-            ? { 
-                ...p, 
-                isValidating: false, 
-                isValid: false,
-                validationError: 'Duplicate enrollment number in team' 
-              }
+        participants: prev.participants.map(p =>
+          p.id === participantId
+            ? {
+              ...p,
+              isValidating: false,
+              isValid: false,
+              validationError: 'Duplicate enrollment number in team'
+            }
             : p
         )
       }));
@@ -653,7 +624,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     // Fetch student data from API for auto-fill and eligibility check
     try {
       const response = await clientAPI.checkStudentEligibility(enrollmentNo, eventId);
-      
+
       if (response.data.success && response.data.found) {
         // FIXED: Updated to use new unified API response structure
         const studentData = response.data.user_data; // Changed from student_data to user_data
@@ -661,7 +632,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         const eligibilityMessage = response.data.message;
         const alreadyRegistered = response.data.already_registered;
         const registrationType = response.data.registration_type;
-        
+
         // Check if student is already registered for this event
         if (alreadyRegistered && !isEligible) {
           // Student is already registered and NOT eligible for multiple teams
@@ -676,78 +647,78 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           } else {
             registrationMessage = 'Student is already registered individually for this event';
           }
-          
+
           setFormData(prev => ({
             ...prev,
-            participants: prev.participants.map(p => 
-              p.id === participantId 
-                ? { 
-                    ...p, 
-                    isValidating: false, 
-                    isValid: false,
-                    validationError: registrationMessage,
-                    // Clear auto-filled data since student can't be added
-                    full_name: '',
-                    email: '',
-                    mobile_no: '',
-                    department: '',
-                    semester: '',
-                    year: ''
-                  }
+            participants: prev.participants.map(p =>
+              p.id === participantId
+                ? {
+                  ...p,
+                  isValidating: false,
+                  isValid: false,
+                  validationError: registrationMessage,
+                  // Clear auto-filled data since student can't be added
+                  full_name: '',
+                  email: '',
+                  mobile_no: '',
+                  department: '',
+                  semester: '',
+                  year: ''
+                }
                 : p
             )
           }));
           return;
         }
-        
+
         // Student is either not already registered OR is eligible for multiple teams
         // Proceed with normal validation
         setFormData(prev => ({
           ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { 
-                  ...p, 
-                  isValidating: false, 
-                  isValid: isEligible,
-                  validationError: isEligible ? '' : eligibilityMessage,
-                  full_name: studentData.full_name || '',
-                  email: studentData.email || '',
-                  mobile_no: studentData.mobile_no || '',
-                  department: studentData.department || '',
-                  semester: studentData.semester || '',
-                  year: studentData.semester ? calculateYear(studentData.semester) : ''
-                }
+          participants: prev.participants.map(p =>
+            p.id === participantId
+              ? {
+                ...p,
+                isValidating: false,
+                isValid: isEligible,
+                validationError: isEligible ? '' : eligibilityMessage,
+                full_name: studentData.full_name || '',
+                email: studentData.email || '',
+                mobile_no: studentData.mobile_no || '',
+                department: studentData.department || '',
+                semester: studentData.semester || '',
+                year: studentData.semester ? calculateYear(studentData.semester) : ''
+              }
               : p
           )
         }));
       } else {
         setFormData(prev => ({
           ...prev,
-          participants: prev.participants.map(p => 
-            p.id === participantId 
-              ? { 
-                  ...p, 
-                  isValidating: false, 
-                  isValid: false,
-                  validationError: 'Student not found - Please verify the enrollment number'
-                }
+          participants: prev.participants.map(p =>
+            p.id === participantId
+              ? {
+                ...p,
+                isValidating: false,
+                isValid: false,
+                validationError: 'Student not found - Please verify the enrollment number'
+              }
               : p
           )
         }));
       }
     } catch (error) {
-      
+
       setFormData(prev => ({
         ...prev,
-        participants: prev.participants.map(p => 
-          p.id === participantId 
-            ? { 
-                ...p, 
-                isValidating: false, 
-                isValid: false,
-                validationError: 'Unable to verify enrollment - Please try again'
-              }
+        participants: prev.participants.map(p =>
+          p.id === participantId
+            ? {
+              ...p,
+              isValidating: false,
+              isValid: false,
+              validationError: 'Unable to verify enrollment - Please try again'
+            }
             : p
         )
       }));
@@ -828,7 +799,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
   // Enhanced form submission with frontend validation
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (registrationBlocked) {
       return;
     }
@@ -838,12 +809,12 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
     setSuccess('');
 
     try {
-      
-      
+
+
       // Frontend validation before submission
       const formValidation = validateForm(formData, {
         full_name: ['required', 'name'],
-        enrollment_no: ['required', 'enrollmentNumber'],
+        enrollment_no: ['required'],
         email: ['required', 'email'],
         mobile_no: ['required', 'mobileNumber'],
         department: ['required'],
@@ -860,7 +831,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
       // Validate required fields
       const requiredFields = ['full_name', 'enrollment_no', 'email', 'mobile_no', 'department', 'semester', 'gender', 'date_of_birth'];
-      
+
       for (const field of requiredFields) {
         if (!formData[field] || !formData[field].toString().trim()) {
           throw new Error('Please fill in all required fields');
@@ -907,22 +878,19 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           formData.enrollment_no.trim().toUpperCase(),
           ...validParticipants.map(p => p.enrollment_no.trim().toUpperCase())
         ];
-        
+
         const duplicates = allEnrollmentNumbers.filter((item, index) => allEnrollmentNumbers.indexOf(item) !== index);
         if (duplicates.length > 0) {
           throw new Error(`Duplicate enrollment numbers found in team: ${duplicates.join(', ')}`);
         }
 
-        // Check for participants with validation errors
+        // Check for participants with backend validation errors only
         const invalidParticipants = validParticipants.filter(p => {
-          // Use same flexible validation as RegisterPage
-          const enr = p.enrollment_no.trim().toUpperCase();
-          const hasFormatError = enr.length < 3 || enr.length > 30 || !/^[A-Z0-9\-\/\_\.]+$/.test(enr);
-          return !p.isValid || hasFormatError || p.validationError;
+          return !p.isValid || p.validationError;
         });
-        
+
         if (invalidParticipants.length > 0) {
-          const errorMessages = invalidParticipants.map(p => 
+          const errorMessages = invalidParticipants.map(p =>
             `${p.enrollment_no}: ${p.validationError || 'Invalid enrollment number'}`
           );
           throw new Error(`Please fix the following participant errors:\n${errorMessages.join('\n')}`);
@@ -930,7 +898,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
         registrationData.team_name = formData.team_name.trim();
         registrationData.temp_team_id = tempTeamId;
-        
+
         // Include team leader + participants in team_members array
         const teamLeader = {
           enrollment_no: formData.enrollment_no.trim(),
@@ -938,7 +906,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           email: formData.email,
           mobile_no: formData.mobile_no
         };
-        
+
         registrationData.team_members = [
           teamLeader,
           ...validParticipants.map(p => ({
@@ -954,23 +922,23 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       let response;
       if (isTeamRegistration) {
         response = await clientAPI.registerTeam(eventId, registrationData);
-        
-        
+
+
       } else {
-        
-        
-        
-        
+
+
+
+
         response = await clientAPI.registerIndividual(eventId, registrationData);
       }
-      
-      
-      
+
+
+
       // FIXED: Handle invitation information in team registration response
       const hasInvitations = response.data.data?.pending_invitations > 0;
       const invitationsSent = response.data.data?.invitations_sent || [];
       const invitationErrors = response.data.data?.invitation_errors || [];
-      
+
       let successMessage = 'Registration submitted successfully!';
       if (hasInvitations) {
         successMessage += ` Invitations sent to ${invitationsSent.length} already-registered students.`;
@@ -978,15 +946,15 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           successMessage += ` Note: ${invitationErrors.length} invitations failed to send.`;
         }
       }
-      
+
       setSuccess(successMessage);
-      
+
       // Clean up session data
       if (formSession) {
         localStorage.removeItem(`registration_session_${eventId}`);
         setFormSession(null);
       }
-      
+
       // Prepare data for success page
       const successData = {
         registrationData: {
@@ -1012,10 +980,10 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
         },
         event: event
       };
-      
+
       // Clear profile cache so the profile page will refetch fresh data with the new event
       clearProfileCache('student');
-      
+
       // Redirect to success page
       setTimeout(() => {
         navigate(`/client/events/${eventId}/registration-success`, {
@@ -1024,8 +992,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       }, 2000);
 
     } catch (error) {
-      
-      
+
+
       if (error.response?.status === 409) {
         navigate(`/client/events/${eventId}/registration-success`, {
           replace: true
@@ -1112,8 +1080,8 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
           </div>
 
           {/* Registration Form */}
-          <form 
-            onSubmit={handleSubmit} 
+          <form
+            onSubmit={handleSubmit}
             className={`space-y-8 ${registrationBlocked ? 'pointer-events-none opacity-60' : ''}`}
           >
 
@@ -1152,7 +1120,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                           onChange={(e) => handleFieldChange('enrollment_no', e.target.value)}
                           className="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                           required
-                          placeholder="22BEIT30043"
+                          placeholder="e.g., 22BEIT30043"
                           readOnly
                         />
                       </div>
@@ -1223,7 +1191,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                         ({teamSizeMin - 1} to {teamSizeMax - 1} participants)
                       </span>
                     </h2>
-                    
+
                     <div className="space-y-4">
                       {(formData.participants || []).map((participant) => (
                         <div key={participant.id} className="border rounded-lg p-4 bg-gray-50">
@@ -1235,7 +1203,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                               {participant.isValid && !participant.validationError && <span className="text-green-600">(✓ Valid)</span>}
                             </span>
                           </h3>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1261,7 +1229,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                                 }}
                                 className="block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 required
-                                placeholder="22BEIT30043"
+                                placeholder="e.g., 22BEIT30043"
                               />
                               {participant.validationError && (
                                 <div className="text-red-500 text-sm mt-1">
@@ -1337,15 +1305,14 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                         </div>
                       ))}
                     </div>
-                    
+
                     <div className="flex flex-col sm:flex-row gap-3 mt-4">
                       <button
                         type="button"
                         onClick={addParticipant}
                         disabled={participantCount >= teamSizeMax - 1}
-                        className={`bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center ${
-                          participantCount >= teamSizeMax - 1 ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={`bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center ${participantCount >= teamSizeMax - 1 ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                       >
                         <i className="fas fa-plus mr-2"></i>Add Participant
                       </button>
@@ -1353,14 +1320,13 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                         type="button"
                         onClick={removeParticipant}
                         disabled={participantCount <= teamSizeMin - 1}
-                        className={`bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center ${
-                          participantCount <= teamSizeMin - 1 ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        className={`bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center ${participantCount <= teamSizeMin - 1 ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                       >
                         <i className="fas fa-minus mr-2"></i>Remove Participant
                       </button>
                     </div>
-                    
+
                     <div className="text-sm text-gray-600 mt-2">
                       <i className="fas fa-info-circle mr-1"></i>
                       Enter enrollment numbers of your team members. Their details will be validated automatically.
@@ -1495,7 +1461,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                           onChange={(e) => handleFieldChange('enrollment_no', e.target.value)}
                           className="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                           required
-                          placeholder="22BEIT30043"
+                          placeholder="e.g., 22BEIT30043"
                           readOnly
                         />
                       </div>
