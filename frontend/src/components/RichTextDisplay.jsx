@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 const RichTextDisplay = ({ 
   content, 
@@ -74,10 +75,13 @@ const RichTextDisplay = ({
     ? formatContent(content.substring(0, maxLength) + '...') 
     : formattedContent;
 
+  // Sanitize HTML to prevent XSS attacks
+  const safeContent = sanitizeHtml(displayContent);
+
   return (
     <div className={`rich-text-content ${className}`}>
       <div 
-        dangerouslySetInnerHTML={{ __html: displayContent }}
+        dangerouslySetInnerHTML={{ __html: safeContent }}
         className="prose prose-sm max-w-none"
       />
       

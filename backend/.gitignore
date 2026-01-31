@@ -60,6 +60,9 @@ Thumbs.db
 # Scripts folder (local development only)
 scripts/
 
+# Endpoint scraper (local development only - no need for GitHub)
+endpoint-scraper/
+
 # Temporary files and testing artifacts
 temp/
 *.tmp

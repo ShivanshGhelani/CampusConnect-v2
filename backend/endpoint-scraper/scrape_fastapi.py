@@ -4,9 +4,12 @@ import json
 OPENAPI_URL = "http://localhost:8000/openapi.json"
 OUTPUT_FILE = "endpoint-scraper/fastapi_endpoints.txt"
 
+# Security: Set timeout for all HTTP requests to prevent hanging connections
+REQUEST_TIMEOUT = 30  # 30 seconds timeout
+
 def main():
-    # Fetch OpenAPI spec
-    resp = requests.get(OPENAPI_URL)
+    # Fetch OpenAPI spec with timeout
+    resp = requests.get(OPENAPI_URL, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     spec = resp.json()
 

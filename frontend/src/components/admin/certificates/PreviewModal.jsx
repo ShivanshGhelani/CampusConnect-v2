@@ -116,15 +116,14 @@ const PreviewModal = ({ template, isOpen, onClose }) => {
         </div>
       </div>
       
-      {/* Script to hide loading when iframe loads */}
-      <script dangerouslySetInnerHTML={{
-        __html: `
-          setTimeout(() => {
-            const loading = document.getElementById('preview-loading');
-            if (loading) loading.style.display = 'none';
-          }, 2000);
-        `
-      }} />
+      {/* Hide loading indicator after delay */}
+      {React.useEffect(() => {
+        const timer = setTimeout(() => {
+          const loading = document.getElementById('preview-loading');
+          if (loading) loading.style.display = 'none';
+        }, 2000);
+        return () => clearTimeout(timer);
+      }, [])}
     </div>
   );
 };

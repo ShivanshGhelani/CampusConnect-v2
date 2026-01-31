@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 const RichTextEditor = ({ 
   value = '', 
@@ -437,7 +438,7 @@ const RichTextEditor = ({
               {value ? (
                 <div 
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: renderPreview(value) }} 
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderPreview(value)) }} 
                 />
               ) : (
                 <div className="text-gray-400 italic">Preview will appear here as you type...</div>
