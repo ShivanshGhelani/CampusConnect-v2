@@ -515,11 +515,22 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                         {user?.role === 'organizer_admin' ? (
                                             <button
                                                 onClick={async () => {
-                                                    setIsProfileDropdownOpen(false);
-                                                    closeMobileMenu();
-                                                    const result = await transitionBackToFaculty();
-                                                    if (result.success) {
-                                                        navigate('/faculty/profile');
+                                                    try {
+                                                        setIsProfileDropdownOpen(false);
+                                                        closeMobileMenu();
+                                                        const result = await transitionBackToFaculty();
+                                                        if (result?.success) {
+                                                            // Use replace to ensure proper navigation
+                                                            window.location.href = '/client/faculty/profile';
+                                                        } else {
+                                                            console.error('Transition failed:', result);
+                                                            // Fallback navigation
+                                                            navigate('/client/faculty/profile', { replace: true });
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Error transitioning back to faculty:', error);
+                                                        // Fallback navigation
+                                                        navigate('/client/faculty/profile', { replace: true });
                                                     }
                                                 }}
                                                 className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-200 w-full text-left"
