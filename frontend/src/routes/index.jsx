@@ -36,7 +36,6 @@ import FacultyProfilePage from '../pages/client/faculty/Account/FacultyProfilePa
 import FacultyProfileEdit from '../pages/client/faculty/Account/FacultyProfileEdit';
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminEvents from '../pages/admin/Events';
-import EventDetailPreview from '../pages/admin/EventDetailPreview';
 import AdminStudents from '../pages/admin/Students';
 import Faculty from '../pages/admin/Faculty';
 import ManageCertificates from '../pages/admin/ManageCertificates';
@@ -432,14 +431,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/event-preview"
-          element={
-            <ProtectedRoute userType="admin">
-              <EventDetailPreview />
-            </ProtectedRoute>
-          }
-        />
+
+
+
         <Route
           path="/admin/create-event"
           element={

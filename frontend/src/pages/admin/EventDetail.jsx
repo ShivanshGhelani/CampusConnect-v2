@@ -3376,33 +3376,6 @@ function EventDetail() {
             </div>
           )}
 
-          {/* Team Event Statistics */}
-          {eventStats && eventStats.total_team_members > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                <i className="fas fa-users-cog mr-2"></i>Team Event Statistics
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{eventStats.total_team_registrations || 0}</p>
-                  <p className="text-sm text-blue-700">Total Teams</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{eventStats.total_team_members || 0}</p>
-                  <p className="text-sm text-blue-700">Team Members</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{eventStats.total_individual_registrations || 0}</p>
-                  <p className="text-sm text-blue-700">Individual Registrations</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{eventStats.total_participants || 0}</p>
-                  <p className="text-sm text-blue-700">Total Participants</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Payment Statistics */}
           {eventStats && (eventStats.payments_completed > 0 || eventStats.payments_pending > 0) && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
@@ -3443,7 +3416,6 @@ function EventDetail() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-700">Total: <span className="font-semibold text-gray-900">{recentRegistrations.length}</span></div>
                 <button
                   onClick={handleViewAllRegistrations}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"

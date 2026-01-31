@@ -1300,26 +1300,58 @@ async def get_event_stats(
         total_team_registrations = 0
         total_team_members = 0
         
-        # For student or all target audience, count from registered_students
+        # For student or all target audience, count from actual registration records
         if target_audience in ['student', 'all']:
-            total_individual_registrations += len(registrations)
-            total_team_registrations += len(team_registrations)
+            # Count individual registrations
+            individual_count = await DatabaseOperations.count_documents(
+                "student_registrations",
+                {"event.event_id": event_id, "registration_type": "individual"}
+            )
             
-            # FIXED: Handle unique participant counting for allow_multiple_team_registrations
+            # Count team registrations and get unique participants
+            team_regs = await DatabaseOperations.find_many(
+                "student_registrations",
+                {"event.event_id": event_id, "registration_type": "team"}
+            )
+            
+            total_individual_registrations = individual_count
+            total_team_registrations = len(list(team_regs))
+            
+            # Count unique participants if allow_multiple_team_registrations is true
             allow_multiple_teams = event.get('allow_multiple_team_registrations', False)
             
-            if allow_multiple_teams:
+            logger.info(f"🔍 allow_multiple_team_registrations: {allow_multiple_teams}")
+            logger.info(f"🔍 Total team registrations from DB: {total_team_registrations}")
+            
+            if allow_multiple_teams and total_team_registrations > 0:
                 # Count unique participants across all teams
                 unique_participants = set()
-                for team in team_registrations.values():
-                    if isinstance(team, dict):
-                        # Extract enrollment numbers from team keys (e.g., "22BECE40015")
-                        team_members = [k for k in team.keys() if k.startswith("22") or k.startswith("20") or k.startswith("21") or k.startswith("23") or k.startswith("24")]
-                        unique_participants.update(team_members)
+                team_regs_list = await DatabaseOperations.find_many(
+                    "student_registrations",
+                    {"event.event_id": event_id, "registration_type": "team"}
+                )
+                for team_reg in team_regs_list:
+                    # Process team_members array
+                    if team_reg.get('team_members'):
+                        for member in team_reg['team_members']:
+                            student_info = member.get('student', {})
+                            enrollment_no = student_info.get('enrollment_no')
+                            if enrollment_no:
+                                unique_participants.add(enrollment_no)
+                
                 total_team_members = len(unique_participants)
+                logger.info(f"✅ Unique participants: {total_team_members} from {len(list(unique_participants))} unique enrollments")
             else:
-                # Original counting logic for events that don't allow multiple teams
-                total_team_members += sum(len([k for k in team.keys() if k.startswith("22") or k.startswith("20") or k.startswith("21") or k.startswith("23") or k.startswith("24")]) for team in team_registrations.values() if isinstance(team, dict))
+                # Count all team members without deduplication
+                team_regs_list = await DatabaseOperations.find_many(
+                    "student_registrations",
+                    {"event.event_id": event_id, "registration_type": "team"}
+                )
+                for team_reg in team_regs_list:
+                    # Count all members in team_members array
+                    if team_reg.get('team_members'):
+                        total_team_members += len(team_reg['team_members'])
+                logger.info(f"✅ Total team members (non-unique): {total_team_members}")
         
         # For faculty or all target audience, count from faculty_registrations collection
         if target_audience in ['faculty', 'all']:
