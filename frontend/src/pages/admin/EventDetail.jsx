@@ -64,7 +64,12 @@ function EventDetail() {
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exportDropdownSticky, setExportDropdownSticky] = useState(false);
   const [posterModalOpen, setPosterModalOpen] = useState(false);
+  const [posterLoading, setPosterLoading] = useState(false);
+  const [posterZoom, setPosterZoom] = useState(1);
+  const [posterError, setPosterError] = useState(false);
   const [certificateModalOpen, setCertificateModalOpen] = useState(false);
+  const [certificateLoading, setCertificateLoading] = useState(false);
+  const [certificateError, setCertificateError] = useState(false);
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
   const [eventReportModalOpen, setEventReportModalOpen] = useState(false);
   const [customExportModalOpen, setCustomExportModalOpen] = useState(false);
@@ -370,10 +375,18 @@ function EventDetail() {
 
   // Function to open certificate template in modal
   const openCertificateTemplate = async (templateUrl, templateType) => {
+    setCertificateLoading(true);
+    setCertificateModalOpen(true);
+    setCertificateError(false);
     try {
       // Fetch the HTML content
       const response = await fetch(templateUrl);
       if (!response.ok) {
+        if (response.status === 404) {
+          setCertificateError(true);
+          setCertificateLoading(false);
+          return;
+        }
         throw new Error('Failed to load template');
       }
       const htmlContent = await response.text();
@@ -387,16 +400,21 @@ function EventDetail() {
         type: templateType,
         originalUrl: templateUrl
       });
-      setCertificateModalOpen(true);
     } catch (error) {
 
-      // Fallback to original URL if fetch fails
-      setCurrentCertificateTemplate({
-        url: templateUrl,
-        type: templateType,
-        originalUrl: templateUrl
-      });
-      setCertificateModalOpen(true);
+      // Check if it's a 404 error
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        setCertificateError(true);
+      } else {
+        // Fallback to original URL if fetch fails for other reasons
+        setCurrentCertificateTemplate({
+          url: templateUrl,
+          type: templateType,
+          originalUrl: templateUrl
+        });
+      }
+    } finally {
+      setCertificateLoading(false);
     }
   };
 
@@ -3927,7 +3945,11 @@ function EventDetail() {
                             <p className="text-xs text-gray-500">Click to view event poster</p>
                           </div>
                           <button
-                            onClick={() => setPosterModalOpen(true)}
+                            onClick={() => {
+                              setPosterLoading(true);
+                              setPosterError(false);
+                              setPosterModalOpen(true);
+                            }}
                             className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
@@ -4523,45 +4545,130 @@ function EventDetail() {
           {/* Event Poster Modal */}
           {posterModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-black/50 flex items-center justify-center z-[99999] animate-in fade-in duration-200 p-4">
-              <div className="relative max-w-4xl max-h-[90vh] w-auto h-auto">
-                {/* Close Button */}
+              <div className="relative max-w-full max-h-full w-full h-full flex items-center justify-center overflow-auto">
+                {/* Close Button - Fixed position with higher z-index */}
                 <button
-                  onClick={() => setPosterModalOpen(false)}
-                  className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors z-10"
+                  onClick={() => {
+                    setPosterModalOpen(false);
+                    setPosterLoading(false);
+                    setPosterZoom(1);
+                  }}
+                  className="fixed top-4 right-4 z-[100001] bg-black/80 hover:bg-black text-white rounded-full p-2 transition-colors shadow-lg"
                   title="Close"
                 >
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
 
-                {/* Poster Image */}
-                <img
-                  src={event?.event_poster_url}
-                  alt={`${event?.event_name} poster`}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                  onError={(e) => {
-                    e.target.src = '/placeholder-poster.png';
-                    e.target.alt = 'Poster not available';
-                  }}
-                />
+                {/* Zoom Controls - Fixed position */}
+                {!posterLoading && (
+                  <div className="fixed top-4 left-4 z-[100001] flex gap-2 bg-black/80 rounded-lg p-2 shadow-lg">
+                    <button
+                      onClick={() => setPosterZoom(prev => Math.min(prev + 0.25, 3))}
+                      className="text-white hover:text-blue-400 transition-colors p-2 rounded hover:bg-white/10"
+                      title="Zoom In"
+                      disabled={posterZoom >= 3}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPosterZoom(prev => Math.max(prev - 0.25, 0.5))}
+                      className="text-white hover:text-blue-400 transition-colors p-2 rounded hover:bg-white/10"
+                      title="Zoom Out"
+                      disabled={posterZoom <= 0.5}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPosterZoom(1)}
+                      className="text-white hover:text-blue-400 transition-colors px-3 py-2 rounded hover:bg-white/10 text-sm font-medium"
+                      title="Reset Zoom"
+                    >
+                      {Math.round(posterZoom * 100)}%
+                    </button>
+                  </div>
+                )}
+
+                {/* Loading Spinner */}
+                {posterLoading && !posterError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-[100000]">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 animate-spin text-white mx-auto" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-white mt-3 text-sm">Loading poster...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {posterError && (
+                  <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-2xl max-w-md mx-auto">
+                    <svg className="w-16 h-16 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Poster Not Found</h3>
+                    <p className="text-gray-600 text-center mb-6">
+                      The event poster could not be found or has been removed. Please reupload the poster.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setPosterModalOpen(false);
+                        setPosterError(false);
+                        setPosterLoading(false);
+                        // Navigate to edit page
+                        navigate(`/admin/events/${eventId}/edit`);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Go to Edit Event
+                    </button>
+                  </div>
+                )}
+
+                {/* Poster Image with Zoom */}
+                {!posterError && (
+                  <img
+                    src={event?.event_poster_url}
+                    alt={`${event?.event_name} poster`}
+                    className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl transition-transform duration-200"
+                    style={{ 
+                      display: posterLoading ? 'none' : 'block',
+                      transform: `scale(${posterZoom})`,
+                      cursor: posterZoom > 1 ? 'move' : 'default'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onLoad={() => setPosterLoading(false)}
+                    onError={(e) => {
+                      setPosterLoading(false);
+                      setPosterError(true);
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
 
           {/* Certificate Template Modal */}
-          {certificateModalOpen && currentCertificateTemplate && (
+          {certificateModalOpen && (
             <div className="fixed inset-0 backdrop-blur-sm bg-black/50 z-[99999] animate-in fade-in duration-200">
               {/* Floating Close Button */}
               <button
                 onClick={() => {
                   // Clean up blob URL if it exists
-                  if (currentCertificateTemplate.url.startsWith('blob:')) {
+                  if (currentCertificateTemplate?.url?.startsWith('blob:')) {
                     URL.revokeObjectURL(currentCertificateTemplate.url);
                   }
                   setCertificateModalOpen(false);
                   setCurrentCertificateTemplate(null);
+                  setCertificateLoading(false);
+                  setCertificateError(false);
                 }}
                 className="fixed top-4 right-4 z-[100000] bg-black/80 hover:bg-black text-white rounded-full p-2 transition-colors shadow-lg"
                 title="Close"
@@ -4571,33 +4678,80 @@ function EventDetail() {
                 </svg>
               </button>
 
+              {/* Loading Spinner */}
+              {certificateLoading && !certificateError && (
+                <div className="absolute inset-0 flex items-center justify-center z-[99998]">
+                  <div className="text-center">
+                    <svg className="w-16 h-16 animate-spin text-white mx-auto" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-white mt-4 text-lg font-medium">Loading certificate template...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {certificateError && (
+                <div className="absolute inset-0 flex items-center justify-center z-[99998] p-4">
+                  <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-2xl max-w-md mx-auto">
+                    <svg className="w-16 h-16 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Certificate Template Not Found</h3>
+                    <p className="text-gray-600 text-center mb-6">
+                      The certificate template could not be found or has been removed. Please reupload the template.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setCertificateModalOpen(false);
+                        setCertificateError(false);
+                        setCertificateLoading(false);
+                        setCurrentCertificateTemplate(null);
+                        // Navigate to edit page
+                        navigate(`/admin/events/${eventId}/edit`);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Go to Edit Event
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Floating Actions */}
-              <div className="fixed top-4 left-4 z-[100000] flex gap-2">
-                <a
-                  href={currentCertificateTemplate.originalUrl || currentCertificateTemplate.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
+              {currentCertificateTemplate && (
+                <div className="fixed top-4 left-4 z-[100000] flex gap-2">
+                  <a
+                    href={currentCertificateTemplate.originalUrl || currentCertificateTemplate.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                   Open Original
                 </a>
-                <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm shadow-lg">
-                  {currentCertificateTemplate.type}
+                  <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm shadow-lg">
+                    {currentCertificateTemplate.type}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Full Screen Template Content */}
-              <iframe
-                src={currentCertificateTemplate.url}
-                title={`${currentCertificateTemplate.type} Certificate Template`}
-                className="w-full h-full border-0 bg-white"
-                onError={() => {
-
-                }}
-              />
+              {currentCertificateTemplate && (
+                <iframe
+                  src={currentCertificateTemplate.url}
+                  title={`${currentCertificateTemplate.type} Certificate Template`}
+                  className="w-full h-full border-0 bg-white"
+                  style={{ display: certificateLoading ? 'none' : 'block' }}
+                  onLoad={() => setCertificateLoading(false)}
+                  onError={() => {
+                    setCertificateLoading(false);
+                  }}
+                />
+              )}
             </div>
           )}
 

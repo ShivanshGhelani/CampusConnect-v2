@@ -11,6 +11,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
     // State management
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const [stats, setStats] = useState({
         totalEvents: 0,
         liveEvents: 0,
@@ -516,6 +517,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                             <button
                                                 onClick={async () => {
                                                     try {
+                                                        setIsTransitioning(true);
                                                         setIsProfileDropdownOpen(false);
                                                         closeMobileMenu();
                                                         const result = await transitionBackToFaculty();
@@ -531,14 +533,29 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                                         console.error('Error transitioning back to faculty:', error);
                                                         // Fallback navigation
                                                         navigate('/client/faculty/profile', { replace: true });
+                                                    } finally {
+                                                        setIsTransitioning(false);
                                                     }
                                                 }}
-                                                className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-200 w-full text-left"
+                                                disabled={isTransitioning}
+                                                className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:bg-slate-50 transition-colors duration-200 w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                                                </svg>
-                                                <span className="text-sm font-medium">Profile</span>
+                                                {isTransitioning ? (
+                                                    <>
+                                                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        <span className="text-sm font-medium">Loading...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <span className="text-sm font-medium">Profile</span>
+                                                    </>
+                                                )}
                                             </button>
                                         ) : (
                                             <Link

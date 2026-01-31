@@ -1304,7 +1304,22 @@ async def get_event_stats(
         if target_audience in ['student', 'all']:
             total_individual_registrations += len(registrations)
             total_team_registrations += len(team_registrations)
-            total_team_members += sum(len([k for k in team.keys() if k.startswith("22")]) for team in team_registrations.values() if isinstance(team, dict))
+            
+            # FIXED: Handle unique participant counting for allow_multiple_team_registrations
+            allow_multiple_teams = event.get('allow_multiple_team_registrations', False)
+            
+            if allow_multiple_teams:
+                # Count unique participants across all teams
+                unique_participants = set()
+                for team in team_registrations.values():
+                    if isinstance(team, dict):
+                        # Extract enrollment numbers from team keys (e.g., "22BECE40015")
+                        team_members = [k for k in team.keys() if k.startswith("22") or k.startswith("20") or k.startswith("21") or k.startswith("23") or k.startswith("24")]
+                        unique_participants.update(team_members)
+                total_team_members = len(unique_participants)
+            else:
+                # Original counting logic for events that don't allow multiple teams
+                total_team_members += sum(len([k for k in team.keys() if k.startswith("22") or k.startswith("20") or k.startswith("21") or k.startswith("23") or k.startswith("24")]) for team in team_registrations.values() if isinstance(team, dict))
         
         # For faculty or all target audience, count from faculty_registrations collection
         if target_audience in ['faculty', 'all']:
