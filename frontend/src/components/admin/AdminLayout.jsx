@@ -523,7 +523,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                                         const result = await transitionBackToFaculty();
                                                         if (result?.success) {
                                                             // Use replace to ensure proper navigation
-                                                            window.location.href = '/client/faculty/profile';
+                                                            window.location.href = '/faculty/profile';
                                                         } else {
                                                             console.error('Transition failed:', result);
                                                             // Fallback navigation

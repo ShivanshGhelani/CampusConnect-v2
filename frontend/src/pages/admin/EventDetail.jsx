@@ -382,14 +382,24 @@ function EventDetail() {
       // Fetch the HTML content
       const response = await fetch(templateUrl);
       if (!response.ok) {
-        if (response.status === 404) {
+        setCertificateError(true);
+        setCertificateLoading(false);
+        return;
+      }
+      
+      const htmlContent = await response.text();
+      
+      // Check if the response is actually a JSON error message
+      try {
+        const jsonCheck = JSON.parse(htmlContent);
+        if (jsonCheck.statusCode === '404' || jsonCheck.error === 'not_found' || jsonCheck.statusCode === 404) {
           setCertificateError(true);
           setCertificateLoading(false);
           return;
         }
-        throw new Error('Failed to load template');
+      } catch (e) {
+        // Not JSON, continue with HTML content
       }
-      const htmlContent = await response.text();
 
       // Create a blob URL from the HTML content so it renders properly
       const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -401,18 +411,7 @@ function EventDetail() {
         originalUrl: templateUrl
       });
     } catch (error) {
-
-      // Check if it's a 404 error
-      if (error.message.includes('404') || error.message.includes('not found')) {
-        setCertificateError(true);
-      } else {
-        // Fallback to original URL if fetch fails for other reasons
-        setCurrentCertificateTemplate({
-          url: templateUrl,
-          type: templateType,
-          originalUrl: templateUrl
-        });
-      }
+      setCertificateError(true);
     } finally {
       setCertificateLoading(false);
     }
@@ -4720,19 +4719,8 @@ function EventDetail() {
               )}
 
               {/* Floating Actions */}
-              {currentCertificateTemplate && (
+              {currentCertificateTemplate && !certificateError && !certificateLoading && (
                 <div className="fixed top-4 left-4 z-[100000] flex gap-2">
-                  <a
-                    href={currentCertificateTemplate.originalUrl || currentCertificateTemplate.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-lg transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  Open Original
-                </a>
                   <div className="bg-black/80 text-white px-3 py-2 rounded-lg text-sm shadow-lg">
                     {currentCertificateTemplate.type}
                   </div>
@@ -4740,7 +4728,7 @@ function EventDetail() {
               )}
 
               {/* Full Screen Template Content */}
-              {currentCertificateTemplate && (
+              {currentCertificateTemplate && !certificateError && (
                 <iframe
                   src={currentCertificateTemplate.url}
                   title={`${currentCertificateTemplate.type} Certificate Template`}
@@ -4749,6 +4737,7 @@ function EventDetail() {
                   onLoad={() => setCertificateLoading(false)}
                   onError={() => {
                     setCertificateLoading(false);
+                    setCertificateError(true);
                   }}
                 />
               )}
