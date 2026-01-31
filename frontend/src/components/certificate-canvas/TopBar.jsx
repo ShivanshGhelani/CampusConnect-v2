@@ -1,91 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FaFileExport, FaFilePdf, FaFileImage, FaFont, FaImage, FaSignature, FaPalette, FaMagic, FaChevronDown, FaCertificate, FaUpload, FaTrash, FaThLarge, FaFileCode, FaTimes, FaCheck, FaSync 
+  FaFileExport, FaFilePdf, FaFileImage, FaFont, FaImage, FaSignature, FaPalette, FaMagic, FaChevronDown, FaCertificate, FaUpload, FaTrash, FaThLarge, FaFileCode, FaTimes, FaCheck 
 } from 'react-icons/fa';
-import { getBackgroundTemplates, refreshTemplateCache } from '../../lib/supabase.js';
 
 const TopBar = ({ onAddText, onTemplateReset }) => {
   const navigate = useNavigate();
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showBackgroundModal, setShowBackgroundModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [backgroundTemplates, setBackgroundTemplates] = useState({
-    landscape: [],
-    portrait: []
-  });
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [templatesLoaded, setTemplatesLoaded] = useState(false);
 
-  // Lazy load background templates only when modal is opened
-  const loadBackgroundTemplates = async () => {
-    if (templatesLoaded) return; // Don't reload if already loaded
-    
-    try {
-      setTemplatesLoading(true);
-      const templates = await getBackgroundTemplates();
-      
-      // Organize templates into categories for backward compatibility
-      const organizedTemplates = {
-        landscape: templates.landscape || [],
-        // Group all portrait templates under different categories for UI purposes
-        seminar: templates.portrait.slice(0, 8) || [],
-        sports: templates.portrait.slice(8, 14) || [],
-        techEvent: templates.portrait.slice(14, 21) || [],
-        workshop: templates.portrait.slice(21, 26) || [],
-        nonTechEvent: templates.portrait.slice(26) || []
-      };
-      
-      setBackgroundTemplates(organizedTemplates);
-      setTemplatesLoaded(true);
-      console.log('🎨 Background templates loaded from Supabase:', organizedTemplates);
-    } catch (error) {
-      console.error('❌ Failed to load background templates:', error);
-      // Set empty templates as fallback
-      setBackgroundTemplates({
-        landscape: [],
-        seminar: [],
-        sports: [],
-        techEvent: [],
-        workshop: [],
-        nonTechEvent: []
-      });
-    } finally {
-      setTemplatesLoading(false);
-    }
-  };
 
-  // Handle opening background modal with lazy loading
-  const handleOpenBackgroundModal = () => {
-    setShowBackgroundModal(true);
-    loadBackgroundTemplates(); // Load templates only when modal opens
-  };
-
-  // Handle refreshing templates (force cache refresh)
-  const handleRefreshTemplates = async () => {
-    try {
-      setTemplatesLoading(true);
-      setTemplatesLoaded(false);
-      const templates = await refreshTemplateCache();
-      
-      const organizedTemplates = {
-        landscape: templates.landscape || [],
-        seminar: templates.portrait.slice(0, 8) || [],
-        sports: templates.portrait.slice(8, 14) || [],
-        techEvent: templates.portrait.slice(14, 21) || [],
-        workshop: templates.portrait.slice(21, 26) || [],
-        nonTechEvent: templates.portrait.slice(26) || []
-      };
-      
-      setBackgroundTemplates(organizedTemplates);
-      setTemplatesLoaded(true);
-      console.log('🔄 Background templates refreshed from Supabase');
-    } catch (error) {
-      console.error('❌ Failed to refresh background templates:', error);
-    } finally {
-      setTemplatesLoading(false);
-    }
-  };
 
   // Certificate templates with text elements
   const certificateTemplates = [
@@ -373,15 +296,6 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
     }
   ];
 
-  const categoryNames = {
-    landscape: 'Landscape',
-    seminar: 'Seminar',
-    sports: 'Sports',
-    techEvent: 'Tech Event',
-    workshop: 'Workshop',
-    nonTechEvent: 'Non-Tech Event'
-  };
-
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -395,28 +309,6 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  // Close modal with Escape key
-  useEffect(() => {
-    const handleEscapeKey = (event) => {
-      if (event.key === 'Escape') {
-        setShowBackgroundModal(false);
-        setSelectedTemplate(null);
-      }
-    };
-
-    if (showBackgroundModal) {
-      document.addEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
-    };
-  }, [showBackgroundModal]);
 
   const downloadPNG = async () => {
     const certificateWrapper = document.getElementById('certificate-wrapper');
@@ -938,81 +830,7 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
     }
   };
 
-  const loadBackgroundTemplate = (templatePath) => {
-    // Auto-switch dimensions based on template category
-    const isLandscapeTemplate = templatePath.includes('/landscape/') || 
-                                backgroundTemplates.landscape.includes(templatePath);
-    const isPortraitTemplate = !isLandscapeTemplate;
-    
-    let targetDimension = null;
-    
-    if (isLandscapeTemplate) {
-      // Switch to landscape dimension
-      targetDimension = {
-        id: 'landscape',
-        name: 'Landscape', 
-        description: 'A4 Landscape (297mm × 210mm)',
-        canvas: { width: 3508, height: 2480 }, // 300 DPI
-        display: { width: 1052, height: 744 }, // 30% scale for display
-        physical: { width: '297mm', height: '210mm' },
-        orientation: 'landscape'
-      };
-    } else if (isPortraitTemplate) {
-      // Switch to portrait dimension
-      targetDimension = {
-        id: 'portrait',
-        name: 'Portrait',
-        description: 'A4 Portrait (210mm × 297mm)',
-        canvas: { width: 2480, height: 3508 }, // 300 DPI
-        display: { width: 744, height: 1052 }, // 30% scale for display
-        physical: { width: '210mm', height: '297mm' },
-        orientation: 'portrait'
-      };
-    }
-    
-    if (targetDimension) {
-      // Apply dimension changes directly
-      const canvas = document.getElementById('background-canvas');
-      const wrapper = document.getElementById('certificate-wrapper');
-      
-      if (canvas && wrapper) {
-        // Set canvas dimensions (300 DPI for print quality)
-        canvas.width = targetDimension.canvas.width;
-        canvas.height = targetDimension.canvas.height;
-        
-        // Set wrapper display dimensions (30% scale for viewing)
-        wrapper.style.width = `${targetDimension.display.width}px`;
-        wrapper.style.height = `${targetDimension.display.height}px`;
-        
-        // Add orientation classes
-        wrapper.classList.remove('portrait-mode', 'landscape-mode');
-        wrapper.classList.add(`${targetDimension.orientation}-mode`);
-        
-        console.log(`✅ Auto-switched to ${targetDimension.orientation} for template`);
-        console.log(`Canvas: ${canvas.width}x${canvas.height}, Wrapper: ${wrapper.style.width}x${wrapper.style.height}`);
-      }
-      
-      // Dispatch global event for DimensionSelector to update
-      const dimensionChangeEvent = new CustomEvent('dimensionChanged', { 
-        detail: targetDimension 
-      });
-      window.dispatchEvent(dimensionChangeEvent);
-      
-      // Also trigger the dimension selector state update
-      const selectorUpdateEvent = new CustomEvent('updateDimensionSelector', { 
-        detail: { selectedDimension: targetDimension.id } 
-      });
-      window.dispatchEvent(selectorUpdateEvent);
-    }
-    
-    // Use the global setBackgroundImage function from Canvas.jsx
-    if (window.setBackgroundImage) {
-      window.setBackgroundImage(templatePath);
-    }
-    
-    setShowBackgroundModal(false);
-    setSelectedTemplate(null);
-  };
+
 
   const loadCertificateTemplate = (template) => {
     // Use the Layout component's template loading function
@@ -1022,35 +840,7 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
     setSelectedTemplate(null);
   };
 
-  const triggerBackgroundUploadFromModal = () => {
-    // Create file input for background upload
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    fileInput.style.display = 'none';
-    
-    fileInput.addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imageSrc = e.target.result;
-          // Use the global setBackgroundImage function from Canvas.jsx
-          if (window.setBackgroundImage) {
-            window.setBackgroundImage(imageSrc);
-          }
-          setShowBackgroundModal(false);
-          setSelectedTemplate(null);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-    
-    // Trigger file selection
-    document.body.appendChild(fileInput);
-    fileInput.click();
-    document.body.removeChild(fileInput);
-  };
+
 
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm">
@@ -1089,15 +879,13 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
           <span>Logo</span>
         </button> */}
 
-        <div className="relative">
-          <button 
-            className="px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
-            onClick={handleOpenBackgroundModal}
-          >
-            <FaPalette />
-            <span>Background Template</span>
-          </button>
-        </div>
+        <button 
+          className="px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+          onClick={triggerBackgroundUpload}
+        >
+          <FaPalette />
+          <span>Upload Background</span>
+        </button>
 
         {/* Signature button - Hidden */}
         {/* <button 
@@ -1185,191 +973,6 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
         />
       )}
 
-      {/* Background Templates Modal */}
-      {showBackgroundModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-2xl max-w-6xl max-h-[90vh] w-full mx-4 overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Background Templates</h2>
-                <p className="text-sm text-gray-600 mt-1">Choose a template or upload your own background</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleRefreshTemplates}
-                  disabled={templatesLoading}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
-                  title="Refresh templates"
-                >
-                  <FaSync className={`text-gray-500 ${templatesLoading ? 'animate-spin' : ''}`} size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setShowBackgroundModal(false);
-                    setSelectedTemplate(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <FaTimes className="text-gray-500" size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* Upload Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <button
-                    onClick={triggerBackgroundUploadFromModal}
-                    className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    <FaUpload />
-                    <span>Upload Custom Background</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      resetBackground();
-                      setShowBackgroundModal(false);
-                      setSelectedTemplate(null);
-                    }}
-                    className="flex items-center gap-3 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-                  >
-                    <FaTrash />
-                    <span>Reset to Default</span>
-                  </button>
-                </div>
-                <hr className="border-gray-200" />
-              </div>
-
-              {/* Templates Grid */}
-              {templatesLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    <p className="text-gray-600">Loading templates from Supabase...</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  {Object.entries(backgroundTemplates).map(([category, templates]) => (
-                    templates.length > 0 && (
-                      <div key={category}>
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                          <div className="w-4 h-4 bg-blue-600 rounded"></div>
-                          {categoryNames[category]} Templates
-                          {category === 'landscape' && (
-                            <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
-                              Auto-switches to Landscape
-                            </span>
-                          )}
-                          {category !== 'landscape' && (
-                            <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-medium">
-                              Auto-switches to Portrait
-                            </span>
-                          )}
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                          {templates.map((template, index) => (
-                            <div key={index} className="relative group">
-                              <button
-                                className={`relative w-full aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                                  selectedTemplate === template
-                                    ? 'border-blue-500 shadow-lg scale-105'
-                                    : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-                                }`}
-                                onClick={() => setSelectedTemplate(template)}
-                              >
-                                <img
-                                  src={template}
-                                  alt={`${categoryNames[category]} template ${index + 1}`}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    console.warn('Failed to load template image:', template);
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
-                                {selectedTemplate === template && (
-                                  <div className="absolute inset-0 bg-blue-600 bg-opacity-20 flex items-center justify-center">
-                                    <div className="bg-blue-600 text-white rounded-full p-2">
-                                      <FaCheck size={16} />
-                                    </div>
-                                  </div>
-                                )}
-                              </button>
-                              <p className="text-xs text-gray-600 mt-2 text-center">
-                                {categoryNames[category]} {index + 1}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  ))}
-                  
-                  {/* Show message if no templates loaded */}
-                  {Object.values(backgroundTemplates).every(templates => templates.length === 0) && !templatesLoading && (
-                    <div className="text-center py-12">
-                      <div className="text-gray-400 mb-4">
-                        <FaPalette size={48} />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">No Templates Found</h3>
-                      <p className="text-gray-500 mb-4">
-                        No background templates were found in Supabase storage.
-                      </p>
-                      <button
-                        onClick={triggerBackgroundUploadFromModal}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Upload Your First Template
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-600">
-                {selectedTemplate ? (
-                  <span className="font-medium">Template selected. Click "Use Template" to apply.</span>
-                ) : (
-                  <span>Select a template to preview and apply it to your certificate.</span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setShowBackgroundModal(false);
-                    setSelectedTemplate(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (selectedTemplate) {
-                      loadBackgroundTemplate(selectedTemplate);
-                    }
-                  }}
-                  disabled={!selectedTemplate}
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                    selectedTemplate
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  Use Template
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
