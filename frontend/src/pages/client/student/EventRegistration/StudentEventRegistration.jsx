@@ -404,9 +404,20 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       let validationResult = null;
       
       switch(field) {
-        case 'enrollment_no':
-          validationResult = validators.enrollmentNumber(value);
+        case 'enrollment_no': {
+          // Use same flexible validation as RegisterPage
+          const val_upper = value.trim().toUpperCase();
+          if (val_upper.length < 3) {
+            validationResult = { isValid: false, message: 'Enrollment number must be at least 3 characters' };
+          } else if (val_upper.length > 30) {
+            validationResult = { isValid: false, message: 'Enrollment number must not exceed 30 characters' };
+          } else if (!/^[A-Z0-9\-\/\_\.]+$/.test(val_upper)) {
+            validationResult = { isValid: false, message: 'Enrollment number can only contain letters, numbers, and separators' };
+          } else {
+            validationResult = { isValid: true };
+          }
           break;
+        }
         case 'email':
           validationResult = validators.email(value);
           break;
@@ -567,8 +578,18 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
       )
     }));
 
-    // Use frontend validation for format check
-    const enrollmentValidation = validators.validationResult.enrollment(enrollmentNo);
+    // Use flexible frontend validation for format check (same as RegisterPage)
+    const enrollmentNo_upper = enrollmentNo.trim().toUpperCase();
+    let enrollmentValidation = { isValid: true, message: '' };
+    
+    if (enrollmentNo_upper.length < 3) {
+      enrollmentValidation = { isValid: false, message: 'Enrollment number must be at least 3 characters' };
+    } else if (enrollmentNo_upper.length > 30) {
+      enrollmentValidation = { isValid: false, message: 'Enrollment number must not exceed 30 characters' };
+    } else if (!/^[A-Z0-9\-\/\_\.]+$/.test(enrollmentNo_upper)) {
+      enrollmentValidation = { isValid: false, message: 'Enrollment number can only contain letters, numbers, and separators (- / _ .)' };
+    }
+    
     if (!enrollmentValidation.isValid) {
       setFormData(prev => ({
         ...prev,
@@ -894,8 +915,10 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
 
         // Check for participants with validation errors
         const invalidParticipants = validParticipants.filter(p => {
-          const enrollmentValidation = validators.validationResult.enrollment(p.enrollment_no);
-          return !p.isValid || !enrollmentValidation.isValid || p.validationError;
+          // Use same flexible validation as RegisterPage
+          const enr = p.enrollment_no.trim().toUpperCase();
+          const hasFormatError = enr.length < 3 || enr.length > 30 || !/^[A-Z0-9\-\/\_\.]+$/.test(enr);
+          return !p.isValid || hasFormatError || p.validationError;
         });
         
         if (invalidParticipants.length > 0) {
@@ -1129,8 +1152,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                           onChange={(e) => handleFieldChange('enrollment_no', e.target.value)}
                           className="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                           required
-                          placeholder="e.g., 21BECE40015"
-                          pattern="^\d{2}[A-Z]{2,4}\d{5}$"
+                          placeholder="22BEIT30043"
                           readOnly
                         />
                       </div>
@@ -1239,8 +1261,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                                 }}
                                 className="block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 required
-                                placeholder="e.g., 21BECE40015"
-                                pattern="^\d{2}[A-Z]{2,4}\d{5}$"
+                                placeholder="22BEIT30043"
                               />
                               {participant.validationError && (
                                 <div className="text-red-500 text-sm mt-1">
@@ -1474,8 +1495,7 @@ const StudentEventRegistration = ({ forceTeamMode = false }) => {
                           onChange={(e) => handleFieldChange('enrollment_no', e.target.value)}
                           className="block w-full px-4 py-2 mt-1 text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                           required
-                          placeholder="e.g., 21BECE40015"
-                          pattern="^\d{2}[A-Z]{2,4}\d{5}$"
+                          placeholder="22BEIT30043"
                           readOnly
                         />
                       </div>
