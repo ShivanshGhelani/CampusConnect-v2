@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   FaFileExport, FaFilePdf, FaFileImage, FaFont, FaImage, FaSignature, FaPalette, FaMagic, FaChevronDown, FaCertificate, FaUpload, FaTrash, FaThLarge, FaFileCode, FaTimes, FaCheck, FaSync 
 } from 'react-icons/fa';
-import { getBackgroundTemplates, refreshTemplateCache } from '../../lib/supabase';
+import { getBackgroundTemplates, refreshTemplateCache } from '../../lib/supabase.js';
 
 const TopBar = ({ onAddText, onTemplateReset }) => {
   const navigate = useNavigate();
