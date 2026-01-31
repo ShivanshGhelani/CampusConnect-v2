@@ -75,11 +75,14 @@ const RichTextDisplay = ({
     ? formatContent(content.substring(0, maxLength) + '...') 
     : formattedContent;
 
-  // Sanitize HTML to prevent XSS attacks
+  // Sanitize HTML to prevent XSS attacks using DOMPurify
+  // sanitizeHtml() wraps DOMPurify.sanitize() with strict configuration
+  // This removes all potentially malicious HTML/JavaScript before rendering
   const safeContent = sanitizeHtml(displayContent);
 
   return (
     <div className={`rich-text-content ${className}`}>
+      {/* Content is sanitized with DOMPurify before rendering - XSS protected */}
       <div 
         dangerouslySetInnerHTML={{ __html: safeContent }}
         className="prose prose-sm max-w-none"
