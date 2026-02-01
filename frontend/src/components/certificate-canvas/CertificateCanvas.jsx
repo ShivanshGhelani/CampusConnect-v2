@@ -611,6 +611,14 @@ const Canvas = ({ onTextElementsChange, template }) => {
       if (propertiesPanel) propertiesPanel.style.display = 'none';
     }
     
+    // Remove padding from all text elements temporarily for accurate export
+    const textElements = document.querySelectorAll('.dynamic-element[data-type="text"]');
+    const originalPaddings = [];
+    textElements.forEach(el => {
+      originalPaddings.push(el.style.padding);
+      el.style.padding = '0px';
+    });
+    
     // Wait for fonts to load and UI updates to render
     await document.fonts.ready;
     await new Promise(r => setTimeout(r, 300));
@@ -626,7 +634,18 @@ const Canvas = ({ onTextElementsChange, template }) => {
         backgroundColor: '#ffffff',
         logging: false,
         letterRendering: true,
-        foreignObjectRendering: false
+        foreignObjectRendering: false,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: certificateWrapper.scrollWidth,
+        windowHeight: certificateWrapper.scrollHeight
+      });
+      
+      // Restore padding to text elements
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
       });
       
       // Determine orientation based on canvas dimensions
@@ -663,6 +682,11 @@ const Canvas = ({ onTextElementsChange, template }) => {
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to generate PDF. Please try again.');
+      
+      // Restore padding even on error
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
+      });
     }
   };
 

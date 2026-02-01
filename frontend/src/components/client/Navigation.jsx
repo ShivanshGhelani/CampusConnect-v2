@@ -302,8 +302,8 @@ function ClientNavigation() {
                               <i className="fas fa-user-friends text-blue-600 text-sm"></i>
                             </div>
                             <div>
-                              <div className="font-medium">Team Invitations</div>
-                              <div className="text-xs text-gray-500 whitespace-nowrap">Join team requests</div>
+                              <div className="font-medium">Teams</div>
+                              <div className="text-xs text-gray-500 whitespace-nowrap">Team Details</div>
                             </div>
                           </Link>
                         )}

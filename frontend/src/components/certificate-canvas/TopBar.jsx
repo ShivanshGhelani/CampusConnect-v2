@@ -314,6 +314,14 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
     const certificateWrapper = document.getElementById('certificate-wrapper');
     if (!certificateWrapper || !window.html2canvas) return;
     
+    // Remove padding from all text elements temporarily for accurate export
+    const textElements = document.querySelectorAll('.dynamic-element[data-type="text"]');
+    const originalPaddings = [];
+    textElements.forEach(el => {
+      originalPaddings.push(el.style.padding);
+      el.style.padding = '0px';
+    });
+    
     // Wait for fonts to load
     await document.fonts.ready;
     await new Promise(r => setTimeout(r, 300));
@@ -325,29 +333,73 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
       backgroundColor: 'white',
       logging: false,
       letterRendering: true,
-      foreignObjectRendering: false
+      foreignObjectRendering: false,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: certificateWrapper.scrollWidth,
+      windowHeight: certificateWrapper.scrollHeight
     }).then(canvas => {
+      // Restore padding to text elements
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
+      });
+      
       const link = document.createElement('a');
       link.download = 'certificate.png';
       link.href = canvas.toDataURL();
       link.click();
+    }).catch(error => {
+      // Restore padding even on error
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
+      });
+      console.error('PNG export error:', error);
     });
     setShowExportMenu(false);
   };
 
-  const downloadJPG = () => {
+  const downloadJPG = async () => {
     const certificateWrapper = document.getElementById('certificate-wrapper');
     if (!certificateWrapper || !window.html2canvas) return;
+    
+    // Remove padding from all text elements temporarily for accurate export
+    const textElements = document.querySelectorAll('.dynamic-element[data-type="text"]');
+    const originalPaddings = [];
+    textElements.forEach(el => {
+      originalPaddings.push(el.style.padding);
+      el.style.padding = '0px';
+    });
+    
+    // Wait for fonts to load
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 200));
     
     window.html2canvas(certificateWrapper, { 
       scale: 2,
       useCORS: true,
-      backgroundColor: 'white'
+      backgroundColor: 'white',
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0
     }).then(canvas => {
+      // Restore padding to text elements
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
+      });
+      
       const link = document.createElement('a');
       link.download = 'certificate.jpg';
       link.href = canvas.toDataURL('image/jpeg', 0.9);
       link.click();
+    }).catch(error => {
+      // Restore padding even on error
+      textElements.forEach((el, index) => {
+        el.style.padding = originalPaddings[index];
+      });
+      console.error('JPG export error:', error);
     });
     setShowExportMenu(false);
   };
@@ -533,17 +585,24 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
       console.log(`  Original size: ${computedStyle.fontSize}`);
       console.log(`  innerHTML: ${innerHTML.substring(0, 100)}`);
       
-      // Account for padding in position calculation (text elements have 8px padding)
-      const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
-      const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-      const actualLeft = parseFloat(computedStyle.left) + paddingLeft;
-      const actualTop = parseFloat(computedStyle.top) + paddingTop;
+      // Keep original position and padding for HTML export (unlike image exports)
+      // Add 1px to top to compensate for border rendering difference
+      const actualLeft = parseFloat(computedStyle.left) || 0;
+      const actualTop = (parseFloat(computedStyle.top) || 0) + 2;
       
-      // Build inline style - remove flex/padding for static export
+      // Build inline style - preserve all layout properties from designer
       const inlineStyle = [
         `position: absolute`,
         `left: ${actualLeft}px`,
         `top: ${actualTop}px`,
+        `width: ${computedStyle.width}`,  // Keep exact width
+        `height: ${computedStyle.height}`,  // Keep exact height
+        `padding: ${computedStyle.padding}`,  // Keep padding
+        `margin: 0`,  // Ensure no margin
+        `box-sizing: border-box`,  // Ensure consistent box model
+        `display: ${computedStyle.display}`,  // Keep display (flex)
+        `align-items: ${computedStyle.alignItems}`,  // Keep flex alignment
+        `justify-content: ${computedStyle.justifyContent}`,  // Keep flex justification
         `font-family: ${computedStyle.fontFamily.replace(/"/g, "'")}`, // Replace double quotes with single quotes
         `font-size: ${computedStyle.fontSize}`,
         `font-weight: ${computedStyle.fontWeight}`,
@@ -556,7 +615,8 @@ const TopBar = ({ onAddText, onTemplateReset }) => {
         `text-transform: ${computedStyle.textTransform}`,
         `z-index: ${computedStyle.zIndex}`,
         `white-space: pre-wrap`,
-        `word-wrap: break-word`
+        `word-wrap: break-word`,
+        `overflow: hidden`
       ].join('; ');
       
       const htmlElement = `<div style="${inlineStyle}">${innerHTML}</div>`;
