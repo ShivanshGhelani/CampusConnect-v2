@@ -135,10 +135,60 @@ async def create_invitation_link(
         
         # Get attendance strategy from event
         attendance_strategy_data = event.get("attendance_strategy", {})
-        attendance_start = attendance_strategy_data.get("attendance_start_time")
-        attendance_end = attendance_strategy_data.get("attendance_end_time")
+        attendance_start = None
+        attendance_end = None
         
-        # Fallback: use event date range if attendance_strategy not set
+        logger.info(f"🎯 Request target_session: {request.target_session}")
+        logger.info(f"🎯 Request target_day: {request.target_day}")
+        logger.info(f"🎯 Request target_round: {request.target_round}")
+        logger.info(f"📊 Event has {len(attendance_strategy_data.get('sessions', []))} sessions")
+        logger.info(f"📊 Strategy type: {attendance_strategy_data.get('strategy')}")
+        
+        # Extract times from target session/day/round if specified
+        target_identifier = request.target_session or request.target_day or request.target_round
+        
+        if target_identifier:
+            sessions = attendance_strategy_data.get("sessions", [])
+            target_session = None
+            
+            # Find the target session by session_id or session_name
+            for session in sessions:
+                session_id = session.get("session_id")
+                session_name = session.get("session_name")
+                logger.info(f"  🔍 Checking session: id={session_id}, name={session_name}")
+                
+                # Match by session_id, session_name, or if target_day matches day number
+                if (session_id == target_identifier or 
+                    session_name == target_identifier or
+                    (request.target_day and f"day_{request.target_day}" in str(session_id).lower())):
+                    target_session = session
+                    logger.info(f"  ✅ MATCH FOUND!")
+                    break
+            
+            if target_session:
+                attendance_start = target_session.get("start_time")
+                attendance_end = target_session.get("end_time")
+                logger.info(f"📅 Using session '{target_session.get('session_name')}' times: {attendance_start} to {attendance_end}")
+            else:
+                logger.warning(f"⚠️ Target '{target_identifier}' not found in sessions array!")
+        else:
+            # No target specified - use first session as fallback
+            sessions = attendance_strategy_data.get("sessions", [])
+            if sessions and len(sessions) > 0:
+                first_session = sessions[0]
+                attendance_start = first_session.get("start_time")
+                attendance_end = first_session.get("end_time")
+                logger.info(f"📅 No target specified, using FIRST session '{first_session.get('session_name')}' times: {attendance_start} to {attendance_end}")
+            else:
+                logger.warning(f"⚠️ No target_session/day/round provided and no sessions available!")
+        
+        # If no session-specific times, try direct attendance_strategy fields (legacy)
+        if not attendance_start:
+            attendance_start = attendance_strategy_data.get("attendance_start_time")
+        if not attendance_end:
+            attendance_end = attendance_strategy_data.get("attendance_end_time")
+        
+        # Fallback: use event date range if nothing found
         if not attendance_start:
             event_date = event.get("event_date")
             if event_date:
@@ -186,6 +236,22 @@ async def create_invitation_link(
             # Return existing invitation with same target
             invitation_code = existing_invitation["invitation_code"]
             invitation_data = existing_invitation
+            
+            # Update attendance times if missing (for backwards compatibility)
+            if not existing_invitation.get("attendance_start_time") or not existing_invitation.get("attendance_end_time"):
+                update_data = {
+                    "attendance_start_time": attendance_start,
+                    "attendance_end_time": attendance_end,
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                }
+                await DatabaseOperations.update_one(
+                    "volunteer_invitations",
+                    {"invitation_code": invitation_code},
+                    {"$set": update_data}
+                )
+                invitation_data.update(update_data)
+                logger.info(f"Updated attendance times for existing invitation {invitation_code}")
+            
             logger.info(f"Returning existing invitation {invitation_code} for event {request.event_id}")
         else:
             # Deactivate ALL previous invitations for this event (different targets)
@@ -1025,10 +1091,15 @@ async def validate_invitation(invitation_code: str):
         is_active = True
         if attendance_start and attendance_end and not TESTING_MODE:
             # Only enforce time restrictions in production
+            # Convert strings to datetime and make them timezone-naive for comparison
             if isinstance(attendance_start, str):
                 attendance_start = datetime.fromisoformat(attendance_start.replace('Z', '+00:00'))
+                # Convert to IST and make naive
+                attendance_start = attendance_start.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             if isinstance(attendance_end, str):
                 attendance_end = datetime.fromisoformat(attendance_end.replace('Z', '+00:00'))
+                # Convert to IST and make naive
+                attendance_end = attendance_end.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             is_active = attendance_start <= now <= attendance_end
             logger.info(f"✅ Time validation: is_active={is_active} (start <= now <= end: {attendance_start} <= {now} <= {attendance_end})")
