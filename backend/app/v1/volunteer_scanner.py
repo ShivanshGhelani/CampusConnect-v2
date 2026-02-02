@@ -21,7 +21,8 @@ import os
 logger = logging.getLogger(__name__)
 
 # Development/Testing mode - bypasses time restrictions
-TESTING_MODE = os.getenv("TESTING_MODE", "True").lower() == "true"
+TESTING_MODE = os.getenv("TESTING_MODE", "False").lower() == "true"
+logger.info(f"🔧 Volunteer Scanner - TESTING_MODE: {TESTING_MODE}")
 
 # Helper function to serialize datetime objects
 def serialize_datetime(dt):
@@ -1015,6 +1016,12 @@ async def validate_invitation(invitation_code: str):
         attendance_end = invitation.get("attendance_end_time")
         now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         
+        logger.info(f"🔍 Validating invitation {invitation_code}")
+        logger.info(f"🔧 TESTING_MODE: {TESTING_MODE}")
+        logger.info(f"⏰ Current time (IST): {now}")
+        logger.info(f"📅 Attendance start: {attendance_start}")
+        logger.info(f"📅 Attendance end: {attendance_end}")
+        
         is_active = True
         if attendance_start and attendance_end and not TESTING_MODE:
             # Only enforce time restrictions in production
@@ -1024,6 +1031,7 @@ async def validate_invitation(invitation_code: str):
                 attendance_end = datetime.fromisoformat(attendance_end.replace('Z', '+00:00'))
             
             is_active = attendance_start <= now <= attendance_end
+            logger.info(f"✅ Time validation: is_active={is_active} (start <= now <= end: {attendance_start} <= {now} <= {attendance_end})")
         elif TESTING_MODE:
             # In testing mode, always allow access if invitation is valid
             is_active = True

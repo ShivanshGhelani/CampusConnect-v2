@@ -29,6 +29,7 @@ const VolunteerScanner = () => {
   const [isLoadingTeamData, setIsLoadingTeamData] = useState(false);
   const [isMarkingAttendance, setIsMarkingAttendance] = useState(false);
   const [expandedScans, setExpandedScans] = useState({});
+  const [timeRemaining, setTimeRemaining] = useState(null);
 
   // Restore scan history from localStorage on mount
   useEffect(() => {
@@ -47,6 +48,40 @@ const VolunteerScanner = () => {
   useEffect(() => {
     validateInvitation();
   }, [invitationCode]);
+
+  // Countdown timer for before-start scenario
+  useEffect(() => {
+    if (!invitationData?.attendance_start_time) return;
+    
+    const startTime = new Date(invitationData.attendance_start_time);
+    const now = new Date();
+    
+    // Only run timer if event hasn't started yet
+    if (now < startTime) {
+      const updateCountdown = () => {
+        const now = new Date();
+        const diff = startTime - now;
+        
+        if (diff <= 0) {
+          // Time's up! Re-validate to allow access
+          setTimeRemaining(null);
+          validateInvitation();
+        } else {
+          setTimeRemaining(diff);
+        }
+      };
+      
+      // Update immediately
+      updateCountdown();
+      
+      // Update every second
+      const interval = setInterval(updateCountdown, 1000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setTimeRemaining(null);
+    }
+  }, [invitationData?.attendance_start_time]);
 
   const validateInvitation = async () => {
     try {
@@ -311,6 +346,26 @@ const VolunteerScanner = () => {
     return `${minutes}m remaining`;
   };
 
+  const formatCountdown = (milliseconds) => {
+    if (!milliseconds || milliseconds <= 0) return '0s';
+    
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
   const formatDateTime = (dateString) => {
     if (!dateString) {
       return 'Not Set';
@@ -350,22 +405,44 @@ const VolunteerScanner = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.268 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+          <div className={`w-16 h-16 ${isBeforeStart ? 'bg-green-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            {isBeforeStart ? (
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.268 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {isBeforeStart ? 'Not Yet Active' : isAfterEnd ? 'Event Ended' : 'Invalid Invitation'}
+          <h1 className={`text-2xl font-bold mb-2 ${isBeforeStart ? 'text-green-900' : 'text-gray-900'}`}>
+            {isBeforeStart ? 'Scanner Not Started Yet' : isAfterEnd ? 'Event Ended' : 'Invalid Invitation'}
           </h1>
           
           {invitationData ? (
             <div className="text-left mb-6">
-              <p className="text-gray-600 mb-4 text-center">
-                {isBeforeStart && 'This scanning link will become active during the event attendance window.'}
-                {isAfterEnd && 'The attendance marking period for this event has ended.'}
-              </p>
+              {isBeforeStart ? (
+                <div className="mb-4">
+                  <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-3">
+                    <div className="text-center">
+                      <p className="text-green-900 font-semibold mb-2">Scanner will open in:</p>
+                      <p className="text-3xl font-bold text-green-600 mb-1">
+                        {formatCountdown(timeRemaining)}
+                      </p>
+                      <p className="text-sm text-green-700">Please wait until the attendance window starts</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-center text-sm">
+                    This scanning link will automatically become active during the event attendance window.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-600 mb-4 text-center">
+                  {isAfterEnd && 'The attendance marking period for this event has ended.'}
+                </p>
+              )}
               
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <h3 className="font-semibold text-gray-900">{invitationData.event_name}</h3>
