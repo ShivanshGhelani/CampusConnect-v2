@@ -143,7 +143,6 @@ const ElementProperties = ({ selectedElement }) => {
 
   const apply = (prop, value) => {
     if (!selectedElement) return;
-    console.log('Applying style:', prop, value, 'to element:', selectedElement);
     selectedElement.style[prop] = value;
     setStyleState((s) => ({ ...s, [prop]: value }));
   };
@@ -173,16 +172,29 @@ const ElementProperties = ({ selectedElement }) => {
 
   const setAlign = (val) => {
     if (!selectedElement) return;
-    console.log('Setting text alignment to:', val, 'on element:', selectedElement);
     
-    // For contentEditable elements, we need to set text alignment properly
+    // For contentEditable elements using flexbox, we need to adjust justify-content
+    const display = window.getComputedStyle(selectedElement).display;
+    
+    if (display === 'flex') {
+      // Using flexbox - set justify-content for horizontal alignment
+      const justifyMap = {
+        'left': 'flex-start',
+        'center': 'center',
+        'right': 'flex-end',
+        'justify': 'space-between'
+      };
+      selectedElement.style.justifyContent = justifyMap[val] || 'flex-start';
+    }
+    
+    // Also set textAlign for text content
     selectedElement.style.textAlign = val;
     
-    // Also set the style state
+    // Update state
     setStyleState(s => ({ ...s, textAlign: val }));
     
-    // Force a refresh of the element's display
-    selectedElement.style.display = selectedElement.style.display || 'block';
+    // Force a repaint
+    selectedElement.offsetHeight;
   };
 
   const setLineHeight = (val) => {

@@ -738,7 +738,7 @@ const Canvas = ({ onTextElementsChange, template }) => {
     element.contentEditable = 'true';
     element.textContent = text;
     
-    // Simple styling with fixed dimensions for resizing
+    // Simple styling with auto-expanding width and proper text overflow
     element.style.cssText = `
       position: absolute;
       font-family: 'Roboto', sans-serif;
@@ -751,12 +751,15 @@ const Canvas = ({ onTextElementsChange, template }) => {
       padding: 8px;
       z-index: 10;
       user-select: text;
-      width: 200px;
+      min-width: 100px;
+      max-width: 800px;
+      width: auto;
       min-height: 40px;
       border-radius: 4px;
       box-sizing: border-box;
-      overflow: hidden;
+      overflow: visible;
       word-wrap: break-word;
+      white-space: pre-wrap;
       display: flex;
       align-items: center;
       justify-content: center;
