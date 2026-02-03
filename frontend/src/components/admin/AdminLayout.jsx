@@ -401,8 +401,8 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                 </div>
                             </div>
                         )}
-                        {/* Assets */}
-                        {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
+                        {/* Assets - Temporarily Hidden */}
+                        {/* {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (
                             <div className="mb-1">
                                 <div className="mx-2 space-y-1">
                                     <Link
@@ -423,7 +423,7 @@ function AdminLayout({ children, pageTitle = "Admin Dashboard" }) {
                                     </Link>
                                 </div>
                             </div>
-                        )}
+                        )} */}
 
                         {/* Manage Certificates */}
                         {user?.role && ['super_admin', 'executive_admin', 'organizer_admin'].includes(user.role) && (

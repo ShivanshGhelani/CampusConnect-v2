@@ -866,7 +866,7 @@ const Assets = () => {
         )}
       </Modal>
 
-      <style jsx>{`
+      <style jsx="true">{`
         @media (max-width: 1024px) {
           .responsive-grid {
             grid-template-columns: 1fr !important;

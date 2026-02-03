@@ -1621,11 +1621,14 @@ You can use formatting like:
 **Bold text**, *Italic text*, `Code`, # Headers
 - Bullet points
 1. Numbered lists
-[Link text](URL)"
+[Link text](URL)
+![Image description](image-url)
+[![Badge](badge-url)](link-url)"
                   rows={6}
                   maxLength={2000}
+                  allowFullscreen={true}
                 />
-                <p className="text-xs text-blue-600 mt-1">✓ Rich text formatting supported for better event descriptions</p>
+                <p className="text-xs text-blue-600 mt-1">✓ Rich text formatting supported for better event descriptions. Click the expand icon for fullscreen editing with preview.</p>
               </div>
 
               {/* Information Banner */}

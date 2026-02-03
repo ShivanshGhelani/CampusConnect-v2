@@ -16,6 +16,26 @@ const RichTextDisplay = ({
     if (!text) return '';
     
     let formatted = text
+      // Badges with links: [![alt](img-url)](link-url)
+      .replace(/\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g, (match, alt, imgUrl, linkUrl) => {
+        const safeImgUrl = imgUrl.replace(/"/g, '&quot;');
+        const safeLinkUrl = linkUrl.replace(/"/g, '&quot;');
+        const safeAlt = alt.replace(/"/g, '&quot;');
+        return `<a href="${safeLinkUrl}" target="_blank" rel="noopener noreferrer" class="inline-block"><img src="${safeImgUrl}" alt="${safeAlt}" class="h-5 inline-block" style="display: inline-block; vertical-align: middle;" /></a>`;
+      })
+      
+      // Images: ![alt](url)
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        const safeUrl = url.replace(/"/g, '&quot;');
+        const safeAlt = alt.replace(/"/g, '&quot;');
+        return `<img src="${safeUrl}" alt="${safeAlt}" class="max-w-full h-auto rounded-lg my-2" style="display: inline-block; vertical-align: middle;" />`;
+      })
+      
+      // Horizontal rules: ---, ***, ___
+      .replace(/^---+$/gm, '<hr class="my-4 border-t-2 border-gray-300" />')
+      .replace(/^\*\*\*+$/gm, '<hr class="my-4 border-t-2 border-gray-300" />')
+      .replace(/^___+$/gm, '<hr class="my-4 border-t-2 border-gray-300" />')
+      
       // Bold text: **text** or __text__
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.*?)__/g, '<strong>$1</strong>')

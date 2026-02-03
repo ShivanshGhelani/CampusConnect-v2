@@ -18,8 +18,8 @@
         
         body {
             font-family: 'Times New Roman', serif;
-            font-size: 11pt;
-            line-height: 1.4;
+            font-size: 10pt;
+            line-height: 1.2;
             color: #000;
             background: white;
         }
@@ -27,8 +27,8 @@
         .page-header {
             text-align: center;
             border-bottom: 2px solid #000;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
         }
         
         .header-flex {
@@ -63,27 +63,28 @@
         }
         
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border: 1px solid #333;
-            padding: 12px;
-            page-break-inside: avoid;
+            padding: 8px;
         }
         
         .section-title {
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             border-bottom: 1px solid #666;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
+            page-break-after: avoid;
         }
         
         .field {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
             border-bottom: 1px dotted #999;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
             align-items: flex-start;
+            page-break-inside: avoid;
         }
         
         .field-label {
@@ -100,15 +101,16 @@
         
         .event-header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 1px solid #ccc;
+            page-break-after: avoid;
         }
         
         .event-title {
-            font-size: 16pt;
+            font-size: 14pt;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         
         .event-badges {
@@ -134,10 +136,18 @@
         
         .description-box {
             border: 1px solid #333;
-            padding: 8px;
-            margin-top: 5px;
-            min-height: 40px;
+            padding: 6px;
+            margin-top: 3px;
+            margin-bottom: 3px;
             text-align: left;
+            line-height: 1.2;
+            font-size: 10pt;
+            page-break-inside: auto;
+        }
+        
+        .description-box p {
+            margin: 0;
+            line-height: 1.2;
         }
         
         .organizer-item {

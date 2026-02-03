@@ -2405,13 +2405,17 @@ You can use formatting like:
 **Bold text**, *Italic text*, `Code`, # Headers
 - Bullet points
 1. Numbered lists
-[Link text](URL)"
+[Link text](URL)
+![Image description](image-url)
+[![Badge](badge-url)](link-url)
+--- for horizontal line"
                   rows={6}
                   error={!!errors.detailed_description}
                   maxLength={2000}
+                  allowFullscreen={true}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Rich text formatting supported. Use the toolbar or markdown-style formatting for better presentation.
+                  Rich text formatting supported. Use the toolbar or markdown-style formatting. Click the expand icon for fullscreen editing with preview.
                 </p>
                 {errors.detailed_description && <p className="text-xs text-red-600 mt-1">{errors.detailed_description}</p>}
               </div>

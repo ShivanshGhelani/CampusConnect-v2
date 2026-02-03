@@ -125,40 +125,63 @@ export class EventPDFService {
     
     let html = markdown;
     
-    // Headers (### H3, ## H2, # H1) - must be done in this order
-    html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 12pt; font-weight: bold; margin: 12px 0 6px 0; color: #1a1a1a;">$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 13pt; font-weight: bold; margin: 15px 0 8px 0; color: #1a1a1a;">$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 14pt; font-weight: bold; margin: 18px 0 10px 0; color: #000;">$1</h1>');
+    // Badges with links: [![alt](img-url)](link-url) - MUST BE BEFORE plain images
+    html = html.replace(/\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g, (match, alt, imgUrl, linkUrl) => {
+      const safeImgUrl = this.escapeHtml(imgUrl);
+      const safeLinkUrl = this.escapeHtml(linkUrl);
+      const safeAlt = this.escapeHtml(alt);
+      return `<a href="${safeLinkUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block;"><img src="${safeImgUrl}" alt="${safeAlt}" style="height: 20px; display: inline-block; vertical-align: middle;" /></a>`;
+    });
+    
+    // Images: ![alt](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+      const safeUrl = this.escapeHtml(url);
+      const safeAlt = this.escapeHtml(alt);
+      return `<img src="${safeUrl}" alt="${safeAlt}" style="max-width: 100%; height: auto; display: inline-block; vertical-align: middle; margin: 5px 0;" />`;
+    });
+    
+    // Horizontal rules: ---, ***, ___
+    html = html.replace(/^---+$/gm, '<hr style="border: none; border-top: 2px solid #ccc; margin: 10px 0;" />');
+    html = html.replace(/^\*\*\*+$/gm, '<hr style="border: none; border-top: 2px solid #ccc; margin: 10px 0;" />');
+    html = html.replace(/^___+$/gm, '<hr style="border: none; border-top: 2px solid #ccc; margin: 10px 0;" />');
+    
+    // Links: [text](url) - AFTER images and badges
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">$1</a>');
+    
+    // Headers (### H3, ## H2, # H1) - must be done in this order - MORE COMPACT
+    html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 11pt; font-weight: bold; margin: 6px 0 3px 0; color: #1a1a1a;">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 12pt; font-weight: bold; margin: 8px 0 4px 0; color: #1a1a1a;">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 13pt; font-weight: bold; margin: 10px 0 5px 0; color: #000;">$1</h1>');
     
     // Bold (**text** or __text__)
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
     
-    // Italic (*text* or _text_)
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    // Italic (*text* or _text_) - avoid matching * in links/images
+    html = html.replace(/(?<!\*)\*([^*<>]+?)\*(?!\*)/g, '<em>$1</em>');
+    html = html.replace(/(?<!_)_([^_<>]+?)_(?!_)/g, '<em>$1</em>');
     
-    // Unordered lists (lines starting with - or *)
-    html = html.replace(/^[\-\*] (.+)$/gm, '<li style="margin-left: 20px;">$1</li>');
+    // Unordered lists (lines starting with - or *) - MORE COMPACT
+    html = html.replace(/^[\-\*] (.+)$/gm, '<li style="margin-left: 15px; margin-bottom: 2px;">$1</li>');
     
-    // Wrap consecutive <li> tags in <ul>
+    // Wrap consecutive <li> tags in <ul> - MORE COMPACT
     html = html.replace(/(<li[^>]*>.*?<\/li>\s*)+/gs, match => {
-      return '<ul style="margin: 8px 0; padding-left: 20px; list-style-type: disc;">' + match + '</ul>';
+      return '<ul style="margin: 4px 0; padding-left: 15px; list-style-type: disc;">' + match + '</ul>';
     });
     
-    // Code blocks (```code```)
-    html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: #f5f5f5; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 9pt; margin: 10px 0;">$1</pre>');
+    // Code blocks (```code```) - MORE COMPACT
+    html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: #f5f5f5; padding: 6px; border: 1px solid #ddd; border-radius: 3px; overflow-x: auto; font-family: monospace; font-size: 9pt; margin: 5px 0;">$1</pre>');
     
     // Inline code (`code`)
     html = html.replace(/`(.+?)`/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 9pt;">$1</code>');
     
-    // Line breaks (preserve double line breaks as paragraphs, single as <br>)
-    html = html.replace(/\n\n/g, '</p><p style="margin: 8px 0;">');
+    // Line breaks (preserve double line breaks as paragraphs, single as <br>) - MORE COMPACT
+    html = html.replace(/\n\n/g, '</p><p style="margin: 0; line-height: 1.2;">');
     html = html.replace(/\n/g, '<br>');
     
-    // Wrap in paragraph if not already wrapped in block elements
-    if (!html.startsWith('<h1') && !html.startsWith('<h2') && !html.startsWith('<h3') && !html.startsWith('<ul') && !html.startsWith('<pre')) {
-      html = '<p style="margin: 8px 0;">' + html + '</p>';
+    // Wrap in paragraph if not already wrapped in block elements - MORE COMPACT
+    if (!html.startsWith('<h1') && !html.startsWith('<h2') && !html.startsWith('<h3') && !html.startsWith('<ul') && !html.startsWith('<pre') && !html.startsWith('<hr')) {
+      html = '<p style="margin: 0; line-height: 1.2;">' + html + '</p>';
     }
     
     // Sanitize HTML to prevent XSS attacks
@@ -168,11 +191,11 @@ export class EventPDFService {
         'p', 'br', 'strong', 'em', 'u', 's',
         'ul', 'ol', 'li',
         'pre', 'code',
-        'a', 'img',
+        'a', 'img', 'hr',
         'table', 'thead', 'tbody', 'tr', 'th', 'td',
         'div', 'span'
       ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'class'],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'class', 'target', 'rel'],
       ALLOW_DATA_ATTR: false
     });
   }
@@ -606,6 +629,9 @@ export class EventPDFService {
                         eventData.target_audience?.charAt(0).toUpperCase() + eventData.target_audience?.slice(1) || 'N/A',
         SHORT_DESCRIPTION: this.escapeHtml(eventData.short_description) || 'N/A',
         DETAILED_DESCRIPTION: eventData.detailed_description ? `
+          <div class="field" style="margin-top: 4px; margin-bottom: 2px;">
+            <span class="field-label">Detailed Description:</span>
+          </div>
           <div class="description-box">${this.markdownToHtml(eventData.detailed_description)}</div>
         ` : '',
 

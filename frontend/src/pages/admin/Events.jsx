@@ -5,6 +5,7 @@ import { organizerAPI } from '../../api/organizer';
 import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Pagination from '../../components/ui/Pagination';
+import SearchBox from '../../components/ui/SearchBox';
 import { useAuth } from '../../context/AuthContext';
 
 function Events() {
@@ -17,6 +18,7 @@ function Events() {
   const [error, setError] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
   const [audienceFilter, setAudienceFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [lastFetchTime, setLastFetchTime] = useState(0);
 
   // Pagination states
@@ -53,6 +55,17 @@ function Events() {
   const filteredEvents = useMemo(() => {
     let filtered = [...allEvents];
 
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.event_name?.toLowerCase().includes(query) ||
+        event.event_code?.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.event_type?.toLowerCase().includes(query)
+      );
+    }
+
     // Apply status filter
     if (currentFilter !== 'all') {
       if (currentFilter === 'pending_approval') {
@@ -68,7 +81,7 @@ function Events() {
     }
 
     return filtered;
-  }, [allEvents, currentFilter, audienceFilter]);
+  }, [allEvents, currentFilter, audienceFilter, searchQuery]);
 
   // Pagination logic
   const paginatedEvents = useMemo(() => {
@@ -112,7 +125,7 @@ function Events() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [currentFilter, audienceFilter]);
+  }, [currentFilter, audienceFilter, searchQuery]);
 
   // Keyboard navigation for pagination
   useEffect(() => {
@@ -585,7 +598,7 @@ function Events() {
             )}
           </div>
 
-          {/* Audience Filters - Only show if there are events with audience data */}
+          {/* Audience Filters and Search Box - Combined Row */}
           {(audienceCounts.student > 0 || audienceCounts.faculty > 0 || audienceCounts.both > 0) && (
             <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200">
               <span className="text-sm font-medium text-gray-700 mr-2">Filter by Audience:</span>
@@ -631,6 +644,24 @@ function Events() {
                   <i className="fas fa-user-friends mr-1"></i> Both ({audienceCounts.both})
                 </button>
               )}
+              
+              {/* Search Box - Same Row */}
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm font-medium text-gray-700">Search Events:</span>
+                <div className="w-80">
+                  <SearchBox
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    onSearch={setSearchQuery}
+                    placeholder="Search by name, code, type..."
+                    size="md"
+                    variant="filled"
+                    debounceMs={300}
+                    clearIcon={true}
+                    searchIcon={true}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -891,32 +922,23 @@ function Events() {
             <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <i className="fas fa-calendar-times text-2xl text-gray-400"></i>
             </div>
-            {(currentFilter !== 'all' || audienceFilter !== 'all') ? (
-              /* No events found with current filters */
+            {(currentFilter !== 'all' || audienceFilter !== 'all' || searchQuery.trim()) ? (
+              /* No events found with current filters/search */
               <>
                 <h3 className="text-xl font-bold text-gray-700 mb-3">No Events Match Your Filters</h3>
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
                   No events found for the selected filters. Try adjusting your filters or view all events.
                 </p>
-                <div className="space-x-3">
-                  <button
-                    onClick={() => {
-                      setCurrentFilter('all');
-                      setAudienceFilter('all');
-                    }}
-                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                  >
-                    <i className="fas fa-refresh mr-2"></i>Reset Filters
-                  </button>
-                  {user && ['super_admin', 'executive_admin'].includes(user.role) && (
-                    <button
-                      onClick={handleCreateEvent}
-                      className="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
-                    >
-                      <i className="fas fa-plus mr-2"></i>Organize Event
-                    </button>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    setCurrentFilter('all');
+                    setAudienceFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  <i className="fas fa-refresh mr-2"></i>Reset Filters
+                </button>
               </>
             ) : user && user.role === 'organizer_admin' ? (
               <>
