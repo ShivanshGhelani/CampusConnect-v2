@@ -125,7 +125,7 @@ class EventFeedbackService:
             event = await DatabaseOperations.find_one(
                 self.events_collection,
                 {"event_id": event_id},
-                {"feedback_form": 1, "event_name": 1, "event_id": 1, "target_audience": 1}
+                {"feedback_form": 1, "event_name": 1, "event_id": 1, "target_audience": 1, "end_datetime": 1, "is_certificate_based": 1, "feedback_end_date": 1}
             )
             
             if not event:
@@ -161,7 +161,10 @@ class EventFeedbackService:
                 "event": {
                     "event_id": event["event_id"],
                     "event_name": event["event_name"],
-                    "target_audience": event.get("target_audience", "students")
+                    "target_audience": event.get("target_audience", "students"),
+                    "end_datetime": event.get("end_datetime").isoformat() if event.get("end_datetime") else None,
+                    "is_certificate_based": event.get("is_certificate_based", False),
+                    "feedback_end_date": event.get("feedback_end_date").isoformat() if event.get("feedback_end_date") else None
                 }
             }
             

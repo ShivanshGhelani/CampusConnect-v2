@@ -63,7 +63,7 @@ const FeedbackForm = () => {
     if (!event) return;
 
     // If event doesn't have end datetime, don't allow feedback
-    if (!event.event_end_datetime) {
+    if (!event.end_datetime) {
       setIsFormActive(false);
       setTimeUntilActive(-1); // -1 indicates missing datetime
       return;
@@ -71,7 +71,7 @@ const FeedbackForm = () => {
 
     const checkFormActiveStatus = () => {
       const now = new Date();
-      const eventEnd = new Date(event.event_end_datetime);
+      const eventEnd = new Date(event.end_datetime);
       const oneHourBeforeEnd = new Date(eventEnd.getTime() - 60 * 60 * 1000); // 1 hour before event end
 
       if (now >= eventEnd) {
@@ -84,8 +84,8 @@ const FeedbackForm = () => {
         setTimeUntilActive(null);
       } else {
         // Form not yet active
-        setIsFormActive(false);
         const timeDiff = oneHourBeforeEnd.getTime() - now.getTime();
+        setIsFormActive(false);
         setTimeUntilActive(timeDiff);
       }
     };
@@ -514,33 +514,9 @@ const FeedbackForm = () => {
 
   // Check if form is not yet active (before 1 hour of event end) - CHECK THIS FIRST
   if (event && (!isFormActive || timeUntilActive !== null)) {
-    // If event has no end datetime
-    if (!event.event_end_datetime || timeUntilActive === -1) {
-      return (
-        <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
-            <div className="flex items-center space-x-2 text-amber-600 mb-4">
-              <AlertCircle className="w-5 h-5" />
-              <span className="font-medium">Feedback Not Available</span>
-            </div>
-            <p className="text-gray-700 text-sm sm:text-base mb-4">
-              The feedback form for <strong>{event.event_name}</strong> is not yet available. 
-              Feedback can only be submitted during or near the end of the event.
-            </p>
-            <button
-              onClick={() => navigate('/client/dashboard')}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      );
-    }
-
     // If before 1 hour of event end, show countdown
-    if (timeUntilActive > 0) {
-      const eventEnd = new Date(event.event_end_datetime);
+    if (timeUntilActive > 0 && event.end_datetime) {
+      const eventEnd = new Date(event.end_datetime);
       const oneHourBeforeEnd = new Date(eventEnd.getTime() - 60 * 60 * 1000);
       
       return (
@@ -578,6 +554,30 @@ const FeedbackForm = () => {
               </div>
             </div>
 
+            <button
+              onClick={() => navigate('/client/dashboard')}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // If event has no end datetime or other issue
+    if (!event.end_datetime || timeUntilActive === -1) {
+      return (
+        <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
+            <div className="flex items-center space-x-2 text-amber-600 mb-4">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium">Feedback Not Available</span>
+            </div>
+            <p className="text-gray-700 text-sm sm:text-base mb-4">
+              The feedback form for <strong>{event.event_name}</strong> is not yet available. 
+              Feedback can only be submitted during or near the end of the event.
+            </p>
             <button
               onClick={() => navigate('/client/dashboard')}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
