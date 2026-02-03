@@ -5,6 +5,7 @@
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import html2pdf from 'html2pdf.js';
 
 class CertificateService {
   constructor() {
@@ -215,22 +216,79 @@ class CertificateService {
   }
 
   /**
-   * Mobile method: Inline iframe with direct download (no popups)
+   * Mobile method: Uses iframe + Print API (same quality as desktop)
    */
   async generateCertificatePDF_Mobile(filledHtml, filename) {
     try {
-      console.log('📱 Generating mobile-friendly certificate...');
+      console.log('📱 Generating mobile certificate using Print method...');
       
-      // Create overlay with iframe (no popup blocker)
+      // Clean HTML
+      let cleanedHtml = filledHtml;
+      cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
+      cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
+      
+      // Add print styles to ensure perfect rendering
+      const printStyles = `
+        <style>
+          @page {
+            size: 1052px 744px;
+            margin: 0;
+          }
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+              width: 1052px;
+              height: 744px;
+              overflow: hidden;
+            }
+            .certificate-wrapper {
+              width: 1052px !important;
+              height: 744px !important;
+              page-break-after: avoid;
+              page-break-inside: avoid;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            width: 1052px;
+            height: 744px;
+            overflow: hidden;
+          }
+          .mobile-print-overlay {
+            display: none !important;
+          }
+          @media print {
+            .mobile-print-overlay {
+              display: none !important;
+            }
+          }
+        </style>
+      `;
+      
+      // Inject styles into HTML
+      if (cleanedHtml.includes('</head>')) {
+        cleanedHtml = cleanedHtml.replace('</head>', printStyles + '</head>');
+      } else {
+        cleanedHtml = printStyles + cleanedHtml;
+      }
+      
+      // Create overlay with instructions
       const overlay = document.createElement('div');
-      overlay.id = 'certificate-overlay';
+      overlay.className = 'mobile-print-overlay';
       overlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.9);
+        background: rgba(0, 0, 0, 0.95);
         z-index: 999999;
         display: flex;
         flex-direction: column;
@@ -240,132 +298,116 @@ class CertificateService {
         box-sizing: border-box;
       `;
       
-      // Create message
-      const message = document.createElement('div');
-      message.style.cssText = `
+      const messageBox = document.createElement('div');
+      messageBox.style.cssText = `
         background: white;
-        padding: 20px;
-        border-radius: 10px;
+        padding: 30px;
+        border-radius: 12px;
         text-align: center;
-        margin-bottom: 20px;
-        max-width: 90%;
-      `;
-      message.innerHTML = `
-        <h2 style="margin: 0 0 10px 0; color: #1f2937;">📄 Generating Certificate...</h2>
-        <p style="margin: 0; color: #6b7280;">Please wait while we prepare your certificate</p>
+        max-width: 400px;
+        width: 90%;
       `;
       
-      overlay.appendChild(message);
-      document.body.appendChild(overlay);
-      
-      // Create hidden container for rendering
-      const container = document.createElement('div');
-      container.style.cssText = `
-        position: absolute;
-        left: -9999px;
-        top: 0;
-        width: 1052px;
-        height: 744px;
-        background: white;
-      `;
-      container.innerHTML = filledHtml;
-      document.body.appendChild(container);
-      
-      // Wait for fonts and images to load
-      await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Use html2canvas with optimized settings for mobile
-      const canvas = await html2canvas(container, {
-        scale: 2, // Lower scale for mobile performance
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 0,
-        removeContainer: false,
-        foreignObjectRendering: false, // Disable to avoid text rendering issues
-        letterRendering: true, // Enable for better text rendering
-        onclone: (clonedDoc) => {
-          // Ensure all styles are inline in cloned document
-          const clonedContainer = clonedDoc.querySelector('[style*="left: -9999px"]');
-          if (clonedContainer) {
-            // Force all text elements to have explicit styles
-            clonedContainer.querySelectorAll('div, span, p, h1, h2, h3, h4, h5, h6').forEach(el => {
-              const computed = window.getComputedStyle(el);
-              el.style.fontFamily = computed.fontFamily;
-              el.style.fontSize = computed.fontSize;
-              el.style.fontWeight = computed.fontWeight;
-              el.style.color = computed.color;
-              el.style.textAlign = computed.textAlign;
-              el.style.lineHeight = computed.lineHeight;
-              el.style.letterSpacing = computed.letterSpacing;
-            });
-          }
-        }
-      });
-      
-      // Convert to PDF
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [1052, 744],
-        compress: true
-      });
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, 1052, 744, undefined, 'FAST');
-      
-      // Cleanup
-      document.body.removeChild(container);
-      
-      // Update message to show success with download button
-      message.innerHTML = `
-        <h2 style="margin: 0 0 10px 0; color: #10b981;">✅ Certificate Ready!</h2>
-        <p style="margin: 0 0 15px 0; color: #6b7280;">Your certificate has been generated</p>
-        <button id="download-cert-btn" style="
+      messageBox.innerHTML = `
+        <h2 style="margin: 0 0 15px 0; color: #1f2937; font-size: 22px;">📄 Certificate Ready!</h2>
+        <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 16px; line-height: 1.5;">
+          Tap the button below to open the print dialog.<br>
+          Then select <strong>"Save as PDF"</strong> or <strong>"Print to PDF"</strong>
+        </p>
+        <button id="mobile-print-btn" style="
           background: #3b82f6;
           color: white;
           border: none;
-          padding: 12px 24px;
-          border-radius: 6px;
+          padding: 15px 30px;
+          border-radius: 8px;
           font-size: 16px;
+          font-weight: 600;
           cursor: pointer;
-          margin-right: 10px;
-          margin-bottom: 5px;
-        ">📥 Download Certificate</button>
-        <button id="close-cert-btn" style="
+          width: 100%;
+          margin-bottom: 10px;
+          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+        ">
+          🖨️ Open Print Dialog
+        </button>
+        <button id="mobile-cancel-btn" style="
           background: #6b7280;
           color: white;
           border: none;
-          padding: 12px 24px;
-          border-radius: 6px;
-          font-size: 16px;
+          padding: 12px 30px;
+          border-radius: 8px;
+          font-size: 14px;
           cursor: pointer;
-          margin-bottom: 5px;
-        ">✕ Close</button>
+          width: 100%;
+        ">
+          ✕ Cancel
+        </button>
       `;
       
-      // Add download handler
-      document.getElementById('download-cert-btn').onclick = () => {
-        pdf.save(filename);
-        document.body.removeChild(overlay);
+      overlay.appendChild(messageBox);
+      document.body.appendChild(overlay);
+      
+      // Create hidden iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `
+        position: absolute;
+        width: 1052px;
+        height: 744px;
+        left: -9999px;
+        top: 0;
+        border: none;
+      `;
+      document.body.appendChild(iframe);
+      
+      // Write certificate content to iframe
+      const iframeDoc = iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(cleanedHtml);
+      iframeDoc.close();
+      
+      // Wait for iframe to load
+      await new Promise(resolve => {
+        iframe.onload = resolve;
+        setTimeout(resolve, 1000);
+      });
+      
+      // Set up button handlers
+      const printBtn = messageBox.querySelector('#mobile-print-btn');
+      const cancelBtn = messageBox.querySelector('#mobile-cancel-btn');
+      
+      printBtn.onclick = () => {
+        try {
+          // Focus iframe and trigger print
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (err) {
+          console.error('Print error:', err);
+          alert('Unable to open print dialog. Please try again.');
+        }
       };
       
-      // Add close handler
-      document.getElementById('close-cert-btn').onclick = () => {
+      cancelBtn.onclick = () => {
         document.body.removeChild(overlay);
+        document.body.removeChild(iframe);
       };
       
-      console.log('✅ Certificate ready for download');
-      return { success: true, message: 'Certificate generated successfully' };
+      // Auto-cleanup after print dialog closes (estimated)
+      setTimeout(() => {
+        if (document.body.contains(overlay)) {
+          document.body.removeChild(overlay);
+        }
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 60000); // 1 minute timeout
+      
+      return { success: true, message: 'Print dialog opened' };
       
     } catch (error) {
-      console.error('❌ Error generating certificate:', error);
+      console.error('❌ Error generating mobile certificate:', error);
       
-      // Remove overlay if exists
-      const overlay = document.getElementById('certificate-overlay');
-      if (overlay) {
+      // Cleanup on error
+      const overlay = document.querySelector('.mobile-print-overlay');
+      if (overlay && document.body.contains(overlay)) {
         document.body.removeChild(overlay);
       }
       
