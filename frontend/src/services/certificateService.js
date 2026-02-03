@@ -199,17 +199,12 @@ class CertificateService {
 
   /**
    * Generate and download certificate as PDF
-   * Desktop: Uses browser print (perfect quality)
-   * Mobile: Uses html2canvas (better UX)
+   * All platforms: Uses browser print (perfect quality & positioning)
+   * Mobile browsers support Print-to-PDF natively
    */
   async generateCertificatePDF(filledHtml, filename) {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      return await this.generateCertificatePDF_Canvas(filledHtml, filename);
-    } else {
-      return await this.generateCertificatePDF_Print(filledHtml, filename);
-    }
+    // Use print method for all platforms - it works perfectly on mobile too
+    return await this.generateCertificatePDF_Print(filledHtml, filename);
   }
 
   /**
@@ -264,15 +259,15 @@ class CertificateService {
         </style>
       `;
       
-      // Add print button and instructions
+      // Add print button and instructions (mobile-friendly)
       const printUI = `
-        <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-          <h2 style="margin: 0 0 10px 0; color: #1f2937;">Certificate Ready!</h2>
-          <p style="margin: 0 0 15px 0; color: #6b7280;">Click Print and select "Save as PDF" from the destination</p>
-          <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-right: 10px;">
+        <div class="no-print" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 90vw;">
+          <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">Certificate Ready!</h2>
+          <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">Click Print and select "Save as PDF"</p>
+          <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; cursor: pointer; margin-right: 8px; margin-bottom: 5px;">
             🖨️ Print to PDF
           </button>
-          <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer;">
+          <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; cursor: pointer; margin-bottom: 5px;">
             ✕ Close
           </button>
         </div>
