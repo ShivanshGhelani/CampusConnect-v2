@@ -199,12 +199,178 @@ class CertificateService {
 
   /**
    * Generate and download certificate as PDF
-   * All platforms: Uses browser print (perfect quality & positioning)
-   * Mobile browsers support Print-to-PDF natively
+   * Mobile: Inline iframe + download link (no popups)
+   * Desktop: Print method for best quality
    */
   async generateCertificatePDF(filledHtml, filename) {
-    // Use print method for all platforms - it works perfectly on mobile too
-    return await this.generateCertificatePDF_Print(filledHtml, filename);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Mobile: Use inline approach (no popups blocked)
+      return await this.generateCertificatePDF_Mobile(filledHtml, filename);
+    } else {
+      // Desktop: Use print for perfect quality
+      return await this.generateCertificatePDF_Print(filledHtml, filename);
+    }
+  }
+
+  /**
+   * Mobile method: Inline iframe with direct download (no popups)
+   */
+  async generateCertificatePDF_Mobile(filledHtml, filename) {
+    try {
+      console.log('📱 Generating mobile-friendly certificate...');
+      
+      // Create overlay with iframe (no popup blocker)
+      const overlay = document.createElement('div');
+      overlay.id = 'certificate-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+      `;
+      
+      // Create message
+      const message = document.createElement('div');
+      message.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+        max-width: 90%;
+      `;
+      message.innerHTML = `
+        <h2 style="margin: 0 0 10px 0; color: #1f2937;">📄 Generating Certificate...</h2>
+        <p style="margin: 0; color: #6b7280;">Please wait while we prepare your certificate</p>
+      `;
+      
+      overlay.appendChild(message);
+      document.body.appendChild(overlay);
+      
+      // Create hidden container for rendering
+      const container = document.createElement('div');
+      container.style.cssText = `
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        width: 1052px;
+        height: 744px;
+        background: white;
+      `;
+      container.innerHTML = filledHtml;
+      document.body.appendChild(container);
+      
+      // Wait for fonts and images to load
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Use html2canvas with optimized settings for mobile
+      const canvas = await html2canvas(container, {
+        scale: 2, // Lower scale for mobile performance
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 0,
+        removeContainer: false,
+        foreignObjectRendering: false, // Disable to avoid text rendering issues
+        letterRendering: true, // Enable for better text rendering
+        onclone: (clonedDoc) => {
+          // Ensure all styles are inline in cloned document
+          const clonedContainer = clonedDoc.querySelector('[style*="left: -9999px"]');
+          if (clonedContainer) {
+            // Force all text elements to have explicit styles
+            clonedContainer.querySelectorAll('div, span, p, h1, h2, h3, h4, h5, h6').forEach(el => {
+              const computed = window.getComputedStyle(el);
+              el.style.fontFamily = computed.fontFamily;
+              el.style.fontSize = computed.fontSize;
+              el.style.fontWeight = computed.fontWeight;
+              el.style.color = computed.color;
+              el.style.textAlign = computed.textAlign;
+              el.style.lineHeight = computed.lineHeight;
+              el.style.letterSpacing = computed.letterSpacing;
+            });
+          }
+        }
+      });
+      
+      // Convert to PDF
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [1052, 744],
+        compress: true
+      });
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, 1052, 744, undefined, 'FAST');
+      
+      // Cleanup
+      document.body.removeChild(container);
+      
+      // Update message to show success with download button
+      message.innerHTML = `
+        <h2 style="margin: 0 0 10px 0; color: #10b981;">✅ Certificate Ready!</h2>
+        <p style="margin: 0 0 15px 0; color: #6b7280;">Your certificate has been generated</p>
+        <button id="download-cert-btn" style="
+          background: #3b82f6;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 6px;
+          font-size: 16px;
+          cursor: pointer;
+          margin-right: 10px;
+          margin-bottom: 5px;
+        ">📥 Download Certificate</button>
+        <button id="close-cert-btn" style="
+          background: #6b7280;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 6px;
+          font-size: 16px;
+          cursor: pointer;
+          margin-bottom: 5px;
+        ">✕ Close</button>
+      `;
+      
+      // Add download handler
+      document.getElementById('download-cert-btn').onclick = () => {
+        pdf.save(filename);
+        document.body.removeChild(overlay);
+      };
+      
+      // Add close handler
+      document.getElementById('close-cert-btn').onclick = () => {
+        document.body.removeChild(overlay);
+      };
+      
+      console.log('✅ Certificate ready for download');
+      return { success: true, message: 'Certificate generated successfully' };
+      
+    } catch (error) {
+      console.error('❌ Error generating certificate:', error);
+      
+      // Remove overlay if exists
+      const overlay = document.getElementById('certificate-overlay');
+      if (overlay) {
+        document.body.removeChild(overlay);
+      }
+      
+      throw new Error(`Failed to generate certificate: ${error.message}`);
+    }
   }
 
   /**
