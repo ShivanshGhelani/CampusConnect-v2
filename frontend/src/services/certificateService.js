@@ -50,12 +50,12 @@ class CertificateService {
 
   /**
    * Replace all placeholder formats with actual data
-   * Supports: {{}}, {}, [], ()
+   * Preserves original element styling and positioning
    */
   replacePlaceholders(htmlContent, userData) {
     let processedHtml = htmlContent;
 
-    // Define all placeholder patterns
+    // Define all placeholder patterns (order matters - do most specific first)
     const patterns = [
       { regex: /\{\{([^}]+)\}\}/g, name: 'double curly' },  // {{PLACEHOLDER}}
       { regex: /\{([^}]+)\}/g, name: 'single curly' },      // {PLACEHOLDER}
@@ -72,16 +72,30 @@ class CertificateService {
       }
 
       processedHtml = processedHtml.replace(regex, (match, placeholder) => {
-        const key = placeholder.trim().toLowerCase().replace(/[_\s]+/g, '_');
+        // Clean the placeholder key - handle extra spaces
+        const key = placeholder.trim().toLowerCase().replace(/[_\s-]+/g, '_');
         
         // Try to find matching data
-        if (userData[key] !== undefined) {
-          console.log(`✓ Replaced: ${match} → ${userData[key]}`);
-          return userData[key];
+        if (userData[key] !== undefined && userData[key] !== null && userData[key] !== '') {
+          const value = String(userData[key]).trim();
+          console.log(`✓ Replaced: ${match} → ${value}`);
+          
+          // Wrap in span to maintain inline positioning
+          return `<span style="display: inline; white-space: nowrap;">${value}</span>`;
+        }
+        
+        // Try variations without special characters
+        const cleanKey = key.replace(/[^a-z0-9_]/g, '');
+        if (userData[cleanKey] !== undefined && userData[cleanKey] !== null && userData[cleanKey] !== '') {
+          const value = String(userData[cleanKey]).trim();
+          console.log(`✓ Replaced: ${match} → ${value} (using ${cleanKey})`);
+          
+          // Wrap in span to maintain inline positioning
+          return `<span style="display: inline; white-space: nowrap;">${value}</span>`;
         }
         
         // Keep original if no match found
-        console.warn(`⚠️ No data found for placeholder: ${match}`);
+        console.warn(`⚠️ No data found for placeholder: ${match} (tried keys: ${key}, ${cleanKey})`);
         return match;
       });
     });
@@ -185,12 +199,135 @@ class CertificateService {
 
   /**
    * Generate and download certificate as PDF
+   * Desktop: Uses browser print (perfect quality)
+   * Mobile: Uses html2canvas (better UX)
    */
   async generateCertificatePDF(filledHtml, filename) {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      return await this.generateCertificatePDF_Canvas(filledHtml, filename);
+    } else {
+      return await this.generateCertificatePDF_Print(filledHtml, filename);
+    }
+  }
+
+  /**
+   * Desktop method: Browser native print (perfect quality & positioning)
+   */
+  async generateCertificatePDF_Print(filledHtml, filename) {
     try {
-      console.log('📄 Generating PDF with html2canvas + jsPDF...');
+      console.log('📄 Opening certificate for print-to-PDF...');
       
-      // Create iframe to properly render the HTML
+      // Clean HTML
+      let cleanedHtml = filledHtml;
+      cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
+      cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
+      
+      // Add print styles to ensure perfect rendering
+      const printStyles = `
+        <style>
+          @page {
+            size: 1052px 744px;
+            margin: 0;
+          }
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+              width: 1052px;
+              height: 744px;
+              overflow: hidden;
+            }
+            .certificate-wrapper {
+              width: 1052px !important;
+              height: 744px !important;
+              page-break-after: avoid;
+              page-break-inside: avoid;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            width: 1052px;
+            height: 744px;
+            overflow: hidden;
+          }
+          .no-print {
+            display: none !important;
+          }
+        </style>
+      `;
+      
+      // Add print button and instructions
+      const printUI = `
+        <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+          <h2 style="margin: 0 0 10px 0; color: #1f2937;">Certificate Ready!</h2>
+          <p style="margin: 0 0 15px 0; color: #6b7280;">Click Print and select "Save as PDF" from the destination</p>
+          <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-right: 10px;">
+            🖨️ Print to PDF
+          </button>
+          <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer;">
+            ✕ Close
+          </button>
+        </div>
+      `;
+      
+      // Inject styles
+      if (cleanedHtml.includes('</head>')) {
+        cleanedHtml = cleanedHtml.replace('</head>', printStyles + '</head>');
+      } else {
+        cleanedHtml = printStyles + cleanedHtml;
+      }
+      
+      // Add print UI after body tag
+      if (cleanedHtml.includes('<body')) {
+        cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)/, '$1' + printUI);
+      } else {
+        cleanedHtml = printUI + cleanedHtml;
+      }
+      
+      // Open in new window
+      const printWindow = window.open('', '_blank', 'width=1052,height=744');
+      
+      if (!printWindow) {
+        throw new Error('Failed to open print window. Please allow pop-ups for this site.');
+      }
+      
+      printWindow.document.write(cleanedHtml);
+      printWindow.document.close();
+      
+      // Wait for content to load
+      await new Promise(resolve => {
+        if (printWindow.document.readyState === 'complete') {
+          resolve();
+        } else {
+          printWindow.onload = resolve;
+        }
+      });
+      
+      console.log('✅ Certificate opened in new window. Use Print to save as PDF.');
+      return { success: true, message: 'Certificate opened. Click "Print to PDF" button.' };
+      
+    } catch (error) {
+      console.error('❌ Error opening certificate:', error);
+      throw new Error(`Failed to open certificate: ${error.message}`);
+    }
+  }
+
+  /**
+   * Mobile method: html2canvas for better mobile UX
+   */
+  async generateCertificatePDF_Canvas(filledHtml, filename) {
+    try {
+      console.log('📱 Generating PDF for mobile...');
+      
+      // Create iframe
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.top = '-10000px';
@@ -201,72 +338,51 @@ class CertificateService {
       iframe.style.background = 'white';
       document.body.appendChild(iframe);
 
-      // Write HTML content to iframe
       const iframeDoc = iframe.contentWindow.document;
       iframeDoc.open();
-      // Remove any stray br tags that might break formatting
-      const cleanedHtml = filledHtml.replace(/<br\s*\/?>/gi, ' ');
+      
+      let cleanedHtml = filledHtml;
+      cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
+      cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
+      
       iframeDoc.write(cleanedHtml);
       iframeDoc.close();
 
-      // Wait for content to load and render completely
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Get the certificate wrapper element
       const certificateWrapper = iframeDoc.querySelector('.certificate-wrapper');
-      
       if (!certificateWrapper) {
-        throw new Error('Certificate wrapper not found in template');
+        throw new Error('Certificate wrapper not found');
       }
 
-      console.log('🎨 Capturing certificate wrapper...');
+      console.log('📸 Capturing...');
 
-      // Capture the element as canvas
       const canvas = await html2canvas(certificateWrapper, {
-        scale: 5,
+        scale: 6,
         useCORS: true,
         allowTaint: true,
-        logging: true,
+        logging: false,
         backgroundColor: '#ffffff',
         width: 1052,
-        height: 744,
-        windowWidth: 1052,
-        windowHeight: 744,
-        imageTimeout: 0,
-        removeContainer: false,
-        letterRendering: true,
-        onclone: (clonedDoc) => {
-          // Ensure text doesn't wrap
-          const textElements = clonedDoc.querySelectorAll('.dynamic-element');
-          textElements.forEach(el => {
-            el.style.whiteSpace = 'nowrap';
-            el.style.overflow = 'visible';
-          });
-        }
+        height: 744
       });
 
-      console.log('✅ Canvas captured:', canvas.width, 'x', canvas.height);
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'px',
-        format: [1052, 744],
-        compress: true
+        format: [1052, 744]
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, 1052, 744, '', 'SLOW');
+      pdf.addImage(imgData, 'JPEG', 0, 0, 1052, 744);
       pdf.save(filename || 'certificate.pdf');
       
-      // Clean up
       document.body.removeChild(iframe);
       
-      console.log('✅ PDF generated and downloaded successfully');
+      console.log('✅ PDF downloaded');
       return { success: true };
     } catch (error) {
-      console.error('❌ Error generating PDF:', error);
-      // Clean up on error
+      console.error('❌ Error:', error);
       const iframe = document.querySelector('iframe[style*="-10000px"]');
       if (iframe) document.body.removeChild(iframe);
       throw new Error(`Failed to generate PDF: ${error.message}`);

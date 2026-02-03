@@ -102,7 +102,9 @@ function EventDetail() {
   };
 
   useEffect(() => {
+    // Invalidate cache on mount to force fresh data
     if (eventId) {
+      invalidateEventCache(eventId, 'stats');  // Clear stats cache
       fetchEventDetails();
     }
   }, [eventId]);
@@ -255,9 +257,14 @@ function EventDetail() {
 
       // Process stats
       if (allData.stats?.success) {
+        console.log('📊 Event Stats received:', allData.stats.stats);
+        console.log('📊 Team Registrations:', allData.stats.stats.total_team_registrations);
+        console.log('📊 Team Members:', allData.stats.stats.total_team_members);
+        console.log('📊 Is Team Based:', allData.stats.stats.is_team_based);
         setEventStats(allData.stats.stats);
 
       } else {
+        console.warn('⚠️ Stats not received or failed');
         pass; // No action needed if stats are not available
 
       }
