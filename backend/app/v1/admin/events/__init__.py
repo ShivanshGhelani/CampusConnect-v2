@@ -1305,13 +1305,13 @@ async def get_event_stats(
             # Count individual registrations
             individual_count = await DatabaseOperations.count_documents(
                 "student_registrations",
-                {"event.event_id": event_id, "registration_type": "individual"}
+                {"event.event_id": event_id, "registration.type": "individual"}
             )
             
             # Count team registrations and get unique participants
             team_regs = await DatabaseOperations.find_many(
                 "student_registrations",
-                {"event.event_id": event_id, "registration_type": "team"}
+                {"event.event_id": event_id, "registration.type": "team"}
             )
             
             total_individual_registrations = individual_count
@@ -1328,7 +1328,7 @@ async def get_event_stats(
                 unique_participants = set()
                 team_regs_list = await DatabaseOperations.find_many(
                     "student_registrations",
-                    {"event.event_id": event_id, "registration_type": "team"}
+                    {"event.event_id": event_id, "registration.type": "team"}
                 )
                 for team_reg in team_regs_list:
                     # Process team_members array
@@ -1345,7 +1345,7 @@ async def get_event_stats(
                 # Count all team members without deduplication
                 team_regs_list = await DatabaseOperations.find_many(
                     "student_registrations",
-                    {"event.event_id": event_id, "registration_type": "team"}
+                    {"event.event_id": event_id, "registration.type": "team"}
                 )
                 for team_reg in team_regs_list:
                     # Count all members in team_members array

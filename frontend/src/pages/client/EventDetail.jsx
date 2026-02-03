@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import RichTextDisplay from '../../components/RichTextDisplay';
 import { fetchEventWithCache, getAnyEventCache } from '../../utils/eventCache';
 
+
 function EventDetail() {
   const { eventId } = useParams();
   const { isAuthenticated, user, userType } = useAuth(); // Added userType from auth context
@@ -171,10 +172,10 @@ function EventDetail() {
         };
       case 'registration_closed':
         return {
-          bgClass: 'bg-gradient-to-r from-red-500 to-pink-500',
+          bgClass: 'bg-gradient-to-r from-orange-500 to-orange-500',
           textClass: 'text-white',
           label: 'Registration Closed',
-          iconPath: 'M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+          iconPath: 'M10,18a1,1,0,0,1-.71-.29l-5-5a1,1,0,0,1,1.42-1.42L10,15.59l8.29-8.3a1,1,0,1,1,1.42,1.42l-9,9A1,1,0,0,1,10,18Z',
         };
       case 'event_started':
       case 'ongoing':
@@ -514,7 +515,7 @@ function EventDetail() {
               <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl font-bold -mt-2 sm:-mt-3 md:-mt-4 lg:-mt-5 mb-2 py-1.5 bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent leading-normal animate-title-glow text-wrap break-words">
                 {event.event_name || event.name || event.title || 'Event Details'}
               </h1>
-                            {/* Description Preview */}
+              {/* Description Preview */}
               {(event.short_description || event.detailed_description || event.description || event.event_description || event.details || event.about) && (
                 <div className="relative mb-3 sm:mb-4 lg:mb-6">
                   <p className="text-sm sm:text-base lg:text-lg text-blue-100 -my-1 py-2 sm:py-3 leading-relaxed max-w-4xl font-light relative z-10">
@@ -564,7 +565,7 @@ function EventDetail() {
                   )}
                 </div>
               </div>
-              
+
 
             </div>
 
@@ -778,68 +779,68 @@ function EventDetail() {
                     const feedbackEndDate = new Date(event.feedback_end_date);
                     return now <= feedbackEndDate;
                   })() && (
-                    <div className="space-y-2.5">
-                      {/* Event completed message */}
-                      <div className="text-center space-y-0.5">
-                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto shadow-lg">
-                          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
+                      <div className="space-y-2.5">
+                        {/* Event completed message */}
+                        <div className="text-center space-y-0.5">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto shadow-lg">
+                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <h3 className="text-sm font-bold text-white mt-1">Event Completed</h3>
+                          <p className="text-blue-100 text-[10px]">Share your feedback!</p>
                         </div>
-                        <h3 className="text-sm font-bold text-white mt-1">Event Completed</h3>
-                        <p className="text-blue-100 text-[10px]">Share your feedback!</p>
-                      </div>
 
-                      {/* Feedback collection notice */}
-                      <div className="bg-blue-500/20 backdrop-blur-sm rounded-xl p-2.5 border border-blue-300/30">
-                        <div className="flex items-center gap-2 text-blue-100">
-                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                          <div className="flex-1">
-                            <p className="text-[10px] font-medium">
-                              Feedback deadline: {new Date(event.feedback_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
+                        {/* Feedback collection notice */}
+                        <div className="bg-blue-500/20 backdrop-blur-sm rounded-xl p-2.5 border border-blue-300/30">
+                          <div className="flex items-center gap-2 text-blue-100">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            <div className="flex-1">
+                              <p className="text-[10px] font-medium">
+                                Feedback deadline: {new Date(event.feedback_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Feedback Button */}
-                      <button
-                        onClick={handleFeedback}
-                        disabled={feedbackSubmitted}
-                        className={`group relative w-full transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border ${feedbackSubmitted
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 border-emerald-400/50'
-                          } text-white font-bold py-2.5 px-5 rounded-xl`}
-                      >
-                        {!feedbackSubmitted && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
-                        )}
-                        {!feedbackSubmitted && (
-                          <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                        )}
-                        <div className="relative flex items-center justify-center gap-1.5">
-                          {feedbackSubmitted ? (
-                            <>
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-xs font-extrabold tracking-wide">Thank You!</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                                <path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4 8.5 8.5 0 0 1-6.6 3.1 8.38 8.38 0 0 1-5.4-1.9L3 21l1.9-4.1a8.38 8.38 0 0 1-1.9-5.4 8.5 8.5 0 0 1 3.1-6.6 8.38 8.38 0 0 1 5.4-1.9h.5" />
-                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L14 13l-4 1 1-4 7.5-7.5z" />
-                              </svg>
-                              <span className="text-xs font-extrabold tracking-wide">Submit Feedback</span>
-                            </>
+                        {/* Feedback Button */}
+                        <button
+                          onClick={handleFeedback}
+                          disabled={feedbackSubmitted}
+                          className={`group relative w-full transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl shadow-lg overflow-hidden border ${feedbackSubmitted
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 hover:from-emerald-600 hover:via-green-600 hover:to-teal-700 border-emerald-400/50'
+                            } text-white font-bold py-2.5 px-5 rounded-xl`}
+                        >
+                          {!feedbackSubmitted && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-500 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
                           )}
-                        </div>
-                      </button>
-                    </div>
-                  )}
+                          {!feedbackSubmitted && (
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          )}
+                          <div className="relative flex items-center justify-center gap-1.5">
+                            {feedbackSubmitted ? (
+                              <>
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-xs font-extrabold tracking-wide">Thank You!</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                  <path d="M21 11.5a8.38 8.38 0 0 1-1.9 5.4 8.5 8.5 0 0 1-6.6 3.1 8.38 8.38 0 0 1-5.4-1.9L3 21l1.9-4.1a8.38 8.38 0 0 1-1.9-5.4 8.5 8.5 0 0 1 3.1-6.6 8.38 8.38 0 0 1 5.4-1.9h.5" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L14 13l-4 1 1-4 7.5-7.5z" />
+                                </svg>
+                                <span className="text-xs font-extrabold tracking-wide">Submit Feedback</span>
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      </div>
+                    )}
 
                   {/* Fallback for other statuses */}
                   {(() => {
@@ -1563,9 +1564,9 @@ function EventDetail() {
                           <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                           <path d="M6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
                         </svg>
-                        {event.registration_stats?.team_count || 
-                         event.registration_stats?.total_teams || 
-                         (event.team_registrations ? Object.keys(event.team_registrations).length : 0)} Teams
+                        {event.registration_stats?.team_count ||
+                          event.registration_stats?.total_teams ||
+                          (event.team_registrations ? Object.keys(event.team_registrations).length : 0)} Teams
                       </span>
                       {(event.registration_stats?.total_participants || 0) > 0 && (
                         <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
@@ -1578,10 +1579,10 @@ function EventDetail() {
                       <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
-                      {event.registration_stats?.individual_count || 
-                       event.registration_stats?.total_participants || 
-                       event.registration_stats?.total_registrations || 
-                       (event.registered_students ? Object.keys(event.registered_students).length : 0)} Participants
+                      {event.registration_stats?.individual_count ||
+                        event.registration_stats?.total_participants ||
+                        event.registration_stats?.total_registrations ||
+                        (event.registered_students ? Object.keys(event.registered_students).length : 0)} Participants
                     </span>
                   )}
                 </div>

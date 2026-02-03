@@ -154,8 +154,8 @@ const EventCard = ({ event }) => {
         };
       } else {
         return {
-          bgClass: 'bg-red-600 hover:bg-red-700',
-          icon: 'fas fa-times-circle',
+          bgClass: 'bg-orange-600 hover:bg-orange-700',
+          icon: 'fas fa-check-circle',
           text: 'Registration Closed'
         };
       }

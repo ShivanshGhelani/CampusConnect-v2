@@ -646,7 +646,7 @@ function EventDetail() {
   const handleEventReportGeneration = async (reportData) => {
     try {
       setError(''); // Clear any previous errors
-      console.log('Generating Event Report with data:', reportData);
+    
       
       // Build HTML report similar to attendance_report.html and feedback_report.html
       let htmlContent = `
@@ -1091,24 +1091,15 @@ function EventDetail() {
   </div>`;
       }
 
-      // Add Attendance Report Table (if selected)
-      console.log('Attendance report check:', {
-        includeSignSheet: reportData.includeSignSheet,
-        hasRegistrations: reportData.registrations && reportData.registrations.length > 0,
-        registrationsCount: reportData.registrations?.length
-      });
       
       if (reportData.includeSignSheet && reportData.registrations && reportData.registrations.length > 0) {
-        console.log('Fetching attendance data for report...');
         
         try {
           // Fetch attendance data with actual attendance status
           const attendanceResponse = await adminAPI.getAttendanceConfigAndParticipants(eventId);
-          console.log('Attendance API response:', attendanceResponse.data);
           
           if (attendanceResponse.data.success && attendanceResponse.data.data.participants) {
             const attendanceParticipants = attendanceResponse.data.data.participants;
-            console.log('Fetched attendance participants:', attendanceParticipants.length);
             
             // Separate by registration type
             const facultyRegs = attendanceParticipants.filter(r => r.registration_type === 'faculty');
@@ -1127,12 +1118,7 @@ function EventDetail() {
               regs.forEach((reg, idx) => {
                 // Debug: Log first registration to see available fields
                 if (idx === 0) {
-                  console.log('Sample attendance participant FULL OBJECT:', JSON.stringify(reg, null, 2));
-                  console.log('Available keys:', Object.keys(reg));
-                  console.log('participant_type:', reg.participant_type);
-                  console.log('student:', reg.student);
-                  console.log('faculty:', reg.faculty);
-                  console.log('registration_type:', reg.registration_type);
+                  
                 }
                 
                 // Handle TEAM registrations differently
@@ -1313,7 +1299,6 @@ function EventDetail() {
             htmlContent += generateAttendanceTable(teamRegs, 'Attendance Report - Team Registrations');
           } else {
             // Fallback to basic registration list if attendance data not available
-            console.log('No attendance data available, showing basic registration list');
             htmlContent += `
   <div class="section">
     <div class="section-title">Registration List (Attendance data not available)</div>
@@ -1349,7 +1334,6 @@ function EventDetail() {
   </div>`;
           }
         } catch (error) {
-          console.error('Error fetching attendance data:', error);
           htmlContent += `
   <div class="section">
     <div class="section-title">Attendance Report</div>
@@ -1360,8 +1344,6 @@ function EventDetail() {
 
       // Add Feedback Report Table (if selected and available)
       if (reportData.includeFeedbackReport && reportData.statistics.feedbacksReceived > 0) {
-        console.log('Feedback Report - Including feedback table');
-        console.log('Feedbacks received:', reportData.statistics.feedbacksReceived);
         
         try {
           // Fetch feedback data
@@ -1374,7 +1356,7 @@ function EventDetail() {
             const feedbackForm = formResponse.data.feedback_form;
             const allResponses = responsesResponse.data.responses;
 
-            console.log('Fetched feedback responses:', allResponses.length);
+            
 
             // Add Feedback Summary Table
             let feedbackTableRows = '';
@@ -1478,8 +1460,7 @@ function EventDetail() {
     </div>
   </div>`;
           } else {
-            // Fallback if API returns no responses
-            console.log('No feedback responses from API');
+
             htmlContent += `
   <div class="section">
     <div class="section-title">Feedback Summary</div>
@@ -1496,7 +1477,6 @@ function EventDetail() {
   </div>`;
           }
         } catch (error) {
-          console.error('Error fetching feedback data:', error);
           htmlContent += `
   <div class="section">
     <div class="section-title">Feedback Summary</div>
@@ -1532,7 +1512,7 @@ function EventDetail() {
     } catch (error) {
       setError('Failed to generate event report. Please try again.');
       alert('Failed to generate event report. Please try again.');
-      console.error('Error generating event report:', error);
+     
     }
   };
 
@@ -3264,14 +3244,14 @@ function EventDetail() {
                       <p className="text-gray-500 text-xs font-medium">Total Registrations</p>
                       <p className="text-lg font-bold text-gray-800">
                         {eventStats.is_team_based ?
-                          `Teams: ${recentRegistrations.length || 0}` :
-                          `Registrations: ${recentRegistrations.length || 0}`
+                          `Teams: ${eventStats.total_team_registrations || 0}` :
+                          `Registrations: ${eventStats.registrations_count || 0}`
                         }
                       </p>
                       <p className="text-xs text-gray-400">
 
                         {eventStats.is_team_based ?
-                          `Teams: ${recentRegistrations.length || 0} • Participants: ${eventStats.total_participants || 0}` : (eventStats.user_type === 'student' ?
+                          `Teams: ${eventStats.total_team_registrations || 0} • Participants: ${eventStats.total_team_members || 0}` : (eventStats.user_type === 'student' ?
                             `Students Registered`
                             :
                             `Participants Registered`
