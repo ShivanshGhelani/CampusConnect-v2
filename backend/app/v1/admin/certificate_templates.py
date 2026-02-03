@@ -88,6 +88,13 @@ async def upload_certificate_template(
 ):
     """Upload a new certificate HTML template to database and storage"""
     try:
+        # Validate filename exists
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="No file provided"
+            )
+        
         # Validate file extension
         file_ext = Path(file.filename).suffix.lower()
         if file_ext not in ALLOWED_EXTENSIONS:

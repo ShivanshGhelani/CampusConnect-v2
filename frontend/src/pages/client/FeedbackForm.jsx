@@ -33,6 +33,8 @@ const FeedbackForm = () => {
   const [isVerifyingRegistration, setIsVerifyingRegistration] = useState(false);
   const [registrationVerified, setRegistrationVerified] = useState(false);
   const [verificationError, setVerificationError] = useState(null);
+  const [timeUntilActive, setTimeUntilActive] = useState(null);
+  const [isFormActive, setIsFormActive] = useState(false);
   
   // Refs to prevent duplicate API calls
   const formLoadedRef = useRef(false);
@@ -55,6 +57,40 @@ const FeedbackForm = () => {
       eligibilityCheckedRef.current = false;
     }
   }, [eventId, user]);
+
+  // Timer to check if form is active (1 hour before event end)
+  useEffect(() => {
+    if (!event || !event.event_end_datetime) return;
+
+    const checkFormActiveStatus = () => {
+      const now = new Date();
+      const eventEnd = new Date(event.event_end_datetime);
+      const oneHourBeforeEnd = new Date(eventEnd.getTime() - 60 * 60 * 1000); // 1 hour before event end
+
+      if (now >= eventEnd) {
+        // Event has ended
+        setIsFormActive(false);
+        setTimeUntilActive(null);
+      } else if (now >= oneHourBeforeEnd) {
+        // Form is active (within 1 hour of event end)
+        setIsFormActive(true);
+        setTimeUntilActive(null);
+      } else {
+        // Form not yet active
+        setIsFormActive(false);
+        const timeDiff = oneHourBeforeEnd.getTime() - now.getTime();
+        setTimeUntilActive(timeDiff);
+      }
+    };
+
+    // Check immediately
+    checkFormActiveStatus();
+
+    // Update every second
+    const interval = setInterval(checkFormActiveStatus, 1000);
+
+    return () => clearInterval(interval);
+  }, [event]);
 
   const loadFeedbackForm = async () => {
     try {
@@ -142,6 +178,25 @@ const FeedbackForm = () => {
       }
     }
     return true;
+  };
+
+  // Format time remaining for display
+  const formatTimeRemaining = (milliseconds) => {
+    if (!milliseconds || milliseconds <= 0) return null;
+
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const days = Math.floor(totalSeconds / (24 * 3600));
+    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+    if (seconds > 0 && days === 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
+
+    return parts.join(', ');
   };
 
   const verifyRegistration = async () => {
@@ -428,6 +483,57 @@ const FeedbackForm = () => {
             <span className="font-medium">{getTitle()}</span>
           </div>
           <p className="text-gray-700 text-sm sm:text-base mb-4">{eligibility.message}</p>
+          <button
+            onClick={() => navigate('/client/dashboard')}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if form is not yet active (before 1 hour of event end)
+  if (event && event.event_end_datetime && !isFormActive && timeUntilActive !== null) {
+    const eventEnd = new Date(event.event_end_datetime);
+    const oneHourBeforeEnd = new Date(eventEnd.getTime() - 60 * 60 * 1000);
+    
+    return (
+      <div className="fixed inset-0 bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-md">
+          <div className="flex items-center space-x-2 text-blue-600 mb-4">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">Feedback Form Not Yet Active</span>
+          </div>
+          
+          <div className="mb-4">
+            <p className="text-gray-700 text-sm sm:text-base mb-2">
+              The feedback form for <strong>{event.event_name}</strong> will be available 1 hour before the event ends.
+            </p>
+            <p className="text-gray-600 text-xs sm:text-sm">
+              Form will be active from: <br />
+              <strong className="text-gray-800">
+                {oneHourBeforeEnd.toLocaleString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric', 
+                  year: 'numeric',
+                  hour: '2-digit', 
+                  minute: '2-digit'
+                })}
+              </strong>
+            </p>
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4 mb-4">
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-blue-700 mb-2">Time until form is active:</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-900">
+                {formatTimeRemaining(timeUntilActive)}
+              </p>
+            </div>
+          </div>
+
           <button
             onClick={() => navigate('/client/dashboard')}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
