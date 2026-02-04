@@ -3,10 +3,6 @@
  * Handles certificate template fetching, placeholder replacement, and PDF generation
  */
 
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import html2pdf from 'html2pdf.js';
-
 class CertificateService {
   constructor() {
     // In-memory cache for templates (cleared on page refresh)
@@ -81,8 +77,8 @@ class CertificateService {
           const value = String(userData[key]).trim();
           console.log(`✓ Replaced: ${match} → ${value}`);
           
-          // Wrap in span to maintain inline positioning
-          return `<span style="display: inline; white-space: nowrap;">${value}</span>`;
+          // Return plain value to preserve original template styling
+          return value;
         }
         
         // Try variations without special characters
@@ -91,8 +87,8 @@ class CertificateService {
           const value = String(userData[cleanKey]).trim();
           console.log(`✓ Replaced: ${match} → ${value} (using ${cleanKey})`);
           
-          // Wrap in span to maintain inline positioning
-          return `<span style="display: inline; white-space: nowrap;">${value}</span>`;
+          // Return plain value to preserve original template styling
+          return value;
         }
         
         // Keep original if no match found
@@ -200,47 +196,113 @@ class CertificateService {
 
   /**
    * Generate and download certificate as PDF
-   * Mobile: Inline iframe + download link (no popups)
-   * Desktop: Print method for best quality
+   * Mobile: Opens in new window with native browser PDF export
+   * Desktop: Print method
    */
   async generateCertificatePDF(filledHtml, filename) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      // Mobile: Use inline approach (no popups blocked)
       return await this.generateCertificatePDF_Mobile(filledHtml, filename);
     } else {
-      // Desktop: Use print for perfect quality
       return await this.generateCertificatePDF_Print(filledHtml, filename);
     }
   }
 
   /**
-   * Mobile method: Uses iframe + Print API (same quality as desktop)
+   * Mobile: Opens certificate fullscreen with native browser controls
+   * Modern mobile browsers have perfect PDF export built-in
    */
   async generateCertificatePDF_Mobile(filledHtml, filename) {
     try {
-      console.log('📱 Generating mobile certificate using Print method...');
+      console.log('📱 Opening certificate for mobile export...');
       
       // Clean HTML
       let cleanedHtml = filledHtml;
       cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
-      cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
       
-      // Add print styles to ensure perfect rendering
-      const printStyles = `
+      // Add mobile-optimized styles
+      const mobileStyles = `
         <style>
-          @page {
-            size: 1052px 744px;
-            margin: 0;
+          @media screen {
+            body {
+              margin: 0;
+              padding: 0;
+              width: 100vw;
+              height: 100vh;
+              overflow: hidden;
+              display: flex;
+              flex-direction: column;
+              background: #000;
+            }
+            .certificate-wrapper {
+              width: 100vw !important;
+              height: calc(100vh - 80px) !important;
+              object-fit: contain;
+              background: white;
+            }
+            .mobile-controls {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
+              padding: 15px;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              z-index: 999999;
+            }
+            .mobile-btn {
+              background: #3b82f6;
+              color: white;
+              border: none;
+              padding: 14px 20px;
+              border-radius: 8px;
+              font-size: 16px;
+              font-weight: 600;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              width: 100%;
+            }
+            .mobile-btn.secondary {
+              background: #6b7280;
+            }
+            .mobile-instructions {
+              background: rgba(255,255,255,0.1);
+              padding: 12px;
+              border-radius: 6px;
+              color: white;
+              font-size: 13px;
+              text-align: center;
+              line-height: 1.4;
+            }
+            .close-btn {
+              position: fixed;
+              top: 10px;
+              right: 10px;
+              background: rgba(0,0,0,0.7);
+              color: white;
+              border: none;
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              font-size: 24px;
+              cursor: pointer;
+              z-index: 999999;
+            }
           }
           @media print {
             body {
               margin: 0;
               padding: 0;
-              width: 1052px;
-              height: 744px;
-              overflow: hidden;
+              background: white;
+            }
+            .mobile-controls, .close-btn {
+              display: none !important;
             }
             .certificate-wrapper {
               width: 1052px !important;
@@ -248,170 +310,65 @@ class CertificateService {
               page-break-after: avoid;
               page-break-inside: avoid;
             }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              color-adjust: exact !important;
-            }
           }
-          body {
+          @page {
+            size: 1052px 744px;
             margin: 0;
-            padding: 0;
-            width: 1052px;
-            height: 744px;
-            overflow: hidden;
-          }
-          .mobile-print-overlay {
-            display: none !important;
-          }
-          @media print {
-            .mobile-print-overlay {
-              display: none !important;
-            }
           }
         </style>
       `;
       
-      // Inject styles into HTML
+      // Inject styles
       if (cleanedHtml.includes('</head>')) {
-        cleanedHtml = cleanedHtml.replace('</head>', printStyles + '</head>');
+        cleanedHtml = cleanedHtml.replace('</head>', mobileStyles + '</head>');
       } else {
-        cleanedHtml = printStyles + cleanedHtml;
+        cleanedHtml = mobileStyles + cleanedHtml;
       }
       
-      // Create overlay with instructions
-      const overlay = document.createElement('div');
-      overlay.className = 'mobile-print-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        box-sizing: border-box;
+      // Add mobile controls
+      const mobileControls = `
+        <button class="close-btn" onclick="window.close()">×</button>
+        <div class="mobile-controls">
+          <div class="mobile-instructions">
+            📱 <strong>To Save Certificate:</strong><br>
+            Tap <strong>⋮ Menu</strong> → <strong>Share</strong> → <strong>Print</strong> → <strong>Save as PDF</strong>
+          </div>
+          <button class="mobile-btn" onclick="window.print()">
+            🖨️ Open Print Menu
+          </button>
+          <button class="mobile-btn secondary" onclick="window.close()">
+            ✕ Close
+          </button>
+        </div>
       `;
       
-      const messageBox = document.createElement('div');
-      messageBox.style.cssText = `
-        background: white;
-        padding: 30px;
-        border-radius: 12px;
-        text-align: center;
-        max-width: 400px;
-        width: 90%;
-      `;
+      // Add controls after body tag
+      if (cleanedHtml.includes('<body')) {
+        cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)/, '$1' + mobileControls);
+      } else {
+        cleanedHtml = mobileControls + cleanedHtml;
+      }
       
-      messageBox.innerHTML = `
-        <h2 style="margin: 0 0 15px 0; color: #1f2937; font-size: 22px;">📄 Certificate Ready!</h2>
-        <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 16px; line-height: 1.5;">
-          Tap the button below to open the print dialog.<br>
-          Then select <strong>"Save as PDF"</strong> or <strong>"Print to PDF"</strong>
-        </p>
-        <button id="mobile-print-btn" style="
-          background: #3b82f6;
-          color: white;
-          border: none;
-          padding: 15px 30px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          width: 100%;
-          margin-bottom: 10px;
-          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
-        ">
-          🖨️ Open Print Dialog
-        </button>
-        <button id="mobile-cancel-btn" style="
-          background: #6b7280;
-          color: white;
-          border: none;
-          padding: 12px 30px;
-          border-radius: 8px;
-          font-size: 14px;
-          cursor: pointer;
-          width: 100%;
-        ">
-          ✕ Cancel
-        </button>
-      `;
+      // Create blob URL (works better than data: URLs on mobile)
+      const blob = new Blob([cleanedHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
       
-      overlay.appendChild(messageBox);
-      document.body.appendChild(overlay);
+      // Open in new tab
+      const newWindow = window.open(blobUrl, '_blank');
       
-      // Create hidden iframe for printing
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = `
-        position: absolute;
-        width: 1052px;
-        height: 744px;
-        left: -9999px;
-        top: 0;
-        border: none;
-      `;
-      document.body.appendChild(iframe);
+      if (!newWindow) {
+        throw new Error('Please allow pop-ups to view certificate');
+      }
       
-      // Write certificate content to iframe
-      const iframeDoc = iframe.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(cleanedHtml);
-      iframeDoc.close();
+      // Cleanup blob URL after window loads
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
       
-      // Wait for iframe to load
-      await new Promise(resolve => {
-        iframe.onload = resolve;
-        setTimeout(resolve, 1000);
-      });
-      
-      // Set up button handlers
-      const printBtn = messageBox.querySelector('#mobile-print-btn');
-      const cancelBtn = messageBox.querySelector('#mobile-cancel-btn');
-      
-      printBtn.onclick = () => {
-        try {
-          // Focus iframe and trigger print
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } catch (err) {
-          console.error('Print error:', err);
-          alert('Unable to open print dialog. Please try again.');
-        }
-      };
-      
-      cancelBtn.onclick = () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(iframe);
-      };
-      
-      // Auto-cleanup after print dialog closes (estimated)
-      setTimeout(() => {
-        if (document.body.contains(overlay)) {
-          document.body.removeChild(overlay);
-        }
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 60000); // 1 minute timeout
-      
-      return { success: true, message: 'Print dialog opened' };
+      console.log('✅ Certificate opened. Use browser menu to save as PDF.');
+      return { success: true, message: 'Certificate opened. Use Print to save as PDF.' };
       
     } catch (error) {
-      console.error('❌ Error generating mobile certificate:', error);
-      
-      // Cleanup on error
-      const overlay = document.querySelector('.mobile-print-overlay');
-      if (overlay && document.body.contains(overlay)) {
-        document.body.removeChild(overlay);
-      }
-      
-      throw new Error(`Failed to generate certificate: ${error.message}`);
+      console.error('❌ Error opening certificate:', error);
+      throw new Error(`Failed to open certificate: ${error.message}`);
     }
   }
 
@@ -471,7 +428,7 @@ class CertificateService {
       const printUI = `
         <div class="no-print" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 90vw;">
           <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">Certificate Ready!</h2>
-          <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">Click Print and select "Save as PDF"</p>
+          <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px;">Click Print and select 'Save as PDF'</p>
           <button onclick="window.print()" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 15px; cursor: pointer; margin-right: 8px; margin-bottom: 5px;">
             🖨️ Print to PDF
           </button>
@@ -520,75 +477,6 @@ class CertificateService {
     } catch (error) {
       console.error('❌ Error opening certificate:', error);
       throw new Error(`Failed to open certificate: ${error.message}`);
-    }
-  }
-
-  /**
-   * Mobile method: html2canvas for better mobile UX
-   */
-  async generateCertificatePDF_Canvas(filledHtml, filename) {
-    try {
-      console.log('📱 Generating PDF for mobile...');
-      
-      // Create iframe
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.top = '-10000px';
-      iframe.style.left = '-10000px';
-      iframe.style.width = '1052px';
-      iframe.style.height = '744px';
-      iframe.style.border = 'none';
-      iframe.style.background = 'white';
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentWindow.document;
-      iframeDoc.open();
-      
-      let cleanedHtml = filledHtml;
-      cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
-      cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
-      
-      iframeDoc.write(cleanedHtml);
-      iframeDoc.close();
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const certificateWrapper = iframeDoc.querySelector('.certificate-wrapper');
-      if (!certificateWrapper) {
-        throw new Error('Certificate wrapper not found');
-      }
-
-      console.log('📸 Capturing...');
-
-      const canvas = await html2canvas(certificateWrapper, {
-        scale: 6,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: 1052,
-        height: 744
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [1052, 744]
-      });
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, 1052, 744);
-      pdf.save(filename || 'certificate.pdf');
-      
-      document.body.removeChild(iframe);
-      
-      console.log('✅ PDF downloaded');
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Error:', error);
-      const iframe = document.querySelector('iframe[style*="-10000px"]');
-      if (iframe) document.body.removeChild(iframe);
-      throw new Error(`Failed to generate PDF: ${error.message}`);
     }
   }
 

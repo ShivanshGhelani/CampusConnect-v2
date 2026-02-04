@@ -9,6 +9,7 @@ from .auth import router as auth_router
 from .organizer_access import router as organizer_access_router  # Professional organizer API
 from .email import router as email_router
 from .attendance import router as attendance_router  # Added attendance endpoints
+from .certificates import router as certificates_router  # Certificate PDF generation
 # from .dynamic_attendance import router as dynamic_attendance_router  # Temporarily disabled - needs refactoring
 # from .attendance_customization import router as attendance_customization_router  # Temporarily disabled - needs refactoring
 from .registrations import router as registrations_router
@@ -23,6 +24,7 @@ router.include_router(client_router, prefix="/client", tags=["client-api"])  # R
 router.include_router(admin_router, prefix="/admin", tags=["admin-api"])  # Admin folder with consolidated endpoints
 router.include_router(email_router, tags=["email-api"])
 router.include_router(attendance_router, tags=["attendance-api"])  # Added attendance endpoints
+router.include_router(certificates_router, prefix="/certificates", tags=["certificates-api"])  # Certificate PDF generation
 
 # Professional Organizer Access System
 router.include_router(organizer_access_router, tags=["organizer-access-api"])
