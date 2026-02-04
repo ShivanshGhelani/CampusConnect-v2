@@ -221,153 +221,156 @@ class CertificateService {
       let cleanedHtml = filledHtml;
       cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
       
-      // Add mobile-optimized styles
-      const mobileStyles = `
-        <style>
-          @media screen {
-            body {
-              margin: 0;
-              padding: 0;
-              width: 100vw;
-              height: 100vh;
-              overflow: hidden;
-              display: flex;
-              flex-direction: column;
-              background: #000;
-            }
-            .certificate-wrapper {
-              width: 100vw !important;
-              height: calc(100vh - 80px) !important;
-              object-fit: contain;
-              background: white;
-            }
-            .mobile-controls {
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
-              padding: 15px;
-              display: flex;
-              flex-direction: column;
-              gap: 10px;
-              z-index: 999999;
-            }
-            .mobile-btn {
-              background: #3b82f6;
-              color: white;
-              border: none;
-              padding: 14px 20px;
-              border-radius: 8px;
-              font-size: 16px;
-              font-weight: 600;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 8px;
-              width: 100%;
-            }
-            .mobile-btn.secondary {
-              background: #6b7280;
-            }
-            .mobile-instructions {
-              background: rgba(255,255,255,0.1);
-              padding: 12px;
-              border-radius: 6px;
-              color: white;
-              font-size: 13px;
-              text-align: center;
-              line-height: 1.4;
-            }
-            .close-btn {
-              position: fixed;
-              top: 10px;
-              right: 10px;
-              background: rgba(0,0,0,0.7);
-              color: white;
-              border: none;
-              width: 40px;
-              height: 40px;
-              border-radius: 50%;
-              font-size: 24px;
-              cursor: pointer;
-              z-index: 999999;
-            }
-          }
-          @media print {
-            body {
-              margin: 0;
-              padding: 0;
-              background: white;
-            }
-            .mobile-controls, .close-btn {
-              display: none !important;
-            }
-            .certificate-wrapper {
-              width: 1052px !important;
-              height: 744px !important;
-              page-break-after: avoid;
-              page-break-inside: avoid;
-            }
-          }
-          @page {
-            size: 1052px 744px;
-            margin: 0;
-          }
-        </style>
+      // Create fullscreen overlay (no pop-ups needed)
+      const overlay = document.createElement('div');
+      overlay.id = 'certificate-fullscreen-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       `;
       
-      // Inject styles
-      if (cleanedHtml.includes('</head>')) {
-        cleanedHtml = cleanedHtml.replace('</head>', mobileStyles + '</head>');
-      } else {
-        cleanedHtml = mobileStyles + cleanedHtml;
-      }
+      // Certificate viewer container
+      const certificateViewer = document.createElement('div');
+      certificateViewer.style.cssText = `
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        padding: 10px;
+      `;
       
-      // Add mobile controls
-      const mobileControls = `
-        <button class="close-btn" onclick="window.close()">×</button>
-        <div class="mobile-controls">
-          <div class="mobile-instructions">
-            📱 <strong>To Save Certificate:</strong><br>
-            Tap <strong>⋮ Menu</strong> → <strong>Share</strong> → <strong>Print</strong> → <strong>Save as PDF</strong>
-          </div>
-          <button class="mobile-btn" onclick="window.print()">
-            🖨️ Open Print Menu
-          </button>
-          <button class="mobile-btn secondary" onclick="window.close()">
-            ✕ Close
-          </button>
+      // Certificate content wrapper
+      const certificateWrapper = document.createElement('div');
+      certificateWrapper.style.cssText = `
+        width: 100%;
+        max-width: 100%;
+        background: white;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      `;
+      certificateWrapper.innerHTML = cleanedHtml;
+      
+      // Mobile controls panel
+      const controls = document.createElement('div');
+      controls.style.cssText = `
+        background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.85));
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      `;
+      
+      controls.innerHTML = `
+        <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; color: white; font-size: 13px; text-align: center; line-height: 1.5;">
+          <strong>📱 To Save as PDF:</strong><br>
+          Tap <strong>⋮ Menu</strong> → <strong>Share</strong> → <strong>Print</strong> → <strong>Save as PDF</strong>
         </div>
+        <button id="mobile-print-btn" style="background: #3b82f6; color: white; border: none; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">
+          🖨️ Open Print Menu
+        </button>
+        <button id="mobile-close-btn" style="background: #6b7280; color: white; border: none; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">
+          ✕ Close
+        </button>
       `;
       
-      // Add controls after body tag
-      if (cleanedHtml.includes('<body')) {
-        cleanedHtml = cleanedHtml.replace(/(<body[^>]*>)/, '$1' + mobileControls);
-      } else {
-        cleanedHtml = mobileControls + cleanedHtml;
-      }
+      // Assemble overlay
+      certificateViewer.appendChild(certificateWrapper);
+      overlay.appendChild(certificateViewer);
+      overlay.appendChild(controls);
       
-      // Create blob URL (works better than data: URLs on mobile)
-      const blob = new Blob([cleanedHtml], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
+      // Add print styles for when user clicks print
+      const printStyles = document.createElement('style');
+      printStyles.textContent = `
+        @media print {
+          /* Hide everything on the page */
+          body > *:not(#certificate-fullscreen-overlay) {
+            display: none !important;
+          }
+          
+          /* Show only certificate overlay */
+          #certificate-fullscreen-overlay {
+            position: static !important;
+            background: white !important;
+            width: 1052px !important;
+            height: 744px !important;
+            display: block !important;
+          }
+          
+          /* Show certificate viewer, hide controls */
+          #certificate-fullscreen-overlay > div:first-child {
+            display: block !important;
+            padding: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+          }
+          
+          /* Hide mobile controls during print */
+          #certificate-fullscreen-overlay > div:last-child {
+            display: none !important;
+          }
+          
+          /* Certificate exact sizing */
+          .certificate-wrapper,
+          #certificate-fullscreen-overlay > div:first-child > div {
+            width: 1052px !important;
+            height: 744px !important;
+            max-width: 1052px !important;
+            max-height: 744px !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+        @page {
+          size: 1052px 744px;
+          margin: 0;
+        }
+      `;
+      document.head.appendChild(printStyles);
       
-      // Open in new tab
-      const newWindow = window.open(blobUrl, '_blank');
+      // Add to page
+      document.body.appendChild(overlay);
       
-      if (!newWindow) {
-        throw new Error('Please allow pop-ups to view certificate');
-      }
+      // Wait for fonts to load
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Cleanup blob URL after window loads
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      // Button handlers
+      document.getElementById('mobile-print-btn').onclick = () => {
+        window.print();
+      };
       
-      console.log('✅ Certificate opened. Use browser menu to save as PDF.');
+      document.getElementById('mobile-close-btn').onclick = () => {
+        document.body.removeChild(overlay);
+        document.head.removeChild(printStyles);
+      };
+      
+      console.log('✅ Certificate opened. Use Print to save as PDF.');
       return { success: true, message: 'Certificate opened. Use Print to save as PDF.' };
       
     } catch (error) {
       console.error('❌ Error opening certificate:', error);
+      
+      // Cleanup on error
+      const overlay = document.getElementById('certificate-fullscreen-overlay');
+      if (overlay) {
+        document.body.removeChild(overlay);
+      }
+      
       throw new Error(`Failed to open certificate: ${error.message}`);
     }
   }
