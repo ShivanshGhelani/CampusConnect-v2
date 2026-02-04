@@ -206,11 +206,13 @@ try:
     from app.v1.storage import router as storage_router
     from app.v1.registrations import router as registrations_router
     from app.v1.volunteer_scanner import router as volunteer_scanner_router
+    from app.v1.certificates import router as certificates_router
     
     # Mount routes in correct order (most specific first)
     app.include_router(registrations_router, prefix="/api/v1")  # Registration routes
     app.include_router(storage_router)  # Storage routes
     app.include_router(volunteer_scanner_router)  # Volunteer scanner routes (invitation-based)
+    app.include_router(certificates_router, prefix="/api/v1/certificates")  # Certificate PDF generation routes
     app.include_router(api_router)      # API routes (includes admin, auth, email, organizer functionality)
     
 except Exception as e:

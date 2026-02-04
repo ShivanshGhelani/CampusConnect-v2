@@ -1,5 +1,5 @@
-# Multi-stage build (slim final image)
-FROM python:3.11-slim AS base
+# Use Playwright's official image - has all browser dependencies pre-installed
+FROM mcr.microsoft.com/playwright/python:v1.49.1-jammy
 
 # Set environment vars
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR $APP_HOME
 
-# System deps (add if you need build tools e.g. for lxml/weasyprint etc.)
+# Additional system deps for your app (Playwright deps already in base image)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# NOTE: Replaced deprecated package name 'libgdk-pixbuf2.0-0' with 'libgdk-pixbuf-2.0-0' for Debian (trixie) compatibility.
+# NOTE: Playwright base image already has browser dependencies installed.
 
 # Copy dependency files first (improve layer caching)
 COPY requirements.txt ./
@@ -36,11 +36,16 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
+# Ensure Playwright browsers are installed (Chromium is already in base image)
+# This just verifies the installation
+RUN python -c "from playwright.sync_api import sync_playwright; print('Playwright ready')"
+
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser:appuser $APP_HOME
+# The Playwright image runs as root by default. For security, create non-root user.
+# Note: Playwright browsers work with non-root users in this image.
+RUN useradd --create-home appuser && chown -R appuser:appuser $APP_HOME
 USER appuser
 
 # Expose port
