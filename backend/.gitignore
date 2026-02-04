@@ -39,8 +39,8 @@ node_modueles/
 # VSCode
 .vscode/
 
-# Certificates and sensitive data
-certificates/
+# SSL Certificates and sensitive data (not code folders)
+/certificates/
 *.pem
 *.key
 *.crt
