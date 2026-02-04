@@ -202,11 +202,11 @@ class CertificateService {
    * Mobile: Opens in new window with native browser PDF export
    * Desktop: Print method
    */
-  async generateCertificatePDF(filledHtml, filename) {
+  async generateCertificatePDF(filledHtml, filename, preOpenedWindow = null) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-      return await this.generateCertificatePDF_Mobile(filledHtml, filename);
+      return await this.generateCertificatePDF_Mobile(filledHtml, filename, preOpenedWindow);
     } else {
       return await this.generateCertificatePDF_Print(filledHtml, filename);
     }
@@ -216,7 +216,7 @@ class CertificateService {
    * Mobile: Opens certificate in NEW TAB for user to save as PDF via browser
    * This is the ONLY way to preserve fonts - browser's native rendering
    */
-  async generateCertificatePDF_Mobile(filledHtml, filename) {
+  async generateCertificatePDF_Mobile(filledHtml, filename, preOpenedWindow = null) {
     try {
       console.log('📱 Opening certificate in new tab...');
       
@@ -225,11 +225,12 @@ class CertificateService {
       cleanedHtml = cleanedHtml.replace(/<br\s*\/?>/gi, ' ');
       cleanedHtml = cleanedHtml.replace(/oklch\([^)]+\)/gi, 'rgb(0, 0, 0)');
       
-      // Open in NEW TAB (not popup) - no size params = new tab on mobile
-      const newTab = window.open('about:blank', '_blank');
+      // Use pre-opened window if available (passed from generateCertificate to avoid popup blocker)
+      // Otherwise try to open (this may fail on mobile if called after async operations)
+      const newTab = preOpenedWindow || window.open('about:blank', '_blank');
       
       if (!newTab) {
-        throw new Error('Could not open new tab. Please allow popups for this site and try again.');
+        throw new Error('Failed to open print window. Please allow pop-ups for this site.');
       }
       
       // Write certificate with print styles and save instructions
@@ -455,11 +456,40 @@ class CertificateService {
    * Main method to generate certificate
    */
   async generateCertificate(registrationData, eventData, certificateTemplateUrl, certificateType = 'Certificate') {
+    // IMPORTANT: Open window IMMEDIATELY (before any async) to avoid popup blocker
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let mobileWindow = null;
+    
+    if (isMobile) {
+      mobileWindow = window.open('about:blank', '_blank');
+      if (mobileWindow) {
+        mobileWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Loading Certificate...</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                   display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;
+                   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .loader { text-align: center; color: white; }
+            .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+                       border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+          </style>
+          </head>
+          <body><div class="loader"><div class="spinner"></div><h2>Loading Certificate...</h2><p>Please wait</p></div></body>
+          </html>
+        `);
+      }
+    }
+    
     try {
       // 1. Check eligibility first
       const eligibility = this.checkEligibility(registrationData, eventData);
       
       if (!eligibility.eligible) {
+        if (mobileWindow) mobileWindow.close();
         return {
           success: false,
           error: eligibility.reason,
@@ -483,8 +513,8 @@ class CertificateService {
       const certType = certificateType.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `${certType}_${eventName}_${participantName}.pdf`;
 
-      // 6. Generate and download PDF
-      await this.generateCertificatePDF(filledHtml, filename);
+      // 6. Generate and download PDF (pass pre-opened window for mobile)
+      await this.generateCertificatePDF(filledHtml, filename, mobileWindow);
 
       return {
         success: true,
@@ -493,6 +523,7 @@ class CertificateService {
 
     } catch (error) {
       console.error('❌ Certificate generation failed:', error);
+      if (mobileWindow) mobileWindow.close();
       return {
         success: false,
         error: error.message
