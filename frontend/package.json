@@ -22,6 +22,7 @@
     "dom-to-image-more": "^3.7.2",
     "dompurify": "^3.2.5",
     "framer-motion": "^12.23.12",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
     "jspdf": "^4.0.0",
