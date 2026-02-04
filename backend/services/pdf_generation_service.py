@@ -211,13 +211,24 @@ class PDFGenerationService:
                 'height': height
             })
             
+            # Set up environment for subprocess - inherit parent env + ensure Playwright can find browsers
+            env = os.environ.copy()
+            # On Render, browsers are installed to /opt/render/.cache/ms-playwright
+            # This env var tells Playwright where to find them
+            if 'PLAYWRIGHT_BROWSERS_PATH' not in env:
+                # Check common cloud provider paths
+                render_path = '/opt/render/.cache/ms-playwright'
+                if os.path.exists(render_path):
+                    env['PLAYWRIGHT_BROWSERS_PATH'] = render_path
+            
             # Run the generator script in a separate process
             result = subprocess.run(
                 [sys.executable, '-c', PDF_GENERATOR_SCRIPT],
                 input=input_data,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                env=env
             )
             
             if result.returncode != 0:
