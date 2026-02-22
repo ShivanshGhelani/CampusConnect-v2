@@ -1172,16 +1172,41 @@ async def create_volunteer_session(
         if not invitation:
             raise HTTPException(status_code=404, detail="Invalid or inactive invitation")
         
-        # Check expiry
+        # Check if within valid time window
+        # Use attendance window as source of truth when available; fall back to expires_at only if no window
+        attendance_start = invitation.get("attendance_start_time")
+        attendance_end = invitation.get("attendance_end_time")
         expires_at = invitation.get("expires_at")
-        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
-            raise HTTPException(status_code=403, detail="Invitation has expired")
+        now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+        
+        def _to_naive_ist(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, str):
+                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+            if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+                dt = dt.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+            return dt
+        
+        if attendance_start and attendance_end and not TESTING_MODE:
+            end_ist = _to_naive_ist(attendance_end)
+            if now > end_ist:
+                raise HTTPException(status_code=403, detail="Attendance window has ended")
+        elif expires_at and not TESTING_MODE:
+            # No attendance window — use expires_at as fallback
+            if safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
+                raise HTTPException(status_code=403, detail="Invitation has expired")
         
         # Generate unique session ID
         session_id = generate_session_id()
         
-        # Session expires with invitation
-        session_expires = expires_at if expires_at else get_current_ist() + timedelta(hours=24)
+        # Session expires at attendance window end, or expires_at, or 24h from now
+        if attendance_end:
+            session_expires = _to_naive_ist(attendance_end)
+        elif expires_at:
+            session_expires = _to_naive_ist(expires_at) if expires_at else None
+        else:
+            session_expires = get_current_ist().replace(tzinfo=None) + timedelta(hours=24)
         
         # Create session document
         session_doc = {
