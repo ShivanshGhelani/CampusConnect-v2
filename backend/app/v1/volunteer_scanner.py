@@ -436,6 +436,36 @@ async def get_invitation_stats(
         logger.info(f"Stats endpoint - Retrieved expires_at: {invitation.get('expires_at')} (type: {type(invitation.get('expires_at')).__name__})")
         logger.info(f"Stats endpoint - Serialized expires_at: {serialize_datetime(invitation.get('expires_at'))}")
         
+        # Compute human-readable session name from event config
+        target_day = invitation.get("target_day")
+        target_session = invitation.get("target_session")
+        target_round = invitation.get("target_round")
+        target_session_name = None
+        event_for_stats = await DatabaseOperations.find_one("events", {"event_id": event_id})
+        if event_for_stats and event_for_stats.get("attendance_strategy", {}).get("sessions"):
+            event_sessions = event_for_stats["attendance_strategy"]["sessions"]
+            if target_session:
+                sc = next((s for s in event_sessions if s.get("session_id") == target_session), None)
+                target_session_name = sc.get("session_name") if sc else target_session
+            elif target_day:
+                ds = next((s for s in event_sessions if s.get("session_id") == f"day_{target_day}"), None)
+                target_session_name = ds.get("session_name") if ds else f"Day {target_day}"
+            elif target_round:
+                rs = next((s for s in event_sessions if s.get("session_id") == target_round), None)
+                target_session_name = rs.get("session_name") if rs else target_round
+            else:
+                # No specific target — use first session name
+                first_s = event_sessions[0] if event_sessions else None
+                target_session_name = first_s.get("session_name") if first_s else None
+        # Final fallback
+        if not target_session_name:
+            if target_day:
+                target_session_name = f"Day {target_day}"
+            elif target_session:
+                target_session_name = target_session
+            elif target_round:
+                target_session_name = target_round
+        
         return {
             "success": True,
             "data": {
@@ -446,9 +476,10 @@ async def get_invitation_stats(
                 "expires_at": serialize_datetime(invitation.get("expires_at")),
                 "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
                 "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
-                "target_day": invitation.get("target_day"),
-                "target_session": invitation.get("target_session"),
-                "target_round": invitation.get("target_round"),
+                "target_day": target_day,
+                "target_session": target_session,
+                "target_round": target_round,
+                "target_session_name": target_session_name,
                 "attendance_strategy": invitation.get("attendance_strategy"),
                 "total_scans": scan_count,
                 "active_volunteers": len(sessions),

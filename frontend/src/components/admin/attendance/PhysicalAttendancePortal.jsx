@@ -305,18 +305,19 @@ const UnifiedAttendancePortal = () => {
       const expiresAt = new Date(sessionEndTime.getTime() + (60 * 60 * 1000)).toISOString(); // Add 1 hour in milliseconds
       
       // Determine target parameters based on attendance strategy
+      // Always send session_id as targetSession so the backend can reliably look up
+      // the correct session times regardless of strategy type.
+      // For day-based strategies, also extract and send targetDay for name resolution.
       let targetDay = null;
-      let targetSession = null;
+      let targetSession = selectedSession.session_id; // universal primary target
       let targetRound = null;
       
-      const strategy = config?.attendance_strategy?.strategy || config?.attendance_strategy?.strategy;
+      const strategy = config?.attendance_strategy?.strategy;
       
       if (strategy === 'day_based') {
-        // Extract day number from session_id (e.g., "day_1" -> 1)
-        const dayMatch = selectedSession.session_id.match(/day_(\d+)/);
+        // Extract day number from session_id (e.g., "day_1" -> 1) for label resolution
+        const dayMatch = selectedSession.session_id.match(/day_(\d+)/i);
         targetDay = dayMatch ? parseInt(dayMatch[1]) : null;
-      } else if (strategy === 'session_based') {
-        targetSession = selectedSession.session_id;
       } else if (strategy === 'milestone_based' || strategy === 'round_based') {
         targetRound = selectedSession.session_id;
       }
@@ -377,34 +378,52 @@ const UnifiedAttendancePortal = () => {
         // Use the invitation URL from backend (already has correct domain)
         const scannerUrl = statsData.invitation_url || `${window.location.origin}/scan/${statsData.invitation_code}`;
         
-        // Find the session info based on the target from backend
-        let sessionName = 'Unknown Session';
+        // Use session name from backend (already resolved from event config)
+        // Fall back to local config lookup only if backend didn't provide it
+        let sessionName = statsData.target_session_name || null;
         let sessionId = null;
         
-        if (statsData.target_day && config?.attendance_strategy?.sessions) {
-          // For day-based, find session by matching day number in session_id
-          const targetSession = config.attendance_strategy.sessions.find(s => {
-            const dayMatch = s.session_id.match(/day_(\d+)/);
-            return dayMatch && parseInt(dayMatch[1]) === statsData.target_day;
-          });
-          if (targetSession) {
-            sessionName = targetSession.session_name;
-            sessionId = targetSession.session_id;
+        if (!sessionName && config?.attendance_strategy?.sessions) {
+          if (statsData.target_day) {
+            const targetSession = config.attendance_strategy.sessions.find(s => {
+              const dayMatch = s.session_id.match(/day_(\d+)/i);
+              return dayMatch && parseInt(dayMatch[1]) === statsData.target_day;
+            }) || config.attendance_strategy.sessions.find(s =>
+              s.session_id === String(statsData.target_day) ||
+              s.session_id === `day${statsData.target_day}` ||
+              s.session_id === `day_${statsData.target_day}`
+            );
+            if (targetSession) {
+              sessionName = targetSession.session_name;
+              sessionId = targetSession.session_id;
+            }
+          } else if (statsData.target_session) {
+            const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_session);
+            if (targetSession) {
+              sessionName = targetSession.session_name;
+              sessionId = targetSession.session_id;
+            }
+          } else if (statsData.target_round) {
+            const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_round);
+            if (targetSession) {
+              sessionName = targetSession.session_name;
+              sessionId = targetSession.session_id;
+            }
           }
-        } else if (statsData.target_session && config?.attendance_strategy?.sessions) {
-          // For session-based, find by session_id
-          const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_session);
-          if (targetSession) {
-            sessionName = targetSession.session_name;
-            sessionId = targetSession.session_id;
-          }
-        } else if (statsData.target_round && config?.attendance_strategy?.sessions) {
-          // For round/milestone-based
-          const targetSession = config.attendance_strategy.sessions.find(s => s.session_id === statsData.target_round);
-          if (targetSession) {
-            sessionName = targetSession.session_name;
-            sessionId = targetSession.session_id;
-          }
+        }
+        
+        // Also try to find sessionId from config if not yet set
+        if (sessionName && !sessionId && config?.attendance_strategy?.sessions) {
+          const match = config.attendance_strategy.sessions.find(s => s.session_name === sessionName);
+          if (match) sessionId = match.session_id;
+        }
+        
+        // Last resort fallback
+        if (!sessionName) {
+          if (statsData.target_day) sessionName = `Day ${statsData.target_day}`;
+          else if (statsData.target_session) sessionName = statsData.target_session;
+          else if (statsData.target_round) sessionName = statsData.target_round;
+          else sessionName = 'Session';
         }
         
         const invitationData = {
