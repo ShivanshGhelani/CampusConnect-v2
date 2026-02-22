@@ -1068,14 +1068,18 @@ async def validate_invitation(invitation_code: str):
         if not invitation:
             raise HTTPException(status_code=404, detail="Invalid invitation code")
         
-        # Check if active in DB
+        # Check if active
         if not invitation.get("is_active", False):
             raise HTTPException(status_code=403, detail="This invitation has been deactivated")
         
-        # Check if within attendance window (never throw HTTP errors for time issues — return flags instead)
+        # Check if expired
+        expires_at = invitation.get("expires_at")
+        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
+            raise HTTPException(status_code=403, detail="This invitation has expired")
+        
+        # Check if within attendance window
         attendance_start = invitation.get("attendance_start_time")
         attendance_end = invitation.get("attendance_end_time")
-        expires_at = invitation.get("expires_at")
         now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
         
         logger.info(f"🔍 Validating invitation {invitation_code}")
@@ -1084,51 +1088,38 @@ async def validate_invitation(invitation_code: str):
         logger.info(f"📅 Attendance start: {attendance_start}")
         logger.info(f"📅 Attendance end: {attendance_end}")
         
-        # Helper: convert any datetime (string, aware, naive) to naive IST
-        def to_naive_ist(dt):
-            if dt is None:
-                return None
-            if isinstance(dt, str):
-                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
-            if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
-                dt = dt.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
-            return dt
-        
         is_active = True
-        before_start = False
-        after_end = False
         if attendance_start and attendance_end and not TESTING_MODE:
-            start_ist = to_naive_ist(attendance_start)
-            end_ist = to_naive_ist(attendance_end)
+            # Only enforce time restrictions in production
+            # Convert strings to datetime and make them timezone-naive for comparison
+            if isinstance(attendance_start, str):
+                attendance_start = datetime.fromisoformat(attendance_start.replace('Z', '+00:00'))
+                # Convert to IST and make naive
+                attendance_start = attendance_start.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+            if isinstance(attendance_end, str):
+                attendance_end = datetime.fromisoformat(attendance_end.replace('Z', '+00:00'))
+                # Convert to IST and make naive
+                attendance_end = attendance_end.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
-            is_active = start_ist <= now <= end_ist
-            before_start = now < start_ist
-            after_end = now > end_ist
-            logger.info(f"✅ Time validation: is_active={is_active}, before_start={before_start}, after_end={after_end} (start <= now <= end: {start_ist} <= {now} <= {end_ist})")
+            is_active = attendance_start <= now <= attendance_end
+            logger.info(f"✅ Time validation: is_active={is_active} (start <= now <= end: {attendance_start} <= {now} <= {attendance_end})")
         elif TESTING_MODE:
+            # In testing mode, always allow access if invitation is valid
             is_active = True
             logger.info(f"TESTING_MODE: Bypassing time validation for invitation {invitation_code}")
         
-        # Also check expires_at as a fallback ONLY when no attendance window was configured
-        # (When attendance window exists, it's the source of truth — don't let a stale expires_at override it)
-        if not (attendance_start and attendance_end) and not after_end and expires_at and not TESTING_MODE:
-            expires_ist = to_naive_ist(expires_at)
-            if expires_ist and now > expires_ist:
-                is_active = False
-                after_end = True
-                logger.info(f"⏰ Invitation expired via expires_at: {expires_ist}")
-        
-        # Helper function to serialize datetime as IST (not UTC)
-        def serialize_dt(dt):
+        # Helper function to serialize datetime
+        def serialize_datetime(dt):
             if dt is None:
                 return None
             if isinstance(dt, str):
                 return dt
+            # Ensure datetime is treated as UTC and includes 'Z' suffix
             if hasattr(dt, 'isoformat'):
                 iso_string = dt.isoformat()
-                # These are IST datetimes, append +05:30 (not Z)
+                # If no timezone info, assume UTC and add 'Z'
                 if '+' not in iso_string and 'Z' not in iso_string:
-                    iso_string += '+05:30'
+                    iso_string += 'Z'
                 return iso_string
             return str(dt)
         
@@ -1137,12 +1128,10 @@ async def validate_invitation(invitation_code: str):
             "data": {
                 "event_id": invitation.get("event_id"),
                 "event_name": invitation.get("event_name"),
-                "attendance_start_time": serialize_dt(invitation.get("attendance_start_time")),
-                "attendance_end_time": serialize_dt(invitation.get("attendance_end_time")),
-                "expires_at": serialize_dt(invitation.get("expires_at")),
+                "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
+                "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
+                "expires_at": serialize_datetime(invitation.get("expires_at")),
                 "is_active": is_active,
-                "before_start": before_start,
-                "after_end": after_end,
                 "testing_mode": TESTING_MODE
             }
         }
@@ -1172,41 +1161,16 @@ async def create_volunteer_session(
         if not invitation:
             raise HTTPException(status_code=404, detail="Invalid or inactive invitation")
         
-        # Check if within valid time window
-        # Use attendance window as source of truth when available; fall back to expires_at only if no window
-        attendance_start = invitation.get("attendance_start_time")
-        attendance_end = invitation.get("attendance_end_time")
+        # Check expiry
         expires_at = invitation.get("expires_at")
-        now = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
-        
-        def _to_naive_ist(dt):
-            if dt is None:
-                return None
-            if isinstance(dt, str):
-                dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
-            if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
-                dt = dt.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
-            return dt
-        
-        if attendance_start and attendance_end and not TESTING_MODE:
-            end_ist = _to_naive_ist(attendance_end)
-            if now > end_ist:
-                raise HTTPException(status_code=403, detail="Attendance window has ended")
-        elif expires_at and not TESTING_MODE:
-            # No attendance window — use expires_at as fallback
-            if safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
-                raise HTTPException(status_code=403, detail="Invitation has expired")
+        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
+            raise HTTPException(status_code=403, detail="Invitation has expired")
         
         # Generate unique session ID
         session_id = generate_session_id()
         
-        # Session expires at attendance window end, or expires_at, or 24h from now
-        if attendance_end:
-            session_expires = _to_naive_ist(attendance_end)
-        elif expires_at:
-            session_expires = _to_naive_ist(expires_at) if expires_at else None
-        else:
-            session_expires = get_current_ist().replace(tzinfo=None) + timedelta(hours=24)
+        # Session expires with invitation
+        session_expires = expires_at if expires_at else get_current_ist() + timedelta(hours=24)
         
         # Create session document
         session_doc = {

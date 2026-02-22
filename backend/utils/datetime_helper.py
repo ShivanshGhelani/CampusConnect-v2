@@ -23,22 +23,13 @@ def safe_datetime_compare(dt1, dt2, comparison='gt'):
     Returns:
         Boolean result of comparison
     """
-    # Convert both to IST-naive for correct comparison
-    # (stripping tzinfo without converting first is WRONG when comparing IST vs UTC)
+    # Convert both to naive UTC for comparison
     if dt1 is None or dt2 is None:
         return False
     
-    def _to_naive_ist(dt):
-        """Convert any datetime to naive IST for safe comparison"""
-        if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
-            # Aware datetime: convert to IST, then strip tzinfo
-            return dt.astimezone(IST).replace(tzinfo=None)
-        else:
-            # Naive datetime: assume it's already IST (project convention)
-            return dt
-    
-    dt1_naive = _to_naive_ist(dt1)
-    dt2_naive = _to_naive_ist(dt2)
+    # Convert to naive datetime for comparison
+    dt1_naive = dt1.replace(tzinfo=None) if hasattr(dt1, 'tzinfo') and dt1.tzinfo else dt1
+    dt2_naive = dt2.replace(tzinfo=None) if hasattr(dt2, 'tzinfo') and dt2.tzinfo else dt2
     
     if comparison == 'gt':
         return dt1_naive > dt2_naive
