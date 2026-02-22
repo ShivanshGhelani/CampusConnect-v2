@@ -73,6 +73,13 @@ const QRScanner = ({ isOpen, onClose, onScan, onError, sessionData }) => {
         fullQRData = await fetchFullQRDataForMinimalV5(qrData);
         console.log('✅ Got full QR data for v5.0:', fullQRData);
         setScanResult(fullQRData);
+        
+        // If it resolved to a team type, pass directly to parent for team member selection
+        if (fullQRData.type === 'team') {
+          console.log('🔄 v5.0 resolved to team QR - passing to parent for team member selection');
+          onScan(fullQRData, { isMinimalTeamQR: true });
+          return;
+        }
       }
       
       // Fetch real attendance data for individual/legacy QR codes

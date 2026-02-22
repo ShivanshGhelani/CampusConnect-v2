@@ -8,7 +8,7 @@ const VolunteerScanner = () => {
   const navigate = useNavigate();
   
   // State
-  const [step, setStep] = useState('loading'); // 'loading' | 'identify' | 'scanning' | 'expired'
+  const [step, setStep] = useState('loading'); // 'loading' | 'waiting' | 'identify' | 'scanning' | 'expired'
   const [volunteerName, setVolunteerName] = useState('');
   const [volunteerContact, setVolunteerContact] = useState('');
   const [sessionData, setSessionData] = useState(null);
@@ -48,6 +48,27 @@ const VolunteerScanner = () => {
   useEffect(() => {
     validateInvitation();
   }, [invitationCode]);
+
+  // Countdown timer — runs when waiting for the attendance window to open
+  useEffect(() => {
+    if (step !== 'waiting' || !invitationData?.attendance_start_time) return;
+
+    const startTime = new Date(invitationData.attendance_start_time);
+
+    const tick = () => {
+      const diff = startTime - new Date();
+      if (diff <= 0) {
+        setTimeRemaining(null);
+        validateInvitation(); // re-check now that window may have opened
+      } else {
+        setTimeRemaining(diff);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [step, invitationData?.attendance_start_time]);
 
   // Countdown timer for before-start scenario
   useEffect(() => {
@@ -104,16 +125,35 @@ const VolunteerScanner = () => {
       // Validate invitation
       const data = await volunteerScannerService.validateInvitation(invitationCode);
       console.log('📊 Invitation data received:', data);
-      console.log('📅 Start time:', data.attendance_start_time, typeof data.attendance_start_time);
-      console.log('📅 End time:', data.attendance_end_time, typeof data.attendance_end_time);
       setInvitationData(data);
-      
-      // Check if invitation is active (within attendance time window)
+
+      // Frontend time-window check using the returned start/end times
+      if (data.attendance_start_time && data.attendance_end_time) {
+        const now = new Date();
+        const start = new Date(data.attendance_start_time);
+        const end = new Date(data.attendance_end_time);
+
+        if (now < start) {
+          // Too early — show countdown
+          setStep('waiting');
+          return;
+        }
+        if (now > end) {
+          // Window has closed
+          setStep('expired');
+          return;
+        }
+        // Within window — proceed
+        setStep('identify');
+        return;
+      }
+
+      // No time window configured — fall back to backend flag
       if (!data.is_active) {
         setStep('expired');
         return;
       }
-      
+
       setStep('identify');
     } catch (error) {
       setError(error.message);
@@ -167,8 +207,8 @@ const VolunteerScanner = () => {
       // Close scanner modal
       setShowScanner(false);
       
-      // Check if this is a team QR code (version 4.0)
-      if (qrData.type === 'team' && qrData.version === '4.0') {
+      // Check if this is a team QR code (version 4.0 directly or 5.0 resolved to team type)
+      if (qrData.type === 'team') {
         // Team QR - fetch full data from backend
         setIsLoadingTeamData(true);
         setScannedQrData(qrData);
@@ -385,7 +425,40 @@ const VolunteerScanner = () => {
     });
   };
 
-  // Loading state
+  // ── Waiting / countdown screen ──────────────────────────────────────────
+  if (step === 'waiting') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-green-900 mb-1">Scanner Opens Soon</h1>
+          <p className="text-gray-500 text-sm mb-4">{invitationData?.event_name}</p>
+
+          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5 mb-5">
+            <p className="text-green-700 font-medium mb-1">Opens in</p>
+            <p className="text-4xl font-bold text-green-600">{formatCountdown(timeRemaining)}</p>
+            <p className="text-xs text-green-600 mt-2">Page will refresh automatically</p>
+          </div>
+
+          {invitationData?.attendance_start_time && (
+            <div className="text-sm text-gray-600 space-y-1 mb-5">
+              <p>📅 <span className="font-medium">Start:</span> {formatDateTime(invitationData.attendance_start_time)}</p>
+              <p>📅 <span className="font-medium">End:</span> {formatDateTime(invitationData.attendance_end_time)}</p>
+            </div>
+          )}
+
+          <button onClick={() => navigate('/')} className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 'loading') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -399,78 +472,48 @@ const VolunteerScanner = () => {
 
   // Expired or invalid invitation
   if (step === 'expired') {
-    const isBeforeStart = invitationData && new Date() < new Date(invitationData.attendance_start_time);
-    const isAfterEnd = invitationData && new Date() > new Date(invitationData.attendance_end_time);
-    
+    const isAfterEnd = invitationData?.attendance_end_time &&
+                       new Date() > new Date(invitationData.attendance_end_time);
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className={`w-16 h-16 ${isBeforeStart ? 'bg-green-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
-            {isBeforeStart ? (
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.268 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            )}
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-1.964-1.333-2.732 0L3.268 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
           </div>
-          
-          <h1 className={`text-2xl font-bold mb-2 ${isBeforeStart ? 'text-green-900' : 'text-gray-900'}`}>
-            {isBeforeStart ? 'Scanner Not Started Yet' : isAfterEnd ? 'Event Ended' : 'Invalid Invitation'}
+
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            {isAfterEnd ? 'Attendance Window Closed' : 'Invalid Invitation'}
           </h1>
-          
+
           {invitationData ? (
-            <div className="text-left mb-6">
-              {isBeforeStart ? (
-                <div className="mb-4">
-                  <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-3">
-                    <div className="text-center">
-                      <p className="text-green-900 font-semibold mb-2">Scanner will open in:</p>
-                      <p className="text-3xl font-bold text-green-600 mb-1">
-                        {formatCountdown(timeRemaining)}
-                      </p>
-                      <p className="text-sm text-green-700">Please wait until the attendance window starts</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600 text-center text-sm">
-                    This scanning link will automatically become active during the event attendance window.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-gray-600 mb-4 text-center">
-                  {isAfterEnd && 'The attendance marking period for this event has ended.'}
-                </p>
-              )}
-              
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-gray-900">{invitationData.event_name}</h3>
-                {invitationData.attendance_start_time && invitationData.attendance_end_time && (
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>
-                      <strong>Attendance Window:</strong>
-                    </p>
-                    <p>
-                      📅 Start: {formatDateTime(invitationData.attendance_start_time)}
-                    </p>
-                    <p>
-                      📅 End: {formatDateTime(invitationData.attendance_end_time)}
-                    </p>
-                  </div>
+            <div className="mb-6">
+              <p className="text-gray-500 text-sm mb-4">
+                {isAfterEnd
+                  ? 'The attendance marking period for this event has ended.'
+                  : 'This invitation is no longer active.'}
+              </p>
+              <div className="bg-gray-50 rounded-xl p-4 text-left space-y-1 text-sm text-gray-600">
+                <p className="font-semibold text-gray-900">{invitationData.event_name}</p>
+                {invitationData.attendance_start_time && (
+                  <p>📅 Start: {formatDateTime(invitationData.attendance_start_time)}</p>
+                )}
+                {invitationData.attendance_end_time && (
+                  <p>📅 End: {formatDateTime(invitationData.attendance_end_time)}</p>
                 )}
               </div>
             </div>
           ) : (
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-500 mb-6 text-sm">
               {error || 'This invitation link is invalid or has expired.'}
             </p>
           )}
-          
-          <button
-            onClick={() => navigate('/')}
-            className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-          >
+
+          <button onClick={() => navigate('/')}
+            className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">
             Go Home
           </button>
         </div>
@@ -811,7 +854,7 @@ const VolunteerScanner = () => {
       
       {/* Team Member Selection Modal */}
       {showTeamSelection && teamData && (
-        <div className="fixed inset-0 bg-black backdrop-blur-sm bg-opacity-60 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Header */}
             <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-green-50">

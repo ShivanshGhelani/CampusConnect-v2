@@ -633,11 +633,14 @@ async def get_qr_data_for_event(
         collection_name = "student_registrations" if target_audience == "student" else "faculty_registrations"
         
         # Find registration based on type and registration_id
-        # For team registrations, the registration_id passed is a member's ID (nested in team_members array)
-        # For individual registrations, it's at the root level
+        # For team registrations, the QR code stores the ROOT-level team registration_id (e.g. TEAM...)
+        # Search root registration_id first; also allow member-level ID as fallback
         if registration_type == "team":
             query = {
-                "team_members.registration_id": registration_id,
+                "$or": [
+                    {"registration_id": registration_id},
+                    {"team_members.registration_id": registration_id}
+                ],
                 "event.event_id": event_id
             }
         else:

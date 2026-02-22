@@ -759,9 +759,8 @@ async def get_registration_attendance_status(
         attendance_strategy_data = event.get("attendance_strategy", {})
         attendance_strategy = attendance_strategy_data.get("strategy", "single_mark")  # FIX: Use "strategy" not "attendance_strategy"
         
-        # Get registration type from nested structure
-        registration_info = registration.get("registration", {})
-        registration_type = registration_info.get("type", "individual")
+        # Get registration type - it's stored at root level as "registration_type"
+        registration_type = registration.get("registration_type", "individual")
         
         # Extract participant info based on type
         participant_info = {}
@@ -770,23 +769,27 @@ async def get_registration_attendance_status(
         if registration_type == "team":
             # Team-based registration
             team_data = registration.get("team", {})
+            raw_members = registration.get("team_members", [])
             participant_info = {
                 "type": "team",
                 "team_name": team_data.get("team_name"),
-                "team_leader": team_data.get("leader", {}),
-                "team_size": len(team_data.get("members", []))
+                "team_leader": team_data.get("team_leader"),
+                "team_size": team_data.get("team_size", len(raw_members))
             }
             
             # Get all team members with their attendance status
-            for member in team_data.get("members", []):
+            # Each member is: { registration_id, student: {enrollment_no, name, ...}, is_team_leader, attendance }
+            for member in raw_members:
+                student = member.get("student", {})
                 member_info = {
-                    "enrollment_no": member.get("enrollment_no"),
-                    "name": member.get("name"),
-                    "email": member.get("email"),
-                    "phone": member.get("phone"),
-                    "department": member.get("department"),
-                    "is_leader": member.get("is_leader", False),
-                    "attendance_marked": member.get("attendance_marked", False)
+                    "registration_id": member.get("registration_id"),
+                    "enrollment_no": student.get("enrollment_no"),
+                    "name": student.get("name"),
+                    "email": student.get("email"),
+                    "phone": student.get("phone"),
+                    "department": student.get("department"),
+                    "is_leader": member.get("is_team_leader", False),
+                    "attendance": member.get("attendance", {})
                 }
                 team_members.append(member_info)
         else:
@@ -1072,10 +1075,9 @@ async def validate_invitation(invitation_code: str):
         if not invitation.get("is_active", False):
             raise HTTPException(status_code=403, detail="This invitation has been deactivated")
         
-        # Check if expired
-        expires_at = invitation.get("expires_at")
-        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
-            raise HTTPException(status_code=403, detail="This invitation has expired")
+        # Note: expires_at is NOT checked here — the frontend uses attendance_start_time /
+        # attendance_end_time to decide whether to show a countdown, active scanner, or
+        # closed window. Blocking here would prevent the frontend from getting the times.
         
         # Check if within attendance window
         attendance_start = invitation.get("attendance_start_time")
