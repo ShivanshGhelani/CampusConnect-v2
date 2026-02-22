@@ -87,7 +87,7 @@ const VolunteerScanner = () => {
     }
   }, [invitationData?.attendance_start_time, step]);
 
-  const validateInvitation = async () => {
+  const validateInvitation = async (retryCount = 0) => {
     try {
       // Check for existing session first
       const existingSession = volunteerScannerService.getStoredSession(invitationCode);
@@ -121,6 +121,13 @@ const VolunteerScanner = () => {
       
       setStep('identify');
     } catch (error) {
+      // If we're transitioning from waiting → active and hit an error, retry a few times
+      // (handles brief race conditions or server hiccups at the exact transition moment)
+      if (step === 'waiting' && retryCount < 3) {
+        console.log(`⏳ Retry ${retryCount + 1}/3 after countdown finished...`);
+        setTimeout(() => validateInvitation(retryCount + 1), 2000);
+        return;
+      }
       setError(error.message);
       setStep('expired');
     }

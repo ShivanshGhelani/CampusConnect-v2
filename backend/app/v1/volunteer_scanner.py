@@ -1109,8 +1109,9 @@ async def validate_invitation(invitation_code: str):
             is_active = True
             logger.info(f"TESTING_MODE: Bypassing time validation for invitation {invitation_code}")
         
-        # Also check expires_at as a fallback (e.g., when no attendance window was set)
-        if not after_end and expires_at and not TESTING_MODE:
+        # Also check expires_at as a fallback ONLY when no attendance window was configured
+        # (When attendance window exists, it's the source of truth — don't let a stale expires_at override it)
+        if not (attendance_start and attendance_end) and not after_end and expires_at and not TESTING_MODE:
             expires_ist = to_naive_ist(expires_at)
             if expires_ist and now > expires_ist:
                 is_active = False
