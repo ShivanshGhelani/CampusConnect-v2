@@ -5,6 +5,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import EventReportModal from '../../components/EventReportModal';
 import CustomExportModal from '../../components/admin/CustomExportModal';
+import CertificateAssignmentModal from '../../components/admin/CertificateAssignmentModal';
 import RichTextDisplay from '../../components/RichTextDisplay';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, Clock, Users, MapPin, Mail, Phone, FileText, Award, CreditCard, ArrowLeft, RefreshCw, Download, UserCheck, Edit3, FileDown, Trash2, MoreHorizontal, CheckCircle, Eye, QrCode } from 'lucide-react';
@@ -73,6 +74,7 @@ function EventDetail() {
   const [currentCertificateTemplate, setCurrentCertificateTemplate] = useState(null);
   const [eventReportModalOpen, setEventReportModalOpen] = useState(false);
   const [customExportModalOpen, setCustomExportModalOpen] = useState(false);
+  const [certAssignmentModalOpen, setCertAssignmentModalOpen] = useState(false);
   const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0); // For real-time updates
 
   // Helper function to calculate targeting statistics from registrations
@@ -1869,14 +1871,10 @@ function EventDetail() {
   const canTakeAttendanceNow = () => {
     if (isSuperAdmin) return true; // Super admin can always take attendance
 
-    if (!event?.start_date || !event?.start_time) return false;
+    if (!event?.start_datetime) return false;
 
     try {
-      // Combine start_date and start_time to create event start datetime
-      // Ensure proper format handling for different date/time formats
-      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
-      const timeStr = event.start_time;
-      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      const eventStartDateTime = new Date(event.start_datetime);
 
       // Validate the date
       if (isNaN(eventStartDateTime.getTime())) {
@@ -1905,13 +1903,10 @@ function EventDetail() {
   const getAttendanceAvailabilityMessage = () => {
     if (isSuperAdmin) return null; // Super admin doesn't need this message
 
-    if (!event?.start_date || !event?.start_time) return "Event start time not set";
+    if (!event?.start_datetime) return "Event start time not set";
 
     try {
-      // Ensure proper format handling for different date/time formats
-      const dateStr = event.start_date.includes('T') ? event.start_date.split('T')[0] : event.start_date;
-      const timeStr = event.start_time;
-      const eventStartDateTime = new Date(`${dateStr}T${timeStr}`);
+      const eventStartDateTime = new Date(event.start_datetime);
 
       // Validate the date
       if (isNaN(eventStartDateTime.getTime())) {
@@ -1936,18 +1931,18 @@ function EventDetail() {
         const minutesUntil = Math.floor((timeUntilAvailable % (1000 * 60 * 60)) / (1000 * 60));
 
         if (daysUntil > 0) {
-          return `Attendance will be available in ${daysUntil}d ${hoursUntil}h (3 hours before event start)`;
+          return `Available in ${daysUntil}d ${hoursUntil}h (opens 3 hours before event)`;
         } else if (hoursUntil > 0) {
-          return `Attendance will be available in ${hoursUntil}h ${minutesUntil}m (3 hours before event start)`;
+          return `Available in ${hoursUntil}h ${minutesUntil}m (opens 3 hours before event)`;
         } else {
-          return `Attendance will be available in ${minutesUntil} minutes`;
+          return `Available in ${minutesUntil} minutes`;
         }
       }
 
       return null;
     } catch (error) {
      
-      return "Unable to determine attendance availability";
+      return "Unable to determine availability";
     }
   };
 
@@ -3885,6 +3880,30 @@ function EventDetail() {
                             ))}
                           </div>
                         )}
+                        {/* Assign Special Certificates Button - visible when >1 type excluding participation */}
+                        {event.certificate_templates && (() => {
+                          const participationKeywords = ['participation', 'attendee', 'attended', 'participant'];
+                          const specialTypes = Object.keys(event.certificate_templates).filter(
+                            ct => !participationKeywords.some(kw => ct.toLowerCase().includes(kw))
+                          );
+                          return specialTypes.length > 0;
+                        })() && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <button
+                              onClick={async () => {
+                                if (allRegistrations.length === 0) await fetchAllRegistrations();
+                                setCertAssignmentModalOpen(true);
+                              }}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                              <Award className="w-4 h-4" />
+                              Assign Special Certificates
+                            </button>
+                            <p className="text-xs text-gray-500 mt-1.5 text-center">
+                              Assign achievement, winner, or other special certificates to specific students
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* Event Poster Section */}
@@ -4726,6 +4745,15 @@ function EventDetail() {
           />
         </div>
       </div>
+
+      {/* Certificate Assignment Modal - rendered outside AdminLayout content for z-index coverage */}
+      <CertificateAssignmentModal
+        isOpen={certAssignmentModalOpen}
+        onClose={() => setCertAssignmentModalOpen(false)}
+        eventId={eventId}
+        certificateTemplates={event?.certificate_templates || {}}
+        registrations={allRegistrations}
+      />
     </AdminLayout>
   );
 }

@@ -2597,5 +2597,191 @@ async def delete_feedback_form(
         logger.error(f"Error deleting feedback form: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error deleting feedback form: {str(e)}")
 
+
+# ===================================================================
+# CERTIFICATE ASSIGNMENT ENDPOINTS
+# Manage special certificate assignments (Achievement, Winner, etc.)
+# ===================================================================
+
+@router.get("/certificate-assignments/{event_id}")
+async def get_certificate_assignments(
+    event_id: str,
+    admin: AdminUser = Depends(require_admin)
+):
+    """
+    Get special certificate assignments for an event.
+    Returns mapping of certificate types to assigned registration IDs.
+    """
+    try:
+        db = await Database.get_database()
+        
+        # Get event details
+        event = await db.events.find_one({"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        # Get certificate assignments (empty dict if not set)
+        assignments = event.get("special_certificate_assignments", {})
+        certificate_templates = event.get("certificate_templates", {})
+        
+        # Get special certificate types (excluding participation)
+        participation_keywords = ["participation", "attendee", "attended"]
+        special_types = [
+            ct for ct in certificate_templates.keys() 
+            if not any(kw in ct.lower() for kw in participation_keywords)
+        ]
+        
+        return JSONResponse({
+            "success": True,
+            "event_id": event_id,
+            "certificate_templates": list(certificate_templates.keys()),
+            "special_certificate_types": special_types,
+            "assignments": assignments,
+            "message": "Certificate assignments loaded"
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting certificate assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting certificate assignments: {str(e)}")
+
+
+@router.post("/certificate-assignments/{event_id}")
+async def save_certificate_assignments(
+    event_id: str,
+    request: Request,
+    admin: AdminUser = Depends(require_admin)
+):
+    """
+    Save special certificate assignments for an event.
+    
+    Request body:
+    {
+        "assignments": {
+            "Certificate of Achievement": ["REG_ID_001", "REG_ID_002"],
+            "Certificate of Excellence": ["REG_ID_003"]
+        }
+    }
+    """
+    try:
+        db = await Database.get_database()
+        body = await request.json()
+        
+        # Validate event exists
+        event = await db.events.find_one({"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        assignments = body.get("assignments", {})
+        
+        # Validate certificate types exist in event templates
+        certificate_templates = event.get("certificate_templates", {})
+        for cert_type in assignments.keys():
+            if cert_type not in certificate_templates:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Certificate type '{cert_type}' not found in event templates"
+                )
+        
+        # Update event with assignments
+        result = await db.events.update_one(
+            {"event_id": event_id},
+            {
+                "$set": {
+                    "special_certificate_assignments": assignments,
+                    "updated_by": admin.username,
+                    "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                }
+            }
+        )
+        
+        if result.modified_count > 0 or result.matched_count > 0:
+            # Log the action
+            total_assigned = sum(len(students) for students in assignments.values())
+            await event_action_logger.log_action(
+                event_id=event_id,
+                action_type="certificate_assignments_updated",
+                performed_by=admin.username,
+                details={
+                    "assignments": assignments,
+                    "total_special_certificates": total_assigned,
+                    "certificate_types": list(assignments.keys())
+                }
+            )
+            
+            return JSONResponse({
+                "success": True,
+                "message": f"Saved! {total_assigned} special certificate{'' if total_assigned == 1 else 's'} assigned.",
+                "event_id": event_id,
+                "assignments": assignments
+            })
+        else:
+            raise HTTPException(status_code=400, detail="Could not save. Please try again.")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving certificate assignments: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error saving certificate assignments: {str(e)}")
+
+
+@router.delete("/certificate-assignments/{event_id}/{certificate_type}")
+async def remove_certificate_assignment(
+    event_id: str,
+    certificate_type: str,
+    reg_id: str = Query(..., description="Registration ID to remove"),
+    admin: AdminUser = Depends(require_admin)
+):
+    """Remove a specific registration from a certificate type assignment"""
+    try:
+        db = await Database.get_database()
+        
+        # Get event
+        event = await db.events.find_one({"event_id": event_id})
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+        
+        assignments = event.get("special_certificate_assignments", {})
+        
+        if certificate_type not in assignments:
+            return JSONResponse({
+                "success": True,
+                "message": "No assignments found for this certificate type"
+            })
+        
+        # Remove registration from assignments
+        if reg_id in assignments[certificate_type]:
+            assignments[certificate_type].remove(reg_id)
+            
+            # Remove empty certificate types
+            if not assignments[certificate_type]:
+                del assignments[certificate_type]
+            
+            # Update event
+            await db.events.update_one(
+                {"event_id": event_id},
+                {
+                    "$set": {
+                        "special_certificate_assignments": assignments,
+                        "updated_by": admin.username,
+                        "updated_at": datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+                    }
+                }
+            )
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Removed from {certificate_type}",
+            "assignments": assignments
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing certificate assignment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error removing certificate assignment: {str(e)}")
+
+
 # Include approval routes AFTER all local routes to avoid conflicts
 router.include_router(approval_router)

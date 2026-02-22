@@ -96,7 +96,32 @@ const FeedbackSuccess = () => {
 
     // Store available certificate types
     setCertificateTypes(templateKeys);
-    setSelectedCertificateType(templateKeys[0]); // Select first by default
+
+    // Determine which certificate this student should receive
+    const assignments = eventData.special_certificate_assignments || {};
+    const studentRegId = regData.registration_id || '';
+    const studentEnrollment = regData.enrollment_no || regData.student_id || user?.enrollment_no || '';
+    
+    // Check if student has a special certificate assignment (by registration_id or enrollment_no)
+    let assignedType = null;
+    for (const [certType, ids] of Object.entries(assignments)) {
+      if (Array.isArray(ids) && (ids.includes(studentRegId) || ids.includes(studentEnrollment))) {
+        assignedType = certType;
+        break;
+      }
+    }
+
+    if (assignedType) {
+      // Student has a special certificate assigned
+      setSelectedCertificateType(assignedType);
+    } else {
+      // Default to participation certificate
+      const participationKeywords = ['participation', 'attendee', 'attended', 'participant'];
+      const participationType = templateKeys.find(t => 
+        participationKeywords.some(kw => t.toLowerCase().includes(kw))
+      );
+      setSelectedCertificateType(participationType || templateKeys[0]);
+    }
 
     // Check eligibility using service
     const eligibility = certificateService.checkEligibility(regData, eventData);
@@ -232,26 +257,6 @@ const FeedbackSuccess = () => {
                       {certificateStatus.message}
                     </p>
                     
-                    {/* Certificate Type Selector */}
-                    {certificateTypes.length > 1 && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Select Certificate Type:
-                        </label>
-                        <select
-                          value={selectedCertificateType}
-                          onChange={(e) => setSelectedCertificateType(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          {certificateTypes.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    
                     <button
                       onClick={handleDownloadCertificate}
                       disabled={certificateStatus.downloading}
@@ -267,7 +272,7 @@ const FeedbackSuccess = () => {
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                           </svg>
-                          <span>Download {selectedCertificateType}</span>
+                          <span>Download Certificate</span>
                         </>
                       )}
                     </button>

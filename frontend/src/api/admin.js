@@ -336,6 +336,18 @@ export const adminAPI = {
   deleteFeedbackForm: (eventId) => 
     api.delete(`/api/v1/admin/events/feedback/delete/${eventId}`),
 
+  // CERTIFICATE ASSIGNMENT ENDPOINTS
+  getCertificateAssignments: (eventId) =>
+    api.get(`/api/v1/admin/events/certificate-assignments/${eventId}`),
+  
+  saveCertificateAssignments: (eventId, assignments) =>
+    api.post(`/api/v1/admin/events/certificate-assignments/${eventId}`, { assignments }),
+  
+  removeCertificateAssignment: (eventId, certificateType, regId) =>
+    api.delete(`/api/v1/admin/events/certificate-assignments/${eventId}/${encodeURIComponent(certificateType)}`, {
+      params: { reg_id: regId }
+    }),
+
   // EXPORT AND REPORTING ENDPOINTS
   generateReport: (eventId, reportType, options = {}) => {
     const params = new URLSearchParams({
