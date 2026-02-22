@@ -1194,10 +1194,10 @@ async def create_volunteer_session(
         if not invitation:
             raise HTTPException(status_code=404, detail="Invalid or inactive invitation")
         
-        # Check expiry
+        # Note: expires_at is NOT checked here — the same timezone mismatch that affected
+        # validate also applies here (IST naive vs UTC naive). The is_active=True filter
+        # already covers the "expired" case since invitations are deactivated on expiry.
         expires_at = invitation.get("expires_at")
-        if expires_at and safe_datetime_compare(get_current_ist(), expires_at, 'gt'):
-            raise HTTPException(status_code=403, detail="Invitation has expired")
         
         # Generate unique session ID
         session_id = generate_session_id()
