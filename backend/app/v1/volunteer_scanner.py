@@ -1089,6 +1089,8 @@ async def validate_invitation(invitation_code: str):
         logger.info(f"📅 Attendance end: {attendance_end}")
         
         is_active = True
+        before_start = False
+        after_end = False
         if attendance_start and attendance_end and not TESTING_MODE:
             # Only enforce time restrictions in production
             # Convert strings to datetime and make them timezone-naive for comparison
@@ -1102,24 +1104,25 @@ async def validate_invitation(invitation_code: str):
                 attendance_end = attendance_end.astimezone(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
             
             is_active = attendance_start <= now <= attendance_end
-            logger.info(f"✅ Time validation: is_active={is_active} (start <= now <= end: {attendance_start} <= {now} <= {attendance_end})")
+            before_start = now < attendance_start
+            after_end = now > attendance_end
+            logger.info(f"✅ Time validation: is_active={is_active}, before_start={before_start}, after_end={after_end} (start <= now <= end: {attendance_start} <= {now} <= {attendance_end})")
         elif TESTING_MODE:
             # In testing mode, always allow access if invitation is valid
             is_active = True
             logger.info(f"TESTING_MODE: Bypassing time validation for invitation {invitation_code}")
         
-        # Helper function to serialize datetime
-        def serialize_datetime(dt):
+        # Helper function to serialize datetime as IST (not UTC)
+        def serialize_dt(dt):
             if dt is None:
                 return None
             if isinstance(dt, str):
                 return dt
-            # Ensure datetime is treated as UTC and includes 'Z' suffix
             if hasattr(dt, 'isoformat'):
                 iso_string = dt.isoformat()
-                # If no timezone info, assume UTC and add 'Z'
+                # These are IST datetimes, append +05:30 (not Z)
                 if '+' not in iso_string and 'Z' not in iso_string:
-                    iso_string += 'Z'
+                    iso_string += '+05:30'
                 return iso_string
             return str(dt)
         
@@ -1128,10 +1131,12 @@ async def validate_invitation(invitation_code: str):
             "data": {
                 "event_id": invitation.get("event_id"),
                 "event_name": invitation.get("event_name"),
-                "attendance_start_time": serialize_datetime(invitation.get("attendance_start_time")),
-                "attendance_end_time": serialize_datetime(invitation.get("attendance_end_time")),
-                "expires_at": serialize_datetime(invitation.get("expires_at")),
+                "attendance_start_time": serialize_dt(invitation.get("attendance_start_time")),
+                "attendance_end_time": serialize_dt(invitation.get("attendance_end_time")),
+                "expires_at": serialize_dt(invitation.get("expires_at")),
                 "is_active": is_active,
+                "before_start": before_start,
+                "after_end": after_end,
                 "testing_mode": TESTING_MODE
             }
         }
